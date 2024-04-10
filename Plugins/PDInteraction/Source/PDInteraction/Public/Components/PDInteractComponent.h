@@ -56,26 +56,34 @@ protected:
 	UFUNCTION(BlueprintCallable)
 	void ClearTraceResults();
 	
-	UFUNCTION(BlueprintCallable)
-	void PerformTrace();
-	void PerformComparativeTraces(FVector& TraceStart, FVector& TraceEnd, FCollisionQueryParams& TraceParams, FHitResult& TraceHitResult, bool& bTraceResultFlag) const;
+	UFUNCTION(BlueprintNativeEvent, BlueprintCallable)
+	void PerformLineShapeTrace(double DeltaSeconds);
+
+	UFUNCTION(BlueprintNativeEvent, BlueprintCallable)
+	void PerformRadialTrace(double DeltaSeconds);
+	
+	void PerformComparativeTraces(FVector& TraceStart, FVector& TraceEnd, FCollisionQueryParams& TraceParams, FHitResult& TraceHitResult, EPDTraceResult& TraceResultFlag) const;
 	void PerformSimpleTrace(const FVector& TraceStart, const FVector& TraceEnd, FCollisionQueryParams& TraceParams, FHitResult& TraceHitResult, bool& bTraceResultFlag) const;
 	void TracePass(const FVector& TraceFromLocation, const FVector& TraceEnd, FCollisionQueryParams& TraceParams, FHitResult& TraceHitResult, bool& bTraceResultFlag) const;
 
 	UFUNCTION(BlueprintCallable)
-	FORCEINLINE double GetMaxTraceDistance() const { return MaxTraceDistanceInUnrealUnits; }	
+	FORCEINLINE double GetMaxTraceDistance(const bool bRadial = false) const
+	{
+		return bRadial ? TraceSettings.MaxRadialTraceDistanceInUnrealUnits : TraceSettings.MaxTraceDistanceInUnrealUnits;
+	}	
 	
 private:
 
 
 public:
-	UPROPERTY(EditAnywhere, BlueprintReadWrite)
-	int32 MaxTraceDistanceInUnrealUnits = DEFAULT_TRACER_MAX_INTERACTION_DISTANCE; /**< @brief Needs to be large enough to hit objects of differing 'per-object' interaction distance limit*/
-	
+
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
 	double BoxTraceExtent = 10.0;
 
-	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Meta = (RowType = "/Script/PDInteraction.PDTraceSettings"))
+	FDataTableRowHandle TraceSettingsHandle;	
+	
+	UPROPERTY(VisibleInstanceOnly, BlueprintReadWrite)
 	FPDTraceSettings TraceSettings{};
 
 	UPROPERTY(VisibleInstanceOnly, BlueprintReadOnly)

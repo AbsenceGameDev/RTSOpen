@@ -31,7 +31,20 @@ void UPDInteractComponent::TickComponent(float DeltaTime, enum ELevelTick TickTy
 		return;
 	}
 
-	PerformTrace();
+	switch(TraceSettings.TickTraceType)
+	{
+	case EPDTickTraceType::TRACE_RADIAL:
+		PerformRadialTrace(DeltaTime);
+		break;
+	case EPDTickTraceType::TRACE_LINESHAPE:
+		PerformLineShapeTrace(DeltaTime);
+		break;
+	case EPDTickTraceType::TRACE_MAX:
+	default: ;
+		PerformLineShapeTrace(DeltaTime);
+		PerformRadialTrace(DeltaTime);
+		break;
+	}
 }
 
 void UPDInteractComponent::BeginInteraction()
@@ -180,6 +193,9 @@ void UPDInteractComponent::Prerequisites()
 		return;
 	}
 
+	const FPDTraceSettings* TraceSettingsPtr = TraceSettingsHandle.GetRow<FPDTraceSettings>("");
+	if (TraceSettingsPtr != nullptr) { TraceSettings = *TraceSettingsPtr; }
+	
 	TraceSettings.Setup();
 	TraceBuffer.Setup();
 	SetComponentTickEnabled(true);
@@ -190,20 +206,33 @@ void UPDInteractComponent::ClearTraceResults()
 	TraceBuffer.ClearTraceResults();
 }
 
-void UPDInteractComponent::PerformTrace()
+void UPDInteractComponent::PerformLineShapeTrace_Implementation(double DeltaSeconds)
 {
-	if (GetOwner<APawn>() == nullptr) { return; }
-
+	TraceBuffer.LineTraceTickTime += DeltaSeconds;
+	const bool bCanTick = TraceBuffer.LineTraceTickTime >= TraceSettings.LineTraceTickInterval && GetOwner<APawn>() != nullptr;
+	if (bCanTick == false) { return; }
+	
 	FVector TraceStart, TraceEnd;
 	FCollisionQueryParams TraceParams;
 	FHitResult InteractHitResult;
-	bool bInteractTraceResult;
 	
-	PerformComparativeTraces(TraceStart, TraceEnd, TraceParams, InteractHitResult, bInteractTraceResult);
-	TraceBuffer.AddTraceFrame(bInteractTraceResult ? EPDTraceResult::TRACE_SUCCESS : EPDTraceResult::TRACE_FAIL, InteractHitResult);
+	EPDTraceResult TraceResult;
+	PerformComparativeTraces(TraceStart, TraceEnd, TraceParams, InteractHitResult, TraceResult);
+	TraceBuffer.AddTraceFrame(TraceResult, InteractHitResult);
 }
 
-void UPDInteractComponent::PerformComparativeTraces(FVector& TraceStart, FVector& TraceEnd, FCollisionQueryParams& TraceParams, FHitResult& TraceHitResult, bool& bTraceResultFlag) const
+void UPDInteractComponent::PerformRadialTrace_Implementation(double DeltaSeconds)
+{
+	TraceBuffer.RadialTraceTickTime += DeltaSeconds;
+	const bool bCanTick = TraceBuffer.RadialTraceTickTime >= TraceSettings.RadialTraceTickInterval;
+	if (bCanTick == false) { return; }
+
+	// Clear accumulated time and Store any interactables
+	TraceBuffer.RadialTraceTickTime = 0;
+	TraceBuffer.RadialTraceActors = GetAllInteractablesInRadius(TraceSettings.MaxRadialTraceDistanceInUnrealUnits);
+}
+
+void UPDInteractComponent::PerformComparativeTraces(FVector& TraceStart, FVector& TraceEnd, FCollisionQueryParams& TraceParams, FHitResult& TraceHitResult, EPDTraceResult& TraceResultFlag) const
 {
 	APawn* OwnerPawn = GetOwner<APawn>();
 	if (OwnerPawn == nullptr) { return; }
@@ -217,7 +246,8 @@ void UPDInteractComponent::PerformComparativeTraces(FVector& TraceStart, FVector
 
 	// Trace 1 (Leading trace)
 	FHitResult CameraTraceResult;
-	TracePass(TraceStart, TraceEnd, TraceParams, CameraTraceResult, bTraceResultFlag);
+	bool bTraceResult = false;
+	TracePass(TraceStart, TraceEnd, TraceParams, CameraTraceResult, bTraceResult);
 
 	// Trace 2 (Comparison trace)	
 	const FVector PawnEyeLocation = OwnerPawn->GetActorLocation() + FVector(0.f,0.f, OwnerPawn->BaseEyeHeight);
@@ -230,9 +260,10 @@ void UPDInteractComponent::PerformComparativeTraces(FVector& TraceStart, FVector
 	TracePass(PawnEyeLocation, TargetEndLocation , TraceParams, TraceHitResult, bComparativeTraces);
 
 	// Combine trace results
-	bool bInteractTracesValid   = bTraceResultFlag && bComparativeTraces && TraceHitResult.GetActor() != nullptr && CameraTraceResult.GetActor() != nullptr;
+	bool bInteractTracesValid   = bTraceResult && bComparativeTraces && TraceHitResult.GetActor() != nullptr && CameraTraceResult.GetActor() != nullptr;
 	bool bCompareInteractTraces = TraceHitResult.GetActor() == CameraTraceResult.GetActor();	
-
+	TraceResultFlag = bTraceResult ? EPDTraceResult::TRACE_SUCCESS : EPDTraceResult::TRACE_FAIL; 
+	
 	if (bInteractTracesValid && bCompareInteractTraces) { return; }
 	TraceHitResult = FHitResult(); // Clear hit-results if comparison checks or validity checks fail
 }

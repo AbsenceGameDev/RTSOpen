@@ -10,6 +10,16 @@
 
 constexpr float DEFAULT_PEROBJECT_MAX_INTERACTION_DISTANCE = 150;
 constexpr float DEFAULT_TRACER_MAX_INTERACTION_DISTANCE = 1500;
+constexpr float DEFAULT_TRACER_MAX_RADIAL_DISTANCE = 500;
+
+
+UENUM(Blueprintable, BlueprintType)
+enum class EPDTickTraceType : uint8
+{
+	TRACE_RADIAL     UMETA(DisplayName="Radial trace"),           /**< @brief Interaction attempt succeeded */
+	TRACE_LINESHAPE  UMETA(DisplayName="Shape trace along line"), /**< @brief Interaction attempt failed */ 
+	TRACE_MAX        UMETA(DisplayName="All trace types"),        /**< @brief Interaction attempt delayed. Possibly networked call */
+};
 
 UENUM(Blueprintable, BlueprintType)
 enum class EPDInteractResult : uint8
@@ -74,19 +84,68 @@ struct FPDInteractionSettings
  * @brief This structure encapsulated some settings related to interaction tracing
  */
 USTRUCT(BlueprintType, Blueprintable)
-struct FPDTraceSettings
+struct FPDTraceTickSettings
+{
+	GENERATED_BODY()
+
+public:
+	
+	/** @brief Which type of trace will we perform */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	TEnumAsByte<EPDTickTraceType> TickTraceType = EPDTickTraceType::TRACE_RADIAL;
+
+	/** @brief Needs to be large enough to hit objects of differing 'per-object' interaction distance limit*/
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	int32 MaxTraceDistanceInUnrealUnits = DEFAULT_TRACER_MAX_RADIAL_DISTANCE; 	
+
+	/** @brief Value is interpreted as per seconds. 0.0 will defaults to 'per-frame' for traces */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	double TickInterval  = 0.0;
+	
+};
+
+/**
+ * @brief This structure encapsulated some settings related to interaction tracing
+ */
+USTRUCT(BlueprintType, Blueprintable)
+struct FPDTraceSettings : public FTableRowBase
 {
 	GENERATED_BODY()
 
 public:
 	void Setup();
 	
+	/** @brief Which type of trace will we perform */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
-	TEnumAsByte<ECollisionChannel> TraceChannel = ECC_GameTraceChannel10;
+	TEnumAsByte<EPDTickTraceType> TickTraceType = EPDTickTraceType::TRACE_RADIAL;
 
-	/** @brief Is generated from the collision channel using  */
+	/** @brief This contains settings for different trace types, as 'TickTraceType' can change we just change which settings we are reading from here */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	TMap<EPDTickTraceType, FPDTraceTickSettings> TickTraceTypeSettings;
+	
+	/** @brief THe collision channel we want to trace against */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	TEnumAsByte<ECollisionChannel> TraceChannel = ECollisionChannel::ECC_GameTraceChannel10;
+
+	/** @brief Is generated from the collision channel using 'UEngineTypes::ConvertToObjectType' */
 	UPROPERTY(VisibleInstanceOnly, BlueprintReadOnly)
-	TEnumAsByte<EObjectTypeQuery> GeneratedObjectType = EObjectTypeQuery::ObjectTypeQuery_MAX; 	
+	TEnumAsByte<EObjectTypeQuery> GeneratedObjectType = EObjectTypeQuery::ObjectTypeQuery_MAX;
+
+	/** @brief Needs to be large enough to hit objects of differing 'per-object' interaction distance limit*/
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	int32 MaxTraceDistanceInUnrealUnits = DEFAULT_TRACER_MAX_INTERACTION_DISTANCE; 
+
+	/** @brief Needs to be large enough to hit objects of differing 'per-object' interaction distance limit*/
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	int32 MaxRadialTraceDistanceInUnrealUnits = DEFAULT_TRACER_MAX_RADIAL_DISTANCE; 	
+	
+	/** @brief Value 0.5 Defaults to 2 traces per second */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	double RadialTraceTickInterval = 0.5; 
+
+	/** @brief Value 0.0 Defaults to 'per-frame' traces */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	double LineTraceTickInterval  = 0.0;
 };
 
 
@@ -118,6 +177,12 @@ struct FPDTraceBuffer
 	GENERATED_USTRUCT_BODY()
 
 public:
+	UPROPERTY()
+	TArray<AActor*> RadialTraceActors{};
+
+	double RadialTraceTickTime = 0.0;
+	double LineTraceTickTime = 0.0;
+
 	TDeque<FPDTraceResult> Frames;
 	int32 ValidFrameResetIt = 1;
 	FPDTraceResult CachedValidFrame;
