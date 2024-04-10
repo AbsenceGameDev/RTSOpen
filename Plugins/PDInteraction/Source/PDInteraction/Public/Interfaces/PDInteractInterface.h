@@ -5,7 +5,7 @@
 #include "CoreMinimal.h"
 #include "UObject/Interface.h"
 
-#include "PDInteractionCommon.h"
+#include "PDInteractCommon.h"
 
 #include "PDInteractInterface.generated.h"
 
@@ -20,11 +20,17 @@ class PDINTERACTION_API IPDInteractInterface
 {
 	GENERATED_BODY()
 
+public:	
 	/** @brief This function handles acknowledging and handling interactions. @return true|false based on if the interaction failed or succeeded */
 	UFUNCTION(BlueprintNativeEvent, CallInEditor, Category = "Action|Interface", Meta = (ExpandEnumAsExecs="InteractResult"))
 	void OnInteract(FPDInteractionParams& InteractionParams, EPDInteractResult& InteractResult) const;
 	virtual void OnInteract_Implementation(FPDInteractionParams& InteractionParams, EPDInteractResult& InteractResult) const;
-public:
+
+	/** @brief This function handles returning a max interaction value. */
+	UFUNCTION(BlueprintNativeEvent, CallInEditor, Category = "Action|Interface")
+	double GetMaxInteractionDistance() const;
+	virtual double GetMaxInteractionDistance_Implementation() const;
+
 };
 
 /*

@@ -1,18 +1,17 @@
 /* @author: Ario Amin @ Permafrost Development. @copyright: Full MIT License included at bottom of the file  */
-
-
 #include "Interfaces/PDInteractInterface.h"
-
-#include "PDInteraction/Class/PDInteractCommon.h"
+#include "PDInteractCommon.h"
 
 void IPDInteractInterface::OnInteract_Implementation(FPDInteractionParams& InteractionParams, EPDInteractResult& InteractResult) const
 {
-
-
-	InteractResult = EPDInteractResult::InteractSuccess;
+	InteractResult = EPDInteractResult::INTERACT_SUCCESS;
 	return;
 }
 
+double IPDInteractInterface::GetMaxInteractionDistance_Implementation() const
+{
+	return DEFAULT_PEROBJECT_MAX_INTERACTION_DISTANCE;
+}
 
 /*
  * @copyright Permafrost Development (MIT license)

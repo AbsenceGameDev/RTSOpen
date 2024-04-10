@@ -5,14 +5,26 @@
 #include "CoreMinimal.h"
 #include "UObject/Interface.h"
 #include "GameplayTagContainer.h"
+#include "Containers/Deque.h"
 #include "PDInteractCommon.generated.h"
 
+constexpr float DEFAULT_PEROBJECT_MAX_INTERACTION_DISTANCE = 150;
+constexpr float DEFAULT_TRACER_MAX_INTERACTION_DISTANCE = 1500;
+
 UENUM(Blueprintable, BlueprintType)
-enum EPDInteractResult
+enum class EPDInteractResult : uint8
 {
-	InteractSuccess UMETA(DisplayName="Succeeded"),  /**< @brief Interaction attempt succeeded */
-	InteractFail UMETA(DisplayName="Failed"),        /**< @brief Interaction attempt failed */ 
-	InteractDelayed UMETA(DisplayName="Delayed"),    /**< @brief Interaction attempt delayed. Possibly networked call */
+	INTERACT_SUCCESS UMETA(DisplayName="Succeeded"),  /**< @brief Interaction attempt succeeded */
+	INTERACT_FAIL    UMETA(DisplayName="Failed"),     /**< @brief Interaction attempt failed */ 
+	INTERACT_DELAYED UMETA(DisplayName="Delayed"),    /**< @brief Interaction attempt delayed. Possibly networked call */
+};
+
+
+UENUM(Blueprintable, BlueprintType)
+enum class EPDTraceResult : uint8 
+{
+	TRACE_SUCCESS UMETA(DisplayName="Succeeded"),  /**< @brief Trace succeeded at finding an interactable */
+	TRACE_FAIL    UMETA(DisplayName="Failed"),     /**< @brief Trace failed at finding an interactable  */ 
 };
 
 /**
@@ -59,6 +71,59 @@ struct FPDInteractionSettings
 	/** @brief A set of optional tags to be handled as seen fit by game module implementations */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Interaction|Settings")
 	ECollisionChannel InteractionCollisionChannel{};
+};
+
+/**
+ * @brief This structure encapsulated some settings related to interaction tracing
+ */
+USTRUCT(BlueprintType, Blueprintable)
+struct FPDTraceSettings
+{
+	GENERATED_BODY()
+
+public:
+	UPROPERTY(VisibleInstanceOnly, BlueprintReadWrite)
+	TEnumAsByte<ECollisionChannel> TraceChannel = ECC_GameTraceChannel10;
+};
+
+
+USTRUCT(BlueprintType)
+struct FPDTraceResult
+{
+	GENERATED_USTRUCT_BODY()
+
+public:
+	UPROPERTY(BlueprintReadOnly)
+	EPDTraceResult ResultFlag = EPDTraceResult::TRACE_FAIL;
+
+	UPROPERTY(BlueprintReadOnly)
+	FHitResult HitResult;
+	
+	bool operator==(const FPDTraceResult& Other) const
+	{
+		return ResultFlag == Other.ResultFlag
+		&& HitResult.GetActor() == Other.HitResult.GetActor()
+		&& HitResult.Location.Equals(Other.HitResult.Location);
+	}
+};
+
+USTRUCT(BlueprintType)
+struct FPDTraceBuffer
+{
+	GENERATED_USTRUCT_BODY()
+
+public:
+	TDeque<FPDTraceResult> Frames;
+	int32 ValidFrameResetIt = 1;
+	constexpr int32 FrameResetLimit = 10;
+	FPDTraceResult CachedValidFrame;
+
+	void Setup();
+	const FPDTraceResult& GetLastTraceResult() const;
+	const FPDTraceResult& GetLastValidResult() const;
+	const bool HasValidResults() const;
+	void ClearTraceResults();
+	void AddTraceFrame(EPDTraceResult TraceResult, const FHitResult& HitResult);
 };
 
 

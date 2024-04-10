@@ -13,7 +13,7 @@ public class PDInteraction : ModuleRules
 			{
 				"Core",
 			}
-			);
+		);
 			
 		
 		PrivateDependencyModuleNames.AddRange(
@@ -26,7 +26,7 @@ public class PDInteraction : ModuleRules
 				"NetCore",
 				"GameplayTags",
 			}
-			);
+		);
 	}
 }
 
