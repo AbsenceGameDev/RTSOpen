@@ -2,6 +2,11 @@
 
 #include "PDInteractCommon.h"
 
+void FPDTraceSettings::Setup()
+{
+	GeneratedObjectType = UEngineTypes::ConvertToObjectType(TraceChannel);
+}
+
 void FPDTraceBuffer::Setup()
 {
 	Frames.Empty();

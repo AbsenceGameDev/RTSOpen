@@ -32,6 +32,10 @@ public:
 	void SetTraceSettings(const FPDTraceSettings& NewSettings);
 	UFUNCTION(BlueprintCallable)
 	bool ContainsValidTraceResults() const;
+
+	// Returns a list of all interactables
+	UFUNCTION(BlueprintCallable)
+	TArray<AActor*> GetAllInteractablesInRadius(double Radius = 500.0, bool bIgnorePerObjectInteractionDistance = false);
 	
 	// Meant to be used on the server for one-off for comparisons/validations
 	UFUNCTION(BlueprintCallable)

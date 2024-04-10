@@ -75,6 +75,49 @@ bool UPDInteractComponent::ContainsValidTraceResults() const
 	return GetTraceResult(true) != DummyTrace;
 }
 
+TArray<AActor*> UPDInteractComponent::GetAllInteractablesInRadius(double Radius, bool bIgnorePerObjectInteractionDistance)
+{
+	TArray<AActor*> Aggregate{};
+	APawn* OwnerPawn = GetOwner<APawn>();
+	if (OwnerPawn == nullptr) { return Aggregate; }
+
+	TArray<AActor*> OverlapActors{};
+	UKismetSystemLibrary::SphereOverlapActors(
+		OwnerPawn,
+		OwnerPawn->GetActorLocation(),
+		Radius,
+		{TraceSettings.GeneratedObjectType},
+		nullptr, 
+		{OwnerPawn},
+		Aggregate);
+
+	if (bIgnorePerObjectInteractionDistance)
+	{
+		for (AActor* OverlappingActor : OverlapActors)
+		{
+			const IPDInteractInterface* ActorAsInterface = Cast<IPDInteractInterface>(OverlappingActor);
+			if (ActorAsInterface == nullptr) { continue; }
+			Aggregate.Emplace(OverlappingActor);
+		}
+	}
+	else
+	{
+		for (AActor* OverlappingActor : OverlapActors)
+		{
+			const IPDInteractInterface* ActorAsInterface = Cast<IPDInteractInterface>(OverlappingActor);
+			if (ActorAsInterface == nullptr) { continue; }
+
+			FVector DistanceVector = OverlappingActor->GetActorLocation() - OwnerPawn->GetActorLocation();
+			const bool bPastInteractionDistance = DistanceVector.Length() > ActorAsInterface->GetMaxInteractionDistance();
+
+			if (bPastInteractionDistance) { continue; }
+			Aggregate.Emplace(OverlappingActor);
+		}		
+	}
+	
+	return Aggregate;
+}
+
 void UPDInteractComponent::TraceToTarget(const FVector& TraceEnd)
 {
 	FCollisionQueryParams TraceParams;
@@ -137,6 +180,7 @@ void UPDInteractComponent::Prerequisites()
 		return;
 	}
 
+	TraceSettings.Setup();
 	TraceBuffer.Setup();
 	SetComponentTickEnabled(true);
 }

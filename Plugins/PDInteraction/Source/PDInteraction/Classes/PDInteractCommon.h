@@ -79,8 +79,14 @@ struct FPDTraceSettings
 	GENERATED_BODY()
 
 public:
-	UPROPERTY(VisibleInstanceOnly, BlueprintReadWrite)
+	void Setup();
+	
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
 	TEnumAsByte<ECollisionChannel> TraceChannel = ECC_GameTraceChannel10;
+
+	/** @brief Is generated from the collision channel using  */
+	UPROPERTY(VisibleInstanceOnly, BlueprintReadOnly)
+	TEnumAsByte<EObjectTypeQuery> GeneratedObjectType = EObjectTypeQuery::ObjectTypeQuery_MAX; 	
 };
 
 
