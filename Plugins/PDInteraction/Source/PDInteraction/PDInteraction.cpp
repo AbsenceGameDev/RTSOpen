@@ -1,34 +1,24 @@
 /* @author: Ario Amin @ Permafrost Development. @copyright: Full MIT License included at bottom of the file  */
 
-using UnrealBuildTool;
+#include "PDInteraction.h"
 
-public class PDRTSBase : ModuleRules
+#define LOCTEXT_NAMESPACE "FPDInteractionModule"
+
+void FPDInteractionModule::StartupModule()
 {
-	public PDRTSBase(ReadOnlyTargetRules Target) : base(Target)
-	{
-		PCHUsage = ModuleRules.PCHUsageMode.UseExplicitOrSharedPCHs;
-		
-		PublicDependencyModuleNames.AddRange(
-			new string[]
-			{
-				"Core",
-				// ... add other public dependencies that you statically link with here ...
-			}
-			);
-			
-		
-		PrivateDependencyModuleNames.AddRange(
-			new string[]
-			{
-				"CoreUObject",
-				"Engine",
-				"Slate",
-				"SlateCore",
-				// ... add private dependencies that you statically link with here ...	
-			}
-			);
-	}
+	// This code will execute after your module is loaded into memory; the exact timing is specified in the .uplugin file per-module
 }
+
+void FPDInteractionModule::ShutdownModule()
+{
+	// This function may be called during shutdown to clean up your module.  For modules that support dynamic reloading,
+	// we call this function before unloading the module.
+}
+
+#undef LOCTEXT_NAMESPACE
+	
+IMPLEMENT_MODULE(FPDInteractionModule, PDInteraction)
+
 
 /*
  * @copyright Permafrost Development (MIT license)

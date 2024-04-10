@@ -1,6 +1,32 @@
 /* @author: Ario Amin @ Permafrost Development. @copyright: Full MIT License included at bottom of the file  */
 
-#include "Interfaces/RTSActorInterface.h"
+#pragma once
+
+#include "CoreMinimal.h"
+#include "UObject/Interface.h"
+#include "PDRTSActorInterface.generated.h"
+
+/** @brief Boilerplate */
+UINTERFACE(MinimalAPI) class UPDRTSActorInterface : public UInterface { GENERATED_BODY() };
+
+/**
+ * @brief This interface will be placed on actors we want to perform an action in.
+ * @note Allows us to return an ID thath will be associated with the actor
+ */
+class PDRTSBASE_API IPDRTSActorInterface
+{
+	GENERATED_BODY()
+
+public:
+	UFUNCTION(BlueprintNativeEvent, CallInEditor, Category = "Actor|Interface")
+	void GetActorActionID() const;
+	virtual int32 GetActorActionID_Implementation() const
+	{
+		// Perform actions
+		return INDEX_NONE;
+	}
+public:
+};
 
 
 

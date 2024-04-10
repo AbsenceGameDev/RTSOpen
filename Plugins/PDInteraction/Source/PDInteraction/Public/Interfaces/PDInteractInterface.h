@@ -1,34 +1,31 @@
 /* @author: Ario Amin @ Permafrost Development. @copyright: Full MIT License included at bottom of the file  */
 
-using UnrealBuildTool;
+#pragma once
 
-public class PDRTSBase : ModuleRules
+#include "CoreMinimal.h"
+#include "UObject/Interface.h"
+
+#include "PDInteractionCommon.h"
+
+#include "PDInteractInterface.generated.h"
+
+
+/** @brief Boilerplate */
+UINTERFACE(MinimalAPI) class UPDInteractInterface : public UInterface { GENERATED_BODY() };
+
+/**
+ * @brief This interface will be placed on actors we want to be able to interact with.
+ */
+class PDINTERACTION_API IPDInteractInterface
 {
-	public PDRTSBase(ReadOnlyTargetRules Target) : base(Target)
-	{
-		PCHUsage = ModuleRules.PCHUsageMode.UseExplicitOrSharedPCHs;
-		
-		PublicDependencyModuleNames.AddRange(
-			new string[]
-			{
-				"Core",
-				// ... add other public dependencies that you statically link with here ...
-			}
-			);
-			
-		
-		PrivateDependencyModuleNames.AddRange(
-			new string[]
-			{
-				"CoreUObject",
-				"Engine",
-				"Slate",
-				"SlateCore",
-				// ... add private dependencies that you statically link with here ...	
-			}
-			);
-	}
-}
+	GENERATED_BODY()
+
+	/** @brief This function handles acknowledging and handling interactions. @return true|false based on if the interaction failed or succeeded */
+	UFUNCTION(BlueprintNativeEvent, CallInEditor, Category = "Action|Interface", Meta = (ExpandEnumAsExecs="InteractResult"))
+	void OnInteract(FPDInteractionParams& InteractionParams, EPDInteractResult& InteractResult) const;
+	virtual void OnInteract_Implementation(FPDInteractionParams& InteractionParams, EPDInteractResult& InteractResult) const;
+public:
+};
 
 /*
  * @copyright Permafrost Development (MIT license)

@@ -4,7 +4,7 @@
 
 #include "CoreMinimal.h"
 #include "UObject/Interface.h"
-#include "RTSActionInterface.generated.h"
+#include "PDRTSActionInterface.generated.h"
 
 UENUM()
 enum class ERTSActionMode : uint8
@@ -13,14 +13,14 @@ enum class ERTSActionMode : uint8
 	Harvest,
 };
 
-UINTERFACE(MinimalAPI)
-class URTSActionInterface : public UInterface { GENERATED_BODY() };
+/** @brief Boilerplate */
+UINTERFACE(MinimalAPI) class UPDRTSActionInterface : public UInterface { GENERATED_BODY() };
 
 /**
  * @brief This interface will be placed on pawns or characters we want to perform an action from.
  * @note It is abstracted in the plugin to allow anything else to hook into it in the game layer
  */
-class PDRTSBASE_API IRTSActionInterface
+class PDRTSBASE_API IPDRTSActionInterface
 {
 	GENERATED_BODY()
 

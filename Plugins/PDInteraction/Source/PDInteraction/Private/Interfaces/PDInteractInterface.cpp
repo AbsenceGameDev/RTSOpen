@@ -1,34 +1,18 @@
 /* @author: Ario Amin @ Permafrost Development. @copyright: Full MIT License included at bottom of the file  */
 
-using UnrealBuildTool;
 
-public class PDRTSBase : ModuleRules
+#include "Interfaces/PDInteractInterface.h"
+
+#include "PDInteraction/Class/PDInteractCommon.h"
+
+void IPDInteractInterface::OnInteract_Implementation(FPDInteractionParams& InteractionParams, EPDInteractResult& InteractResult) const
 {
-	public PDRTSBase(ReadOnlyTargetRules Target) : base(Target)
-	{
-		PCHUsage = ModuleRules.PCHUsageMode.UseExplicitOrSharedPCHs;
-		
-		PublicDependencyModuleNames.AddRange(
-			new string[]
-			{
-				"Core",
-				// ... add other public dependencies that you statically link with here ...
-			}
-			);
-			
-		
-		PrivateDependencyModuleNames.AddRange(
-			new string[]
-			{
-				"CoreUObject",
-				"Engine",
-				"Slate",
-				"SlateCore",
-				// ... add private dependencies that you statically link with here ...	
-			}
-			);
-	}
+
+
+	InteractResult = EPDInteractResult::InteractSuccess;
+	return;
 }
+
 
 /*
  * @copyright Permafrost Development (MIT license)
