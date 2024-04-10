@@ -53,7 +53,7 @@ struct FPDInteractionParams
 };
 
 /**
- * @brief This structure is constructed by the interaction component and passed into an 'interactable' item at the point of interaction
+ * @brief This structure is meant to be placed in a interactable datatable or in an interactable baseactor
  */
 USTRUCT(Blueprintable, BlueprintType) 
 struct FPDInteractionSettings
@@ -61,16 +61,13 @@ struct FPDInteractionSettings
 	GENERATED_BODY()
 
 	FPDInteractionSettings() = default;
-	explicit FPDInteractionSettings(double _InteractionTimeInSeconds, ECollisionChannel _InteractionCollisionChannel)
-		: InteractionTimeInSeconds(_InteractionTimeInSeconds), InteractionCollisionChannel(_InteractionCollisionChannel){}
+	explicit FPDInteractionSettings(double _InteractionTimeInSeconds) : InteractionTimeInSeconds(_InteractionTimeInSeconds){}
 	
 	/** @brief Represents teh full time, in seconds, it takes to complete the interaction */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Interaction|Settings")
 	double InteractionTimeInSeconds = 0.0;
-	
-	/** @brief A set of optional tags to be handled as seen fit by game module implementations */
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Interaction|Settings")
-	ECollisionChannel InteractionCollisionChannel{};
+
+	// @todo might need more settings
 };
 
 /**
@@ -107,6 +104,8 @@ public:
 	}
 };
 
+constexpr int32 FRAMERESET_LIMIT = 10;
+
 USTRUCT(BlueprintType)
 struct FPDTraceBuffer
 {
@@ -115,7 +114,6 @@ struct FPDTraceBuffer
 public:
 	TDeque<FPDTraceResult> Frames;
 	int32 ValidFrameResetIt = 1;
-	constexpr int32 FrameResetLimit = 10;
 	FPDTraceResult CachedValidFrame;
 
 	void Setup();

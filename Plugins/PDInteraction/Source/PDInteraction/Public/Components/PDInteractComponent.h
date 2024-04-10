@@ -7,16 +7,13 @@
 #include "Components/ActorComponent.h"
 #include "PDInteractComponent.generated.h"
 
-
-
-
 /**
  * @brief This component has two main functions: \n 1. Handling interaction logic. \n 2. Performing traces per frame, for downstream purposes
  */
 UCLASS(ClassGroup=(Custom), Meta=(BlueprintSpawnableComponent))
 class PDINTERACTION_API UPDInteractComponent : public UActorComponent
 {
-	GENERATED_BODY()
+	GENERATED_UCLASS_BODY() // So ubt allows me to define the obj init. ctor myself
 
 public:
 	virtual void BeginPlay() override; 
@@ -27,16 +24,24 @@ public:
 	UFUNCTION(BlueprintCallable)
 	virtual void EndInteraction();   // End a currently active interaction
 	
+	UFUNCTION(BlueprintCallable)
 	const FPDTraceResult& GetTraceResult(bool bSearchForValidCachedResults) const;
+	UFUNCTION(BlueprintCallable)
 	const FPDTraceSettings& GetTraceSettings() const;
+	UFUNCTION(BlueprintCallable)
 	void SetTraceSettings(const FPDTraceSettings& NewSettings);
+	UFUNCTION(BlueprintCallable)
 	bool ContainsValidTraceResults() const;
 	
 	// Meant to be used on the server for one-off for comparisons/validations
+	UFUNCTION(BlueprintCallable)
 	void TraceToTarget(const FVector& TraceEnd);
+	void TraceToTarget(const FVector& TraceStart, const FVector& TraceEnd);
 	void TraceToTarget(const FVector& TraceEnd, FCollisionQueryParams& TraceParams);
 	void TraceToTarget(const FVector& TraceStart, const FVector& TraceEnd, FCollisionQueryParams& TraceParams);
+	UFUNCTION(BlueprintCallable)
 	FPDTraceResult TraceToTargetAndReset(const FVector& TraceEnd);
+	FPDTraceResult TraceToTargetAndReset(const FVector& TraceStart, const FVector& TraceEnd);
 	FPDTraceResult TraceToTargetAndReset(const FVector& TraceEnd, FCollisionQueryParams& TraceParams);
 	FPDTraceResult TraceToTargetAndReset(const FVector& TraceStart, const FVector& TraceEnd, FCollisionQueryParams& TraceParams);
 
@@ -44,13 +49,16 @@ protected:
 	UFUNCTION()
 	virtual void Prerequisites();
 	
+	UFUNCTION(BlueprintCallable)
 	void ClearTraceResults();
 	
+	UFUNCTION(BlueprintCallable)
 	void PerformTrace();
 	void PerformComparativeTraces(FVector& TraceStart, FVector& TraceEnd, FCollisionQueryParams& TraceParams, FHitResult& TraceHitResult, bool& bTraceResultFlag) const;
 	void PerformSimpleTrace(const FVector& TraceStart, const FVector& TraceEnd, FCollisionQueryParams& TraceParams, FHitResult& TraceHitResult, bool& bTraceResultFlag) const;
 	void TracePass(const FVector& TraceFromLocation, const FVector& TraceEnd, FCollisionQueryParams& TraceParams, FHitResult& TraceHitResult, bool& bTraceResultFlag) const;
 
+	UFUNCTION(BlueprintCallable)
 	FORCEINLINE double GetMaxTraceDistance() const { return MaxTraceDistanceInUnrealUnits; }	
 	
 private:

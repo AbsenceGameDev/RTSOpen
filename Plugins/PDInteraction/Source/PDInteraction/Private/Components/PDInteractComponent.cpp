@@ -51,7 +51,6 @@ const FPDTraceResult& UPDInteractComponent::GetTraceResult(const bool bSearchFor
 	const FPDTraceResult& PDTraceResult = bSearchForValidCachedResults ? TraceBuffer.GetLastValidResult() : TraceBuffer.GetLastTraceResult();
 	const FHitResult& TraceResult = PDTraceResult.HitResult;
 	
-	// If trace distance exceed objects own max distance then this will return a dummy. To prevent any changes in function behaviour this should be default set to 220.f
 	const IPDInteractInterface* Interface = Cast<IPDInteractInterface>(TraceResult.GetActor());
 
 	const bool bValidHit = Interface != nullptr && TraceResult.IsValidBlockingHit();
@@ -76,12 +75,18 @@ bool UPDInteractComponent::ContainsValidTraceResults() const
 	return GetTraceResult(true) != DummyTrace;
 }
 
-
 void UPDInteractComponent::TraceToTarget(const FVector& TraceEnd)
 {
 	FCollisionQueryParams TraceParams;
 	TraceToTarget(TraceEnd,TraceParams);
 }
+
+void UPDInteractComponent::TraceToTarget(const FVector& TraceStart, const FVector& TraceEnd)
+{
+	FCollisionQueryParams TraceParams;
+	TraceToTarget(TraceStart, TraceEnd,TraceParams);
+}
+
 void UPDInteractComponent::TraceToTarget(const FVector& TraceEnd, FCollisionQueryParams& TraceParams)
 {
 	const FVector TraceStart = FVector::ZeroVector;
@@ -99,6 +104,13 @@ FPDTraceResult UPDInteractComponent::TraceToTargetAndReset(const FVector& TraceE
 	FCollisionQueryParams TraceParams;
 	return TraceToTargetAndReset(TraceEnd, TraceParams);
 }
+
+FPDTraceResult UPDInteractComponent::TraceToTargetAndReset(const FVector& TraceStart, const FVector& TraceEnd)
+{
+	FCollisionQueryParams TraceParams;
+	return TraceToTargetAndReset(TraceStart, TraceEnd, TraceParams);	
+}
+
 FPDTraceResult UPDInteractComponent::TraceToTargetAndReset(const FVector& TraceEnd, FCollisionQueryParams& TraceParams)
 {
 	const FVector TraceStart = FVector::ZeroVector;
@@ -128,7 +140,6 @@ void UPDInteractComponent::Prerequisites()
 	TraceBuffer.Setup();
 	SetComponentTickEnabled(true);
 }
-
 
 void UPDInteractComponent::ClearTraceResults()
 {

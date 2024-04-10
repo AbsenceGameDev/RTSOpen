@@ -21,7 +21,7 @@ const FPDTraceResult& FPDTraceBuffer::GetLastValidResult() const
 
 const bool FPDTraceBuffer::HasValidResults() const
 {
-	const bool bValidCachedFrameStillRelevant = ValidFrameResetIt <= (FrameResetLimit / 2) ;
+	const bool bValidCachedFrameStillRelevant = ValidFrameResetIt <= (FRAMERESET_LIMIT / 2) ;
 	return bValidCachedFrameStillRelevant && CachedValidFrame.ResultFlag == EPDTraceResult::TRACE_SUCCESS && CachedValidFrame.HitResult.GetActor() != nullptr;
 }
 
@@ -38,7 +38,7 @@ void FPDTraceBuffer::AddTraceFrame(EPDTraceResult TraceResult, const FHitResult&
 		ValidFrameResetIt++;
 	}
 
-	if ((ValidFrameResetIt % FrameResetLimit) == 0) // clear each 'FrameResetLimit'
+	if ((ValidFrameResetIt % FRAMERESET_LIMIT) == 0) // clear each 'FrameResetLimit'
 	{
 		CachedValidFrame = FPDTraceResult{EPDTraceResult::TRACE_FAIL, FHitResult(ForceInit)};
 		ValidFrameResetIt = 1; // Don't want it to overflow
