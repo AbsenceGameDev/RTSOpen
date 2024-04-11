@@ -15,6 +15,7 @@ class USceneComponent;
 class UStaticMeshComponent;
 class UBoxComponent;
 
+
 UCLASS()
 class PDINTERACTION_API APDInteractActor : public AActor, public IPDInteractInterface
 {
@@ -22,6 +23,7 @@ class PDINTERACTION_API APDInteractActor : public AActor, public IPDInteractInte
 
 public:
 	APDInteractActor();
+
 	virtual void OnConstruction(const FTransform& Transform) override;
 	virtual void BeginPlay() override;
 	virtual void Tick(float DeltaTime) override;
@@ -52,7 +54,6 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Interaction|Actors")
 	double UniformCollisionPadding = UNREALUNITS_PERMETRE * 0.4;
 };
-
 
 /*
  * @copyright Permafrost Development (MIT license)
