@@ -19,6 +19,11 @@
 			"Name": "PDInteraction",
 			"Type": "Runtime",
 			"LoadingPhase": "Default"
+		},
+		{
+			"Name": "PDInteractPreloader",
+			"Type": "EditorAndProgram",
+			"LoadingPhase": "EarliestPossible"
 		}
 	]
 }

@@ -12,6 +12,12 @@ constexpr float DEFAULT_PEROBJECT_MAX_INTERACTION_DISTANCE = 150;
 constexpr float DEFAULT_TRACER_MAX_INTERACTION_DISTANCE = 1500;
 constexpr float DEFAULT_TRACER_MAX_RADIAL_DISTANCE = 500;
 
+constexpr ECollisionChannel DEDICATED_INTERACT_CHANNEL_ALT18 = ECollisionChannel::ECC_GameTraceChannel18;
+constexpr ECollisionChannel DEDICATED_INTERACT_CHANNEL_ALT17 = ECollisionChannel::ECC_GameTraceChannel17;
+constexpr ECollisionChannel DEDICATED_INTERACT_CHANNEL_ALT16 = ECollisionChannel::ECC_GameTraceChannel16;
+constexpr ECollisionChannel DEDICATED_INTERACT_CHANNEL_ALT15 = ECollisionChannel::ECC_GameTraceChannel15;
+constexpr ECollisionChannel DEDICATED_INTERACT_CHANNEL_ALT14 = ECollisionChannel::ECC_GameTraceChannel14;
+
 
 UENUM(Blueprintable, BlueprintType)
 enum class EPDTickTraceType : uint8
@@ -92,7 +98,7 @@ public:
 	
 	/** @brief Which type of trace will we perform */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
-	TEnumAsByte<EPDTickTraceType> TickTraceType = EPDTickTraceType::TRACE_RADIAL;
+	EPDTickTraceType TickTraceType = EPDTickTraceType::TRACE_RADIAL;
 
 	/** @brief Needs to be large enough to hit objects of differing 'per-object' interaction distance limit*/
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
@@ -117,7 +123,7 @@ public:
 	
 	/** @brief Which type of trace will we perform */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
-	TEnumAsByte<EPDTickTraceType> TickTraceType = EPDTickTraceType::TRACE_RADIAL;
+	EPDTickTraceType TickTraceType = EPDTickTraceType::TRACE_RADIAL;
 
 	/** @brief This contains settings for different trace types, as 'TickTraceType' can change we just change which settings we are reading from here */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
@@ -125,7 +131,7 @@ public:
 	
 	/** @brief THe collision channel we want to trace against */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
-	TEnumAsByte<ECollisionChannel> TraceChannel = ECollisionChannel::ECC_GameTraceChannel10;
+	TEnumAsByte<ECollisionChannel> TraceChannel = DEDICATED_INTERACT_CHANNEL_ALT18;
 
 	/** @brief Is generated from the collision channel using 'UEngineTypes::ConvertToObjectType' */
 	UPROPERTY(VisibleInstanceOnly, BlueprintReadOnly)

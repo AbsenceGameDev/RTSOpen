@@ -1,21 +1,56 @@
 ﻿/* @author: Ario Amin @ Permafrost Development. @copyright: Full MIT License included at bottom of the file  */
 
-
 #pragma once
 
 #include "CoreMinimal.h"
 #include "GameFramework/Actor.h"
+#include "Interfaces/PDInteractInterface.h"
+
 #include "PDInteractActor.generated.h"
 
+constexpr double UNREALUNITS_PERMETRE = 100.0; /* UU == cm, 100 uu == 1m*/
+constexpr double INVERSE_UU = 1 / UNREALUNITS_PERMETRE; /* UU == cm, 100 uu == 1m*/
+
+class USceneComponent;
+class UStaticMeshComponent;
+class UBoxComponent;
+
 UCLASS()
-class PDINTERACTION_API APDInteractActor : public AActor
+class PDINTERACTION_API APDInteractActor : public AActor, public IPDInteractInterface
 {
 	GENERATED_BODY()
 
 public:
 	APDInteractActor();
+	virtual void OnConstruction(const FTransform& Transform) override;
 	virtual void BeginPlay() override;
 	virtual void Tick(float DeltaTime) override;
+
+protected:
+	UFUNCTION() 
+	void ResizeCollisionBounds(UStaticMeshComponent* NewMeshDummy = nullptr);
+	void BindDelegates();
+
+#if WITH_EDITOR
+	void PostEditChangeProperty(FPropertyChangedEvent& PropertyChangedEvent) override;
+#endif // WITH_EDITOR
+
+public:
+	/** @brief Root of the actor */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Interaction|Actors")
+	USceneComponent* Scenecomp = nullptr;
+
+	/** @brief Mesh of the actor */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Interaction|Actors")
+	UStaticMeshComponent* Mesh = nullptr;
+
+	/** @brief Box collision that acts as the interaction surface */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Interaction|Actors")
+	UBoxComponent* Boxcomp = nullptr;
+	
+	/** @brief Value that controls how much we want to control ur padding when sizing the collision bounds  */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Interaction|Actors")
+	double UniformCollisionPadding = UNREALUNITS_PERMETRE * 0.4;
 };
 
 
