@@ -1,20 +1,25 @@
-/* @author: Ario Amin @ Permafrost Development. @copyright: Full MIT License included at bottom of the file  */
+﻿/* @author: Ario Amin @ Permafrost Development. @copyright: Full MIT License included at bottom of the file  */
 
-using UnrealBuildTool;
+#pragma once
 
-public class RTSOpen : ModuleRules
+#include "CoreMinimal.h"
+#include "Components/ActorComponent.h"
+#include "PDInventoryComponent.generated.h"
+
+UCLASS()
+class UPDInventoryComponent : public UActorComponent
 {
-	public RTSOpen(ReadOnlyTargetRules Target) : base(Target)
-	{
-		PCHUsage = PCHUsageMode.UseExplicitOrSharedPCHs;
+	GENERATED_BODY()
+
+public:
+
+	// @todo GOALS
+	//
+	// 1. Handle managing inventory data
+	//
+	// 2. Handle replication
 	
-		PublicDependencyModuleNames.AddRange(new string[] 
-			{ "Core", "CoreUObject", "Engine", "InputCore", "GameplayTags", });
-
-		PrivateDependencyModuleNames.AddRange(new string[] { "PDInteraction", "EnhancedInput" });
-	}
-}
-
+};
 
 /*
  * @copyright Permafrost Development (MIT license)

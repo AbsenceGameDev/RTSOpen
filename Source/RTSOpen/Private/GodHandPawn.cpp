@@ -10,9 +10,10 @@
 #include "GameFramework/FloatingPawnMovement.h"
 #include "GameFramework/SpringArmComponent.h"
 #include "EnhancedInputSubsystems.h"
+#include "Actors/PDInteractActor.h"
 
 // Sets default values
-AGodHandPawn::AGodHandPawn()
+AGodHandPawn::AGodHandPawn() : bTickHover(false)
 {
  	// Set this pawn to call Tick() every frame.  You can turn this off to improve performance if you don't need it.
 	PrimaryActorTick.bCanEverTick = true;
@@ -55,7 +56,7 @@ void AGodHandPawn::UpdateMagnification()
 		: Springarm->TargetArmLength / (Springarm->TargetArmLength * MagnificationValue);
 	
 	Springarm->TargetArmLength = FMath::Lerp(600, 30000, Alpha);
-	Springarm->SetRelativeRotation(FRotator{FMath::Lerp(-35,-55, Alpha),0,0});
+	Springarm->SetRelativeRotation(FRotator{FMath::Lerp(-35.0,-55.0, Alpha),0,0});
 	PawnMovement->MaxSpeed =  FMath::Lerp(1000, 5000, Alpha);
 
 	// depth of field when magnifying
@@ -67,18 +68,124 @@ void AGodHandPawn::UpdateMagnification()
 	Camera->SetFieldOfView(FMath::Lerp(25.0f, 15.0f, Alpha));
 }
 
+void AGodHandPawn::PossessedBy(AController* NewController)
+{
+	Super::PossessedBy(NewController);
+
+	//
+	// @todo At this line: Bind input switch function
+	
+}
+
+void AGodHandPawn::NotifyActorBeginOverlap(AActor* OtherActor)
+{
+	Super::NotifyActorBeginOverlap(OtherActor);
+
+	if (OtherActor == nullptr) { return; }
+
+	HoveredActor = OtherActor;
+	bTickHover = true;
+}
+
+void AGodHandPawn::NotifyActorEndOverlap(AActor* OtherActor)
+{
+	Super::NotifyActorEndOverlap(OtherActor);
+
+	TArray<AActor*> Overlap;
+	GetOverlappingActors(Overlap, AActor::StaticClass());
+	HoveredActor = Overlap.IsEmpty() ? nullptr : HoveredActor; 
+}
+
+void AGodHandPawn::BeginBuild_Implementation(TSubclassOf<AActor> TargetClass, TMap<FGameplayTag, FPDItemCosts>& ResourceCost)
+{
+	TempSpawnClass = TargetClass;
+	CurrentResourceCost = ResourceCost;
+
+	if (GetWorld() == nullptr
+		|| SpawnedInteractable == nullptr
+		|| SpawnedInteractable->IsValidLowLevelFast() == false)
+	{
+		return;
+	}
+	SpawnedInteractable->Destroy(true);
+
+	FActorSpawnParameters SpawnInfo;
+	SpawnInfo.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AlwaysSpawn;
+	SpawnInfo.TransformScaleMethod = ESpawnActorScaleMethod::SelectDefaultAtRuntime;
+	SpawnInfo.Owner = this;
+	SpawnInfo.Instigator = this;
+	SpawnInfo.bDeferConstruction = false;
+
+	const FVector ActorLocation = GetActorLocation();
+	SpawnedInteractable = Cast<APDInteractActor>(GetWorld()->SpawnActor(TempSpawnClass, &ActorLocation, &FRotator::ZeroRotator, SpawnInfo));
+	if (SpawnedInteractable == nullptr) { return; }
+
+	// SpawnedInteractable: Placement Mod e
+	// SpawnedInteractable->CreateOverlay
+}
+
+void AGodHandPawn::HoverTick(const float DeltaTime)
+{
+	if (bTickHover == false) { return; }
+	
+	TArray<AActor*> Overlap;
+	Collision->GetOverlappingActors(Overlap, AActor::StaticClass());
+
+	
+	// Find interactables, could be items, could be other pawns
+	AActor* ClosestActor = Overlap.IsEmpty() ? nullptr : Overlap[0];
+	for (AActor* FoundActor : Overlap)
+	{
+		const IPDInteractInterface* FoundInterface = Cast<IPDInteractInterface>(FoundActor);
+		if (FoundInterface == nullptr) { continue; }
+
+		// Check type of interactable here, is a unit/character or a world-item
+
+		
+		const float LengthToOldActor = (ClosestActor->GetActorLocation() - Collision->GetComponentLocation()).Length();
+		const float LengthToNewActor = (FoundActor->GetActorLocation() - Collision->GetComponentLocation()).Length();
+		if (LengthToNewActor < LengthToOldActor)
+		{
+			ClosestActor = FoundActor;
+		}
+		// ^ find closest actor and store in this
+	}
+	
+	// Overwrite HoveredActor if they are not the same
+	if (ClosestActor != nullptr && ClosestActor != HoveredActor)
+	{
+		HoveredActor = ClosestActor;
+	}
+}
+
+void AGodHandPawn::AddMappingContexts_Implementation(APlayerController* PC)
+{
+	UEnhancedInputLocalPlayerSubsystem* Subsystem = ULocalPlayer::GetSubsystem<UEnhancedInputLocalPlayerSubsystem>(PC->GetLocalPlayer());
+	if (Subsystem == nullptr) { return; }
+
+	const FModifyContextOptions ModifyOptions{};
+	for (const UInputMappingContext* Ctxt : MappingContexts)
+	{
+		Subsystem->AddMappingContext(Ctxt, 0, ModifyOptions);
+	}
+}
+
+
 // Called when the game starts or when spawned
 void AGodHandPawn::BeginPlay()
 {
 	Super::BeginPlay();
 
 	UpdateMagnification();
+
+	//
+	// @todo At this line: Start ticking MoveTracking()
+	
  
 	APlayerController* PC = GetController<APlayerController>();
 	if (PC == nullptr) { return; }
 
-	UEnhancedInputLocalPlayerSubsystem* Subsystem = ULocalPlayer::GetSubsystem<UEnhancedInputLocalPlayerSubsystem>(PC->GetLocalPlayer());
-	
+	AddMappingContexts(PC);
 }
 
 // Called every frame

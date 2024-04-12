@@ -3,8 +3,13 @@
 #pragma once
 
 #include "CoreMinimal.h"
+#include "GameplayTagContainer.h"
+#include "BuildItems/PDBuildCommons.h"
 #include "GameFramework/Pawn.h"
 #include "GodHandPawn.generated.h"
+
+class UInputMappingContext;
+class APDInteractActor;
 
 UCLASS()
 class RTSOPEN_API AGodHandPawn : public APawn
@@ -16,7 +21,17 @@ public:
 	virtual void Tick(float DeltaTime) override;
 	virtual void SetupPlayerInputComponent(class UInputComponent* PlayerInputComponent) override;
 	void UpdateMagnification();
+	virtual void PossessedBy(AController* NewController) override;
+
+	virtual void NotifyActorBeginOverlap(AActor* OtherActor) override;
+	virtual void NotifyActorEndOverlap(AActor* OtherActor) override;
+	void HoverTick(float DeltaTime);
+
+	UFUNCTION(BlueprintNativeEvent, BlueprintCallable)
+	void BeginBuild(TSubclassOf<AActor> TargetClass, TMap<FGameplayTag /*Resource tag*/, FPDItemCosts>& ResourceCost);
 	
+	UFUNCTION(BlueprintNativeEvent, BlueprintCallable)
+	void AddMappingContexts(APlayerController* PC);
 protected:
 	// Called when the game starts or when spawned
 	virtual void BeginPlay() override;
@@ -41,7 +56,26 @@ public:
 	UCurveFloat* MagnificationCurve = nullptr;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "RTS|Pawn|Player")
+	TArray<UInputMappingContext*> MappingContexts{};
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "RTS|Pawn|Player")
+	AActor* HoveredActor = nullptr;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "RTS|Pawn|Player")
+	TSubclassOf<AActor> TempSpawnClass;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "RTS|Pawn|Player")
+	TMap<FGameplayTag, FPDItemCosts> CurrentResourceCost;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "RTS|Pawn|Player")
+	APDInteractActor* SpawnedInteractable = nullptr;
+	
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "RTS|Pawn|Player")
 	double MagnificationValue = 0.0;
+
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "RTS|Pawn|Player")
 	double MagnificationStrength = 0.0;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "RTS|Pawn|Player")
+	uint8 bTickHover : 1;
 };

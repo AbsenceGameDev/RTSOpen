@@ -1,20 +1,5 @@
-/* @author: Ario Amin @ Permafrost Development. @copyright: Full MIT License included at bottom of the file  */
-
-using UnrealBuildTool;
-
-public class RTSOpen : ModuleRules
-{
-	public RTSOpen(ReadOnlyTargetRules Target) : base(Target)
-	{
-		PCHUsage = PCHUsageMode.UseExplicitOrSharedPCHs;
-	
-		PublicDependencyModuleNames.AddRange(new string[] 
-			{ "Core", "CoreUObject", "Engine", "InputCore", "GameplayTags", });
-
-		PrivateDependencyModuleNames.AddRange(new string[] { "PDInteraction", "EnhancedInput" });
-	}
-}
-
+﻿/* @author: Ario Amin @ Permafrost Development. @copyright: Full MIT License included at bottom of the file  */
+#include "Inv/PDInventoryComponent.h"
 
 /*
  * @copyright Permafrost Development (MIT license)
