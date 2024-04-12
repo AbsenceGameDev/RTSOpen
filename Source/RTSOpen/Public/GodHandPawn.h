@@ -4,7 +4,7 @@
 
 #include "CoreMinimal.h"
 #include "GameplayTagContainer.h"
-#include "BuildItems/PDBuildCommons.h"
+#include "Inv/PDBuildCommons.h"
 #include "GameFramework/Pawn.h"
 #include "GodHandPawn.generated.h"
 

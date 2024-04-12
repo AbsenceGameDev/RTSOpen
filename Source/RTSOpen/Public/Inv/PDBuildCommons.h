@@ -19,10 +19,7 @@ struct RTSOPEN_API FPDItemCosts
 {
 	GENERATED_BODY();
 
-	bool operator==(FPDItemCosts& Other) const { return InitialCost == Other.InitialCost && RecurringCost == Other.RecurringCost && bApplyRecurringAtFirst == Other.bApplyRecurringAtFirst; }
-	bool operator!=(FPDItemCosts& Other) const { return (*this == Other) == false; }
-
-	int32 ApplyInitalCost(int32 InTotal);
+	int32 ApplyInitialCost(int32 InTotal);
 	int32 ApplyRecurringCost(int32 InTotal);
 
 	/** @brief Costs that will be checked against and deducted only the first usage */
@@ -57,7 +54,7 @@ struct FPDItemDatum : public FTableRowBase
 	
 	/** @brief Tag associated with this item */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
-	FGameplayTag ItemTag = FGameplayTag::EmptyTag;
+	FGameplayTag ItemTag{};
 
 	/** @brief Item costs to use this item */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
@@ -68,7 +65,7 @@ struct FPDItemDatum : public FTableRowBase
 	TMap<FGameplayTag, FPDItemCosts> CraftingCosts;
 
 	/** @brief The actor class to spawn */
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly)
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
 	TSubclassOf<AActor> ActorClass;
 };
 

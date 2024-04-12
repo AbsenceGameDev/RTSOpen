@@ -1,7 +1,7 @@
 ﻿/* @author: Ario Amin @ Permafrost Development. @copyright: Full MIT License included at bottom of the file  */
 #include "Inv/PDBuildCommons.h"
 
-int32 FPDItemCosts::ApplyInitalCost(int32 InTotal)
+int32 FPDItemCosts::ApplyInitialCost(int32 InTotal)
 {
 	return InTotal - (bApplyRecurringAtFirst ? InitialCost + RecurringCost : InitialCost);
 }
@@ -14,33 +14,41 @@ int32 FPDItemCosts::ApplyRecurringCost(int32 InTotal)
 void FPDItemDatum::OnPostDataImport(const UDataTable* InDataTable, const FName InRowName, TArray<FString>& OutCollectedImportProblems)
 {
 	FTableRowBase::OnPostDataImport(InDataTable, InRowName, OutCollectedImportProblems);
+	Refresh(InDataTable, InRowName);
 }
 
 void FPDItemDatum::OnDataTableChanged(const UDataTable* InDataTable, const FName InRowName)
 {
 	FTableRowBase::OnDataTableChanged(InDataTable, InRowName);
-
 	Refresh(InDataTable, InRowName);
 }
 
 void FPDItemDatum::Refresh(const UDataTable* InDataTable, const FName InRowName)
 {
-	bool bNoUsageCosts = true;
+	bool bHadUsageCosts = false;
 	for (const TPair<FGameplayTag, FPDItemCosts>& Usage : UsageCosts)
 	{
-		bNoUsageCosts = bNoUsageCosts || Usage.Key.IsValid();
+		bHadUsageCosts = bHadUsageCosts || Usage.Key.IsValid();
 	}
 
-	bool bNoCraftingCosts = true;
+	bool bHadCraftingCosts = false;
 	for (const TPair<FGameplayTag, FPDItemCosts>& Usage : CraftingCosts)
 	{
-		bNoCraftingCosts = bNoCraftingCosts || Usage.Key.IsValid();
+		bHadCraftingCosts = bHadCraftingCosts || Usage.Key.IsValid();
 	}
 
+	TEnumAsByte<EPDItemGroup> OldType = Type;
+	
 	Type =
-		bNoUsageCosts && bNoCraftingCosts ? EPDItemGroup::RESOURCE
-		: bNoCraftingCosts ? EPDItemGroup::OTHER
-		: EPDItemGroup::CRAFTABLE;
+		bHadUsageCosts == false && bHadCraftingCosts == false ? EPDItemGroup::RESOURCE
+		: bHadCraftingCosts ? EPDItemGroup::CRAFTABLE
+		: EPDItemGroup::OTHER;
+
+	if (OldType == Type) { return; }
+
+	// needed to update 
+	const_cast<UDataTable*>(InDataTable)->HandleDataTableChanged(InRowName);
+	
 }
 
 /*

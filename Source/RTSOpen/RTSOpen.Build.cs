@@ -11,7 +11,7 @@ public class RTSOpen : ModuleRules
 		PublicDependencyModuleNames.AddRange(new string[] 
 			{ "Core", "CoreUObject", "Engine", "InputCore", "GameplayTags", });
 
-		PrivateDependencyModuleNames.AddRange(new string[] { "PDInteraction", "EnhancedInput" });
+		PrivateDependencyModuleNames.AddRange(new string[] { "PDInteraction", "GameplayTags", "EnhancedInput" });
 	}
 }
 
