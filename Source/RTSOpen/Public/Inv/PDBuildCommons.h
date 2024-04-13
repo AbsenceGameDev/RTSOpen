@@ -9,8 +9,8 @@
 UENUM()
 enum EPDItemNetOperation
 {
-	REMOVE,
-	ADD,
+	REMOVEALL,
+	ADDNEW,
 	CHANGE,
 };
 

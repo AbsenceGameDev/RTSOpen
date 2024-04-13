@@ -37,8 +37,13 @@ protected:
 	virtual void BeginPlay() override;
 
 public:
+	
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category ="RTS|Pawn")
 	class UPDInteractComponent* InteractComponent = nullptr;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category ="RTS|Pawn")
+	class UPDInventoryComponent* InventoryComponent = nullptr;
+
+	
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "RTS|Pawn|Player")
 	class USceneComponent* SceneRoot = nullptr;
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "RTS|Pawn|Player")

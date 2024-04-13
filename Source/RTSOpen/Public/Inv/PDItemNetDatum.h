@@ -17,9 +17,9 @@ struct FPDItemList;
 
 
 /*
- * DAtum szie: 112 bytes
+ * Datum size: 112 bytes
  * Extreme case, 1000 players + 1000 NPCs, all with with inventory
- * Average TXrate: 4 updates per second per inventory
+ * Average TX-rate: 4 updates per second per inventory
  * Average Total TX per second; (448.000 * 2) 896,000 bytes per second, or ~900 kilobytes = inventory data per connection
  * For any given player this will consist of about 112 bytes out per second, and incoming packets consist of 99% of the load
  */
@@ -29,7 +29,7 @@ struct FPDItemNetDatum : public FFastArraySerializerItem
 	GENERATED_BODY();
 
 	// ConstructInPlace
-	FPDItemNetDatum() : ItemTag(), LastEditedStackIndex(INDEX_NONE), Stacks() {};
+	FPDItemNetDatum(){};
 	FPDItemNetDatum(const FGameplayTag& InItemTag, int32 StackIndex, int32 InCount);
 	FPDItemNetDatum(const FGameplayTag& InItemTag, int32 InCount);
 
@@ -40,12 +40,16 @@ struct FPDItemNetDatum : public FFastArraySerializerItem
 	UPROPERTY()
 	FGameplayTag ItemTag{};
 
-	// @todo Might need to replace this, tmap is too weighty, an array could do with some index caching
+	// @todo Might need to replace this, t-map is too weighty, an array could do with some index caching
 	UPROPERTY()
 	int32 LastEditedStackIndex = INDEX_NONE;
 	
 	UPROPERTY()
+	int32 TotalItemCount = INDEX_NONE;
+	
+	UPROPERTY()
 	TMap<int32 /* StackIndex */, int32 /* ItemCount */> Stacks{};
+
 };
 
 USTRUCT(BlueprintType)
@@ -55,19 +59,28 @@ struct FPDItemList : public FFastArraySerializer
 
 	bool NetSerialize(FNetDeltaSerializeInfo& DeltaParams);
 	
-	void RemoveItem(FGameplayTag& ItemToRemove);
-	void RemoveStack(FGameplayTag& ItemToRemove, int32 StackIdx);
-	void AddItem(FGameplayTag& ItemToUpdate, int32 AmountToAdd);
+	bool RemoveAllItemsOfType(FGameplayTag& ItemToRemove);
+	bool RemoveStack(FGameplayTag& ItemToRemove, int32 StackIdx);
 
-	void UpdateItem(FGameplayTag& ItemToUpdate, int32 AmountToAdd);
-	void UpdateStack(FGameplayTag& ItemToUpdate, int32 StackIdx, int32 AmountToAdd);
-	
+	bool UpdateItem(FGameplayTag& ItemToUpdate, int32 AmountToAdd);
+	bool UpdateItemAtStackIdx(FGameplayTag& ItemToUpdate, int32 StackIdx, int32 AmountToAdd);
+
+	FORCEINLINE UPDInventoryComponent* GetOwningInventory() const { return OwningInventory; }
+	FORCEINLINE void SetOwningInventory(UPDInventoryComponent* InInventory) { OwningInventory = InInventory; }
+
+private:
+	bool _Remove(FGameplayTag& ItemToUpdate, int32& AmountToAdd);
+	bool _Add(FGameplayTag& ItemToUpdate, int32 StackIdx, int32& AmountToAdd);
+
+public:
 	UPROPERTY()
 	TArray<FPDItemNetDatum> Items;
 
+protected:
 	UPROPERTY()
 	UPDInventoryComponent* OwningInventory = nullptr;
-	
+
+private:
 	TMap<FGameplayTag, int32> ItemToIndexMapping; // do not replicate, this is local
 };
 

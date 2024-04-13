@@ -11,6 +11,7 @@
 #include "GameFramework/SpringArmComponent.h"
 #include "EnhancedInputSubsystems.h"
 #include "Actors/PDInteractActor.h"
+#include "Inv/PDInventoryComponent.h"
 
 // Sets default values
 AGodHandPawn::AGodHandPawn() : bTickHover(false)
@@ -21,7 +22,8 @@ AGodHandPawn::AGodHandPawn() : bTickHover(false)
 	SceneRoot  = CreateDefaultSubobject<USceneComponent>(TEXT("SceneRoot"));
 	SetRootComponent(SceneRoot);
 
-	InteractComponent = CreateDefaultSubobject<UPDInteractComponent>(TEXT("InteractComponent"));
+	InteractComponent  = CreateDefaultSubobject<UPDInteractComponent>(TEXT("InteractComponent"));
+	InventoryComponent = CreateDefaultSubobject<UPDInventoryComponent>(TEXT("InventoryComponent"));
 	
 	Springarm  = CreateDefaultSubobject<USpringArmComponent>(TEXT("Springarm"));
 	Springarm->SetupAttachment(SceneRoot);

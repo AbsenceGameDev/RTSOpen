@@ -14,31 +14,31 @@ static TMap<int32,int32> ConstructTMapInPlace(int32 StackIdx, int32 Count)
 }
 
 FPDItemNetDatum::FPDItemNetDatum(const FGameplayTag& InItemTag, int32 StackIndex, int32 InCount)
-	: ItemTag(InItemTag), LastEditedStackIndex(StackIndex), Stacks(ConstructTMapInPlace(StackIndex, InCount))
+	: ItemTag(InItemTag), LastEditedStackIndex(StackIndex), TotalItemCount(InCount), Stacks(ConstructTMapInPlace(StackIndex, InCount))
 {
 }
 
 FPDItemNetDatum::FPDItemNetDatum(const FGameplayTag& InItemTag, int32 InCount)
-	: ItemTag(InItemTag), Stacks(ConstructTMapInPlace(0, InCount))
+	: ItemTag(InItemTag), LastEditedStackIndex(0), TotalItemCount(InCount), Stacks(ConstructTMapInPlace(0, InCount))
 {
 }
 
 void FPDItemNetDatum::PreReplicatedRemove(const FPDItemList& OwningList)
 {
-	check(OwningList.OwningInventory)
-	OwningList.OwningInventory->OnDatumUpdated(this, EPDItemNetOperation::REMOVE);
+	check(OwningList.GetOwningInventory() != nullptr)
+	OwningList.GetOwningInventory()->OnDatumUpdated(this, EPDItemNetOperation::REMOVEALL);
 }
 
 void FPDItemNetDatum::PostReplicatedAdd(const FPDItemList& OwningList)
 {
-	check(OwningList.OwningInventory != nullptr)
-	OwningList.OwningInventory->OnDatumUpdated(this, EPDItemNetOperation::ADD);
+	check(OwningList.GetOwningInventory() != nullptr)
+	OwningList.GetOwningInventory()->OnDatumUpdated(this, EPDItemNetOperation::ADDNEW);
 }
 
 void FPDItemNetDatum::PostReplicatedChange(const FPDItemList& OwningList)
 {
-	check(OwningList.OwningInventory != nullptr)
-	OwningList.OwningInventory->OnDatumUpdated(this, EPDItemNetOperation::CHANGE);
+	check(OwningList.GetOwningInventory() != nullptr)
+	OwningList.GetOwningInventory()->OnDatumUpdated(this, EPDItemNetOperation::CHANGE);
 }
 
 bool FPDItemList::NetSerialize(FNetDeltaSerializeInfo& DeltaParams)
@@ -46,18 +46,138 @@ bool FPDItemList::NetSerialize(FNetDeltaSerializeInfo& DeltaParams)
 	return FFastArraySerializer::FastArrayDeltaSerialize<FPDItemNetDatum, FPDItemList>(Items, DeltaParams, *this);
 }
 
-void FPDItemList::RemoveItem(FGameplayTag& ItemToRemove)
+bool FPDItemList::RemoveAllItemsOfType(FGameplayTag& ItemToRemove)
 {
+	if (ItemToIndexMapping.Contains(ItemToRemove) == false) { return false; }
+
+	MARK_PROPERTY_DIRTY_FROM_NAME(UPDInventoryComponent, ItemList, OwningInventory)
+	FPDItemNetDatum& NetDatum = Items[ItemToIndexMapping.FindRef(ItemToRemove)];
+	NetDatum.Stacks.Empty(); // clear data
+	NetDatum.LastEditedStackIndex = 0;
+	NetDatum.TotalItemCount = 0;
+	
+	return true;
 }
 
-void FPDItemList::RemoveStack(FGameplayTag& ItemToRemove, int32 StackIdx)
+bool FPDItemList::RemoveStack(FGameplayTag& ItemToRemove, int32 StackIdx)
 {
+	MARK_PROPERTY_DIRTY_FROM_NAME(UPDInventoryComponent, ItemList, OwningInventory)
+	FPDItemNetDatum& NetDatum = Items[ItemToIndexMapping.FindRef(ItemToRemove)];
+
+	const int32 CopyOldValue = NetDatum.Stacks[StackIdx];
+	NetDatum.Stacks[StackIdx] = 0; // clear data
+	NetDatum.LastEditedStackIndex = StackIdx;
+	NetDatum.TotalItemCount -= CopyOldValue;
+	
+	return true;
 }
 
-void FPDItemList::AddItem(FGameplayTag& ItemToUpdate, int32 AmountToAdd)
+bool FPDItemList::UpdateItem(FGameplayTag& ItemToUpdate, int32 AmountToAdd)
+{
+	if (ItemToIndexMapping.Contains(ItemToUpdate))
+	{
+		const FPDItemNetDatum& Item = Items[ItemToIndexMapping.FindRef(ItemToUpdate)]; // Stacks;
+		return UpdateItemAtStackIdx(ItemToUpdate, Item.LastEditedStackIndex, AmountToAdd);
+	}
+
+	return UpdateItemAtStackIdx(ItemToUpdate, INDEX_NONE, AmountToAdd);
+}
+
+bool FPDItemList::_Remove(FGameplayTag& ItemToUpdate, int32& AmountToAdd)
+{
+	FPDItemNetDatum& Item = Items[ItemToIndexMapping.FindRef(ItemToUpdate)]; // Stacks;
+	// remove all items if that is the request
+	if( Item.TotalItemCount <= FMath::Abs(AmountToAdd))
+	{
+		return RemoveAllItemsOfType(ItemToUpdate);
+	}
+
+	// Tally how many stack we otherwise might need to remove
+	TArray<int32> StackIndicesToRemove{};
+	for (const TPair<int32,int32>& Stack : Item.Stacks)
+	{
+		if (Stack.Value <= FMath::Abs(AmountToAdd))
+		{
+			AmountToAdd += Stack.Value; // AmountToAdd is negative at this point
+			StackIndicesToRemove.Emplace(Stack.Key);
+			continue;
+		}
+		Item.LastEditedStackIndex = Stack.Key;
+		break;
+	}
+
+	// Removed tallied stacks
+	for (int32 StackIdxToRemove : StackIndicesToRemove)
+	{
+		RemoveStack(ItemToUpdate, StackIdxToRemove);
+	}
+			
+	MARK_PROPERTY_DIRTY_FROM_NAME(UPDInventoryComponent, ItemList, OwningInventory)
+	int32& StackValue = Item.Stacks[Item.LastEditedStackIndex];
+	if (Item.Stacks[Item.LastEditedStackIndex] > FMath::Abs(AmountToAdd))
+	{
+		StackValue += AmountToAdd;
+	}
+	return true;
+}
+
+bool FPDItemList::_Add(FGameplayTag& ItemToUpdate, int32 StackIdx, int32& AmountToAdd)
+{
+	MARK_PROPERTY_DIRTY_FROM_NAME(UPDInventoryComponent, ItemList, OwningInventory)
+	FPDItemNetDatum& Item = Items[ItemToIndexMapping.FindRef(ItemToUpdate)]; // Stacks;
+	const UPDInventorySubsystem* InvSubsystem = GEngine->GetEngineSubsystem<UPDInventorySubsystem>();
+	check(InvSubsystem != nullptr); // Should never be nullptr
+	
+	int32 ItemsInLastEditedStack = 0;
+	if (Item.Stacks.Contains(StackIdx))
+	{
+		ItemsInLastEditedStack = Item.Stacks[Item.LastEditedStackIndex];
+	}
+		
+	const FPDItemDefaultDatum* Datum = InvSubsystem->TagToItemMap.FindRef(ItemToUpdate);
+	const int32 Space = Datum->StackLimit - ItemsInLastEditedStack;
+		
+	TMap<int32, int32>& CurrentStacks = Item.Stacks;
+	const bool bFitsInCurrentStack = Space >= AmountToAdd;
+	if (bFitsInCurrentStack)
+	{
+		Item.TotalItemCount += AmountToAdd; 
+		*(CurrentStacks.Find(StackIdx)) += AmountToAdd;
+		if (Space == AmountToAdd)// next add should target a new stack
+		{
+			Item.LastEditedStackIndex++; // increment last edited stack and use it for the new key
+			const FPDItemNetDatum NetDatum{ItemToUpdate, Item.LastEditedStackIndex, 0};
+			ItemToIndexMapping.Emplace(ItemToUpdate) = Items.Add(NetDatum);
+		}
+			
+		return true;
+	}
+	
+	// split
+	AmountToAdd -= Space;
+	*(CurrentStacks.Find(StackIdx)) += Space;
+	OwningInventory->Stacks.Current++;
+			
+
+	// Final added count in last index
+	const int32 AppendedStackRemainder = AmountToAdd != Datum->StackLimit ? AmountToAdd % Datum->StackLimit : AmountToAdd;
+	// find how many stacks we need to create
+	const int32 AppendedStackCount = AmountToAdd / Datum->StackLimit;
+	for (int32 Step = 0; Step < AppendedStackCount; Step++)
+	{
+		Item.LastEditedStackIndex++;
+		CurrentStacks.Emplace(Item.LastEditedStackIndex) = AmountToAdd;
+		OwningInventory->Stacks.Current++;
+	}
+	Item.LastEditedStackIndex++;
+	CurrentStacks.Emplace(Item.LastEditedStackIndex) = AppendedStackRemainder;
+	return true;
+}
+
+bool FPDItemList::UpdateItemAtStackIdx(FGameplayTag& ItemToUpdate, int32 StackIdx, int32 AmountToAdd)
 {
 	// @todo when adding an item, map it's tag to array IDX for fast editing of the array after, without having to search for it
-	UPDInventorySubsystem* InvSubsystem = GEngine->GetEngineSubsystem<UPDInventorySubsystem>();
+	const UPDInventorySubsystem* InvSubsystem = GEngine->GetEngineSubsystem<UPDInventorySubsystem>();
 	check(InvSubsystem != nullptr); // Should never be nullptr
 
 	if (InvSubsystem->TagToItemMap.Contains(ItemToUpdate) == false)
@@ -66,69 +186,28 @@ void FPDItemList::AddItem(FGameplayTag& ItemToUpdate, int32 AmountToAdd)
 		+ FString::Printf(TEXT("\n Trying to add item with invalid tag (%s). No given ItemTables have this tag on any given entry "), *ItemToUpdate.GetTagName().ToString());
 		UE_LOG(LogTemp, Warning, TEXT("%s"), *BuildString);
 
-		return;
+		return false;
 	}
-	
+
 	// Check if item already exists, if true check its' last edited stack
 	if (ItemToIndexMapping.Contains(ItemToUpdate))
 	{
-		int32 ItemsInLastEditedStack = 0;
-		MARK_PROPERTY_DIRTY_FROM_NAME(UPDInventoryComponent, ItemList, OwningInventory)
-		const FPDItemNetDatum& Item = Items[ItemToIndexMapping.FindRef(ItemToUpdate)]; // Stacks;
-		if (Item.LastEditedStackIndex != INDEX_NONE)
-		{
-			ItemsInLastEditedStack = Item.Stacks[Item.LastEditedStackIndex];
-		}
 
-		if (ItemsInLastEditedStack == INDEX_NONE)
-		{
-			// @todo handle
-		}
-
-		
-		const FPDItemDefaultDatum* Datum =InvSubsystem->TagToItemMap.FindRef(ItemToUpdate);
-		const int32 Space = Datum->StackLimit - ItemsInLastEditedStack;
-		const bool bFitsInCurrentStack = Space >= AmountToAdd;
-		
-		TMap<int32, int32>& CurrentStacks = Items[(ItemToIndexMapping.FindRef(ItemToUpdate))].Stacks;
-		if (bFitsInCurrentStack)
-		{
-			MARK_PROPERTY_DIRTY_FROM_NAME(UPDInventoryComponent, ItemList, OwningInventory)
-			const FPDItemNetDatum NetDatum{ItemToUpdate, Item.LastEditedStackIndex, AmountToAdd};
-			*(CurrentStacks.Find(Item.LastEditedStackIndex)) += AmountToAdd;
-		}
-		else
-		{
-			// split
-			AmountToAdd -= Space;
-
-			MARK_PROPERTY_DIRTY_FROM_NAME(UPDInventoryComponent, ItemList, OwningInventory)
-			const FPDItemNetDatum NetDatum{ItemToUpdate, Item.LastEditedStackIndex, AmountToAdd};
-
-			*(CurrentStacks.Find(Item.LastEditedStackIndex)) += Space;
-			CurrentStacks.Emplace(Item.LastEditedStackIndex + 1) = AmountToAdd;
-		}
-		
+		//
+		// Removing or Adding items
+		const bool bSubtraction = AmountToAdd < 0; // Want to remove items, possibly full stacks
+		 return bSubtraction
+			? _Remove(ItemToUpdate, AmountToAdd)
+			: _Add(ItemToUpdate, StackIdx, AmountToAdd);
 		
 	}
-	else
-	{
-		MARK_PROPERTY_DIRTY_FROM_NAME(UPDInventoryComponent, ItemList, OwningInventory)
-		const FPDItemNetDatum NetDatum{ItemToUpdate, 0, AmountToAdd};
-		ItemToIndexMapping.Emplace(ItemToUpdate) = Items.Add(NetDatum);
-	}
 
+	MARK_PROPERTY_DIRTY_FROM_NAME(UPDInventoryComponent, ItemList, OwningInventory)
+	const FPDItemNetDatum NetDatum{ItemToUpdate, 0, AmountToAdd};
+	ItemToIndexMapping.Emplace(ItemToUpdate) = Items.Add(NetDatum);
+	return true;	
 }
-
-void FPDItemList::UpdateItem(FGameplayTag& ItemToRemove, int32 AmountToAdd)
-{
-	
-}
-
-void FPDItemList::UpdateStack(FGameplayTag& ItemToUpdate, int32 StackIdx, int32 AmountToAdd)
-{
-}
-
+// @todo when Item.LastEditedStackIndex reaches close to it's max representation, wrap it around and make sure there are no collisions on the way
 
 /*
  * @copyright Permafrost Development (MIT license)

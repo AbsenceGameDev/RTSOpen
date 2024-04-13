@@ -10,12 +10,29 @@
 
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FPDOnItemUpdated, FPDItemNetDatum&, UpdatedDatum);
 
+USTRUCT(Blueprintable)
+struct FPDValueTracker
+{
+	GENERATED_BODY()
+
+	/** @brief Current value */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	int32 Current = INDEX_NONE;	
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	int32 Old = INDEX_NONE;	
+	
+	/** @brief if INDEX_NONE (-1) or below, then there can exist an unlimited amount */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	int32 Max = INDEX_NONE;	
+};
+
 /**
  * @brief A simple but capable inventory component
  * @note Stateful networking + fastarrayserializers
  * 
  */
-UCLASS()
+UCLASS(ClassGroup=(Custom), Meta=(BlueprintSpawnableComponent))
 class UPDInventoryComponent : public UActorComponent
 {
 	GENERATED_UCLASS_BODY()
@@ -28,25 +45,21 @@ public:
 	
 	void OnDatumUpdated(FPDItemNetDatum* ItemNetDatum, EPDItemNetOperation Operation);
 
-	// @todo GOALS
-	//
-	// 1. Handle managing inventory data
-	//
-	// 2. Handle replication
-
-	// Variables
+	bool IsAtLastAvailableStack() const;
 public:
 
 	// @todo Move to settings table, keep here for now
 	/** @brief Is in cubic centimetres, if INDEX_NONE (-1) or below, then the volume is unlimited */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
-	int32 MaxVolume = INDEX_NONE;
-
-	/** @brief Hidden from bp but cached and serialized if the option gets toggled on and off */
-	UPROPERTY()
-	int32 OldMaxVolume = INDEX_NONE;
+	FPDValueTracker Volume{};
+	/** @brief Is in grams, if INDEX_NONE (-1) or below, then the weight is unlimited */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	FPDValueTracker Weight{};
+	/** @brief Is in total stacks the inventory systems has, if INDEX_NONE (-1) or below, then there can exist an unlimited amount of stacks */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	FPDValueTracker Stacks{};
 	
-	// Called on replicated talent level update
+	// Called on replicated item count update
 	UPROPERTY(BlueprintAssignable)
 	FPDOnItemUpdated OnItemUpdated;
 	
