@@ -7,12 +7,22 @@
 #include "PDBuildCommons.generated.h"
 
 UENUM()
+enum EPDItemNetOperation
+{
+	REMOVE,
+	ADD,
+	CHANGE,
+};
+
+
+UENUM()
 enum EPDItemGroup
 {
 	CRAFTABLE,
 	RESOURCE,
 	OTHER,
 };
+
 
 USTRUCT(BlueprintType, Blueprintable)
 struct RTSOPEN_API FPDItemCosts 
@@ -39,7 +49,7 @@ struct RTSOPEN_API FPDItemCosts
  *  @property CraftingCosts, If empty, then this is not a craftable
  *  @property UsageCosts, If this and CraftingCosts are empty, then the item is a resource */
 USTRUCT(BlueprintType, Blueprintable)
-struct FPDItemDatum : public FTableRowBase
+struct FPDItemDefaultDatum : public FTableRowBase
 {
 	GENERATED_BODY()
 
@@ -55,7 +65,19 @@ struct FPDItemDatum : public FTableRowBase
 	/** @brief Tag associated with this item */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
 	FGameplayTag ItemTag{};
+	
+	/** @brief Max amount of items per stack  */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	int32 StackLimit = 5;	
 
+	/** @brief In grams. Weight per 1 item in a stack, a stack weighs stackcount * weightperitem  */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	int32 WeightPerItem = 1000;
+
+	/** @brief In cubic centimetres. Volume per 1 item in a stack. A stacks volume is: stackcount * VolumePerItem  */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	int32 VolumePerItem = 1000;			
+	
 	/** @brief Item costs to use this item */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
 	TMap<FGameplayTag, FPDItemCosts> UsageCosts; 
@@ -69,6 +91,43 @@ struct FPDItemDatum : public FTableRowBase
 	TSubclassOf<AActor> ActorClass;
 };
 
+/** @brief @property TierList, Key: Tier (int32). Value: ItemLink (FDataTableRowHandle) */
+USTRUCT(BlueprintType, Blueprintable)
+struct FPDTierLink
+{
+	GENERATED_BODY()
+
+	/** @brief Key: Tier. Value: ItemLink */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	int32 Tier;
+	
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Meta = (RowType = "/Script/RTSOpen.PDItemDatum"))
+	FDataTableRowHandle Link{};
+};
+
+/** @brief @property TierList, Key: Tier (int32). Value: ItemLink (FDataTableRowHandle) */
+USTRUCT(BlueprintType, Blueprintable)
+struct FPDTierWrapper
+{
+	GENERATED_BODY()
+
+	/** @brief Key: Tier. Value: ItemLink */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Meta = (RowType = "/Script/RTSOpen.PDItemDatum"))
+	TArray<FPDTierLink> TierList{};
+};
+
+/** @brief
+ *  @property CraftingCosts, If empty, then this is not a craftable
+ *  @property UsageCosts, If this and CraftingCosts are empty, then the item is a resource */
+USTRUCT(BlueprintType, Blueprintable)
+struct FPDRecipeList : public FTableRowBase
+{
+	GENERATED_BODY()
+	
+	/** @brief Key, Item Tag, Value, links to recipe entry tiers for fetching crafting costs */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Meta = (RowType = "/Script/RTSOpen.PDItemDatum"))
+	TMap<FGameplayTag, FPDTierWrapper> CraftingCosts;
+};
 
 USTRUCT()
 struct FPDBuildState 

@@ -1,6 +1,62 @@
 ﻿/* @author: Ario Amin @ Permafrost Development. @copyright: Full MIT License included at bottom of the file  */
 #include "Inv/PDInventoryComponent.h"
 
+#include "Net/UnrealNetwork.h"
+#include "Net/Core/PushModel/PushModel.h"
+
+
+UPDInventoryComponent::UPDInventoryComponent(const FObjectInitializer& ObjectInitializer)
+	: Super(ObjectInitializer)
+{
+	SetIsReplicatedByDefault(true);
+	
+	ItemList.OwningInventory = this;
+
+	// @todo sett polling to 0 times per second to enforce stateful replication
+}
+
+void UPDInventoryComponent::GetLifetimeReplicatedProps(TArray<class FLifetimeProperty>& OutLifetimeProps) const
+{
+	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
+	FDoRepLifetimeParams Parameters{};
+	Parameters.bIsPushBased = true;
+
+	DOREPLIFETIME_WITH_PARAMS_FAST(UPDInventoryComponent, ItemList, Parameters);
+	
+}
+
+void UPDInventoryComponent::BeginPlay()
+{
+	Super::BeginPlay();
+	ItemList.OwningInventory = this;
+}
+
+void UPDInventoryComponent::RequestUpdateItem(TEnumAsByte<EPDItemNetOperation> RequestedOperation, FGameplayTag& ItemTag, int32 Count)
+{
+	// If dedicated server, allow if possible
+	
+	// GetOwner()->GetNetMode() == NM_DedicatedServer
+
+
+
+
+
+	// // @todo uncomment and finish after push
+	// // Relevant authorative code
+	// ItemList.Items.Emplace(); // add
+	// ItemList.Items.MarkAsRemoved(); // Actually removing is expensive
+	// ItemList.Items.Emplace(); // add
+	//
+	// GetOwner()->ForceNetUpdate();
+
+	
+}
+
+void UPDInventoryComponent::OnDatumUpdated(FPDItemNetDatum* ItemNetDatum, EPDItemNetOperation Operation)
+{
+}
+
+
 /*
  * @copyright Permafrost Development (MIT license)
  * Authors: Ario Amin

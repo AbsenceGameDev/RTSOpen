@@ -3,22 +3,55 @@
 #pragma once
 
 #include "CoreMinimal.h"
+#include "PDBuildCommons.h"
+#include "PDItemNetDatum.h"
 #include "Components/ActorComponent.h"
 #include "PDInventoryComponent.generated.h"
 
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FPDOnItemUpdated, FPDItemNetDatum&, UpdatedDatum);
+
+/**
+ * @brief A simple but capable inventory component
+ * @note Stateful networking + fastarrayserializers
+ * 
+ */
 UCLASS()
 class UPDInventoryComponent : public UActorComponent
 {
-	GENERATED_BODY()
+	GENERATED_UCLASS_BODY()
 
+protected:
+	virtual void BeginPlay() override;
 public:
+	UFUNCTION(BlueprintCallable)
+	void RequestUpdateItem(TEnumAsByte<EPDItemNetOperation> RequestedOperation, FGameplayTag& ItemTag, int32 Count);
+	
+	void OnDatumUpdated(FPDItemNetDatum* ItemNetDatum, EPDItemNetOperation Operation);
 
 	// @todo GOALS
 	//
 	// 1. Handle managing inventory data
 	//
 	// 2. Handle replication
+
+	// Variables
+public:
+
+	// @todo Move to settings table, keep here for now
+	/** @brief Is in cubic centimetres, if INDEX_NONE (-1) or below, then the volume is unlimited */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	int32 MaxVolume = INDEX_NONE;
+
+	/** @brief Hidden from bp but cached and serialized if the option gets toggled on and off */
+	UPROPERTY()
+	int32 OldMaxVolume = INDEX_NONE;
 	
+	// Called on replicated talent level update
+	UPROPERTY(BlueprintAssignable)
+	FPDOnItemUpdated OnItemUpdated;
+	
+	UPROPERTY(Replicated)
+	FPDItemList ItemList;
 };
 
 /*

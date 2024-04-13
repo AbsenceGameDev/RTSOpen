@@ -11,19 +11,19 @@ int32 FPDItemCosts::ApplyRecurringCost(int32 InTotal)
 	return InTotal - RecurringCost;
 }
 
-void FPDItemDatum::OnPostDataImport(const UDataTable* InDataTable, const FName InRowName, TArray<FString>& OutCollectedImportProblems)
+void FPDItemDefaultDatum::OnPostDataImport(const UDataTable* InDataTable, const FName InRowName, TArray<FString>& OutCollectedImportProblems)
 {
 	FTableRowBase::OnPostDataImport(InDataTable, InRowName, OutCollectedImportProblems);
 	Refresh(InDataTable, InRowName);
 }
 
-void FPDItemDatum::OnDataTableChanged(const UDataTable* InDataTable, const FName InRowName)
+void FPDItemDefaultDatum::OnDataTableChanged(const UDataTable* InDataTable, const FName InRowName)
 {
 	FTableRowBase::OnDataTableChanged(InDataTable, InRowName);
 	Refresh(InDataTable, InRowName);
 }
 
-void FPDItemDatum::Refresh(const UDataTable* InDataTable, const FName InRowName)
+void FPDItemDefaultDatum::Refresh(const UDataTable* InDataTable, const FName InRowName)
 {
 	bool bHadUsageCosts = false;
 	for (const TPair<FGameplayTag, FPDItemCosts>& Usage : UsageCosts)

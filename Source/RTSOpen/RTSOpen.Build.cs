@@ -9,7 +9,7 @@ public class RTSOpen : ModuleRules
 		PCHUsage = PCHUsageMode.UseExplicitOrSharedPCHs;
 	
 		PublicDependencyModuleNames.AddRange(new string[] 
-			{ "Core", "CoreUObject", "Engine", "InputCore", "GameplayTags", });
+			{ "Core", "CoreUObject", "Engine", "InputCore", "GameplayTags", "NetCore", });
 
 		PrivateDependencyModuleNames.AddRange(new string[] { "PDInteraction", "GameplayTags", "EnhancedInput" });
 	}
