@@ -1,35 +1,35 @@
 /* @author: Ario Amin @ Permafrost Development. @copyright: Full MIT License included at bottom of the file  */
-#include "RTSOpenGM.h"
+#include "Core/RTSOBaseGM.h"
+#include "Core/RTSOBaseGI.h"
 
 #include "PDInteractSubsystem.h"
 #include "RTSOpenCommon.h"
-#include "RTSOpenGI.h"
 #include "GameFramework/GameStateBase.h"
 #include "Kismet/GameplayStatics.h"
 #include "Kismet/KismetMathLibrary.h"
 #include "Kismet/KismetSystemLibrary.h"
 
-const FString ARTSOpenGM::ROOTSAVE = "ROOTSAVE" ; 
+const FString ARTSOBaseGM::ROOTSAVE = "ROOTSAVE" ; 
 
-void ARTSOpenGM::BeginPlay()
+void ARTSOBaseGM::BeginPlay()
 {
 	Super::BeginPlay();
 
-	URTSOpenGI* GI =Cast<URTSOpenGI>(GetWorld()->GetGameInstance());
+	URTSOBaseGI* GI = Cast<URTSOBaseGI>(GetWorld()->GetGameInstance());
 	if (GI == nullptr) { return; }
 
-	MARK_PROPERTY_DIRTY_FROM_NAME(URTSOpenGI, bGMReady, GI);
+	MARK_PROPERTY_DIRTY_FROM_NAME(URTSOBaseGI, bGMReady, GI);
 	GI->bGMReady = true;
 	
 	
 }
 
-void ARTSOpenGM::OnGeneratedLandscapeReady_Implementation()
+void ARTSOBaseGM::OnGeneratedLandscapeReady_Implementation()
 {
 	// Load file data if it exists
 }
 
-void ARTSOpenGM::LoadGame_Implementation()
+void ARTSOBaseGM::LoadGame_Implementation()
 {
 	const bool bDoesExist = UGameplayStatics::DoesSaveGameExist(ROOTSAVE,0);
 
@@ -42,7 +42,7 @@ void ARTSOpenGM::LoadGame_Implementation()
 }
 
 
-void ARTSOpenGM::ClearSave_Implementation(const bool bRefreshSeed)
+void ARTSOBaseGM::ClearSave_Implementation(const bool bRefreshSeed)
 {
 	check(GameSave != nullptr)
 
@@ -58,7 +58,7 @@ void ARTSOpenGM::ClearSave_Implementation(const bool bRefreshSeed)
 	bHasStartedSaveData = false;
 }
 
-void ARTSOpenGM::SaveGame_Implementation()
+void ARTSOBaseGM::SaveGame_Implementation()
 {
 	check(GameSave != nullptr)
 
@@ -74,7 +74,7 @@ void ARTSOpenGM::SaveGame_Implementation()
 	bHasStartedSaveData = true;
 }
 
-void ARTSOpenGM::SaveInteractables_Implementation()
+void ARTSOBaseGM::SaveInteractables_Implementation()
 {
 	check(GameSave != nullptr)
 	check(GEngine->GetEngineSubsystem<UPDInteractSubsystem>() != nullptr)
@@ -105,7 +105,7 @@ void ARTSOpenGM::SaveInteractables_Implementation()
 	SaveGame();
 }
 
-void ARTSOpenGM::SaveResources_Implementation(const TMap<int32, FRTSSavedItems>& DataRef)
+void ARTSOBaseGM::SaveResources_Implementation(const TMap<int32, FRTSSavedItems>& DataRef)
 {
 	check(GameSave != nullptr)
 	GameSave->Inventories.Append(DataRef); // overwrite any previous value, this is low so only allow saving resources every 3 seconds
@@ -115,7 +115,7 @@ void ARTSOpenGM::SaveResources_Implementation(const TMap<int32, FRTSSavedItems>&
 }
 
 /* Save current units, their locations and actor classes*/
-void ARTSOpenGM::SaveUnits_Implementation()
+void ARTSOBaseGM::SaveUnits_Implementation()
 {
 	check(GameSave != nullptr)
 

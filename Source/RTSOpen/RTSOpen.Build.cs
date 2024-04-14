@@ -1,6 +1,7 @@
 /* @author: Ario Amin @ Permafrost Development. @copyright: Full MIT License included at bottom of the file  */
 
 using UnrealBuildTool;
+using System.IO;
 
 public class RTSOpen : ModuleRules
 {
@@ -8,6 +9,8 @@ public class RTSOpen : ModuleRules
 	{
 		PCHUsage = PCHUsageMode.UseExplicitOrSharedPCHs;
 	
+		PublicIncludePaths.Add(Path.Combine(ModuleDirectory, "Classes"));
+		
 		PublicDependencyModuleNames.AddRange(new string[] 
 			{ "Core", "CoreUObject", "Engine", 
 			"InputCore", "GameplayTags", "NetCore", });

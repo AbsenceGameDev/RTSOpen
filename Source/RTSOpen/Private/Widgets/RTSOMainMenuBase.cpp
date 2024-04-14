@@ -1,10 +1,23 @@
 ﻿/* @author: Ario Amin @ Permafrost Development. @copyright: Full MIT License included at bottom of the file  */
 
-#include "PDRTSCommon.h"
+#include "Widgets/RTSOMainMenuBase.h"
+#include "Widgets/RTSOActiveMainMenu.h"
+#include "Widgets/CommonActivatableWidgetContainer.h"
 
-/** Define the gameplay tag "AI.Jobs.Idle" */
-UE_DEFINE_GAMEPLAY_TAG(TAG_AI_Job_Idle, "AI.Jobs.Idle");
-UE_DEFINE_GAMEPLAY_TAG(TAG_AI_Job_WalkToTarget, "AI.Jobs.WalkToTarget");
+void URTSOMainMenuBase::NativeOnActivated()
+{
+	Super::NativeOnActivated();
+
+	WidgetStack->AddWidget<URTSOActiveMainMenu>(URTSOActiveMainMenu::StaticClass())->OwningStack = this;
+}
+
+void URTSOMainMenuBase::PushToWidgetStack_Implementation(TSubclassOf<UCommonActivatableWidget> Subclass)
+{
+	WidgetStack->AddWidget(Subclass);
+	
+}
+
+
 
 /*
  * @copyright Permafrost Development (MIT license)

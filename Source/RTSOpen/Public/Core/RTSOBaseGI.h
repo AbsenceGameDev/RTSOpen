@@ -4,7 +4,7 @@
 
 #include "CoreMinimal.h"
 #include "Engine/GameInstance.h"
-#include "RTSOpenGI.generated.h"
+#include "RTSOBaseGI.generated.h"
 
 
 class UPDTransitionWidget;
@@ -12,7 +12,7 @@ class UPDTransitionWidget;
  * 
  */
 UCLASS(BlueprintType, Blueprintable)
-class RTSOPEN_API URTSOpenGI : public UGameInstance
+class RTSOPEN_API URTSOBaseGI : public UGameInstance
 {
 	GENERATED_BODY()
 

@@ -4,9 +4,14 @@
 
 #include "CoreMinimal.h"
 #include "GameplayTagContainer.h"
+#include "NativeGameplayTags.h"
 #include "PDRTSCommon.generated.h"
 
 class UBehaviorTree;
+
+/** Declaring the "AI.Job.Idle" gameplay tag. to be defined in an object-file */
+UE_DECLARE_GAMEPLAY_TAG_EXTERN(TAG_AI_Job_Idle);
+UE_DECLARE_GAMEPLAY_TAG_EXTERN(TAG_AI_Job_WalkToTarget);
 
 USTRUCT(BlueprintType, Blueprintable)
 struct FPDWorkUnitDatum : public FTableRowBase
@@ -19,7 +24,7 @@ struct FPDWorkUnitDatum : public FTableRowBase
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "RTSBase|WorkerUnits")
 	TSoftObjectPtr<UAnimMontage> Montage;
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "RTSBase|WorkerUnits")
-	TSoftObjectPtr<UStaticMeshComponent> WorkTool;
+	TSoftObjectPtr<UStaticMesh>  WorkToolMesh;
 };
 
 /*

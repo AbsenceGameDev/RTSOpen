@@ -1,10 +1,25 @@
 ﻿/* @author: Ario Amin @ Permafrost Development. @copyright: Full MIT License included at bottom of the file  */
 
-#include "PDRTSCommon.h"
+#pragma once
 
-/** Define the gameplay tag "AI.Jobs.Idle" */
-UE_DEFINE_GAMEPLAY_TAG(TAG_AI_Job_Idle, "AI.Jobs.Idle");
-UE_DEFINE_GAMEPLAY_TAG(TAG_AI_Job_WalkToTarget, "AI.Jobs.WalkToTarget");
+#include "CoreMinimal.h"
+#include "CommonActivatableWidget.h"
+#include "RTSOActiveMainMenu.generated.h"
+
+/**
+ * 
+ */
+UCLASS()
+class RTSOPEN_API URTSOActiveMainMenu : public UCommonActivatableWidget
+{
+	GENERATED_BODY()
+
+public:
+	UPROPERTY()
+	UCommonActivatableWidget* OwningStack = nullptr;
+};
+
+
 
 /*
  * @copyright Permafrost Development (MIT license)

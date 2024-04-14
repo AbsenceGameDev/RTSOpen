@@ -1,10 +1,15 @@
 ﻿/* @author: Ario Amin @ Permafrost Development. @copyright: Full MIT License included at bottom of the file  */
 
-#include "PDRTSCommon.h"
 
-/** Define the gameplay tag "AI.Jobs.Idle" */
-UE_DEFINE_GAMEPLAY_TAG(TAG_AI_Job_Idle, "AI.Jobs.Idle");
-UE_DEFINE_GAMEPLAY_TAG(TAG_AI_Job_WalkToTarget, "AI.Jobs.WalkToTarget");
+#include "Animations/PDWorkerAnimInstance.h"
+
+
+
+
+
+
+
+
 
 /*
  * @copyright Permafrost Development (MIT license)

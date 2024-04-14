@@ -1,18 +1,18 @@
 /* @author: Ario Amin @ Permafrost Development. @copyright: Full MIT License included at bottom of the file  */
 
-#include "RTSOpenGI.h"
+#include "Core/RTSOBaseGI.h"
+#include "Core/RTSOBaseGM.h"
+#include "RTSOpenCommon.h"
 
 #include "GameFramework/GameStateBase.h"
 #include "Kismet/GameplayStatics.h"
 #include "Kismet/KismetSystemLibrary.h"
 #include "Net/UnrealNetwork.h"
-#include "RTSOpen/RTSOpenCommon.h"
-#include "RTSOpen/RTSOpenGM.h"
 
 
-void URTSOpenGI::InitializeGame_Implementation()
+void URTSOBaseGI::InitializeGame_Implementation()
 {
-	ARTSOpenGM* GM = Cast<ARTSOpenGM>(GetWorld()->GetAuthGameMode());
+	ARTSOBaseGM* GM = Cast<ARTSOBaseGM>(GetWorld()->GetAuthGameMode());
 	if (GM == nullptr)
 	{
 		ActiveTransitionWidget = CreateWidget<UPDTransitionWidget>(GetWorld(), WidgetClass);
@@ -23,7 +23,7 @@ void URTSOpenGI::InitializeGame_Implementation()
 	GM->LoadGame();
 }
 
-void URTSOpenGI::OpenLevel_Implementation(TSoftObjectPtr<UWorld>& SoftWorldPtr)
+void URTSOBaseGI::OpenLevel_Implementation(TSoftObjectPtr<UWorld>& SoftWorldPtr)
 {
 	StartTransition();
 
@@ -34,17 +34,17 @@ void URTSOpenGI::OpenLevel_Implementation(TSoftObjectPtr<UWorld>& SoftWorldPtr)
 }
 
 
-void URTSOpenGI::OnLevelLoaded_Implementation()
+void URTSOBaseGI::OnLevelLoaded_Implementation()
 {
 	// empty in baseclass for now
 }
 
-void URTSOpenGI::Dispatch_OpenLevel()
+void URTSOBaseGI::Dispatch_OpenLevel()
 {
 	UGameplayStatics::OpenLevelBySoftObjectPtr(this, PendingSoftWorldPtr, true);
 }
 
-void URTSOpenGI::OnGMReady()
+void URTSOBaseGI::OnGMReady()
 {
 	if (bGMReady == false) { return; }
 
@@ -57,12 +57,12 @@ void URTSOpenGI::OnGMReady()
 	// CreateWidget();  // @todo Create hud overlay and add to viewport 
 }
 
-void URTSOpenGI::ShowTransitionWidget_Implementation()
+void URTSOBaseGI::ShowTransitionWidget_Implementation()
 {
 	ActiveTransitionWidget->AddToViewport();
 }
 
-void URTSOpenGI::StartTransition_Implementation()
+void URTSOBaseGI::StartTransition_Implementation()
 {
 	if (ActiveTransitionWidget == nullptr)
 	{
@@ -77,7 +77,7 @@ void URTSOpenGI::StartTransition_Implementation()
 	ActiveTransitionWidget->StartTransition();
 }
 
-void URTSOpenGI::EndTransition_Implementation()
+void URTSOBaseGI::EndTransition_Implementation()
 {
 	if (ActiveTransitionWidget == nullptr)
 	{
@@ -92,16 +92,14 @@ void URTSOpenGI::EndTransition_Implementation()
 	ActiveTransitionWidget->EndTransition();	
 }
 
-void URTSOpenGI::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const
+void URTSOBaseGI::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const
 {
 	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
 
 	FDoRepLifetimeParams SharedParams;
 	SharedParams.bIsPushBased = true;
 
-	DOREPLIFETIME_WITH_PARAMS_FAST(URTSOpenGI, bGMReady, SharedParams);
-	
-
+	DOREPLIFETIME_WITH_PARAMS_FAST(URTSOBaseGI, bGMReady, SharedParams);
 	
 }
 

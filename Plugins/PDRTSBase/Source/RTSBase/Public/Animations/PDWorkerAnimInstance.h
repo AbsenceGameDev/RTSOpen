@@ -1,10 +1,22 @@
 ﻿/* @author: Ario Amin @ Permafrost Development. @copyright: Full MIT License included at bottom of the file  */
 
-#include "PDRTSCommon.h"
+#pragma once
 
-/** Define the gameplay tag "AI.Jobs.Idle" */
-UE_DEFINE_GAMEPLAY_TAG(TAG_AI_Job_Idle, "AI.Jobs.Idle");
-UE_DEFINE_GAMEPLAY_TAG(TAG_AI_Job_WalkToTarget, "AI.Jobs.WalkToTarget");
+#include "CoreMinimal.h"
+#include "GameplayTagContainer.h"
+#include "Animation/AnimInstance.h"
+#include "PDWorkerAnimInstance.generated.h"
+
+UCLASS(BlueprintType, Blueprintable)
+class PDRTSBASE_API UPDWorkerAnimInstance : public UAnimInstance
+{
+	GENERATED_BODY()
+
+public:
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Movement")
+	FGameplayTag CurrentMovementTag{};
+};
+
 
 /*
  * @copyright Permafrost Development (MIT license)

@@ -21,6 +21,7 @@ public class PDRTSBase : ModuleRules
 			new string[]
 			{
 				"AIModule",
+				"NavigationSystem",
 				"CoreUObject",
 				"Engine",
 				"Slate",

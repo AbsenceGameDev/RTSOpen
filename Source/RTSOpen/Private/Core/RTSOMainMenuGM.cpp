@@ -1,10 +1,26 @@
 ﻿/* @author: Ario Amin @ Permafrost Development. @copyright: Full MIT License included at bottom of the file  */
 
-#include "PDRTSCommon.h"
+#include "Core/RTSOMainMenuGM.h"
 
-/** Define the gameplay tag "AI.Jobs.Idle" */
-UE_DEFINE_GAMEPLAY_TAG(TAG_AI_Job_Idle, "AI.Jobs.Idle");
-UE_DEFINE_GAMEPLAY_TAG(TAG_AI_Job_WalkToTarget, "AI.Jobs.WalkToTarget");
+#include "Blueprint/UserWidget.h"
+#include "Core/RTSOBaseGI.h"
+#include "Widgets/RTSOMainMenuBase.h"
+
+void ARTSOMainMenuGM::BeginPlay()
+{
+	Super::BeginPlay();
+	
+	if (MainMenuWidget == nullptr) { MainMenuWidget = CreateWidget<URTSOMainMenuBase>(GetWorld(), MMWidgetClass); }
+	if (MainMenuWidget->IsInViewport() == false) { MainMenuWidget->AddToViewport(); }
+	if (MainMenuWidget->IsActivated() == false) { MainMenuWidget->ActivateWidget(); }
+	
+	URTSOBaseGI* GI = GetGameInstance<URTSOBaseGI>();
+	
+	GI->StartTransition();
+
+	// @todo main menu music?
+}
+
 
 /*
  * @copyright Permafrost Development (MIT license)

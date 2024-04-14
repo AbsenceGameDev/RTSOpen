@@ -1,6 +1,6 @@
 /* @author: Ario Amin @ Permafrost Development. @copyright: Full MIT License included at bottom of the file  */
 
-#include "GodHandPawn.h"
+#include "Actors/GodHandPawn.h"
 
 #include "Components/PDInteractComponent.h"
 #include "Components/PDInventoryComponent.h"

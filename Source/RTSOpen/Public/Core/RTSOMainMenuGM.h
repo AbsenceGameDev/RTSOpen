@@ -1,10 +1,26 @@
 ﻿/* @author: Ario Amin @ Permafrost Development. @copyright: Full MIT License included at bottom of the file  */
 
-#include "PDRTSCommon.h"
+#pragma once
 
-/** Define the gameplay tag "AI.Jobs.Idle" */
-UE_DEFINE_GAMEPLAY_TAG(TAG_AI_Job_Idle, "AI.Jobs.Idle");
-UE_DEFINE_GAMEPLAY_TAG(TAG_AI_Job_WalkToTarget, "AI.Jobs.WalkToTarget");
+#include "CoreMinimal.h"
+#include "GameFramework/GameModeBase.h"
+#include "RTSOMainMenuGM.generated.h"
+
+class URTSOMainMenuBase;
+
+UCLASS()
+class RTSOPEN_API ARTSOMainMenuGM : public AGameModeBase
+{
+	GENERATED_BODY()
+
+	virtual void BeginPlay() override;
+
+public:
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Menu|Startscreen")
+	TSubclassOf<URTSOMainMenuBase> MMWidgetClass{};
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Menu|Startscreen")
+	URTSOMainMenuBase* MainMenuWidget = nullptr;
+};
 
 /*
  * @copyright Permafrost Development (MIT license)

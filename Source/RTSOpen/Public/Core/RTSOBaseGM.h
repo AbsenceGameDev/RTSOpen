@@ -4,7 +4,7 @@
 #include "CoreMinimal.h"
 #include "RTSOpenCommon.h"
 #include "GameFramework/GameModeBase.h"
-#include "RTSOpenGM.generated.h"
+#include "RTSOBaseGM.generated.h"
 
 class URTSOpenSaveGame;
 
@@ -16,7 +16,7 @@ enum ERTSLoadscreenState
 };
 
 UCLASS()
-class RTSOPEN_API ARTSOpenGM : public AGameModeBase
+class RTSOPEN_API ARTSOBaseGM : public AGameModeBase
 {
 	GENERATED_BODY()
 

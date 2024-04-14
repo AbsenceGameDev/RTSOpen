@@ -3,8 +3,16 @@
 #pragma once
 
 #include "CoreMinimal.h"
+#include "GameplayTagContainer.h"
 #include "GameFramework/Pawn.h"
+#include "Engine/StreamableManager.h"
 #include "PDRTSBaseUnit.generated.h"
+
+struct FPDWorkUnitDatum;
+class UBehaviorTree;
+class UFloatingPawnMovement;
+class UCapsuleComponent;
+class AActor;
 
 UCLASS()
 class PDRTSBASE_API APDRTSBaseUnit : public APawn
@@ -14,13 +22,51 @@ class PDRTSBASE_API APDRTSBaseUnit : public APawn
 public:
 	APDRTSBaseUnit();
 
+
+	void PlayWorkAnimation(float Delay);
+	void _PlayMontage(UAnimMontage* Montage, float Length);
+	void _StopMontage(UAnimMontage* Montage = nullptr, bool bInterrupted = false) const;
+	// void AddResources(); // In game module apply the inventory component
+	void ResetState();
+	void RequestAction(AActor* NewTarget, FGameplayTag RequestedJob);
+	
 protected:
 	virtual void BeginPlay() override;
+	void AssignTask(const FGameplayTag& JobTag);
+	void LoadJobAsync(FPDWorkUnitDatum* JobDatum);
+	void OnAssetsLoaded();
+
 
 public:
 	virtual void Tick(float DeltaTime) override;
 
 	virtual void SetupPlayerInputComponent(class UInputComponent* PlayerInputComponent) override;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	UFloatingPawnMovement* WorkerMovement = nullptr;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	UDecalComponent* HitDecal = nullptr;
+	
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	UCapsuleComponent* Capsule = nullptr;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	USkeletalMeshComponent* BodyMesh = nullptr;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	UStaticMeshComponent* WorkerTool = nullptr;
+	UPROPERTY(VisibleInstanceOnly, BlueprintReadWrite)
+	UStaticMesh* PendingToolMesh = nullptr;
+	UPROPERTY(VisibleInstanceOnly, BlueprintReadOnly)
+	UBehaviorTree* CurrentBT = nullptr;
+	UPROPERTY(VisibleInstanceOnly, BlueprintReadOnly)
+	UAnimMontage* CurrentMontage = nullptr;
+
+
+	TSharedPtr<FStreamableHandle> LatestJob_AsyncLoadHandle;
+	AActor* TargetRef;
+
+	static const FName SlotGroup_Default;
+	static const FName BBKey_TargetRef;
 };
 
 /*

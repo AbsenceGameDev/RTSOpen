@@ -4,6 +4,7 @@
 
 #include "CoreMinimal.h"
 #include "GameplayTagContainer.h"
+#include "Engine/StreamableManager.h"
 #include "Subsystems/EngineSubsystem.h"
 #include "PDRTSBaseSubsystem.generated.h"
 
@@ -20,7 +21,6 @@ public:
 
 	const FPDWorkUnitDatum* GetWorkEntry(const FGameplayTag& JobTag);
 	const FPDWorkUnitDatum* GetWorkEntry(const FName& JobRowName);
-	
 
 public:	
 	UPROPERTY(EditAnywhere, Category = "Worker AI Subsystem", Meta = (RequiredAssetDataTags="RowStructure=PDWorkUnitDatum"))
@@ -33,7 +33,8 @@ public:
 
 	uint8 bHasProcessedTables = false;
 	uint16 ProcessFailCounter = 0;
-	
+
+	FStreamableManager DataStreamer;	
 };
 
 /*
