@@ -1,5 +1,5 @@
 ﻿/* @author: Ario Amin @ Permafrost Development. @copyright: Full MIT License included at bottom of the file  */
-#include "Inv/PDBuildCommons.h"
+#include "PDItemCommon.h"
 
 int32 FPDItemCosts::ApplyInitialCost(int32 InTotal)
 {

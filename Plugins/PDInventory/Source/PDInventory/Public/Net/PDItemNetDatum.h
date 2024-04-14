@@ -37,17 +37,17 @@ struct FPDItemNetDatum : public FFastArraySerializerItem
 	void PostReplicatedAdd(const FPDItemList& OwningList);
 	void PostReplicatedChange(const FPDItemList& OwningList);
 	
-	UPROPERTY()
+	UPROPERTY(BlueprintReadWrite)
 	FGameplayTag ItemTag{};
 
-	// @todo Might need to replace this, t-map is too weighty, an array could do with some index caching
-	UPROPERTY()
+	UPROPERTY(BlueprintReadWrite)
 	int32 LastEditedStackIndex = INDEX_NONE;
 	
-	UPROPERTY()
+	UPROPERTY(BlueprintReadWrite)
 	int32 TotalItemCount = INDEX_NONE;
 	
-	UPROPERTY()
+	// @todo Might need to replace this, t-map is too weighty, an array could do with some index caching
+	UPROPERTY(BlueprintReadWrite)
 	TMap<int32 /* StackIndex */, int32 /* ItemCount */> Stacks{};
 
 };

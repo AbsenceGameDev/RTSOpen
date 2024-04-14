@@ -1,5 +1,5 @@
 ﻿/* @author: Ario Amin @ Permafrost Development. @copyright: Full MIT License included at bottom of the file  */
-#include "Inv/PDInventoryComponent.h"
+#include "Components/PDInventoryComponent.h"
 
 #include "Net/UnrealNetwork.h"
 #include "Net/Core/PushModel/PushModel.h"

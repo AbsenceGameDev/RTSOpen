@@ -2,19 +2,31 @@
 
 using UnrealBuildTool;
 
-public class RTSOpen : ModuleRules
+public class PDInventory : ModuleRules
 {
-	public RTSOpen(ReadOnlyTargetRules Target) : base(Target)
+	public PDInventory(ReadOnlyTargetRules Target) : base(Target)
 	{
-		PCHUsage = PCHUsageMode.UseExplicitOrSharedPCHs;
-	
-		PublicDependencyModuleNames.AddRange(new string[] 
-			{ "Core", "CoreUObject", "Engine", 
-			"InputCore", "GameplayTags", "NetCore", });
-
-		PrivateDependencyModuleNames.AddRange(new string[] 
-			{ "PDInteraction", "PDInventory", "GameplayTags", 
-			"EnhancedInput", "CommonUI", });
+		PCHUsage = ModuleRules.PCHUsageMode.UseExplicitOrSharedPCHs;
+		
+		PublicDependencyModuleNames.AddRange(
+			new string[]
+			{
+				"Core",
+			}
+		);
+			
+		
+		PrivateDependencyModuleNames.AddRange(
+			new string[]
+			{
+				"CoreUObject",
+				"Engine",
+				"Slate",
+				"SlateCore",
+				"NetCore",
+				"GameplayTags",
+			}
+		);
 	}
 }
 

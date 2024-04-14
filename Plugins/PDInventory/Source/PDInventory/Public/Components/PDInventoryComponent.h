@@ -3,8 +3,8 @@
 #pragma once
 
 #include "CoreMinimal.h"
-#include "PDBuildCommons.h"
-#include "PDItemNetDatum.h"
+#include "PDItemCommon.h"
+#include "Net/PDItemNetDatum.h"
 #include "Components/ActorComponent.h"
 #include "PDInventoryComponent.generated.h"
 
@@ -33,7 +33,7 @@ struct FPDValueTracker
  * 
  */
 UCLASS(ClassGroup=(Custom), Meta=(BlueprintSpawnableComponent))
-class UPDInventoryComponent : public UActorComponent
+class PDINVENTORY_API UPDInventoryComponent : public UActorComponent
 {
 	GENERATED_UCLASS_BODY()
 

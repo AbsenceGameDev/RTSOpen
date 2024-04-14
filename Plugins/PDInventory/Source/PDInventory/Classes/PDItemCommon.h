@@ -4,7 +4,7 @@
 
 #include "CoreMinimal.h"
 #include "GameplayTagContainer.h"
-#include "PDBuildCommons.generated.h"
+#include "PDItemCommon.generated.h"
 
 UENUM()
 enum EPDItemNetOperation
@@ -25,7 +25,7 @@ enum EPDItemGroup
 
 
 USTRUCT(BlueprintType, Blueprintable)
-struct RTSOPEN_API FPDItemCosts 
+struct PDINVENTORY_API FPDItemCosts 
 {
 	GENERATED_BODY();
 

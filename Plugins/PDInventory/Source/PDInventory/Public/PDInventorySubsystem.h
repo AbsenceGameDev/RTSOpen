@@ -1,23 +1,35 @@
-/* @author: Ario Amin @ Permafrost Development. @copyright: Full MIT License included at bottom of the file  */
+﻿/* @author: Ario Amin @ Permafrost Development. @copyright: Full MIT License included at bottom of the file  */
 
-using UnrealBuildTool;
+#pragma once
 
-public class RTSOpen : ModuleRules
+#include "CoreMinimal.h"
+#include "GameplayTagContainer.h"
+#include "Subsystems/EngineSubsystem.h"
+#include "PDInventorySubsystem.generated.h"
+
+struct FPDItemDefaultDatum;
+/**
+ * 
+ */
+UCLASS()
+class PDINVENTORY_API UPDInventorySubsystem : public UEngineSubsystem
 {
-	public RTSOpen(ReadOnlyTargetRules Target) : base(Target)
-	{
-		PCHUsage = PCHUsageMode.UseExplicitOrSharedPCHs;
+	GENERATED_BODY()
+public:	
+	virtual void ProcessTables();
+
+
+public:	
+	UPROPERTY(EditAnywhere, Category = "Inventory Subsystem", Meta = (RequiredAssetDataTags="RowStructure=PDItemDefaultDatum"))
+	TArray<UDataTable*> ItemTables;
+
+	TMap<const FName, const FPDItemDefaultDatum*> NameToItemMap{};
+	TMap<const FGameplayTag, const FPDItemDefaultDatum*> TagToItemMap{};
+	TMap<const FName, FGameplayTag> NameToTagMap{};
+	TMap<const FGameplayTag, FName> TagToNameMap{};
+	TMap<const FGameplayTag, const UDataTable*> TagToTable{};
 	
-		PublicDependencyModuleNames.AddRange(new string[] 
-			{ "Core", "CoreUObject", "Engine", 
-			"InputCore", "GameplayTags", "NetCore", });
-
-		PrivateDependencyModuleNames.AddRange(new string[] 
-			{ "PDInteraction", "PDInventory", "GameplayTags", 
-			"EnhancedInput", "CommonUI", });
-	}
-}
-
+};
 
 /*
  * @copyright Permafrost Development (MIT license)
@@ -41,3 +53,4 @@ public class RTSOpen : ModuleRules
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
+

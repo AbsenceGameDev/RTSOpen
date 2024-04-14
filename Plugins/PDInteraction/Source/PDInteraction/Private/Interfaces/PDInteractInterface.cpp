@@ -1,6 +1,7 @@
 /* @author: Ario Amin @ Permafrost Development. @copyright: Full MIT License included at bottom of the file  */
 #include "Interfaces/PDInteractInterface.h"
 #include "PDInteractCommon.h"
+#include "PDInteractSubsystem.h"
 
 void IPDInteractInterface::OnInteract_Implementation(FPDInteractionParams& InteractionParams, EPDInteractResult& InteractResult) const
 {
@@ -11,6 +12,23 @@ void IPDInteractInterface::OnInteract_Implementation(FPDInteractionParams& Inter
 double IPDInteractInterface::GetMaxInteractionDistance_Implementation() const
 {
 	return DEFAULT_PEROBJECT_MAX_INTERACTION_DISTANCE;
+}
+
+double IPDInteractInterface::GetCurrentUsability_Implementation() const
+{
+	return 1.0;
+}
+
+void IPDInteractInterface::RegisterWorldInteractable(UWorld* SelectedWorld, AActor* SelectedInteractable)
+{
+	check(SelectedWorld != nullptr)
+	check(SelectedInteractable != nullptr)
+	check(SelectedInteractable->Implements<IPDInteractInterface>())
+	check(GEngine != nullptr)
+	check(GEngine->GetEngineSubsystem<UPDInteractSubsystem>() != nullptr)
+
+	GEngine->GetEngineSubsystem<UPDInteractSubsystem>()->RegisterWorldInteractable(SelectedWorld, SelectedInteractable);
+	bHasBeenRegisteredWithCurrentWorld = true;
 }
 
 /*

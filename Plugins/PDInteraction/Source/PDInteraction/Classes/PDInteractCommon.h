@@ -202,6 +202,25 @@ public:
 };
 
 
+USTRUCT(BlueprintType, Blueprintable)
+struct PDINTERACTION_API FRTSSavedInteractables
+{
+	GENERATED_BODY()
+
+	UPROPERTY(Transient, VisibleInstanceOnly, BlueprintReadWrite)
+	AActor* ActorInWorld = nullptr; // 
+	
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	TSubclassOf<AActor> ActorClass; // Tag of related item which inherits from the interact interface
+	
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	FVector Location;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "GameInstance|Widgets")
+	double Usability = 0.0; // Could be interpreted as
+};
+
+
 /*
  * @copyright Permafrost Development (MIT license)
  * Authors: Ario Amin

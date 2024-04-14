@@ -1,23 +1,36 @@
-/* @author: Ario Amin @ Permafrost Development. @copyright: Full MIT License included at bottom of the file  */
+﻿/* @author: Ario Amin @ Permafrost Development. @copyright: Full MIT License included at bottom of the file  */
 
-using UnrealBuildTool;
+#pragma once
 
-public class RTSOpen : ModuleRules
+#include "CoreMinimal.h"
+#include "GameplayTagContainer.h"
+#include "Interfaces/PDWorldManagementInterface.h"
+#include "Subsystems/EngineSubsystem.h"
+#include "PDInteractSubsystem.generated.h"
+
+USTRUCT(BlueprintType, Blueprintable)
+struct FPDArrayListWrapper
 {
-	public RTSOpen(ReadOnlyTargetRules Target) : base(Target)
-	{
-		PCHUsage = PCHUsageMode.UseExplicitOrSharedPCHs;
+	GENERATED_BODY()
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	TArray<FRTSSavedInteractables> ActorInfo{};
+};
+
+
+UCLASS(BlueprintType, Blueprintable)
+class PDINVENTORY_API UPDInteractSubsystem : public UEngineSubsystem, public IPDWorldManagementInterface
+{
+	GENERATED_BODY()
+public:	
+	virtual void RegisterWorldInteractable(UWorld* SelectedWorld, AActor* SelectedInteractable) override;
+
+	virtual void TransferringWorld(UWorld* OldWorld, UWorld* TargetWorld);
 	
-		PublicDependencyModuleNames.AddRange(new string[] 
-			{ "Core", "CoreUObject", "Engine", 
-			"InputCore", "GameplayTags", "NetCore", });
-
-		PrivateDependencyModuleNames.AddRange(new string[] 
-			{ "PDInteraction", "PDInventory", "GameplayTags", 
-			"EnhancedInput", "CommonUI", });
-	}
-}
-
+public:	
+	UPROPERTY(VisibleInstanceOnly, Category = "Interaction Subsystem")
+	TMap<UWorld* /*SelectedWorld*/, FPDArrayListWrapper /*SelectedInteractables*/> WorldInteractables{};
+};
 
 /*
  * @copyright Permafrost Development (MIT license)
@@ -41,3 +54,4 @@ public class RTSOpen : ModuleRules
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
+

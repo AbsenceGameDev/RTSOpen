@@ -1,10 +1,10 @@
 ﻿/* @author: Ario Amin @ Permafrost Development. @copyright: Full MIT License included at bottom of the file  */
 
-#include "Inv/PDItemNetDatum.h"
+#include "Net/PDItemNetDatum.h"
+#include "Components/PDInventoryComponent.h"
 
-#include "Inv/PDBuildCommons.h"
-#include "Inv/PDInventoryComponent.h"
-#include "Inv/PDInventorySubsystem.h"
+#include "PDItemCommon.h"
+#include "PDInventorySubsystem.h"
 
 static TMap<int32,int32> ConstructTMapInPlace(int32 StackIdx, int32 Count)
 {

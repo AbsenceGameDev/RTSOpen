@@ -1,22 +1,23 @@
 /* @author: Ario Amin @ Permafrost Development. @copyright: Full MIT License included at bottom of the file  */
 
-using UnrealBuildTool;
+#include "PDInventory.h"
 
-public class RTSOpen : ModuleRules
+#define LOCTEXT_NAMESPACE "FPDInventoryModule"
+
+void FPDInventoryModule::StartupModule()
 {
-	public RTSOpen(ReadOnlyTargetRules Target) : base(Target)
-	{
-		PCHUsage = PCHUsageMode.UseExplicitOrSharedPCHs;
-	
-		PublicDependencyModuleNames.AddRange(new string[] 
-			{ "Core", "CoreUObject", "Engine", 
-			"InputCore", "GameplayTags", "NetCore", });
-
-		PrivateDependencyModuleNames.AddRange(new string[] 
-			{ "PDInteraction", "PDInventory", "GameplayTags", 
-			"EnhancedInput", "CommonUI", });
-	}
+	// This code will execute after your module is loaded into memory; the exact timing is specified in the .uplugin file per-module
 }
+
+void FPDInventoryModule::ShutdownModule()
+{
+	// This function may be called during shutdown to clean up your module.  For modules that support dynamic reloading,
+	// we call this function before unloading the module.
+}
+
+#undef LOCTEXT_NAMESPACE
+	
+IMPLEMENT_MODULE(FPDInventoryModule, PDInventory)
 
 
 /*

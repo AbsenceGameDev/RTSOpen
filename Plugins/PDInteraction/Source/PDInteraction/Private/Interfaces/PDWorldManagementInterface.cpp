@@ -1,22 +1,7 @@
-/* @author: Ario Amin @ Permafrost Development. @copyright: Full MIT License included at bottom of the file  */
+﻿/* @author: Ario Amin @ Permafrost Development. @copyright: Full MIT License included at bottom of the file  */
 
-using UnrealBuildTool;
 
-public class RTSOpen : ModuleRules
-{
-	public RTSOpen(ReadOnlyTargetRules Target) : base(Target)
-	{
-		PCHUsage = PCHUsageMode.UseExplicitOrSharedPCHs;
-	
-		PublicDependencyModuleNames.AddRange(new string[] 
-			{ "Core", "CoreUObject", "Engine", 
-			"InputCore", "GameplayTags", "NetCore", });
-
-		PrivateDependencyModuleNames.AddRange(new string[] 
-			{ "PDInteraction", "PDInventory", "GameplayTags", 
-			"EnhancedInput", "CommonUI", });
-	}
-}
+#include "Interfaces/PDWorldManagementInterface.h"
 
 
 /*

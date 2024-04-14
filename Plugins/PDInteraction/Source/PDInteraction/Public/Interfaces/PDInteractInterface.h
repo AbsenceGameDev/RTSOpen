@@ -6,6 +6,7 @@
 #include "UObject/Interface.h"
 
 #include "PDInteractCommon.h"
+#include "PDWorldManagementInterface.h"
 
 #include "PDInteractInterface.generated.h"
 
@@ -16,21 +17,29 @@ UINTERFACE(MinimalAPI) class UPDInteractInterface : public UInterface { GENERATE
 /**
  * @brief This interface will be placed on actors we want to be able to interact with.
  */
-class PDINTERACTION_API IPDInteractInterface
+class PDINTERACTION_API IPDInteractInterface : public IPDWorldManagementInterface
 {
 	GENERATED_BODY()
 
 public:	
 	/** @brief This function handles acknowledging and handling interactions. @return true|false based on if the interaction failed or succeeded */
-	UFUNCTION(BlueprintNativeEvent, CallInEditor, Category = "Action|Interface", Meta = (ExpandEnumAsExecs="InteractResult"))
+	UFUNCTION(BlueprintNativeEvent, CallInEditor, Category = "Interact|Interface", Meta = (ExpandEnumAsExecs="InteractResult"))
 	void OnInteract(FPDInteractionParams& InteractionParams, EPDInteractResult& InteractResult) const;
 	virtual void OnInteract_Implementation(FPDInteractionParams& InteractionParams, EPDInteractResult& InteractResult) const;
 
 	/** @brief This function handles returning a max interaction value. */
-	UFUNCTION(BlueprintNativeEvent, CallInEditor, Category = "Action|Interface")
+	UFUNCTION(BlueprintNativeEvent, CallInEditor, Category = "Interact|Interface")
 	double GetMaxInteractionDistance() const;
 	virtual double GetMaxInteractionDistance_Implementation() const;
 
+	/** @brief This function handles returning a max interaction value. */
+	UFUNCTION(BlueprintNativeEvent, CallInEditor, Category = "Interact|Interface")
+	double GetCurrentUsability() const;
+	virtual double GetCurrentUsability_Implementation() const;
+	
+	virtual void RegisterWorldInteractable(UWorld* SelectedWorld, AActor* SelectedInteractable) override;
+
+	bool bHasBeenRegisteredWithCurrentWorld = false;
 };
 
 /*

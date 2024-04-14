@@ -1,23 +1,25 @@
-/* @author: Ario Amin @ Permafrost Development. @copyright: Full MIT License included at bottom of the file  */
+﻿/* @author: Ario Amin @ Permafrost Development. @copyright: Full MIT License included at bottom of the file  */
 
-using UnrealBuildTool;
+#pragma once
 
-public class RTSOpen : ModuleRules
+#include "CoreMinimal.h"
+#include "UObject/Interface.h"
+#include "PDWorldManagementInterface.generated.h"
+
+UINTERFACE() class UPDWorldManagementInterface : public UInterface { GENERATED_BODY() };
+
+/**
+ * 
+ */
+class PDINTERACTION_API IPDWorldManagementInterface
 {
-	public RTSOpen(ReadOnlyTargetRules Target) : base(Target)
-	{
-		PCHUsage = PCHUsageMode.UseExplicitOrSharedPCHs;
-	
-		PublicDependencyModuleNames.AddRange(new string[] 
-			{ "Core", "CoreUObject", "Engine", 
-			"InputCore", "GameplayTags", "NetCore", });
+	GENERATED_BODY()
 
-		PrivateDependencyModuleNames.AddRange(new string[] 
-			{ "PDInteraction", "PDInventory", "GameplayTags", 
-			"EnhancedInput", "CommonUI", });
-	}
-}
+	UFUNCTION(BlueprintNativeEvent, BlueprintCallable)
+	virtual void RegisterWorldInteractable(UWorld* SelectedWorld, AActor* SelectedInteractable) = 0;
 
+public:
+};
 
 /*
  * @copyright Permafrost Development (MIT license)
@@ -41,3 +43,4 @@ public class RTSOpen : ModuleRules
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
+

@@ -41,7 +41,9 @@ void APDInteractActor::BeginPlay()
 {
 	Super::BeginPlay();
 	ResizeCollisionBounds();
-	
+
+	RegisterWorldInteractable(GetWorld(), this);
+	check(bHasBeenRegisteredWithCurrentWorld)
 }
 
 void APDInteractActor::Tick(float DeltaTime)
