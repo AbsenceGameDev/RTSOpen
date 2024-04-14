@@ -1,36 +1,8 @@
-/* @author: Ario Amin @ Permafrost Development. @copyright: Full MIT License included at bottom of the file  */
+﻿/* @author: Ario Amin @ Permafrost Development. @copyright: Full MIT License included at bottom of the file  */
 
-using UnrealBuildTool;
+#include "PDRTSCommon.h"
 
-public class PDRTSBase : ModuleRules
-{
-	public PDRTSBase(ReadOnlyTargetRules Target) : base(Target)
-	{
-		PCHUsage = ModuleRules.PCHUsageMode.UseExplicitOrSharedPCHs;
-		
-		PublicDependencyModuleNames.AddRange(
-			new string[]
-			{
-				"Core",
-				// ... add other public dependencies that you statically link with here ...
-			}
-			);
-			
-		
-		PrivateDependencyModuleNames.AddRange(
-			new string[]
-			{
-				"AIModule",
-				"CoreUObject",
-				"Engine",
-				"Slate",
-				"SlateCore",
-				"GameplayTags"
-				// ... add private dependencies that you statically link with here ...	
-			}
-			);
-	}
-}
+
 
 /*
  * @copyright Permafrost Development (MIT license)

@@ -1,36 +1,26 @@
-/* @author: Ario Amin @ Permafrost Development. @copyright: Full MIT License included at bottom of the file  */
+﻿/* @author: Ario Amin @ Permafrost Development. @copyright: Full MIT License included at bottom of the file  */
 
-using UnrealBuildTool;
+#pragma once
 
-public class PDRTSBase : ModuleRules
+#include "CoreMinimal.h"
+#include "GameplayTagContainer.h"
+#include "PDRTSCommon.generated.h"
+
+class UBehaviorTree;
+
+USTRUCT(BlueprintType, Blueprintable)
+struct FPDWorkUnitDatum : public FTableRowBase
 {
-	public PDRTSBase(ReadOnlyTargetRules Target) : base(Target)
-	{
-		PCHUsage = ModuleRules.PCHUsageMode.UseExplicitOrSharedPCHs;
-		
-		PublicDependencyModuleNames.AddRange(
-			new string[]
-			{
-				"Core",
-				// ... add other public dependencies that you statically link with here ...
-			}
-			);
-			
-		
-		PrivateDependencyModuleNames.AddRange(
-			new string[]
-			{
-				"AIModule",
-				"CoreUObject",
-				"Engine",
-				"Slate",
-				"SlateCore",
-				"GameplayTags"
-				// ... add private dependencies that you statically link with here ...	
-			}
-			);
-	}
-}
+	GENERATED_BODY()
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "RTSBase|WorkerUnits")
+	FGameplayTag JobTag;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "RTSBase|WorkerUnits")
+	TSoftObjectPtr<UBehaviorTree> BT;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "RTSBase|WorkerUnits")
+	TSoftObjectPtr<UAnimMontage> Montage;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "RTSBase|WorkerUnits")
+	TSoftObjectPtr<UStaticMeshComponent> WorkTool;
+};
 
 /*
  * @copyright Permafrost Development (MIT license)

@@ -1,36 +1,27 @@
-/* @author: Ario Amin @ Permafrost Development. @copyright: Full MIT License included at bottom of the file  */
+﻿/* @author: Ario Amin @ Permafrost Development. @copyright: Full MIT License included at bottom of the file  */
 
-using UnrealBuildTool;
+#pragma once
 
-public class PDRTSBase : ModuleRules
+#include "CoreMinimal.h"
+#include "GameFramework/Pawn.h"
+#include "PDRTSBaseUnit.generated.h"
+
+UCLASS()
+class PDRTSBASE_API APDRTSBaseUnit : public APawn
 {
-	public PDRTSBase(ReadOnlyTargetRules Target) : base(Target)
-	{
-		PCHUsage = ModuleRules.PCHUsageMode.UseExplicitOrSharedPCHs;
-		
-		PublicDependencyModuleNames.AddRange(
-			new string[]
-			{
-				"Core",
-				// ... add other public dependencies that you statically link with here ...
-			}
-			);
-			
-		
-		PrivateDependencyModuleNames.AddRange(
-			new string[]
-			{
-				"AIModule",
-				"CoreUObject",
-				"Engine",
-				"Slate",
-				"SlateCore",
-				"GameplayTags"
-				// ... add private dependencies that you statically link with here ...	
-			}
-			);
-	}
-}
+	GENERATED_BODY()
+
+public:
+	APDRTSBaseUnit();
+
+protected:
+	virtual void BeginPlay() override;
+
+public:
+	virtual void Tick(float DeltaTime) override;
+
+	virtual void SetupPlayerInputComponent(class UInputComponent* PlayerInputComponent) override;
+};
 
 /*
  * @copyright Permafrost Development (MIT license)

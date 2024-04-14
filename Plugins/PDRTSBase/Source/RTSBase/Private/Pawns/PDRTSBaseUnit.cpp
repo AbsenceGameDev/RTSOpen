@@ -1,35 +1,27 @@
-/* @author: Ario Amin @ Permafrost Development. @copyright: Full MIT License included at bottom of the file  */
+﻿/* @author: Ario Amin @ Permafrost Development. @copyright: Full MIT License included at bottom of the file  */
 
-using UnrealBuildTool;
+#include "Pawns/PDRTSBaseUnit.h"
 
-public class PDRTSBase : ModuleRules
+
+APDRTSBaseUnit::APDRTSBaseUnit()
 {
-	public PDRTSBase(ReadOnlyTargetRules Target) : base(Target)
-	{
-		PCHUsage = ModuleRules.PCHUsageMode.UseExplicitOrSharedPCHs;
-		
-		PublicDependencyModuleNames.AddRange(
-			new string[]
-			{
-				"Core",
-				// ... add other public dependencies that you statically link with here ...
-			}
-			);
-			
-		
-		PrivateDependencyModuleNames.AddRange(
-			new string[]
-			{
-				"AIModule",
-				"CoreUObject",
-				"Engine",
-				"Slate",
-				"SlateCore",
-				"GameplayTags"
-				// ... add private dependencies that you statically link with here ...	
-			}
-			);
-	}
+	PrimaryActorTick.bCanEverTick = true;
+}
+
+void APDRTSBaseUnit::BeginPlay()
+{
+	Super::BeginPlay();
+	
+}
+
+void APDRTSBaseUnit::Tick(float DeltaTime)
+{
+	Super::Tick(DeltaTime);
+}
+
+void APDRTSBaseUnit::SetupPlayerInputComponent(UInputComponent* PlayerInputComponent)
+{
+	Super::SetupPlayerInputComponent(PlayerInputComponent);
 }
 
 /*
