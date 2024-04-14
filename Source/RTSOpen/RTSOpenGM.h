@@ -2,8 +2,11 @@
 #pragma once
 
 #include "CoreMinimal.h"
+#include "RTSOpenCommon.h"
 #include "GameFramework/GameModeBase.h"
 #include "RTSOpenGM.generated.h"
+
+class URTSOpenSaveGame;
 
 UENUM()
 enum ERTSLoadscreenState
@@ -48,6 +51,7 @@ public: // Method members
 public: // Variable members
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
 	URTSOpenSaveGame* GameSave = nullptr;
+	
 	bool bHasStartedSaveData = false;
 	bool bHasSavedDataAsync = false;
 	const TMap<int32, FRTSSavedItems>* MapPointer = nullptr;

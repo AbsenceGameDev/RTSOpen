@@ -24,7 +24,7 @@ public:
 	void InitializeGame();
 
 	UFUNCTION(BlueprintNativeEvent, BlueprintCallable)
-	void OpenLevel(TSoftObjectPtr<UWorld> SoftWorldPtr);
+	void OpenLevel(TSoftObjectPtr<UWorld>& SoftWorldPtr);
 
 	UFUNCTION(BlueprintNativeEvent, BlueprintCallable)
 	void OnLevelLoaded();

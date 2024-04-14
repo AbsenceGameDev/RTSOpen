@@ -14,7 +14,7 @@ public class RTSOpen : ModuleRules
 
 		PrivateDependencyModuleNames.AddRange(new string[] 
 			{ "PDInteraction", "PDInventory", "GameplayTags", 
-			"EnhancedInput", "CommonUI", });
+			"EnhancedInput", "CommonUI", "UMG" });
 	}
 }
 

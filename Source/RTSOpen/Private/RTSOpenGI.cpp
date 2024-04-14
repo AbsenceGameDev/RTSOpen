@@ -5,6 +5,7 @@
 #include "GameFramework/GameStateBase.h"
 #include "Kismet/GameplayStatics.h"
 #include "Kismet/KismetSystemLibrary.h"
+#include "Net/UnrealNetwork.h"
 #include "RTSOpen/RTSOpenCommon.h"
 #include "RTSOpen/RTSOpenGM.h"
 
@@ -14,7 +15,7 @@ void URTSOpenGI::InitializeGame_Implementation()
 	ARTSOpenGM* GM = Cast<ARTSOpenGM>(GetWorld()->GetAuthGameMode());
 	if (GM == nullptr)
 	{
-		ActiveTransitionWidget = Cast<UPDTransitionWidget>(CreateWidget(nullptr, WidgetClass));
+		ActiveTransitionWidget = CreateWidget<UPDTransitionWidget>(GetWorld(), WidgetClass);
 		return;
 	}
 
@@ -22,7 +23,7 @@ void URTSOpenGI::InitializeGame_Implementation()
 	GM->LoadGame();
 }
 
-void URTSOpenGI::OpenLevel_Implementation(TSoftObjectPtr<UWorld> SoftWorldPtr)
+void URTSOpenGI::OpenLevel_Implementation(TSoftObjectPtr<UWorld>& SoftWorldPtr)
 {
 	StartTransition();
 
@@ -53,7 +54,7 @@ void URTSOpenGI::OnGMReady()
 	EndTransition();
 	StartTimeOffset = GetWorld()->GetGameState()->GetServerWorldTimeSeconds();
 
-	CreateWidget(); 
+	// CreateWidget();  // @todo Create hud overlay and add to viewport 
 }
 
 void URTSOpenGI::ShowTransitionWidget_Implementation()
@@ -65,7 +66,7 @@ void URTSOpenGI::StartTransition_Implementation()
 {
 	if (ActiveTransitionWidget == nullptr)
 	{
-		ActiveTransitionWidget = Cast<UPDTransitionWidget>(CreateWidget(nullptr, WidgetClass));
+		ActiveTransitionWidget = CreateWidget<UPDTransitionWidget>(GetWorld(), WidgetClass);
 	}
 	
 	if (ActiveTransitionWidget->IsInViewport() == false)
@@ -80,7 +81,7 @@ void URTSOpenGI::EndTransition_Implementation()
 {
 	if (ActiveTransitionWidget == nullptr)
 	{
-		ActiveTransitionWidget = Cast<UPDTransitionWidget>(CreateWidget(nullptr, WidgetClass));
+		ActiveTransitionWidget = CreateWidget<UPDTransitionWidget>(GetWorld(), WidgetClass);
 	}
 	
 	if (ActiveTransitionWidget->IsInViewport() == false)
@@ -91,6 +92,18 @@ void URTSOpenGI::EndTransition_Implementation()
 	ActiveTransitionWidget->EndTransition();	
 }
 
+void URTSOpenGI::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const
+{
+	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
+
+	FDoRepLifetimeParams SharedParams;
+	SharedParams.bIsPushBased = true;
+
+	DOREPLIFETIME_WITH_PARAMS_FAST(URTSOpenGI, bGMReady, SharedParams);
+	
+
+	
+}
 
 /*
  * @copyright Permafrost Development (MIT license) 

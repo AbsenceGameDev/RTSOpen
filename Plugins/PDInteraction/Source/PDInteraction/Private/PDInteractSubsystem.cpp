@@ -5,7 +5,7 @@
 #include "PDInteractCommon.h"
 #include "Interfaces/PDInteractInterface.h"
 
-void UPDInteractSubsystem::RegisterWorldInteractable(UWorld* SelectedWorld, AActor* SelectedInteractable)
+void UPDInteractSubsystem::RegisterWorldInteractable_Implementation(UWorld* SelectedWorld, AActor* SelectedInteractable)
 {
 	check(SelectedWorld != nullptr)
 

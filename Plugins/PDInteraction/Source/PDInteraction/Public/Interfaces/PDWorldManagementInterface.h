@@ -15,8 +15,10 @@ class PDINTERACTION_API IPDWorldManagementInterface
 {
 	GENERATED_BODY()
 
+public:
 	UFUNCTION(BlueprintNativeEvent, BlueprintCallable)
-	virtual void RegisterWorldInteractable(UWorld* SelectedWorld, AActor* SelectedInteractable) = 0;
+	void RegisterWorldInteractable(UWorld* SelectedWorld, AActor* SelectedInteractable);
+	virtual void RegisterWorldInteractable_Implementation(UWorld* SelectedWorld, AActor* SelectedInteractable) = 0;
 
 public:
 };

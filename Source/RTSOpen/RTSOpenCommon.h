@@ -10,6 +10,7 @@
 #include "GameFramework/SaveGame.h"
 #include "CommonActivatableWidget.h"
 #include "CommonButtonBase.h"
+#include "RTSOpenCommon.generated.h"
 
 USTRUCT(BlueprintType, Blueprintable)
 struct FRTSSavedItems

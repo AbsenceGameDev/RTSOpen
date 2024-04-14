@@ -3,8 +3,10 @@
 #pragma once
 
 #include "CoreMinimal.h"
-#include "GameplayTagContainer.h"
 #include "Interfaces/PDWorldManagementInterface.h"
+#include "PDInteractCommon.h"
+
+#include "GameplayTagContainer.h"
 #include "Subsystems/EngineSubsystem.h"
 #include "PDInteractSubsystem.generated.h"
 
@@ -19,11 +21,11 @@ struct FPDArrayListWrapper
 
 
 UCLASS(BlueprintType, Blueprintable)
-class PDINVENTORY_API UPDInteractSubsystem : public UEngineSubsystem, public IPDWorldManagementInterface
+class PDINTERACTION_API UPDInteractSubsystem : public UEngineSubsystem, public IPDWorldManagementInterface
 {
 	GENERATED_BODY()
 public:	
-	virtual void RegisterWorldInteractable(UWorld* SelectedWorld, AActor* SelectedInteractable) override;
+	virtual void RegisterWorldInteractable_Implementation(UWorld* SelectedWorld, AActor* SelectedInteractable) override;
 
 	virtual void TransferringWorld(UWorld* OldWorld, UWorld* TargetWorld);
 	

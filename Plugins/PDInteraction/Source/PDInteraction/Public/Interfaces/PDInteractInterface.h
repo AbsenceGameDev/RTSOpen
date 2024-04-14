@@ -37,7 +37,7 @@ public:
 	double GetCurrentUsability() const;
 	virtual double GetCurrentUsability_Implementation() const;
 	
-	virtual void RegisterWorldInteractable(UWorld* SelectedWorld, AActor* SelectedInteractable) override;
+	virtual void RegisterWorldInteractable_Implementation(UWorld* SelectedWorld, AActor* SelectedInteractable) override;
 
 	bool bHasBeenRegisteredWithCurrentWorld = false;
 };

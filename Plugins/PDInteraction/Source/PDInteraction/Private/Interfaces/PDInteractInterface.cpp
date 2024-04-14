@@ -19,11 +19,11 @@ double IPDInteractInterface::GetCurrentUsability_Implementation() const
 	return 1.0;
 }
 
-void IPDInteractInterface::RegisterWorldInteractable(UWorld* SelectedWorld, AActor* SelectedInteractable)
+void IPDInteractInterface::RegisterWorldInteractable_Implementation(UWorld* SelectedWorld, AActor* SelectedInteractable)
 {
 	check(SelectedWorld != nullptr)
 	check(SelectedInteractable != nullptr)
-	check(SelectedInteractable->Implements<IPDInteractInterface>())
+	check(Cast<IPDInteractInterface>(SelectedInteractable) != nullptr)
 	check(GEngine != nullptr)
 	check(GEngine->GetEngineSubsystem<UPDInteractSubsystem>() != nullptr)
 
