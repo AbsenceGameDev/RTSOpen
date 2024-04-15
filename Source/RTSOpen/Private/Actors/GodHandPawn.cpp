@@ -23,8 +23,11 @@
 #include "EnhancedInputComponent.h"
 
 /* Engine - Effects */
+#include "NavigationPath.h"
+#include "NavigationSystem.h"
 #include "NiagaraComponent.h"
 #include "NiagaraFunctionLibrary.h"
+#include "NiagaraDataInterfaceArrayFunctionLibrary.h"
 
 #include "Kismet/KismetMathLibrary.h"
 
@@ -216,12 +219,12 @@ void AGodHandPawn::HoverTick(const float DeltaTime)
 }
 
 
-void AGodHandPawn::OverwriteMappingContext(APlayerController* PC, const FNativeGameplayTag& ContextTag, UInputMappingContext* NewContext)
+void AGodHandPawn::OverwriteMappingContextSettings(APlayerController* PC, const FNativeGameplayTag& ContextTag, UInputMappingContext* NewContext)
 {
-	OverwriteMappingContext(PC, ContextTag.GetTag(), NewContext);
+	OverwriteMappingContextSettings(PC, ContextTag.GetTag(), NewContext);
 }
 
-void AGodHandPawn::OverwriteMappingContext(APlayerController* PC, const FGameplayTag& ContextTag, UInputMappingContext* NewContext)
+void AGodHandPawn::OverwriteMappingContextSettings(APlayerController* PC, const FGameplayTag& ContextTag, UInputMappingContext* NewContext)
 {
 	if (ContextTag.IsValid() == false)
 	{
@@ -254,6 +257,27 @@ void AGodHandPawn::AddMappingContext(APlayerController* PC, const FGameplayTag& 
 	
 	const FModifyContextOptions ModifyOptions{};
 	Subsystem->AddMappingContext(*MappingContexts.Find(ContextTag), 0, ModifyOptions);
+}
+
+void AGodHandPawn::RemoveMappingContext(APlayerController* PC, const FNativeGameplayTag& ContextTag)
+{
+	AddMappingContext(PC, ContextTag.GetTag());
+}
+
+void AGodHandPawn::RemoveMappingContext(APlayerController* PC, const FGameplayTag& ContextTag)
+{
+	UEnhancedInputLocalPlayerSubsystem* Subsystem = ULocalPlayer::GetSubsystem<UEnhancedInputLocalPlayerSubsystem>(PC->GetLocalPlayer());
+	if (Subsystem == nullptr) { return; }
+
+	if (MappingContexts.Contains(ContextTag) == false)
+	{
+		FString BuildString = FString::Printf(TEXT("AGodHandPawn(%s)::AddMappingContext -- "), *GetName())
+		+ FString::Printf(TEXT("\n Failed to find a valid mapping context mapped to tag (%s). Skipping processing entry "), *ContextTag.GetTagName().ToString());
+		UE_LOG(LogTemp, Error, TEXT("%s"), *BuildString);
+		return;
+	}
+
+	Subsystem->RemoveMappingContext(*MappingContexts.Find(ContextTag));
 }
 
 
@@ -432,7 +456,7 @@ void AGodHandPawn::ActionDragMove(const FInputActionValue& Value)
 void AGodHandPawn::ActionWorkerUnit_Triggered(const FInputActionValue& Value)
 {
 	const bool ImmutableMoveInput = Value.Get<bool>(); 
-	SelectedWorkerUnitTarget = HoveredActor; 
+	WorkerUnitActionTarget = HoveredActor; 
 }
 
 void AGodHandPawn::ActionWorkerUnit_Started(const FInputActionValue& Value)
@@ -453,10 +477,15 @@ void AGodHandPawn::ActionWorkerUnit_Started(const FInputActionValue& Value)
 	if (bIsOverlappingWorkerUnit)
 	{
 		SelectedWorkerUnit = OverlapArray[0];
-		if (NS_WorkerPath)
+		if (NS_WorkerPath  != nullptr && NC_WorkerPath == nullptr)
 		{
 			NC_WorkerPath = UNiagaraFunctionLibrary::SpawnSystemAttached(NS_WorkerPath, SceneRoot, NAME_None, FVector(0.f), FRotator(0.f), EAttachLocation::SnapToTarget, false);
-			// bUpdatePathOnTick = true; // @todo enable when this has actually been implemented
+			bUpdatePathOnTick = true;
+		}
+		else if (NC_WorkerPath != nullptr)
+		{
+			NC_WorkerPath->Activate();
+			bUpdatePathOnTick = true;
 		}
 		return;
 	}
@@ -466,12 +495,31 @@ void AGodHandPawn::ActionWorkerUnit_Started(const FInputActionValue& Value)
 
 void AGodHandPawn::ActionWorkerUnit_Cancelled(const FInputActionValue& Value)
 {
-	const bool ImmutableMoveInput = Value.Get<bool>(); 
+	ActionWorkerUnit_Completed(Value);
 }
 
 void AGodHandPawn::ActionWorkerUnit_Completed(const FInputActionValue& Value)
 {
-	const bool ImmutableMoveInput = Value.Get<bool>(); 
+	const bool ImmutableMoveInput = Value.Get<bool>();
+
+	RemoveMappingContext(GetController<APlayerController>(), TAG_CTRL_Ctxt_DragMove);
+
+	APDRTSBaseUnit* AsBaseUnit = Cast<APDRTSBaseUnit>(SelectedWorkerUnit);
+	const IPDInteractInterface* TargetInteractable = Cast<IPDInteractInterface>(WorkerUnitActionTarget);
+	if (AsBaseUnit == nullptr || AsBaseUnit->IsValidLowLevelFast() == false || TargetInteractable == nullptr)
+	{
+		WorkerUnitActionTarget = nullptr;
+		return;
+	}
+
+	const FGameplayTagContainer AssociatedTags = TargetInteractable->GetGenericTagContainer(); // @todo, actually imeplemnt this fucntion for the differen interactable actors
+	if (AssociatedTags.IsEmpty()) { return; }
+
+	AsBaseUnit->RequestAction(WorkerUnitActionTarget, AssociatedTags.GetByIndex(0));
+
+	bUpdatePathOnTick = false;
+	NC_WorkerPath->Deactivate();
+	SelectedWorkerUnit = nullptr;
 }
 
 void AGodHandPawn::ActionBuildMode(const FInputActionValue& Value)
@@ -481,7 +529,17 @@ void AGodHandPawn::ActionBuildMode(const FInputActionValue& Value)
 
 void AGodHandPawn::RefreshPathingEffects()
 {
-	// @todo
+	if (SelectedWorkerUnit == nullptr || Collision == nullptr ) { return; }
+
+	const FVector CollisionLocation = Collision->GetComponentLocation(); 
+	const FVector TargetLocation = SelectedWorkerUnit->GetActorLocation();
+	UNavigationPath* Navpath = UNavigationSystemV1::FindPathToLocationSynchronously(this, CollisionLocation, TargetLocation);
+	if (Navpath == nullptr || Navpath->PathPoints.IsEmpty()) { return; }
+
+	PathPoints = Navpath->PathPoints;
+	PathPoints[0] = CollisionLocation;
+	PathPoints.Last() = TargetLocation;
+	UNiagaraDataInterfaceArrayFunctionLibrary::SetNiagaraArrayVector(NC_WorkerPath, FName("TargetPath"), PathPoints);
 }
 
 void AGodHandPawn::SetupPlayerInputComponent(UInputComponent* PlayerInputComponent)

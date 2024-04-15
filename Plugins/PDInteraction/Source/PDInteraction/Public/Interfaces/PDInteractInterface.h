@@ -36,6 +36,11 @@ public:
 	UFUNCTION(BlueprintNativeEvent, CallInEditor, Category = "Interact|Interface")
 	double GetCurrentUsability() const;
 	virtual double GetCurrentUsability_Implementation() const;
+
+	/* @brief usage will be game implementation specific but make sense for many different types of games with interactable to allow a tag to be returned, possibly related to AI jobs as in my case */
+	UFUNCTION(BlueprintNativeEvent, CallInEditor, Category = "Interact|Interface")
+	FGameplayTagContainer GetGenericTagContainer() const;
+	virtual FGameplayTagContainer GetGenericTagContainer_Implementation() const;
 	
 	virtual void RegisterWorldInteractable_Implementation(UWorld* SelectedWorld, AActor* SelectedInteractable) override;
 

@@ -32,11 +32,13 @@ public:
 	virtual void NotifyActorEndOverlap(AActor* OtherActor) override;
 	void HoverTick(float DeltaTime);
 	
-	void OverwriteMappingContext(APlayerController* PC, const FNativeGameplayTag& ContextTag, UInputMappingContext* NewContext);
-	void OverwriteMappingContext(APlayerController* PC, const FGameplayTag& ContextTag, UInputMappingContext* NewContext);
+	void OverwriteMappingContextSettings(APlayerController* PC, const FNativeGameplayTag& ContextTag, UInputMappingContext* NewContext);
+	void OverwriteMappingContextSettings(APlayerController* PC, const FGameplayTag& ContextTag, UInputMappingContext* NewContext);
 
 	void AddMappingContext(APlayerController* PC, const FNativeGameplayTag& ContextTag);
 	void AddMappingContext(APlayerController* PC, const FGameplayTag& ContextTag);
+	void RemoveMappingContext(APlayerController* PC, const FNativeGameplayTag& ContextTag);
+	void RemoveMappingContext(APlayerController* PC, const FGameplayTag& ContextTag);
 
 	UFUNCTION(BlueprintNativeEvent, BlueprintCallable)
 	void BeginBuild(TSubclassOf<AActor> TargetClass, TMap<FGameplayTag /*Resource tag*/, FPDItemCosts>& ResourceCost);
@@ -159,11 +161,13 @@ public:
 	FVector WorkUnitTargetLocation{};
 	
 	UPROPERTY(VisibleInstanceOnly, BlueprintReadOnly, Category = "RTS|Pawn|Cursor|State")
-	AActor* SelectedWorkerUnitTarget;
+	AActor* WorkerUnitActionTarget;
 	UPROPERTY(VisibleInstanceOnly, BlueprintReadOnly, Category = "RTS|Pawn|Cursor|State")
 	AActor* SelectedWorkerUnit;
 	UPROPERTY(VisibleInstanceOnly, BlueprintReadOnly, Category = "RTS|Pawn|Cursor|State")
 	bool bUpdatePathOnTick = false;
+	UPROPERTY(VisibleInstanceOnly, BlueprintReadOnly, Category = "RTS|Pawn|Cursor|State")
+	TArray<FVector> PathPoints;
 };
 
 /*

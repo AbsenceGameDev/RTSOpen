@@ -19,6 +19,11 @@ double IPDInteractInterface::GetCurrentUsability_Implementation() const
 	return 1.0;
 }
 
+FGameplayTagContainer IPDInteractInterface::GetGenericTagContainer_Implementation() const
+{
+	return FGameplayTagContainer();
+}
+
 void IPDInteractInterface::RegisterWorldInteractable_Implementation(UWorld* SelectedWorld, AActor* SelectedInteractable)
 {
 	check(SelectedWorld != nullptr)
