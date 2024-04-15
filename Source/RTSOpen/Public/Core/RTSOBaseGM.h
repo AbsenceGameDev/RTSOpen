@@ -18,12 +18,10 @@ enum ERTSLoadscreenState
 UCLASS()
 class RTSOPEN_API ARTSOBaseGM : public AGameModeBase
 {
-	GENERATED_BODY()
+	GENERATED_UCLASS_BODY()
 
 public: // Method members
 	virtual void BeginPlay() override;
-	
-	void AnimateLoadingScreen(ERTSLoadscreenState RequestedState);
 
 	UFUNCTION(BlueprintNativeEvent, BlueprintCallable)
 	void OnGeneratedLandscapeReady();

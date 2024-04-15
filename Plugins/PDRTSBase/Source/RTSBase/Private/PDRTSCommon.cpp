@@ -2,9 +2,17 @@
 
 #include "PDRTSCommon.h"
 
-/** Define the gameplay tag "AI.Jobs.Idle" */
+/** Define the gameplay tag "AI.Jobs." tags */
 UE_DEFINE_GAMEPLAY_TAG(TAG_AI_Job_Idle, "AI.Jobs.Idle");
 UE_DEFINE_GAMEPLAY_TAG(TAG_AI_Job_WalkToTarget, "AI.Jobs.WalkToTarget");
+
+/** Define the gameplay tag "CTRL.Ctxt." tags */
+UE_DEFINE_GAMEPLAY_TAG(TAG_CTRL_Ctxt_BaseInput, "CTRL.Ctxt.BaseInput");
+UE_DEFINE_GAMEPLAY_TAG(TAG_CTRL_Ctxt_DragMove, "CTRL.Ctxt.DragMove");
+UE_DEFINE_GAMEPLAY_TAG(TAG_CTRL_Ctxt_WorkerUnitMode, "CTRL.Ctxt.WorkerUnitMode");
+UE_DEFINE_GAMEPLAY_TAG(TAG_CTRL_Ctxt_BuildMode, "CTRL.Ctxt.BuildMode");
+UE_DEFINE_GAMEPLAY_TAG(TAG_CTRL_Ctxt_ConversationMode, "CTRL.Ctxt.ConversationMode");
+
 
 /*
  * @copyright Permafrost Development (MIT license)

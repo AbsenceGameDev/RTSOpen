@@ -10,8 +10,15 @@
 class UBehaviorTree;
 
 /** Declaring the "AI.Job.Idle" gameplay tag. to be defined in an object-file */
-UE_DECLARE_GAMEPLAY_TAG_EXTERN(TAG_AI_Job_Idle);
-UE_DECLARE_GAMEPLAY_TAG_EXTERN(TAG_AI_Job_WalkToTarget);
+PDRTSBASE_API UE_DECLARE_GAMEPLAY_TAG_EXTERN(TAG_AI_Job_Idle);
+PDRTSBASE_API UE_DECLARE_GAMEPLAY_TAG_EXTERN(TAG_AI_Job_WalkToTarget);
+
+/** Declaring the "Control.Context." gameplay tags. to be defined in an object-file */
+PDRTSBASE_API UE_DECLARE_GAMEPLAY_TAG_EXTERN(TAG_CTRL_Ctxt_BaseInput);
+PDRTSBASE_API UE_DECLARE_GAMEPLAY_TAG_EXTERN(TAG_CTRL_Ctxt_DragMove);
+PDRTSBASE_API UE_DECLARE_GAMEPLAY_TAG_EXTERN(TAG_CTRL_Ctxt_WorkerUnitMode);
+PDRTSBASE_API UE_DECLARE_GAMEPLAY_TAG_EXTERN(TAG_CTRL_Ctxt_BuildMode);
+PDRTSBASE_API UE_DECLARE_GAMEPLAY_TAG_EXTERN(TAG_CTRL_Ctxt_ConversationMode);
 
 USTRUCT(BlueprintType, Blueprintable)
 struct FPDWorkUnitDatum : public FTableRowBase

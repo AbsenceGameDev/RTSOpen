@@ -4,12 +4,26 @@
 
 #include "PDInteractSubsystem.h"
 #include "RTSOpenCommon.h"
+#include "Actors/GodHandPawn.h"
+#include "Actors/RTSOController.h"
 #include "GameFramework/GameStateBase.h"
 #include "Kismet/GameplayStatics.h"
 #include "Kismet/KismetMathLibrary.h"
 #include "Kismet/KismetSystemLibrary.h"
 
 const FString ARTSOBaseGM::ROOTSAVE = "ROOTSAVE" ; 
+
+ARTSOBaseGM::ARTSOBaseGM(const FObjectInitializer& ObjectInitializer)
+	: Super(ObjectInitializer)
+{
+	DefaultPawnClass = AGodHandPawn::StaticClass();
+	PlayerControllerClass = ARTSOController::StaticClass();
+	// HUDClass;
+	// GameStateClass;
+	// PlayerStateClass;
+	// SpectatorClass;
+}
+
 
 void ARTSOBaseGM::BeginPlay()
 {

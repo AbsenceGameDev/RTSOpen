@@ -4,7 +4,26 @@
 
 #include "CoreMinimal.h"
 #include "CommonActivatableWidget.h"
+#include "CommonButtonBase.h"
 #include "RTSOActiveMainMenu.generated.h"
+
+class UCommonTextBlock;
+/**
+ * 
+ */
+UCLASS()
+class RTSOPEN_API URTSOMenuButton : public UCommonButtonBase
+{
+	GENERATED_BODY()
+
+public:
+	UPROPERTY(Meta = (BindWidget)) 
+	UCommonTextBlock* ButtonTitle = nullptr;
+
+	UPROPERTY(Meta = (BindWidget)) 
+	UCommonActionWidget* ButtonIcon = nullptr;	
+};
+
 
 /**
  * 
@@ -15,6 +34,18 @@ class RTSOPEN_API URTSOActiveMainMenu : public UCommonActivatableWidget
 	GENERATED_BODY()
 
 public:
+	UPROPERTY(Meta = (BindWidget)) 
+	UCommonTextBlock* GameTitle = nullptr;
+
+	UPROPERTY(Meta = (BindWidget)) 
+	URTSOMenuButton* BtnContinue = nullptr;
+
+	UPROPERTY(Meta = (BindWidget)) 
+	URTSOMenuButton* BtnNewGame = nullptr;
+
+	UPROPERTY(Meta = (BindWidget)) 
+	URTSOMenuButton* BtnExitGame = nullptr;	
+	
 	UPROPERTY()
 	UCommonActivatableWidget* OwningStack = nullptr;
 };
