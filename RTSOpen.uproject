@@ -121,10 +121,6 @@
 			"Enabled": false
 		},
 		{
-			"Name": "GeometryMode",
-			"Enabled": false
-		},
-		{
 			"Name": "GLTFExporter",
 			"Enabled": false
 		},
@@ -162,6 +158,34 @@
 		},
 		{
 			"Name": "CommonConversation",
+			"Enabled": true
+		},
+		{
+			"Name": "MassAI",
+			"Enabled": true
+		},
+		{
+			"Name": "MassCrowd",
+			"Enabled": true
+		},
+		{
+			"Name": "MassEntity",
+			"Enabled": true
+		},
+		{
+			"Name": "MassGameplay",
+			"Enabled": true
+		},
+		{
+			"Name": "Water",
+			"Enabled": true
+		},
+		{
+			"Name": "WaterExtras",
+			"Enabled": true
+		},
+		{
+			"Name": "GameplayStateTree",
 			"Enabled": true
 		}
 	],
