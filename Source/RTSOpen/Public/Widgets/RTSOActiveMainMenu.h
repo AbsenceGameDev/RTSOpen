@@ -8,8 +8,9 @@
 #include "RTSOActiveMainMenu.generated.h"
 
 class UCommonTextBlock;
+
 /**
- * 
+ * @brief Menu button @todo write supporting code 
  */
 UCLASS()
 class RTSOPEN_API URTSOMenuButton : public UCommonButtonBase
@@ -26,7 +27,7 @@ public:
 
 
 /**
- * 
+ * @brief Menu @todo write supporting code 
  */
 UCLASS()
 class RTSOPEN_API URTSOActiveMainMenu : public UCommonActivatableWidget

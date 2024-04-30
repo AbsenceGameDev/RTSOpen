@@ -11,23 +11,26 @@ public class PDRTSBase : ModuleRules
 		PublicDependencyModuleNames.AddRange(
 			new string[]
 			{
-				"Core", "StateTreeModule", "MassAIBehavior",
+				"Core", "DeveloperSettings"
 				// ... add other public dependencies that you statically link with here ...
 			}
 			);
 			
+		PublicDependencyModuleNames.AddRange(new string[]
+		{
+			"MassEntity", "MassCommon", "MassNavigation", "StructUtils", "MassMovement", "NavigationSystem",
+			"AIModule", "MassAIBehavior", "StateTreeModule", "SmartObjectsModule", "MassSmartObjects", "MassSignals",
+			"MassRepresentation", "MassLOD", "AnimToTexture", "MassSpawner", "Chaos",
+		});
+
+		
 		
 		PrivateDependencyModuleNames.AddRange(
 			new string[]
 			{
-				"AIModule",
-				"NavigationSystem",
-				"CoreUObject",
-				"Engine",
-				"Slate",
-				"SlateCore",
-				"GameplayTags", 
-				"MassAIBehavior", "MassCrowd"
+				"AIModule", "NavigationSystem", "CoreUObject",
+				"Engine", "Slate", "SlateCore", "GameplayTags", 
+				"MassAIBehavior",  "MassCrowd", "AnimToTexture"
 				// ... add private dependencies that you statically link with here ...	
 			}
 			);

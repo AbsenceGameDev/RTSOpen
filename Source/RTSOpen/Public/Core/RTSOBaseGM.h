@@ -15,6 +15,9 @@ enum ERTSLoadscreenState
 	LOADING_OUT,
 };
 
+/**
+ * @brief RTSO game mode
+ */
 UCLASS()
 class RTSOPEN_API ARTSOBaseGM : public AGameModeBase
 {
@@ -23,35 +26,47 @@ class RTSOPEN_API ARTSOBaseGM : public AGameModeBase
 public: // Method members
 	virtual void BeginPlay() override;
 
+	/** @brief If making use of PCG */
 	UFUNCTION(BlueprintNativeEvent, BlueprintCallable)
 	void OnGeneratedLandscapeReady();
 	
 	//
 	// Saving/loading
+	/** @brief Clears save, possibly reseeds the save, and sets some flags */
 	UFUNCTION(BlueprintNativeEvent, BlueprintCallable)
 	void ClearSave(const bool bRefreshSeed = false);
 
+	/** @brief Dispatches an async save */
 	UFUNCTION(BlueprintNativeEvent, BlueprintCallable)
 	void SaveGame();
 
+	/** @brief Loads save from slot, if a save exists */
 	UFUNCTION(BlueprintNativeEvent, BlueprintCallable)
 	void LoadGame();
 	
+	/** @brief Save interactables */
 	UFUNCTION(BlueprintNativeEvent, BlueprintCallable)
 	void SaveInteractables();
 
+	/** @brief Save items/resources */
 	UFUNCTION(BlueprintNativeEvent, BlueprintCallable)
 	void SaveResources(const TMap<int32, FRTSSavedItems>& DataRef);
 
+	/** @brief Save worker/units */
 	UFUNCTION(BlueprintNativeEvent, BlueprintCallable)
 	void SaveUnits();
 	
 public: // Variable members
+	/** @brief Actual game save-data */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
 	URTSOpenSaveGame* GameSave = nullptr;
 	
+	/** @brief Flag, has started async */
 	bool bHasStartedSaveData = false;
+	/** @brief Flag, has finished async */
 	bool bHasSavedDataAsync = false;
+	
+	/** @brief Reserved use, for when inventory items lists grow large we want to avoid costly search operations */
 	const TMap<int32, FRTSSavedItems>* MapPointer = nullptr;
 
 	static const FString ROOTSAVE;

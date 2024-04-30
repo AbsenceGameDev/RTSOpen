@@ -1,4 +1,5 @@
 /* @author: Ario Amin @ Permafrost Development. @copyright: Full Apache License included at bottom of the file  */
+/** @todo rethink if needed/wanted or if this plugin should only use entities with logic fragments for handling actions */
 
 #pragma once
 
@@ -6,11 +7,13 @@
 #include "UObject/Interface.h"
 #include "PDRTSActionInterface.generated.h"
 
+
+
 UENUM()
 enum class ERTSActionMode : uint8
 {
 	Build,
-	Harvest,
+	Interact,
 };
 
 /** @brief Boilerplate */

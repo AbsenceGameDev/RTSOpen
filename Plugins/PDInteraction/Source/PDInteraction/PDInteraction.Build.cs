@@ -19,12 +19,16 @@ public class PDInteraction : ModuleRules
 		PrivateDependencyModuleNames.AddRange(
 			new string[]
 			{
+				"InputCore",
 				"CoreUObject",
 				"Engine",
 				"Slate",
 				"SlateCore",
+				
 				"NetCore",
 				"GameplayTags",
+				"UMG", 
+				"MassEntity",
 			}
 		);
 	}

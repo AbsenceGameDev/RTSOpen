@@ -12,6 +12,7 @@
 #include "CommonButtonBase.h"
 #include "RTSOpenCommon.generated.h"
 
+/** @brief Save data for inventory items */
 USTRUCT(BlueprintType, Blueprintable)
 struct FRTSSavedItems
 {
@@ -21,6 +22,7 @@ struct FRTSSavedItems
 	TArray<FPDItemNetDatum> Items;
 };
 
+/** @brief Save data for world units/entities*/
 USTRUCT(BlueprintType, Blueprintable)
 struct FRTSSavedWorldUnits
 {
@@ -37,6 +39,7 @@ struct FRTSSavedWorldUnits
 	
 };
 
+/** @brief Main save data structure */
 UCLASS(BlueprintType, Blueprintable)
 class RTSOPEN_API URTSOpenSaveGame : public USaveGame
 {
@@ -57,6 +60,7 @@ public:
 
 };
 
+/** @brief @todo move to new file in UI folder */
 UCLASS(BlueprintType, Blueprintable)
 class UPDTransitionWidget : public UUserWidget
 {
@@ -73,6 +77,7 @@ public:
 	UWidgetAnimation* TransitionAnimation = nullptr;
 };
 
+/** @brief @todo move to new file in UI folder */
 UCLASS(BlueprintType, Blueprintable)
 class URTSHudWidget : public UCommonActivatableWidget
 {
@@ -81,7 +86,7 @@ class URTSHudWidget : public UCommonActivatableWidget
 public:
 };
 
-
+/** @brief @todo move to new file in UI folder */
 UCLASS(BlueprintType, Blueprintable)
 class URTSInteractWidget : public UCommonActivatableWidget
 {

@@ -16,6 +16,25 @@ class UPDInventoryComponent;
 struct FPDItemList;
 
 
+
+// Light version for export to AI entities mainly, but anything that requires some lightweight data and does not care about stacks being seperated
+USTRUCT(BlueprintType)
+struct FPDLightItemDatum
+{
+	GENERATED_BODY();
+	
+	UPROPERTY(BlueprintReadWrite)
+	FGameplayTag ItemTag{};
+	
+	UPROPERTY(BlueprintReadWrite)
+	int32 TotalItemCount = INDEX_NONE;
+
+	// Stacks can be extrapolated from the subsystem
+	// UPROPERTY(BlueprintReadWrite)
+	// int32 Stacks = INDEX_NONE;
+};
+
+
 /*
  * Datum size: 112 bytes
  * Extreme case, 1000 players + 1000 NPCs, all with with inventory
@@ -49,6 +68,8 @@ struct FPDItemNetDatum : public FFastArraySerializerItem
 	// @todo Might need to replace this, t-map is too weighty, an array could do with some index caching
 	UPROPERTY(BlueprintReadWrite)
 	TMap<int32 /* StackIndex */, int32 /* ItemCount */> Stacks{};
+
+	FPDLightItemDatum ExportLight() const { return FPDLightItemDatum{ItemTag, TotalItemCount}; }
 };
 
 USTRUCT(BlueprintType)

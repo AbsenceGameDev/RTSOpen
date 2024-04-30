@@ -7,6 +7,7 @@
 #include "Animation/AnimInstance.h"
 #include "PDWorkerAnimInstance.generated.h"
 
+/** @todo rethink if needed/wanted or if this plugin should only use ISMs with vertex animations */
 UCLASS(BlueprintType, Blueprintable)
 class PDRTSBASE_API UPDWorkerAnimInstance : public UAnimInstance
 {

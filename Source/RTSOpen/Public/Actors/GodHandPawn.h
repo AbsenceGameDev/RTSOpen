@@ -6,79 +6,112 @@
 #include "PDItemCommon.h"
 #include "GameplayTagContainer.h"
 #include "InputActionValue.h"
+#include "MassEntityTypes.h"
 #include "GameFramework/Pawn.h"
+#include "Interfaces/RTSOInputInterface.h"
 #include "GodHandPawn.generated.h"
 
-class UInputMappingContext;
 class APDInteractActor;
 class UPDInventoryComponent;
 
+/**
+ * @brief The players main means of action. This is the RTS god-hand. This tracks and controls your units.  
+ */
 UCLASS()
-class RTSOPEN_API AGodHandPawn : public APawn
+class RTSOPEN_API AGodHandPawn : public APawn, public IRTSOInputInterface
 {
 	GENERATED_BODY()
 
 public:
 	AGodHandPawn();
+
+	/** @brief */
 	virtual void Tick(float DeltaTime) override;
+	/** @brief */
 	void TrackUnitMovement();
+	/** @brief */
 	virtual void BeginPlay() override;
 
+	/** @brief */
+	virtual void OnConstruction(const FTransform& Transform) override;
+
+	/** @brief */
+	UFUNCTION()
+	void InitializeISMAgent();
+
+	/** @brief */
 	void UpdateMagnification();
+	/** @brief */
 	void UpdateCursorLocation(float DeltaTime);
+	/** @brief */
 	virtual void PossessedBy(AController* NewController) override;
 
+	/** @brief */
 	UFUNCTION()
-	void OnCollisionBeginOverlap(UPrimitiveComponent* OverlappedComponent, AActor* OtherActor, UPrimitiveComponent* OtherComp,
-	                             int32 OtherBodyIndex, bool bFromSweep, const FHitResult& SweepResult);
+	void OnCollisionBeginOverlap(
+		UPrimitiveComponent* OverlappedComponent,
+		AActor*              OtherActor,
+		UPrimitiveComponent* OtherComp,
+		int32                OtherBodyIndex,
+		bool                 bFromSweep,
+		const                FHitResult& SweepResult);
+	/** @brief */
+	void ActorEndOverlapValidation();
 
+	/** @brief */
 	UFUNCTION()
-	void OnCollisionEndOverlap(UPrimitiveComponent* OverlappedComponent, AActor* OtherActor, UPrimitiveComponent* OtherComp,
-	                           int32 OtherBodyIndex);
+	void OnCollisionEndOverlap(
+		UPrimitiveComponent* OverlappedComponent,
+		AActor*              OtherActor,
+		UPrimitiveComponent* OtherComp,
+		int32                OtherBodyIndex);
+	/** @brief */
 	virtual void NotifyActorBeginOverlap(AActor* OtherActor) override;
+	/** @brief */
 	virtual void NotifyActorEndOverlap(AActor* OtherActor) override;
+
+	/** @brief */
+	virtual FMassEntityHandle OctreeEntityTrace(const FVector& StartLocation, const FVector& EndLocation);
+	/** @brief */
+	FMassEntityHandle FindClosestMeshInstance();
+	/** @brief */
+	AActor* FindClosestInteractableActor() const;
+	/** @brief */
+	const FTransform& GetEntityTransform(const FMassEntityHandle& Handle) const;
+	/** @brief */
 	void HoverTick(float DeltaTime);
-	
-	void OverwriteMappingContextSettings(APlayerController* PC, const FNativeGameplayTag& ContextTag, UInputMappingContext* NewContext);
-	void OverwriteMappingContextSettings(APlayerController* PC, const FGameplayTag& ContextTag, UInputMappingContext* NewContext);
 
-	void AddMappingContext(APlayerController* PC, const FNativeGameplayTag& ContextTag);
-	void AddMappingContext(APlayerController* PC, const FGameplayTag& ContextTag);
-	void RemoveMappingContext(APlayerController* PC, const FNativeGameplayTag& ContextTag);
-	void RemoveMappingContext(APlayerController* PC, const FGameplayTag& ContextTag);
-
+	/** @brief */
 	UFUNCTION(BlueprintNativeEvent, BlueprintCallable)
 	void BeginBuild(TSubclassOf<AActor> TargetClass, TMap<FGameplayTag /*Resource tag*/, FPDItemCosts>& ResourceCost);
 
-	/* Enhanced Input */
-	virtual void SetupPlayerInputComponent(class UInputComponent* PlayerInputComponent) override;
-	UFUNCTION()
-	void ActionMove(const FInputActionValue& Value);
-	UFUNCTION()
-	void ActionMagnify(const FInputActionValue& Value);
-	UFUNCTION()
-	void ActionRotate(const FInputActionValue& Value);
-	UFUNCTION()
-	void ActionDragMove(const FInputActionValue& Value);
-	
-	UFUNCTION()
-	void ActionWorkerUnit_Triggered(const FInputActionValue& Value);
-	UFUNCTION()
-	void ActionWorkerUnit_Started(const FInputActionValue& Value);
-	UFUNCTION()
-	void ActionWorkerUnit_Cancelled(const FInputActionValue& Value);
-	UFUNCTION()
-	void ActionWorkerUnit_Completed(const FInputActionValue& Value);
-
-	UFUNCTION()
-	void ActionBuildMode(const FInputActionValue& Value);	
-protected:
+	/* RTSO Input Interface - Start */
+	/** @brief */
+	virtual void ActionMove_Implementation(const FInputActionValue& Value) override;
+	/** @brief */
+	virtual void ActionMagnify_Implementation(const FInputActionValue& Value) override;
+	/** @brief */
+	virtual void ActionRotate_Implementation(const FInputActionValue& Value) override;
+	/** @brief */
+	virtual void ActionDragMove_Implementation(const FInputActionValue& Value) override;
+	/** @brief */
+	virtual void ActionWorkerUnit_Triggered_Implementation(const FInputActionValue& Value) override;
+	/** @brief */
+	virtual void ActionWorkerUnit_Started_Implementation(const FInputActionValue& Value) override;
+	/** @brief */
+	virtual void ActionWorkerUnit_Cancelled_Implementation(const FInputActionValue& Value) override;
+	/** @brief */
+	virtual void ActionWorkerUnit_Completed_Implementation(const FInputActionValue& Value) override;
+	/** @brief */
+	virtual void ActionBuildMode_Implementation(const FInputActionValue& Value) override;
+	/** @brief */
+	virtual void ActionClearSelection_Implementation(const FInputActionValue& Value) override;
+	/* RTSO Input Interface - End */
 
 private:
+	/** @brief */
 	void RefreshPathingEffects();
-	void ProjectMouseToGroundPlane(FVector2D& ScreenCoordinates, FVector& IntersectionPoint, bool& bFoundInputType);
-	void DistanceFromViewportCenter(const FVector2D& InMoveDirection, FVector& Direction, double& Strength);
-	void ClampMovementToScreen(FVector& MoveDirection, double& Strength);
+	/** @brief */
 	void TrackMovement(float DeltaTime);
 
 public:
@@ -88,30 +121,11 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category ="RTS|Pawn|GameplayComponents")
 	class UPDInventoryComponent* InventoryComponent = nullptr;
 
-	/* Gameplay system components */
+	/* Niagara */
 	UPROPERTY(EditAnywhere, Category = "RTS|Pawn|Effects")
 	class UNiagaraSystem* NS_WorkerPath;
 	UPROPERTY(VisibleInstanceOnly, Category = "RTS|Pawn|Effects")
 	class UNiagaraComponent* NC_WorkerPath;
-	
-	/* Input Actions */
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "RTS|Pawn|Input")
-	class UInputAction* CtrlActionMove = nullptr;
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "RTS|Pawn|Input")
-	class UInputAction* CtrlActionMagnify = nullptr;
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "RTS|Pawn|Input")
-	class UInputAction* CtrlActionRotate = nullptr;
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "RTS|Pawn|Input")
-	class UInputAction* CtrlActionDragMove = nullptr;
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "RTS|Pawn|Input")
-	class UInputAction* CtrlActionWorkerUnit = nullptr;
-
-	/* Input Actions - If I have time to implement */
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "RTS|Pawn|Input")
-	class UInputAction* CtrlActionBuildMode = nullptr;
-	
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "RTS|Pawn|Input")
-	TMap<FGameplayTag, UInputMappingContext*> MappingContexts{};
 	
 	/* Scene/actor components */	
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "RTS|Pawn|Base")
@@ -127,9 +141,14 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "RTS|Pawn|Base")
 	class UFloatingPawnMovement* PawnMovement = nullptr;
 
-	/* State(s) - tracked components */	
+	/* State(s) - tracked actors/components */	
 	UPROPERTY(VisibleInstanceOnly, BlueprintReadWrite, Category = "RTS|Pawn|State")
 	AActor* HoveredActor = nullptr;
+
+	UPROPERTY(VisibleInstanceOnly, BlueprintReadWrite, Category = "RTS|Pawn|State")
+	UInstancedStaticMeshComponent* ISMAgentComponent = nullptr;	
+
+	/* State(s) - tracked interactables*/
 	UPROPERTY(VisibleInstanceOnly, BlueprintReadWrite, Category = "RTS|Pawn|State")
 	TSubclassOf<AActor> TempSpawnClass;
 	UPROPERTY(VisibleInstanceOnly, BlueprintReadWrite, Category = "RTS|Pawn|State")
@@ -154,30 +173,31 @@ public:
 	double CursorSelectedSinScaleIntensity = 0.3;
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "RTS|Pawn|Cursor|Settings")
 	double SelectionRescaleSpeed = 10.0;
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "RTS|Pawn|Cursor|Settings")
-	int32 ScreenEdgeMovementPadding;
 	
 	/* State(s) - Cursor */	
-	UPROPERTY(VisibleInstanceOnly, BlueprintReadWrite, Category = "RTS|Pawn|Cursor|State")
-	uint8 bTickHover : 1;
 	UPROPERTY(VisibleInstanceOnly, BlueprintReadOnly, Category = "RTS|Pawn|Cursor|State")
 	double AccumulatedPlayTime = 0.0;
 	UPROPERTY(VisibleInstanceOnly, BlueprintReadOnly, Category = "RTS|Pawn|Cursor|State")
 	FTransform TargetTransform{};
-	UPROPERTY(VisibleInstanceOnly, BlueprintReadOnly, Category = "RTS|Pawn|Cursor|State")
-	FVector WorkUnitTargetLocation{};
 	
 	UPROPERTY(VisibleInstanceOnly, BlueprintReadOnly, Category = "RTS|Pawn|Cursor|State")
-	AActor* WorkerUnitActionTarget;
+	FVector WorkUnitTargetLocation{};
 	UPROPERTY(VisibleInstanceOnly, BlueprintReadOnly, Category = "RTS|Pawn|Cursor|State")
-	AActor* SelectedWorkerUnit;
+	AActor* WorkerUnitActionTarget;
+	UPROPERTY()
+	FMassEntityHandle SelectedWorkerUnitHandle{INDEX_NONE, INDEX_NONE};
+	
 	UPROPERTY(VisibleInstanceOnly, BlueprintReadOnly, Category = "RTS|Pawn|Cursor|State")
 	bool bUpdatePathOnTick = false;
 	UPROPERTY(VisibleInstanceOnly, BlueprintReadOnly, Category = "RTS|Pawn|Cursor|State")
 	TArray<FVector> PathPoints;
-	UPROPERTY(VisibleInstanceOnly, BlueprintReadOnly, Category = "RTS|Pawn|Cursor|State")
-	TEnumAsByte<ECollisionChannel> DedicatedLandscapeTraceChannel = ECollisionChannel::ECC_GameTraceChannel13;
+	
+	static inline constexpr double  InvalidDistance{UE_MAX_FLT * UE_MAX_FLT};
+	static inline const FVector InvalidVector{InvalidDistance};
+
+	const FMassEntityManager* EntityManager = nullptr; // Active entity manager
 };
+
 
 /**
 Business Source License 1.1

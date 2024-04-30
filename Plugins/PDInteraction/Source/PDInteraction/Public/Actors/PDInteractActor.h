@@ -29,7 +29,7 @@ public:
 	virtual void Tick(float DeltaTime) override;
 
 	virtual void OnInteract_Implementation(const FPDInteractionParamsWithCustomHandling& InteractionParams, EPDInteractResult& InteractResult) const override;
-
+	virtual const FPDInteractMessage GetInteractionMessage_Implementation() override;
 protected:
 	UFUNCTION() 
 	void ResizeCollisionBounds(UStaticMeshComponent* NewMeshDummy = nullptr);
@@ -40,6 +40,10 @@ protected:
 #endif // WITH_EDITOR
 
 public:
+	/** @brief Friendlt readable actor name */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Interaction|Actors")
+	FPDInteractMessage ActorMessage;
+
 	/** @brief Root of the actor */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Interaction|Actors")
 	USceneComponent* Scenecomp = nullptr;

@@ -4,14 +4,112 @@
 
 #include "CoreMinimal.h"
 #include "GameplayTagContainer.h"
+#include "MassEntityTypes.h"
 #include "Engine/StreamableManager.h"
 #include "Subsystems/EngineSubsystem.h"
 #include "PDRTSBaseSubsystem.generated.h"
 
+class UMassEntitySubsystem;
+
+//
+// Legal according to ISO due to explicit template instantiation bypassing access rules: https://eel.is/c++draft/temp.friend
+
+// Creates a static data member that will store a of type Tag::TType in which to store the address of a private member.
+template <class Tag> struct TPrivateAccessor { static typename Tag::TType TypeValue; }; 
+template <class Tag> typename Tag::TType TPrivateAccessor<Tag>::TypeValue;
+
+// Generate a static data member whose constructor initializes TPrivateAccessor<Tag>::TypeValue.
+// This type will only be named in an explicit instantiation, where it is legal to pass the address of a private member.
+template <class Tag, typename Tag::TType TypeValue>
+struct TTagPrivateMember
+{
+	TTagPrivateMember() { TPrivateAccessor<Tag>::TypeValue = TypeValue; }
+	static TTagPrivateMember PrivateInstance;
+};
+template <class Tag, typename Tag::TType x> 
+TTagPrivateMember<Tag,x> TTagPrivateMember<Tag,x>::PrivateInstance;
+
+// A templated tag type for a given private member.  Each distinct private member you need to access should have its own tag.
+// Each tag should contain a nested ::TType that is the corresponding pointer-to-member type.'
+template<typename TAccessorType, typename TAccessorValue>
+struct TAccessorTypeHandler { typedef TAccessorValue(TAccessorType::*TType); };
+
+
+/** @brief Octree cell data */
+struct PDRTSBASE_API FPDEntityOctreeCell
+{
+	/** @brief Tracked Entity */
+	FMassEntityHandle EntityHandle;
+	
+	/** @brief Cell Bounds */
+	FBoxCenterAndExtent Bounds;
+
+	/** @brief Cell ID */
+	TSharedPtr<FOctreeElementId2> SharedOctreeID;
+};
+
+/** @brief Boilerplate TOctree2 functional structure */
+struct FPDEntityOctreeSemantics 
+{
+	enum { MaxElementsPerLeaf = 128 };
+	enum { MinInclusiveElementsPerNode = 7 };
+	enum { MaxNodeDepth = 12 };
+
+	typedef TInlineAllocator<MaxElementsPerLeaf> ElementAllocator;
+
+	FORCEINLINE static const FBoxCenterAndExtent& GetBoundingBox(const FPDEntityOctreeCell& Element)
+	{
+		return Element.Bounds;
+	}
+
+	FORCEINLINE static bool AreElementsEqual(const FPDEntityOctreeCell& A, const FPDEntityOctreeCell& B)
+	{
+		return A.EntityHandle == B.EntityHandle;
+	}
+
+	FORCEINLINE static void SetElementId(const FPDEntityOctreeCell& Element, FOctreeElementId2 Id)
+	{
+		*Element.SharedOctreeID = Id;
+	};
+};
+
+/** @brief Boilerplate Entity namespace, defines an octree childclass. @todo write some code to scope lock the tree when doing certain function calls. Added come booleans as placeholders in code to remind me */
+namespace PD::Mass::Entity
+{
+	typedef TOctree2<FPDEntityOctreeCell, FPDEntityOctreeSemantics> UnsafeOctree;
+	
+	class FPDSafeOctree : public UnsafeOctree
+	{
+	public:
+		FPDSafeOctree()
+			: UnsafeOctree(){}
+		FPDSafeOctree(const FVector& InOrigin, FVector::FReal InExtent)
+			: UnsafeOctree(InOrigin, InExtent){}
+
+		template<typename IterateBoundsFunc>
+		inline void FindElementsWithBoundsTest(const FBoxCenterAndExtent& BoxBounds, const IterateBoundsFunc& Func, const bool bIsBeingIterated = false)
+		{
+			b_TODO_REPLACEWITHSCOPELOCK_IsInIteration = bIsBeingIterated;
+			UnsafeOctree::FindElementsWithBoundsTest(BoxBounds, Func);
+			b_TODO_REPLACEWITHSCOPELOCK_IsInIteration = false;
+		}
+
+		template<typename IterateBoundsFunc>
+		inline void FindFirstElementWithBoundsTest(const FBoxCenterAndExtent& BoxBounds, const IterateBoundsFunc& Func, const bool bIsBeingIterated = false)
+		{
+			b_TODO_REPLACEWITHSCOPELOCK_IsInIteration = bIsBeingIterated;
+			bool ContinueTraversal = true;
+			UnsafeOctree::FindFirstElementWithBoundsTest(BoxBounds, Func, ContinueTraversal);
+			b_TODO_REPLACEWITHSCOPELOCK_IsInIteration = false;
+		}
+
+		bool b_TODO_REPLACEWITHSCOPELOCK_IsInIteration = true;
+	};
+}
+
 struct FPDWorkUnitDatum;
-/**
- * 
- */
+
+/** @brief Subsystem to handle octree size changes and to act as a manager for the entity workers */
 UCLASS()
 class PDRTSBASE_API UPDRTSBaseSubsystem : public UEngineSubsystem
 {
@@ -20,13 +118,26 @@ public:
 
 	virtual void Initialize(FSubsystemCollectionBase& Collection) override;
 	
-	virtual void ProcessTables();
+	UFUNCTION()
+	virtual void DispatchOctreeGeneration();
+	
+	UFUNCTION()
+	virtual void SetupOctree();
+	UFUNCTION()
+	virtual void SetupOctreeWithNewWorld(UWorld* NewWorld);
+	
+	void OnDeveloperSettingsChanged(UObject* SettingsToChange, FPropertyChangedEvent& PropertyEvent);
 
+	UFUNCTION()
+	virtual void ProcessTables();
+	
 	const FPDWorkUnitDatum* GetWorkEntry(const FGameplayTag& JobTag);
 	const FPDWorkUnitDatum* GetWorkEntry(const FName& JobRowName);
+	
+	static const TArray<TObjectPtr<UInstancedStaticMeshComponent>>& GetMassISMs(const UWorld* InWorld);
 
 public:	
-	UPROPERTY(EditAnywhere, Category = "Worker AI Subsystem", Meta = (RequiredAssetDataTags="RowStructure=PDWorkUnitDatum"))
+	UPROPERTY()
 	TArray<UDataTable*> WorkTables;
 	
 	TMap<const FGameplayTag, const FPDWorkUnitDatum*> TagToJobMap{};
@@ -37,8 +148,65 @@ public:
 	uint8 bHasProcessedTables = false;
 	uint16 ProcessFailCounter = 0;
 
-	FStreamableManager DataStreamer;	
+	FStreamableManager DataStreamer;
+
+	UMassEntitySubsystem* MassEntity = nullptr;
+	FMassEntityManager* EntityManager = nullptr;
+	UWorld* TemporaryWorldCache = nullptr;
+	PD::Mass::Entity::FPDSafeOctree WorldOctree;
+
+	TMap<void*, bool> WorldsWithOctrees{};
 };
+
+/** @brief Subsystem (developer) settings, set the uniform bounds, the default grid cell size and the work tables for the entities to use */
+UCLASS(Config = "Game", DefaultConfig)
+class PDRTSBASE_API UPDRTSSubsystemSettings : public UDeveloperSettings
+{
+	GENERATED_BODY()
+public:
+
+	UPDRTSSubsystemSettings(){}
+
+	UPROPERTY(Config, EditAnywhere, Category="Visible")
+	float OctreeUniformBounds = UE_OLD_WORLD_MAX;
+
+	UPROPERTY(Config, EditAnywhere, Category="Visible")
+	float DefaultElementGridSize = 40.0;
+
+	UPROPERTY(Config, EditAnywhere, Category = "Worker AI Subsystem", Meta = (RequiredAssetDataTags="RowStructure=/Script/PDRTSBase.PDWorkUnitDatum"))
+	TArray<TSoftObjectPtr<UDataTable>> WorkTables;
+	
+};
+
+/** @brief Entity octree ID, used for observer tracking if IDs has been invalidated */
+USTRUCT()
+struct PDRTSBASE_API FPDOctreeFragment : public FMassFragment
+{
+	GENERATED_BODY()
+	TSharedPtr<FOctreeElementId2> OctreeID;
+};
+
+/** @brief Entity octree grid cell tag */
+USTRUCT(BlueprintType)
+struct PDRTSBASE_API FPDInOctreeGridTag : public FMassTag
+{
+	GENERATED_BODY()
+};
+
+/** @brief Entity  query ('linetrace') tag. Used for entities we want to be processed with line intersection octree searches */
+USTRUCT(BlueprintType)
+struct PDRTSBASE_API FPDOctreeQueryTag : public FMassTag
+{
+	GENERATED_BODY()
+};
+
+namespace MassSample::Signals
+{
+	static const FName OnReceiveHit = FName("OnReceiveHit");
+	static const FName OnEntityHitOther = FName("OnEntityHitOther");
+}
+
+
 
 /**
 Business Source License 1.1

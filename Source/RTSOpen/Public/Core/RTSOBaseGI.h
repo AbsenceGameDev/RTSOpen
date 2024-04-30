@@ -8,8 +8,9 @@
 
 
 class UPDTransitionWidget;
+
 /**
- * 
+ * @brief RTSO game instance
  */
 UCLASS(BlueprintType, Blueprintable)
 class RTSOPEN_API URTSOBaseGI : public UGameInstance
@@ -20,48 +21,56 @@ public:
 	//
 	// Game control
 
+	/** @brief Triggers the transition widget OR calls LoadGame, if multiplayer the latter can only happen if it is the server */	
 	UFUNCTION(BlueprintNativeEvent, BlueprintCallable)
 	void InitializeGame();
 
+	/** @brief Calls OpenLevelBySoftObjectPtr with PendingSoftWorldPtr as parameter */	
 	UFUNCTION(BlueprintNativeEvent, BlueprintCallable)
-	void OpenLevel(TSoftObjectPtr<UWorld>& SoftWorldPtr);
+	void OpenLevel();
 
 	UFUNCTION(BlueprintNativeEvent, BlueprintCallable)
 	void OnLevelLoaded();
 
 
+	/** @brief Calls StartTransition, assigns PendingSoftWorldPtr and dispatches a call to Dispatch_OpenLevel */	
 	UFUNCTION()
-	void Dispatch_OpenLevel();
-	
-	UFUNCTION(BlueprintNativeEvent, BlueprintCallable)
-	void StartTransition();
-
-	UFUNCTION(BlueprintNativeEvent, BlueprintCallable)
-	void EndTransition();
+	void Dispatch_OpenLevel(TSoftObjectPtr<UWorld>& SoftWorldPtr);
 
 	UFUNCTION()
 	void OnGMReady();
 	
+	/** @brief Triggers the transition widget */
+	UFUNCTION(BlueprintNativeEvent, BlueprintCallable)
+	void StartTransition();
+
+	/** @brief Stops the transition widget */
+	UFUNCTION(BlueprintNativeEvent, BlueprintCallable)
+	void EndTransition();
 	
-	//
-	// Widget
+	/** @brief Display the transition widget */
 	UFUNCTION(BlueprintNativeEvent, BlueprintCallable)
 	void ShowTransitionWidget();
 
 public:
+	/** @brief Widget class for the transition */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "GameInstance|Widgets")
 	TSubclassOf<UPDTransitionWidget> WidgetClass;
 
+	/** @brief Instantiated active transition widget */
 	UPROPERTY(VisibleAnywhere, BlueprintReadWrite, Category = "GameInstance|Widgets")
 	UPDTransitionWidget* ActiveTransitionWidget = nullptr;
 
+	/** @brief Start (world) time offset  */
 	UPROPERTY()
 	double StartTimeOffset;
 
+	/** @brief Replicated flag to tell everyone when the GM is ready */
 	UPROPERTY(ReplicatedUsing = OnGMReady)
 	bool bGMReady;
 
 protected:
+	/** @brief (Soft) world object path */
 	TSoftObjectPtr<UWorld> PendingSoftWorldPtr;
 };
 

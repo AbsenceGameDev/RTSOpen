@@ -1,12 +1,87 @@
 ﻿/* @author: Ario Amin @ Permafrost Development. @copyright: Full BSL(1.1) License included at bottom of the file  */
 #include "PDRTSBaseSubsystem.h"
+
+#include "DelayAction.h"
+#include "MassCrowdRepresentationSubsystem.h"
+#include "MassEntitySubsystem.h"
+#include "MassRepresentationTypes.h"
+#include "MassVisualizationComponent.h"
+#include "MassVisualizer.h"
 #include "RTSBase/Classes/PDRTSCommon.h"
 
+
+class UMassCrowdRepresentationSubsystem;
+class AMassVisualizer;
 
 void UPDRTSBaseSubsystem::Initialize(FSubsystemCollectionBase& Collection)
 {
 	Super::Initialize(Collection);
+	MassEntity = Collection.InitializeDependency<UMassEntitySubsystem>();
+	
+	// FCoreUObjectDelegates::PostLoadMapWithWorld.AddUObject(this, &UPDRTSBaseSubsystem::SetupOctreeWithNewWorld);
+
+	for(const TSoftObjectPtr<UDataTable>& TablePath : GetDefault<UPDRTSSubsystemSettings>()->WorkTables)
+	{
+		WorkTables.Emplace(TablePath.LoadSynchronous());
+	}
+
+	GetMutableDefault<UPDRTSSubsystemSettings>()->OnSettingChanged().AddLambda(
+		[&](UObject* SettingsToChange, FPropertyChangedEvent& PropertyEvent)
+		{
+			OnDeveloperSettingsChanged(SettingsToChange,PropertyEvent);
+		});
 }
+
+void UPDRTSBaseSubsystem::DispatchOctreeGeneration()
+{
+	const FLatentActionInfo DelayInfo{0,0, TEXT("SetupOctree"), this};
+	FLatentActionManager& LatentActionManager = GetWorld()->GetLatentActionManager();
+	if (LatentActionManager.FindExistingAction<FDelayAction>(DelayInfo.CallbackTarget, DelayInfo.UUID) == nullptr)
+	{
+		LatentActionManager.AddNewAction(DelayInfo.CallbackTarget, DelayInfo.UUID, new FDelayAction(10.0f, DelayInfo));
+	}
+}
+
+void UPDRTSBaseSubsystem::SetupOctree()
+{
+	SetupOctreeWithNewWorld(TemporaryWorldCache);
+}
+
+void UPDRTSBaseSubsystem::SetupOctreeWithNewWorld(UWorld* NewWorld)
+{
+	if (WorldsWithOctrees.Contains(NewWorld))
+	{
+		return;
+	}
+		
+	static const FString BuildString = "UPDRTSBaseSubsystem::SetupOctreeWithNewWorld";
+	UE_LOG(LogTemp, Log, TEXT("%s"), *BuildString);
+
+	
+	if (NewWorld == nullptr || NewWorld->IsInitialized() == false)
+	{
+		if (NewWorld != nullptr
+			&& NewWorld->IsValidLowLevelFast()
+			&& NewWorld->bIsTearingDown == false
+			&& NewWorld != TemporaryWorldCache)
+		{
+			WorldsWithOctrees.FindOrAdd(TemporaryWorldCache, false);
+			
+			TemporaryWorldCache = NewWorld;
+		} // Cache as it is being initialized
+		
+		DispatchOctreeGeneration();
+		return;
+	}
+
+	// RefreshEntityManager
+	EntityManager = &NewWorld->GetSubsystem<UMassEntitySubsystem>()->GetMutableEntityManager();
+	
+	const float UniformBounds = GetDefault<UPDRTSSubsystemSettings>()->OctreeUniformBounds;
+	WorldOctree = PD::Mass::Entity::FPDSafeOctree(FVector::ZeroVector, UniformBounds);
+	WorldsWithOctrees.FindOrAdd(TemporaryWorldCache, true);
+}
+
 
 void UPDRTSBaseSubsystem::ProcessTables()
 {
@@ -89,6 +164,63 @@ const FPDWorkUnitDatum* UPDRTSBaseSubsystem::GetWorkEntry(const FName& JobRowNam
 	
 	const FGameplayTag& JobTag = NameToTagMap.Contains(JobRowName) ? NameToTagMap.FindRef(JobRowName) : FGameplayTag::EmptyTag;
 	return GetWorkEntry(JobTag);
+}
+
+void UPDRTSBaseSubsystem::OnDeveloperSettingsChanged(UObject* SettingsToChange, FPropertyChangedEvent& PropertyEvent)
+{
+	const FArrayProperty* ArrayProperty = CastField<FArrayProperty>(PropertyEvent.Property);
+	if (ArrayProperty == nullptr) { return; }
+
+	const FObjectProperty* ObjectProperty = CastField<FObjectProperty>(ArrayProperty->Inner);
+	if(ObjectProperty == nullptr) { return; }
+	
+	if(ObjectProperty->PropertyClass != UDataTable::StaticClass()) { return; }
+
+	WorkTables.Empty(); // clear array and refill with edited properties.
+	for(const TSoftObjectPtr<UDataTable>& TablePath : Cast<UPDRTSSubsystemSettings>(SettingsToChange)->WorkTables)
+	{
+		WorkTables.Emplace(TablePath.LoadSynchronous());
+	}
+}
+
+
+// Unseemly matters, avert your gaze
+using MassVisRepType = TAccessorTypeHandler<UMassRepresentationSubsystem, TObjectPtr<AMassVisualizer>>; 
+template struct TTagPrivateMember<MassVisRepType, &UMassCrowdRepresentationSubsystem::Visualizer>;
+
+using VisualInfoTag = TAccessorTypeHandler<FMassInstancedStaticMeshInfoArrayView, TArrayView<FMassInstancedStaticMeshInfo>>; 
+template struct TTagPrivateMember<VisualInfoTag, &FMassInstancedStaticMeshInfoArrayView::InstancedStaticMeshInfos>;
+
+using ISMTag = TAccessorTypeHandler<FMassInstancedStaticMeshInfo, TArray<TObjectPtr<UInstancedStaticMeshComponent>>>; 
+template struct TTagPrivateMember<ISMTag, &FMassInstancedStaticMeshInfo::InstancedStaticMeshComponents>;
+
+const TArray<TObjectPtr<UInstancedStaticMeshComponent>> FailDummy{};
+const TArray<TObjectPtr<UInstancedStaticMeshComponent>>& UPDRTSBaseSubsystem::GetMassISMs(const UWorld* InWorld)
+{
+	UE_LOG(LogTemp, Warning, TEXT("UPDRTSBaseSubsystem::GetMassISMs"))
+
+	const UMassCrowdRepresentationSubsystem* RepresentationSubsystem = UWorld::GetSubsystem<UMassCrowdRepresentationSubsystem>(InWorld);
+	if (RepresentationSubsystem == nullptr)
+	{
+		UE_LOG(LogTemp, Warning, TEXT("GetMassISMs Fail - No RepSubsystem"))
+		return FailDummy;
+	}
+
+	const AMassVisualizer* MassVisualizer = (*RepresentationSubsystem).*TPrivateAccessor<MassVisRepType>::TypeValue;
+	if (MassVisualizer == nullptr)
+	{
+		UE_LOG(LogTemp, Warning, TEXT("GetMassISMs Fail - No MassVisualizer"))
+		return FailDummy;
+	}
+	
+	UMassVisualizationComponent& MassVisualization = MassVisualizer->GetVisualizationComponent();
+	const FMassInstancedStaticMeshInfoArrayView VisualInfoView = MassVisualization.GetMutableVisualInfos();
+	const TArrayView<FMassInstancedStaticMeshInfo>& InstancedStaticMeshInfos = VisualInfoView.*TPrivateAccessor<VisualInfoTag>::TypeValue;
+	for (FMassInstancedStaticMeshInfo& MeshInfo : InstancedStaticMeshInfos)
+	{
+		return MeshInfo.*TPrivateAccessor<ISMTag>::TypeValue;
+	}
+	return FailDummy;
 }
 
 /**

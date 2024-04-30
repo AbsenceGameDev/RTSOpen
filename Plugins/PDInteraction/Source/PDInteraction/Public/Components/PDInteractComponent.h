@@ -49,6 +49,25 @@ public:
 	FPDTraceResult TraceToTargetAndReset(const FVector& TraceEnd, FCollisionQueryParams& TraceParams);
 	FPDTraceResult TraceToTargetAndReset(const FVector& TraceStart, const FVector& TraceEnd, FCollisionQueryParams& TraceParams);
 
+	UFUNCTION(BlueprintCallable)
+	FORCEINLINE double GetMaxTraceDistance(const bool bRadial = false) const
+	{
+		return bRadial ? TraceSettings.MaxRadialTraceDistanceInUnrealUnits : TraceSettings.MaxTraceDistanceInUnrealUnits;
+	}
+
+	UFUNCTION(BlueprintCallable)
+	const TArray<AActor*>& GetRadialTraceResults() const { return TraceBuffer.RadialTraceActors; }
+
+	UFUNCTION(BlueprintCallable)
+	const FPDTraceBuffer& GetTraceBuffer() const { return TraceBuffer; }
+
+	UFUNCTION(BlueprintCallable)
+	void SetOverrideTracePosition(FVector NewPosition, const bool bInResetOverrideNextFrame = true)
+	{
+		OverridePosition = NewPosition;
+		bResetOverrideNextFrame = bInResetOverrideNextFrame;
+	};
+	
 protected:
 	UFUNCTION()
 	virtual void Prerequisites();
@@ -65,16 +84,7 @@ protected:
 	void PerformComparativeTraces(FVector& TraceStart, FVector& TraceEnd, FCollisionQueryParams& TraceParams, FHitResult& TraceHitResult, EPDTraceResult& TraceResultFlag) const;
 	void PerformSimpleTrace(const FVector& TraceStart, const FVector& TraceEnd, FCollisionQueryParams& TraceParams, FHitResult& TraceHitResult, bool& bTraceResultFlag) const;
 	void TracePass(const FVector& TraceFromLocation, const FVector& TraceEnd, FCollisionQueryParams& TraceParams, FHitResult& TraceHitResult, bool& bTraceResultFlag) const;
-
-	UFUNCTION(BlueprintCallable)
-	FORCEINLINE double GetMaxTraceDistance(const bool bRadial = false) const
-	{
-		return bRadial ? TraceSettings.MaxRadialTraceDistanceInUnrealUnits : TraceSettings.MaxTraceDistanceInUnrealUnits;
-	}	
 	
-private:
-
-
 public:
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
@@ -83,15 +93,16 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Meta = (RowType = "/Script/PDInteraction.PDTraceSettings"))
 	FDataTableRowHandle TraceSettingsHandle;	
 	
+protected:
 	UPROPERTY(VisibleInstanceOnly, BlueprintReadWrite)
 	FPDTraceSettings TraceSettings{};
-
+	UPROPERTY(VisibleInstanceOnly, BlueprintReadWrite)
+	TArray<AActor*> RuntimeIgnoreList{};
 	UPROPERTY(VisibleInstanceOnly, BlueprintReadOnly)
 	FPDTraceBuffer TraceBuffer{};
 
-	UPROPERTY(VisibleInstanceOnly, BlueprintReadWrite)
-	TArray<AActor*> RuntimeIgnoreList{};
-	
+	FVector OverridePosition;
+	bool bResetOverrideNextFrame = false;
 };
 
 

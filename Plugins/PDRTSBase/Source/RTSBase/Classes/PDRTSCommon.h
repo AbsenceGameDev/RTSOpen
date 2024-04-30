@@ -9,7 +9,7 @@
 
 class UBehaviorTree;
 
-/** Declaring the "AI.Job.Idle" gameplay tag. to be defined in an object-file */
+/** Declaring the "AI.Job" gameplay tag. to be defined in an object-file */
 PDRTSBASE_API UE_DECLARE_GAMEPLAY_TAG_EXTERN(TAG_AI_Job_Idle);
 PDRTSBASE_API UE_DECLARE_GAMEPLAY_TAG_EXTERN(TAG_AI_Job_WalkToTarget);
 PDRTSBASE_API UE_DECLARE_GAMEPLAY_TAG_EXTERN(TAG_AI_Job_GatherResource);
@@ -21,18 +21,38 @@ PDRTSBASE_API UE_DECLARE_GAMEPLAY_TAG_EXTERN(TAG_CTRL_Ctxt_WorkerUnitMode);
 PDRTSBASE_API UE_DECLARE_GAMEPLAY_TAG_EXTERN(TAG_CTRL_Ctxt_BuildMode);
 PDRTSBASE_API UE_DECLARE_GAMEPLAY_TAG_EXTERN(TAG_CTRL_Ctxt_ConversationMode);
 
+/** Declaring the "Control.Context." gameplay tags. to be defined in an object-file */
+PDRTSBASE_API UE_DECLARE_GAMEPLAY_TAG_EXTERN(TAG_AI_Type_DefaultUnit);
+PDRTSBASE_API UE_DECLARE_GAMEPLAY_TAG_EXTERN(TAG_AI_Type_InvalidUnit);
+
+UENUM()
+enum class EPDVertexAnimSelector : uint8
+{
+	VertexAction    = 0 UMETA(DisplayName="Action"),
+	VertexIdle      = 1 UMETA(DisplayName="Idle"),
+	VertexSlowWalk  = 2 UMETA(DisplayName="SlowWalk"),
+	VertexWalk      = 3 UMETA(DisplayName="Walk"),
+	VertexJog       = 4 UMETA(DisplayName="Jog"),
+	VertexSprint    = 5 UMETA(DisplayName="Sprint"),
+};
+
+/** @todo Write actual support for 'RequiredUnitTypeTags' */
 USTRUCT(BlueprintType, Blueprintable)
 struct FPDWorkUnitDatum : public FTableRowBase
 {
 	GENERATED_BODY()
+
+	/** @brief The tag for the actual job this entry defines */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "RTSBase|WorkerUnits")
 	FGameplayTag JobTag;
+
+	/** @brief The tag for the required unit type(s) for this job, if empty all types are valid. Block all types if AI.Type.InvalidUnit is set */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "RTSBase|WorkerUnits")
-	TSoftObjectPtr<UBehaviorTree> BT;
+	TArray<FGameplayTag> RequiredUnitTypeTags;
+
+	/** @brief The tag for the required unit type(s) for this job, if empty all types are valid */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "RTSBase|WorkerUnits")
-	TSoftObjectPtr<UAnimMontage> Montage;
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "RTSBase|WorkerUnits")
-	TSoftObjectPtr<UStaticMesh>  WorkToolMesh;
+	uint8 bCanShareJob;
 };
 
 /**

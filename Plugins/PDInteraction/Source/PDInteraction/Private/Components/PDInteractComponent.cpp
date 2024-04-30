@@ -97,13 +97,14 @@ TArray<AActor*> UPDInteractComponent::GetAllInteractablesInRadius(double Radius,
 	TArray<AActor*> OverlapActors{};
 	UKismetSystemLibrary::SphereOverlapActors(
 		OwnerPawn,
-		OwnerPawn->GetActorLocation(),
+		OverridePosition == FVector::ZeroVector ? OwnerPawn->GetActorLocation() : OverridePosition,
 		Radius,
 		{TraceSettings.GeneratedObjectType},
 		nullptr, 
 		{OwnerPawn},
 		Aggregate);
-
+	OverridePosition = bResetOverrideNextFrame ? FVector::ZeroVector : OverridePosition;
+	
 	if (bIgnorePerObjectInteractionDistance)
 	{
 		for (AActor* OverlappingActor : OverlapActors)

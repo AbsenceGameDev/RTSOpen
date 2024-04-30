@@ -2,18 +2,22 @@
 
 #include "PDRTSCommon.h"
 
-/** Define the gameplay tag "AI.Jobs." tags */
+/** Define the gameplay "AI.Jobs." tags */
 UE_DEFINE_GAMEPLAY_TAG(TAG_AI_Job_Idle, "AI.Jobs.Idle");
 UE_DEFINE_GAMEPLAY_TAG(TAG_AI_Job_WalkToTarget, "AI.Jobs.WalkToTarget");
 UE_DEFINE_GAMEPLAY_TAG(TAG_AI_Job_GatherResource, "AI.Jobs.GatherResource");
 
-/** Define the gameplay tag "CTRL.Ctxt." tags */
+/** Define the gameplay "CTRL.Ctxt." tags */
 UE_DEFINE_GAMEPLAY_TAG(TAG_CTRL_Ctxt_BaseInput, "CTRL.Ctxt.BaseInput");
 UE_DEFINE_GAMEPLAY_TAG(TAG_CTRL_Ctxt_DragMove, "CTRL.Ctxt.DragMove");
 UE_DEFINE_GAMEPLAY_TAG(TAG_CTRL_Ctxt_WorkerUnitMode, "CTRL.Ctxt.WorkerUnitMode");
 UE_DEFINE_GAMEPLAY_TAG(TAG_CTRL_Ctxt_BuildMode, "CTRL.Ctxt.BuildMode");
 UE_DEFINE_GAMEPLAY_TAG(TAG_CTRL_Ctxt_ConversationMode, "CTRL.Ctxt.ConversationMode");
 
+
+/** Define the gameplay "AI.Type." tags */
+UE_DEFINE_GAMEPLAY_TAG(TAG_AI_Type_DefaultUnit, "AI.Type.DefaultUnit");
+UE_DEFINE_GAMEPLAY_TAG(TAG_AI_Type_InvalidUnit, "AI.Type.InvalidUnit");
 
 /**
 Business Source License 1.1

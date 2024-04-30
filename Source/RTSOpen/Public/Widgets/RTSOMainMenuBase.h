@@ -7,7 +7,7 @@
 #include "RTSOMainMenuBase.generated.h"
 
 /**
- * 
+ * @brief Menu base widget stack 
  */
 UCLASS()
 class RTSOPEN_API URTSOMainMenuBase : public UCommonActivatableWidget

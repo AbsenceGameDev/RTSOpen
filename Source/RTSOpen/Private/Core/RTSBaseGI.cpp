@@ -23,25 +23,24 @@ void URTSOBaseGI::InitializeGame_Implementation()
 	GM->LoadGame();
 }
 
-void URTSOBaseGI::OpenLevel_Implementation(TSoftObjectPtr<UWorld>& SoftWorldPtr)
+void URTSOBaseGI::OpenLevel_Implementation()
 {
-	StartTransition();
-
-	PendingSoftWorldPtr = SoftWorldPtr;
-	
-	const FLatentActionInfo DelayInfo{0,0, TEXT("Dispatch_OpenLevel"), this};
-	UKismetSystemLibrary::Delay(this, 1.0f, DelayInfo);
+	UGameplayStatics::OpenLevelBySoftObjectPtr(this, PendingSoftWorldPtr, true);
 }
-
 
 void URTSOBaseGI::OnLevelLoaded_Implementation()
 {
 	// empty in baseclass for now
 }
 
-void URTSOBaseGI::Dispatch_OpenLevel()
+void URTSOBaseGI::Dispatch_OpenLevel(TSoftObjectPtr<UWorld>& SoftWorldPtr)
 {
-	UGameplayStatics::OpenLevelBySoftObjectPtr(this, PendingSoftWorldPtr, true);
+	StartTransition();
+
+	PendingSoftWorldPtr = SoftWorldPtr;
+	
+	const FLatentActionInfo DelayInfo{0,0, TEXT("OpenLevel"), this};
+	UKismetSystemLibrary::Delay(this, 1.0f, DelayInfo);
 }
 
 void URTSOBaseGI::OnGMReady()

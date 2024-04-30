@@ -13,11 +13,18 @@ public class RTSOpen : ModuleRules
 		
 		PublicDependencyModuleNames.AddRange(new string[] 
 			{ "Core", "CoreUObject", "Engine", 
-			"InputCore", "GameplayTags", "NetCore" });
+			"InputCore", "GameplayTags", "NetCore", "PDRTSBase", "PDInventory"
+			});
 
+		PublicDependencyModuleNames.AddRange(new string[]
+		{
+			"MassEntity", "MassCommon", "MassNavigation", "StructUtils", "MassMovement", "NavigationSystem",
+			"AIModule", "MassAIBehavior", "StateTreeModule", "SmartObjectsModule", "MassSmartObjects", "MassSignals",
+			"MassRepresentation", "MassLOD", "AnimToTexture", "MassSpawner", "Chaos"
+		});
+		
 		PrivateDependencyModuleNames.AddRange(new string[] 
-			{ "PDInteraction", "PDInventory", "PDRTSBase", "MassAIBehavior", 
-                "NavigationSystem", "GameplayTags", "EnhancedInput", "CommonUI", "UMG", "Niagara" });
+			{ "PDInteraction", "PDInventory", "PDRTSBase", "GameplayTags", "EnhancedInput", "CommonUI", "UMG", "Niagara" });
 	}
 }
 

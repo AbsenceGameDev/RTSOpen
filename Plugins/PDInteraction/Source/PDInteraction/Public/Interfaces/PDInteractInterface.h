@@ -42,7 +42,7 @@ public:
 	double GetCurrentUsability() const;
 	virtual double GetCurrentUsability_Implementation() const;
 
-	/* @brief usage will be game implementation specific but make sense for many different types of games with interactable to allow a tag to be returned, possibly related to AI jobs as in my case */
+	/** @brief usage will be game implementation specific but make sense for many different types of games with interactable to allow a tag to be returned, possibly related to AI jobs as in my case */
 	UFUNCTION(BlueprintNativeEvent, BlueprintCallable, Category = "Interact|Interface")
 	FGameplayTagContainer GetGenericTagContainer() const;
 	virtual FGameplayTagContainer GetGenericTagContainer_Implementation() const;
@@ -51,7 +51,13 @@ public:
 	void RegisterWorldInteractable(UWorld* SelectedWorld, AActor* SelectedInteractable);
 	virtual void RegisterWorldInteractable_Implementation(UWorld* SelectedWorld, AActor* SelectedInteractable);
 
+	UFUNCTION(BlueprintNativeEvent, BlueprintCallable)
+	const FPDInteractMessage GetInteractionMessage();
+	virtual const FPDInteractMessage GetInteractionMessage_Implementation();	
+	
 	bool bHasBeenRegisteredWithCurrentWorld = false;
+
+	FPDInteractMessage OutMessage;
 };
 
 /**

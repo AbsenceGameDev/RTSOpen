@@ -43,6 +43,16 @@ void IPDInteractInterface::RegisterWorldInteractable_Implementation(UWorld* Sele
 	bHasBeenRegisteredWithCurrentWorld = true;
 }
 
+const FPDInteractMessage IPDInteractInterface::GetInteractionMessage_Implementation()
+{
+	// Exmaple, override with table entries possibly?
+	OutMessage.ActorName = "Some Interactable";
+	OutMessage.KeyActionMetadata.ConvertToString() ;
+	OutMessage.GameAction = "to Interact";
+
+	return OutMessage;
+}
+
 /**
 Business Source License 1.1
 

@@ -1,145 +1,120 @@
 ﻿/* @author: Ario Amin @ Permafrost Development. @copyright: Full BSL(1.1) License included at bottom of the file  */
 
 #include "Pawns/PDRTSBaseUnit.h"
-
-#include "AIController.h"
 #include "GameplayTagContainer.h"
+#include "MassEntityManager.h"
 #include "PDRTSBaseSubsystem.h"
 #include "PDRTSCommon.h"
-#include "BehaviorTree/BehaviorTree.h"
-#include "BehaviorTree/BlackboardComponent.h"
-#include "Components/CapsuleComponent.h"
-#include "Components/DecalComponent.h"
-#include "GameFramework/FloatingPawnMovement.h"
-#include "Kismet/KismetSystemLibrary.h"
-#include "NavAreas/NavArea_Obstacle.h"
+#include "AI/Mass/PDMassFragments.h"
 
-const FName APDRTSBaseUnit::SlotGroup_Default = FName("DefaultGroup");
-const FName APDRTSBaseUnit::BBKey_TargetRef = FName("Target");
+const FName UPDRTSBaseUnit::SlotGroup_Default = FName("DefaultGroup");
+const FName UPDRTSBaseUnit::BBKey_TargetRef = FName("Target");
 
-APDRTSBaseUnit::APDRTSBaseUnit()
+UPDRTSBaseUnit::UPDRTSBaseUnit(const FObjectInitializer& ObjectInitializer)
+	: Super(ObjectInitializer)
 {
-	PrimaryActorTick.bCanEverTick = true;
-
-	
-	Capsule = CreateDefaultSubobject<UCapsuleComponent>(TEXT("WorkerCollision"));
-	SetRootComponent(Capsule);
-	Capsule->SetCapsuleHalfHeight(90.0);
-	Capsule->SetCapsuleRadius(30.0);
-	Capsule->bDynamicObstacle = true;
-	Capsule->SetAreaClassOverride(UNavArea_Obstacle::StaticClass());
-	Capsule->SetGenerateOverlapEvents(true);
-	Capsule->SetCollisionObjectType(ECC_WorldDynamic);
-	Capsule->SetCollisionEnabled(ECollisionEnabled::QueryOnly);
-	Capsule->SetCollisionResponseToAllChannels(ECR_Overlap);
-	
-	BodyMesh = CreateDefaultSubobject<USkeletalMeshComponent>(TEXT("BodyMesh"));
-	BodyMesh->SetupAttachment(Capsule);
-
-	WorkerTool = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("WorkerTool"));
-	WorkerTool->SetupAttachment(BodyMesh, "hand_rSocket");
-	Capsule->SetGenerateOverlapEvents(true);
-	Capsule->SetCollisionObjectType(ECC_WorldDynamic);
-	Capsule->SetCollisionEnabled(ECollisionEnabled::QueryOnly);
-	Capsule->SetCollisionResponseToAllChannels(ECR_Block);
-	
-	HitDecal = CreateDefaultSubobject<UDecalComponent>(TEXT("HitDecal"));
-	HitDecal->SetupAttachment(Capsule);
-	
-	WorkerMovement = CreateDefaultSubobject<UFloatingPawnMovement>(TEXT("WorkerMovement"));
-	WorkerMovement->MaxSpeed = 300.0f;
+	PrimaryComponentTick.bCanEverTick = false;
 }
 
-void APDRTSBaseUnit::PlayWorkAnimation(float Delay)
+TArray<int32> UPDRTSBaseUnit::GetInstancesOverlappingSphere(const FVector& Center, float Radius, bool bSphereInWorldSpace) const
 {
-	_PlayMontage(CurrentMontage, Delay);
-	if (WorkerTool == nullptr) { return; }
-
-	WorkerTool->SetStaticMesh(PendingToolMesh);
-	WorkerTool->SetVisibility(true);
+	return Super::GetInstancesOverlappingSphere(Center, Radius, bSphereInWorldSpace);
 }
 
-void APDRTSBaseUnit::_PlayMontage(UAnimMontage* Montage, float Length)
+void UPDRTSBaseUnit::ResetState(FMassEntityHandle RequestedEntityHandle)
 {
-	BodyMesh->GetAnimInstance()->Montage_Play(Montage, 1.0, EMontagePlayReturnType::Duration);
-
-	FOnMontageEnded EndDelegate = FOnMontageEnded::CreateUObject(this, &APDRTSBaseUnit::_StopMontage);
-	BodyMesh->GetAnimInstance()->Montage_SetEndDelegate(EndDelegate, Montage);
-	
-	const FLatentActionInfo DelayInfo{0,0, TEXT("_StopMontage"), this};
-	UKismetSystemLibrary::Delay(this, Length, DelayInfo);
+	AssignTask(RequestedEntityHandle, TAG_AI_Job_Idle, nullptr);
 }
 
-void APDRTSBaseUnit::_StopMontage(UAnimMontage* Montage, bool bInterrupted) const
-{
-	BodyMesh->GetAnimInstance()->Montage_StopGroupByName(0.0, SlotGroup_Default);
-	WorkerTool->SetVisibility(false);
-}
-
-void APDRTSBaseUnit::ResetState()
-{
-	AssignTask(TAG_AI_Job_Idle);
-}
-
-void APDRTSBaseUnit::RequestAction(AActor* CallingActor, AActor* NewTarget, FGameplayTag RequestedJob)
+void UPDRTSBaseUnit::RequestAction(AActor* CallingActor, AActor* NewTarget, FGameplayTag RequestedJob, FMassEntityHandle RequestedEntityHandle)
 {
 	if (NewTarget == nullptr) { return; }
 
 	InstigatorActor = CallingActor;
-	TargetRef = NewTarget;
-	AssignTask(RequestedJob);
+	AssignTask(RequestedEntityHandle, RequestedJob, NewTarget);
 
 	// @todo Call GM and update unit save data here?
 }
- 
 
-void APDRTSBaseUnit::BeginPlay()
+void UPDRTSBaseUnit::RequestActionMulti(
+	AActor* CallingActor,
+	const TArray<TTuple<
+	AActor*             /*NewTarget*/,
+	const FGameplayTag& /*RequestedJob*/,
+	FMassEntityHandle   /*RequestedEntityHandle*/>>& EntityHandleCompounds)
+{
+	InstigatorActor = CallingActor; // @todo track instigator per entity, or atleast group entities by instigators
+	// Dispatch to different threads if it proves costly, 
+	for (const TTuple<
+		AActor*             /*NewTarget*/,
+		const FGameplayTag& /*RequestedJob*/,
+		FMassEntityHandle   /*RequestedEntityHandle*/>& EntityHandle : EntityHandleCompounds)
+	{
+		AssignTask(EntityHandle.Get<2>(), EntityHandle.Get<1>(), EntityHandle.Get<0>());
+	}	
+}
+
+
+void UPDRTSBaseUnit::BeginPlay()
 {
 	Super::BeginPlay();
+
+	SetCollisionResponseToChannel(ECollisionChannel::ECC_GameTraceChannel14, ECR_Block);
 	
 	//
 	// Switch job?
-	AssignTask(TAG_AI_Job_Idle);
-	AddActorWorldOffset(FVector{0.0, 0.0, -Capsule->GetScaledCapsuleHalfHeight()});
+	AssignTask(FMassEntityHandle{0,0}, TAG_AI_Job_Idle, nullptr);
+	// AddActorWorldOffset(FVector{0.0, 0.0, -Capsule->GetScaledCapsuleHalfHeight()});
 }
 
-void APDRTSBaseUnit::AssignTask(const FGameplayTag& JobTag)
+void UPDRTSBaseUnit::AssignTask(FMassEntityHandle EntityHandle, const FGameplayTag& JobTag, AActor* NewTarget)
 {
 	UPDRTSBaseSubsystem* RTSSubsystem = GEngine->GetEngineSubsystem<UPDRTSBaseSubsystem>();
 	if (RTSSubsystem == nullptr) { return; }
 
 	const FPDWorkUnitDatum* WorkUnitDatum = RTSSubsystem->GetWorkEntry(JobTag);
-	if (WorkUnitDatum == nullptr) { return; }
+	if (WorkUnitDatum == nullptr)
+	{
+		UE_LOG(LogTemp, Warning, TEXT("UPDRTSBaseUnit::AssignTask - NO WORKUNITDATUM"));
+		return;
+	}
 
-	// 1. Hide previous tools mesh
-	if (WorkerTool != nullptr) { WorkerTool->SetVisibility(false); }
-	// 2. Stop montage
-	UAnimInstance* BodyInstance = BodyMesh != nullptr ? BodyMesh->GetAnimInstance() : nullptr;
-	if (BodyInstance != nullptr) { BodyInstance->Montage_StopGroupByName(0.0, SlotGroup_Default); }
+	if (EntityManager->IsEntityValid(EntityHandle) == false) { return; }
 
-	AAIController* WorkerContoller = GetController<AAIController>();
-	if (WorkerContoller != nullptr) { WorkerContoller->StopMovement(); }
+	UE_LOG(LogTemp, Warning, TEXT("UPDRTSBaseUnit::AssignTask - Updating Tasks and ActionFrgment"))
 	
-	// Display new tools mesh ?
-
-	ActiveJob = JobTag;
+	ActiveJobMap.FindOrAdd(EntityHandle.Index) = JobTag;
+	ActiveTargetMap.FindOrAdd(EntityHandle.Index) = NewTarget;
+	
+	// For our purposes action fragment should never be nullptr in case the handle itself is valid
+	check(EntityManager->GetFragmentDataPtr<FPDMFragment_Action>(EntityHandle) != nullptr);
+	FPDMFragment_Action* EntityAction = EntityManager->GetFragmentDataPtr<FPDMFragment_Action>(EntityHandle);
+	EntityAction->ActionTag = JobTag;
+	EntityAction->ActionTargetAsActor = NewTarget;
 }
 
-void APDRTSBaseUnit::OnTaskFinished(const FGameplayTag& JobTag)
+void UPDRTSBaseUnit::AssignTaskMulti(TArray<TTuple<FMassEntityHandle,const FGameplayTag&, AActor*>>& EntityHandleCompounds)
 {
-	InstigatorActor = nullptr;
+	TRACE_CPUPROFILER_EVENT_SCOPE(TEXT("UPDRTSBaseUnit::AssignTaskMulti"))
+	
+	// Dispatch to different threads if it proves costly, 
+	for (const TTuple<FMassEntityHandle,const FGameplayTag&, AActor*>& EntityHandle : EntityHandleCompounds)
+	{
+		AssignTask(EntityHandle.Get<0>(), EntityHandle.Get<1>(), EntityHandle.Get<2>());
+	}
 }
 
-
-void APDRTSBaseUnit::Tick(float DeltaTime)
+void UPDRTSBaseUnit::OnTaskFinished(FMassEntityHandle WorkerEntity, const FGameplayTag& JobTag)
 {
-	Super::Tick(DeltaTime);
+	InstigatorActor = nullptr; // @todo track instigator per entity, or atleast group entities by instigators
 }
 
-void APDRTSBaseUnit::SetupPlayerInputComponent(UInputComponent* PlayerInputComponent)
+
+void UPDRTSBaseUnit::TickComponent(float DeltaTime, ELevelTick TickType, FActorComponentTickFunction* ThisTickFunction)
 {
-	Super::SetupPlayerInputComponent(PlayerInputComponent);
+	Super::TickComponent(DeltaTime, TickType, ThisTickFunction);
 }
+
 
 /**
 Business Source License 1.1

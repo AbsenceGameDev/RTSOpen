@@ -6,6 +6,7 @@
 #include "UObject/Interface.h"
 #include "GameplayTagContainer.h"
 #include "Containers/Deque.h"
+#include "MassEntityTypes.h"
 #include "PDInteractCommon.generated.h"
 
 constexpr float DEFAULT_PEROBJECT_MAX_INTERACTION_DISTANCE = 150;
@@ -44,12 +45,98 @@ enum class EPDTraceResult : uint8
 	TRACE_FAIL    UMETA(DisplayName="Failed"),     /**< @brief Trace failed at finding an interactable  */ 
 };
 
+//OutMessage.KeyAction
+
+UENUM(Blueprintable, BlueprintType)
+enum class EPDKeyAction : uint8 
+{
+	KTAP UMETA(DisplayName="Tap"),  
+	KHOLD UMETA(DisplayName="Hold"),    
+};
+
+UENUM(Blueprintable, BlueprintType)
+enum class EPDKeyModifiers : uint8 
+{
+	KCTRLR UMETA(DisplayName="ControlR"),  
+	KCTRLL UMETA(DisplayName="ControlL"),
+	
+	KALTR UMETA(DisplayName="AltR"),    
+	KALTL UMETA(DisplayName="AltL"),
+	
+	KSHIFTR UMETA(DisplayName="ShiftR"),
+	KSHIFTL UMETA(DisplayName="ShiftL"),
+};
+
+namespace EPDKeys
+{
+	static inline FString ToString(EPDKeyAction InAction)
+	{
+		switch (InAction) {
+		case EPDKeyAction::KTAP:
+			return "Press";
+		case EPDKeyAction::KHOLD:
+			return "Hold";
+		}
+		return "";
+	}
+
+	static inline FString ToString(EPDKeyModifiers InMod)
+	{
+		switch (InMod) {
+		case EPDKeyModifiers::KCTRLR:
+			return "Ctrl(R)";
+		case EPDKeyModifiers::KCTRLL:
+			return "Ctrl(L)";
+		case EPDKeyModifiers::KALTR:
+			return "Alt(R)";
+		case EPDKeyModifiers::KALTL:
+			return "Alt(L)";
+		case EPDKeyModifiers::KSHIFTR:
+			return "Shift(R)";
+		case EPDKeyModifiers::KSHIFTL:
+			return "Shift(L)";
+		}
+		return "";
+	}	
+};
+
+USTRUCT(Blueprintable, BlueprintType)
+struct PDINTERACTION_API FPDKeyCombination
+{
+	GENERATED_BODY()
+
+	FString ConvertToString();
+
+	
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	FKey MainKey{};
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	TArray<EPDKeyModifiers> OptionalModifiers{};
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	EPDKeyAction KeyAction = EPDKeyAction::KTAP;
+	UPROPERTY(VisibleAnywhere, BlueprintReadWrite)
+	FString AccumulatedString{};
+	
+};
+
+USTRUCT(Blueprintable, BlueprintType)
+struct PDINTERACTION_API FPDInteractMessage
+{
+	GENERATED_BODY()
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	FString ActorName;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	FPDKeyCombination KeyActionMetadata;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	FString GameAction;
+};
 
 /**
  * @brief This structure is constructed by the interaction component and passed into an 'interactable' item at the point of interaction
  */
 USTRUCT(Blueprintable, BlueprintType)
-struct FPDInteractionParams
+struct PDINTERACTION_API FPDInteractionParams
 {
 	GENERATED_BODY()
 
@@ -68,6 +155,9 @@ struct FPDInteractionParams
 	/** @brief Passing in the instigator, for some interactables this will be needed */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Interaction|Params")
 	TSubclassOf<UActorComponent> InstigatorComponentClass = nullptr;
+
+	/** @brief Passing in the instigator fragment */
+	FMassFragment* InstigatorFragment = nullptr;	
 	
 	/** @brief A set of optional tags to be handled as seen fit by game module implementations */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Interaction|Params")

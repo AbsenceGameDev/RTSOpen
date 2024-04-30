@@ -1,6 +1,19 @@
 ﻿/* @author: Ario Amin @ Permafrost Development. @copyright: Full BSL(1.1) License included at bottom of the file  */
 
 #include "PDInteractCommon.h"
+// #include "InputCoreTypes.h"
+
+FString FPDKeyCombination::ConvertToString()
+{
+	FString Acc; 
+	for (EPDKeyModifiers Modifier : OptionalModifiers)
+	{
+		Acc += " " + EPDKeys::ToString(Modifier);
+		
+	}
+	AccumulatedString = MainKey.IsValid() ? MainKey.ToString() + EPDKeys::ToString(KeyAction) + Acc: "";
+	return AccumulatedString; 
+}
 
 void FPDTraceSettings::Setup()
 {

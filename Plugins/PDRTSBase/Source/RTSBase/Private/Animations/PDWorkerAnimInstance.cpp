@@ -1,14 +1,5 @@
 ﻿/* @author: Ario Amin @ Permafrost Development. @copyright: Full BSL(1.1) License included at bottom of the file  */
-
-
 #include "Animations/PDWorkerAnimInstance.h"
-
-
-
-
-
-
-
 
 
 /**

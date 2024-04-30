@@ -3,9 +3,12 @@
 #pragma once
 
 #include "CoreMinimal.h"
+#include "Components/InstancedStaticMeshComponent.h"
 #include "GameplayTagContainer.h"
+#include "MassEntityTypes.h"
 #include "GameFramework/Pawn.h"
 #include "Engine/StreamableManager.h"
+
 #include "PDRTSBaseUnit.generated.h"
 
 struct FPDWorkUnitDatum;
@@ -14,32 +17,56 @@ class UFloatingPawnMovement;
 class UCapsuleComponent;
 class AActor;
 
+/**
+ * @brief Custom ISM which handles tracking tasks and setting entity FPDMFragment_Action values.
+ * @note Used with Mass as the entity (ISM) generator .
+ */
 UCLASS()
-class PDRTSBASE_API APDRTSBaseUnit : public APawn
+class PDRTSBASE_API UPDRTSBaseUnit : public UInstancedStaticMeshComponent
 {
-	GENERATED_BODY()
+	GENERATED_UCLASS_BODY()
 
 public:
-	APDRTSBaseUnit();
-
-
-	void PlayWorkAnimation(float Delay);
-	void _PlayMontage(UAnimMontage* Montage, float Length);
-	void _StopMontage(UAnimMontage* Montage = nullptr, bool bInterrupted = false) const;
-	// void AddResources(); // In game module apply the inventory component
-	void ResetState();
-	void RequestAction(AActor* CallingActor, AActor* NewTarget, FGameplayTag RequestedJob);
+	virtual TArray<int32> GetInstancesOverlappingSphere(const FVector& Center, float Radius, bool bSphereInWorldSpace) const override;
 	
+	/** @brief Sets job back to idle */
+	void ResetState(FMassEntityHandle RequestedEntityHandle);
+	
+	/** @brief Sets job to the requested job on the requested entity, if possible */
+	void RequestAction(
+		AActor* CallingActor,
+		AActor* NewTarget,
+		FGameplayTag RequestedJob,
+		FMassEntityHandle RequestedEntityHandle);
+
+	/**
+	 * @brief Sets job to the requested job on the requested entity, if possible
+	 * @note Entry Tuple<CallingActor, NewTarget, RequestedJob, RequestedEntityHandle>
+	 */
+	void RequestActionMulti(
+		AActor* CallingActor,
+		const TArray<TTuple<
+		AActor*              /*NewTarget*/,
+		const FGameplayTag&  /*RequestedJob*/,
+		FMassEntityHandle    /*RequestedEntityHandle*/>>& EntityHandleCompounds);	
+
+	/** @brief Assigns the entity manager for the world we are in, so we can refer to it and modify fragments when needed */
+	FORCEINLINE void SetEntityManager(const FMassEntityManager* InEntityManager) { EntityManager = InEntityManager;}
+
 protected:
 	virtual void BeginPlay() override;
-	void AssignTask(const FGameplayTag& JobTag);
-	void OnTaskFinished(const FGameplayTag& JobTag);
+
+	/** @brief Sets job to the requested job on the requested entity, only called when approved */
+	void AssignTask(FMassEntityHandle EntityHandle, const FGameplayTag& JobTag, AActor* NewTarget);
+
+	/** @brief Sets job to the requested job on the requested entity, only called when approved */
+	void AssignTaskMulti(TArray<TTuple<FMassEntityHandle,const FGameplayTag&, AActor*>>& EntityHandleCompounds);
+	
+	void OnTaskFinished(FMassEntityHandle WorkerEntity, const FGameplayTag& JobTag);
 
 public:
-	virtual void Tick(float DeltaTime) override;
-
-	virtual void SetupPlayerInputComponent(class UInputComponent* PlayerInputComponent) override;
-
+	virtual void TickComponent(float DeltaTime, ELevelTick TickType, FActorComponentTickFunction* ThisTickFunction) override;
+	
 	UPROPERTY(VisibleInstanceOnly, BlueprintReadOnly)
 	AActor* TargetRef = nullptr;
 
@@ -47,33 +74,12 @@ public:
 	AActor* InstigatorActor = nullptr;
 	
 	UPROPERTY(VisibleInstanceOnly, BlueprintReadOnly)
-	FGameplayTag ActiveJob{};	
-	
-	UPROPERTY(EditAnywhere, BlueprintReadWrite)
-	UFloatingPawnMovement* WorkerMovement = nullptr;
+	TMap<int32 /*MassEntity index */, FGameplayTag> ActiveJobMap{};
 
-	UPROPERTY(EditAnywhere, BlueprintReadWrite)
-	UDecalComponent* HitDecal = nullptr;
-	
-	UPROPERTY(EditAnywhere, BlueprintReadWrite)
-	UCapsuleComponent* Capsule = nullptr;
-	
-	UPROPERTY(EditAnywhere, BlueprintReadWrite)
-	USkeletalMeshComponent* BodyMesh = nullptr;
-	
-	UPROPERTY(EditAnywhere, BlueprintReadWrite)
-	UStaticMeshComponent* WorkerTool = nullptr;
-	
-	UPROPERTY(VisibleInstanceOnly, BlueprintReadWrite)
-	UStaticMesh* PendingToolMesh = nullptr;
-	
 	UPROPERTY(VisibleInstanceOnly, BlueprintReadOnly)
-	UBehaviorTree* CurrentBT = nullptr;
-	
-	UPROPERTY(VisibleInstanceOnly, BlueprintReadOnly)
-	UAnimMontage* CurrentMontage = nullptr;
+	TMap<int32 /*MassEntity index */, AActor*> ActiveTargetMap{};
 
-
+	const FMassEntityManager* EntityManager = nullptr;
 	TSharedPtr<FStreamableHandle> LatestJob_AsyncLoadHandle;
 
 	static const FName SlotGroup_Default;

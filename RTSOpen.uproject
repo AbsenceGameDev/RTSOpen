@@ -177,6 +177,10 @@
 			"Enabled": true
 		},
 		{
+			"Name": "AnimToTexture",
+			"Enabled": true
+		},
+		{
 			"Name": "Water",
 			"Enabled": true
 		},

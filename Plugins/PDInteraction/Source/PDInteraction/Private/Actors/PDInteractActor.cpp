@@ -66,6 +66,18 @@ void APDInteractActor::OnInteract_Implementation(const FPDInteractionParamsWithC
 	
 }
 
+const FPDInteractMessage APDInteractActor::GetInteractionMessage_Implementation()
+{
+	IPDInteractInterface::GetInteractionMessage_Implementation();
+	// IPDInteractInterface::GetInteractionMessage_Implementation();
+	// OutMessage.KeyAction;
+	// OutMessage.KeyIndicatorText;
+	// OutMessage.GameAction;
+	OutMessage.ActorName = ActorMessage.ActorName;
+	OutMessage.GameAction = ActorMessage.GameAction;
+	return OutMessage;
+}
+
 
 void APDInteractActor::ResizeCollisionBounds(UStaticMeshComponent* NewMeshDummy)
 {

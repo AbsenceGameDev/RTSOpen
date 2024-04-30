@@ -31,10 +31,10 @@ void APDCameraManager::UpdateCamera(float DeltaTime)
 
 void APDCameraManager::SetCustomMode_Implementation(FGameplayTag Tag)
 {
-	// If TagToSettings has a valid entry, then TagToTable & TagToRowname also have the same valid entries  
+	// If TagToSettings has a valid entry, then TagToTable & TagToRowName also have the same valid entries  
 	if (TagToSettings.Contains(Tag) == false)
 	{
-		FString BuildString =
+		const FString BuildString =
 			"APDCameraManager::SetCustomMode -- "
 			"\n Trying to add set camera mode without a valid gameplay tag. Skipping processing entry";
 		UE_LOG(LogTemp, Error, TEXT("%s"), *BuildString);
@@ -98,8 +98,8 @@ void APDCameraManager::ProcessTables()
 
 		TArray<FPDCameraManagerSettings*> Rows;
 		Table->GetAllRows("", Rows);
-		
 		TArray<FName> RowNames = Table->GetRowNames();
+		
 		for (const FName& Name : RowNames)
 		{
 			FPDCameraManagerSettings* DefaultDatum = Table->FindRow<FPDCameraManagerSettings>(Name,"");

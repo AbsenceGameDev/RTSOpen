@@ -1,4 +1,5 @@
 /* @author: Ario Amin @ Permafrost Development. @copyright: Full BSL(1.1) License included at bottom of the file  */
+/** @todo rethink if needed/wanted or if this plugin should only use entities */
 
 #pragma once
 
