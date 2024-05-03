@@ -5,6 +5,7 @@
 #include "MassEntityTypes.h"
 #include "MassStateTreeTypes.h"
 #include "PDRTSCommon.h"
+#include "AI/Mass/PDMassFragments.h"
 #include "PDMassTasks.generated.h"
 
 struct FPDMFragment_EntityAnimation;
@@ -34,13 +35,17 @@ struct FPDMTaskData_MoveToHandle
 {
 	GENERATED_BODY()
 	
+	// /** Result of the candidates search request (Input) */
+	// UPROPERTY(VisibleAnywhere, Category = Input)
+	// FMassEntityHandle EntityHandle;
+	//
+	// /** Result of the candidates search request (Input) */
+	// UPROPERTY(VisibleAnywhere, Category = Parameter)
+	// AActor* ActorTarget;
+
 	/** Result of the candidates search request (Input) */
-	UPROPERTY(VisibleAnywhere, Category = Input)
-	FMassEntityHandle EntityHandle;
-	
-	/** Result of the candidates search request (Input) */
-	UPROPERTY(VisibleAnywhere, Category = Parameter)
-	AActor* ActorTarget;
+	UPROPERTY(EditAnywhere, Category = Input)
+	FPDTargetCompound OptTargets;	
 	
 	/** Result of the candidates search request (Input) */
 	UPROPERTY(VisibleAnywhere, Category = "Data")

@@ -59,7 +59,11 @@ public:
 
 	UFUNCTION(BlueprintNativeEvent, BlueprintCallable)
 	void ActionClearSelection(const FInputActionValue& Value);
-	virtual void ActionClearSelection_Implementation(const FInputActionValue& Value) {};	
+	virtual void ActionClearSelection_Implementation(const FInputActionValue& Value) {};
+
+	UFUNCTION(BlueprintNativeEvent, BlueprintCallable)
+	void ActionMoveSelection(const FInputActionValue& Value);
+	virtual void ActionMoveSelection_Implementation(const FInputActionValue& Value) {};	
 public:
 };
 

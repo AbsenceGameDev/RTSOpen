@@ -1,6 +1,7 @@
 /* @author: Ario Amin @ Permafrost Development. @copyright: Full BSL(1.1) License included at bottom of the file  */
 
 #include "Core/PD_HUD.h"
+#include "Engine/Canvas.h"
 #include "Actors/RTSOController.h"
 
 void APD_HUD::DrawHUD()
@@ -16,9 +17,8 @@ void APD_HUD::DrawHUD()
 	const float Width = DeltaMarquee.X;
 	const float Height = DeltaMarquee.Y;
 	
-	DrawRect(FLinearColor(.4, .4, .4, .3), RTSOController->GetStartMousePositionMarquee().X, RTSOController->GetStartMousePositionMarquee().Y, Width, Height);
+	DrawRect(FLinearColor(.4, .4, .4, .42), RTSOController->GetStartMousePositionMarquee().X, RTSOController->GetStartMousePositionMarquee().Y, Width, Height);
 	
-
 	//
 	// Debug
 	// DrawRect(FLinearColor::Black, RTSOController->GetStartMousePositionMarquee().X, RTSOController->GetStartMousePositionMarquee().Y, Width, Height);

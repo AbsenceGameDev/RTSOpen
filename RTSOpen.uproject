@@ -97,10 +97,6 @@
 			]
 		},
 		{
-			"Name": "TraceUtilities",
-			"Enabled": false
-		},
-		{
 			"Name": "ControlRigSpline",
 			"Enabled": false
 		},
@@ -190,6 +186,26 @@
 		},
 		{
 			"Name": "GameplayStateTree",
+			"Enabled": true
+		},
+		{
+			"Name": "SlateInsights",
+			"Enabled": true
+		},
+		{
+			"Name": "RenderGraphInsights",
+			"Enabled": true
+		},
+		{
+			"Name": "NetworkPredictionInsights",
+			"Enabled": true
+		},
+		{
+			"Name": "TraceSourceFilters",
+			"Enabled": true
+		},
+		{
+			"Name": "GameplayInsights",
 			"Enabled": true
 		}
 	],

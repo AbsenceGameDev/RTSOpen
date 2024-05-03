@@ -10,6 +10,8 @@
 #include "MassSignalProcessorBase.h"
 #include "PDMassProcessors.generated.h"
 
+struct FMassVelocityFragment;
+struct FPDMFragment_RTSEntityBase;
 class UMassCrowdRepresentationSubsystem;
 struct FMassMoveTargetFragment;
 struct FPDMFragment_EntityAnimation;
@@ -26,6 +28,15 @@ virtual void Initialize(UObject& Owner) override;
 virtual void Execute(FMassEntityManager& EntityManager, FMassExecutionContext& Context) override {}; \
 virtual void ConfigureQueries() override {}; \
 virtual void Initialize(UObject& Owner) override {};
+
+template<typename TFrag>
+using TConstFragment = const TConstArrayView<TFrag>;
+template<typename TFrag>
+using TMutFragment = const TArrayView<TFrag>;
+template<typename TFrag>
+using TSharedFragment = const TFrag&;
+template<typename TFrag>
+using TMutSharedFragment = TFrag&;
 
 /**
  * @brief Moves the entities around to a given target, tasks have the responsibility to create actual multi-point paths
@@ -66,17 +77,34 @@ protected:
  * @brief Setup ISMs, animation, and textures for RTS Entities
  */
 UCLASS()
-class UPDMProcessor_EntityAnimations : public UMassProcessor
+class UPDMProcessor_EntityCosmetics : public UMassProcessor
 {
 	GENERATED_BODY()
 
 public:
-	UPDMProcessor_EntityAnimations();
+	UPDMProcessor_EntityCosmetics();
 
 	DECLARE_PROCESSOR_BODY
 	
+	static bool ProcessVertexAnimation(
+		int32 EntityIdx,
+		TConstFragment<FMassRepresentationLODFragment>& RepresentationLODFragments,
+		const FMassRepresentationFragment& Rep,
+		FPDMFragment_RTSEntityBase* RTSEntityFragment,
+		FPDMFragment_EntityAnimation* AnimationData,
+		const FMassVelocityFragment& Velocity,
+		const FMassInstancedStaticMeshInfoArrayView& MeshInfo,
+		const TArrayView<FMassInstancedStaticMeshInfo>& MeshInfoInnerArray,
+		const UPDMProcessor_EntityCosmetics* Self);
+	static bool ProcessMaterialInstanceData(
+		const FMassEntityHandle& EntityHandle,
+		const FMassRepresentationLODFragment& RepLOD,
+		const FMassRepresentationFragment& Rep,
+		FMassInstancedStaticMeshInfo& ISMInfo,
+		FPDMFragment_RTSEntityBase* RTSEntityFragment);
+
 	void UpdateISMVertexAnimation(FMassInstancedStaticMeshInfo& ISMInfo, FPDMFragment_EntityAnimation& AnimationData,
-								  float LODSignificance, float PrevLODSignificance, int32 NumFloatsToPad) const;
+	                              float LODSignificance, float PrevLODSignificance, int32 NumFloatsToPad) const;
 
 protected:
 	FMassEntityQuery EntityQuery;

@@ -33,8 +33,11 @@
 #include "Chaos/DebugDrawQueue.h"
 
 // Navigation
+#include "MassCrowdRepresentationSubsystem.h"
+#include "MassRepresentationFragments.h"
 #include "NavigationPath.h"
 #include "NavigationSystem.h"
+#include "AI/Mass/PDMassFragments.h"
 
 #include "Kismet/KismetMathLibrary.h"
 #include "Kismet/KismetSystemLibrary.h"
@@ -49,13 +52,15 @@ void AGodHandPawn::Tick(float DeltaTime)
 	
 	TrackMovement(DeltaTime);
 	HoverTick(DeltaTime);
+	RotationTick(DeltaTime);
 
 	if (bUpdatePathOnTick) { RefreshPathingEffects(); }
+	
 }
 
 void AGodHandPawn::TrackMovement(float DeltaTime)
 {
-	ARTSOController* PC = GetController<ARTSOController>();
+	const ARTSOController* PC = GetController<ARTSOController>();
 	if (PC == nullptr) { return; }
 		
 	// // Update collision and mesh placement
@@ -73,7 +78,7 @@ void AGodHandPawn::TrackMovement(float DeltaTime)
 
 void AGodHandPawn::TrackUnitMovement()
 {
-	ARTSOController* PC = GetController<ARTSOController>();
+	const ARTSOController* PC = GetController<ARTSOController>();
 	if (PC == nullptr) { return; }
 	
 	FVector2D v2Dummy{};
@@ -106,6 +111,41 @@ void AGodHandPawn::HoverTick(const float DeltaTime)
 
 	// Dont overwrite in case we are dragging a path from this
 	if (bUpdatePathOnTick == false ) { SelectedWorkerUnitHandle = ClosestMeshInstance; }
+}
+
+// @todo force it to cardinal directions, move to timer 
+void AGodHandPawn::RotationTick(float& DeltaTime)
+{
+	if (CurrentRotationLeft <= 0.0) { return; }
+
+	const int32 Direction = RotationDeque.First();
+
+	DeltaTime *= RotationRateModifier;
+
+	const double DeltaYaw = FMath::Clamp(DeltaTime / (CurrentRotationLeft / 90.0), 0.0, 2.0);
+	CurrentRotationLeft -= DeltaYaw;
+	
+	if (CurrentRotationLeft < 0)
+	{
+		RotationDeque.PopFirst();
+		
+		FRotator FinalRotation = GetActorRotation();
+		FinalRotation.Yaw = TargetYaw;
+		SetActorRotation(FinalRotation);
+		
+		TargetYaw =
+			RotationDeque.IsEmpty() ? TargetYaw
+				: static_cast<int32>(GetActorRotation().Yaw + 0.5 + (90.0 * RotationDeque.First()));
+
+		CurrentRotationLeft = RotationDeque.IsEmpty() ? 0.0 : 90.0;
+		bIsInRotation = false;
+
+		return;
+	}
+	
+	FRotator NewRotation = GetActorRotation();
+	NewRotation.Yaw += DeltaYaw * Direction;
+	SetActorRotation(NewRotation);
 }
 
 void AGodHandPawn::UpdateMagnification()
@@ -168,27 +208,15 @@ void AGodHandPawn::UpdateCursorLocation(float DeltaTime)
 		const double CursorScalarFinalXY = CursorTargetScalar + CursorScalarOffset;
 		const FVector ScalarXY = FVector{CursorScalarFinalXY, CursorScalarFinalXY, 1.0};
 
-		FTransform WorldSpace = CursorMesh->GetComponentTransform();
+		const FTransform WorldSpace = CursorMesh->GetComponentTransform();
 		//CursorMesh->GetInstanceTransform(0, WorldSpace,true);
 		const FQuat OldQuat = WorldSpace.GetRotation();
 		TargetTransform = FTransform{OldQuat, Origin, ScalarXY };
 	}
 
-	FTransform WorldSpace =  CursorMesh->GetComponentTransform();	
-	// CursorMesh->GetInstanceTransform(0, WorldSpace,true);	
+	const FTransform WorldSpace =  CursorMesh->GetComponentTransform();	
 	const FTransform InterpTransform = UKismetMathLibrary::TInterpTo(WorldSpace, TargetTransform, DeltaTime, SelectionRescaleSpeed);
-	// CursorMesh->UpdateInstanceTransform(0, InterpTransform, true); // SetWorldTransform(InterpTransform);
 	CursorMesh->SetWorldTransform(InterpTransform);
-
-
-	// ParallelFor( MarqueeSelectedHandles.Num(), [&](int32 Idx)
-	// { 
-	// 	if (MarqueeSelectedHandles.IsValidIndex(Idx) == false) { return; }	
-	//
-	// 	if (EntityManager->IsEntityValid(MarqueeSelectedHandles[Idx]) == false) { return; }	
-	//
-	// });
-	
 }
 
 
@@ -234,7 +262,27 @@ void AGodHandPawn::ActionMagnify_Implementation(const FInputActionValue& Value)
 void AGodHandPawn::ActionRotate_Implementation(const FInputActionValue& Value)
 {
 	const float ImmutableMoveInput = Value.Get<float>(); // rotate yaw
-	AddActorLocalRotation(FRotator{0,ImmutableMoveInput,0});
+	const int8 Direction = ImmutableMoveInput > 0 ? 1 : -1;
+
+
+	if (RotationDeque.Num() > 1 && (RotationDeque.Last() + Direction) == 0)
+	{
+		RotationDeque.PopLast();
+	}
+	else
+	{
+		// Truncated, should stay at 90 degree increments this way
+		TargetYaw = static_cast<int32>(GetActorRotation().Yaw + 0.5 + (90.0 * Direction));
+		RotationDeque.EmplaceLast(Direction);
+	}
+
+	if (bIsInRotation == false)
+	{
+		CurrentRotationLeft = 90.0;
+	}
+
+
+	bIsInRotation = true;
 }
 
 void AGodHandPawn::ActionDragMove_Implementation(const FInputActionValue& Value)
@@ -337,7 +385,8 @@ void AGodHandPawn::ActionWorkerUnit_Completed_Implementation(const FInputActionV
 	const TArray<TObjectPtr<UInstancedStaticMeshComponent>>& ISMs = UPDRTSBaseSubsystem::GetMassISMs(GetWorld());
 	if (ISMs.IsEmpty() == false && Cast<UPDRTSBaseUnit>(ISMs[0]))
 	{
-		Cast<UPDRTSBaseUnit>(ISMs[0])->RequestAction(this, WorkerUnitActionTarget, AssociatedTags.GetByIndex(0), SelectedWorkerUnitHandle);
+		FPDTargetCompound OptTarget = {InvalidHandle, FMassInt16Vector(), WorkerUnitActionTarget};
+		Cast<UPDRTSBaseUnit>(ISMs[0])->RequestAction(this, OptTarget, AssociatedTags.GetByIndex(0), SelectedWorkerUnitHandle);
 	}
 	
 	if (NC_WorkerPath != nullptr) { NC_WorkerPath->Deactivate(); }
@@ -354,6 +403,66 @@ void AGodHandPawn::ActionBuildMode_Implementation(const FInputActionValue& Value
 
 void AGodHandPawn::ActionClearSelection_Implementation(const FInputActionValue& Value)
 {
+}
+
+// Todo:      I need to write a shared fragment which holds four values,
+// Todo cont: a location or target, a selection group index, and a boolean to tell if that shared fragment is valid for the selection index
+// Todo cont: This also requires some fomr of selection grouping and controls for it
+void AGodHandPawn::ActionMoveSelection_Implementation(const FInputActionValue& Value)
+{
+	FString BuildString = FString::Printf(TEXT("AGodHandPawn(%s)::ActionMoveSelection -- "), *GetName());
+	// const bool ImmutableMoveInput = Value.Get<bool>();
+	ARTSOController* PC = GetController<ARTSOController>();
+	if (PC == nullptr || PC->IsValidLowLevelFast() == false)
+	{
+		// BuildString += FString::Printf(TEXT("\n PC INVALID "));
+		// UE_LOG(LogTemp, Warning, TEXT("%s"), *BuildString);
+		return;
+	}
+	
+	const TArray<TObjectPtr<UInstancedStaticMeshComponent>>& ISMs = UPDRTSBaseSubsystem::GetMassISMs(GetWorld());
+	if (ISMs.IsEmpty() || Cast<UPDRTSBaseUnit>(ISMs[0]) == nullptr)
+	{
+		// BuildString += FString::Printf(TEXT("\n ISM INVALID "));
+		// UE_LOG(LogTemp, Warning, TEXT("%s"), *BuildString);
+		return;
+	}
+	
+	// refresh hovered actor as target
+	WorkerUnitActionTarget = HoveredActor;
+
+	// go to mouse location is no valid target
+	FMassInt16Vector SelectedLocation = InvalidLoc;
+
+	FGameplayTagContainer FallbackContainer{TAG_AI_Job_Idle};
+	if (WorkerUnitActionTarget == nullptr)
+	{
+		// BuildString += FString::Printf(TEXT("\n ACTOR (todo: OR ENTITY) TARGET INVALID, TRACING TO NEW STATIC LOCATION TARGET"));
+		// UE_LOG(LogTemp, Warning, TEXT("%s"), *BuildString);
+		
+		FVector2D ScreenCoordinates;
+		bool bFoundInputType;
+
+		FHitResult HitResult = PC->ProjectMouseToGroundPlane(PC->DedicatedLandscapeTraceChannel, ScreenCoordinates, bFoundInputType);
+		if (HitResult.bBlockingHit)
+		{
+			FallbackContainer = FGameplayTagContainer{TAG_AI_Job_WalkToTarget};
+			SelectedLocation.Set(HitResult.Location);
+		}
+	}
+	
+	//
+	// Params for entity AI
+	const FPDTargetCompound OptTarget = {InvalidHandle, SelectedLocation, WorkerUnitActionTarget};
+	const FGameplayTagContainer AssociatedTags = WorkerUnitActionTarget != nullptr && WorkerUnitActionTarget->Implements<UPDInteractInterface>()
+		? IPDInteractInterface::Execute_GetGenericTagContainer(WorkerUnitActionTarget)
+		: FallbackContainer; 
+	
+	for (const TTuple<int, FMassEntityHandle>& SelectedEntityIt : PC->GetMarqueeSelectionMap())
+	{
+		const FMassEntityHandle& SelectedHandle = SelectedEntityIt.Value;
+		Cast<UPDRTSBaseUnit>(ISMs[0])->RequestAction(this, OptTarget, AssociatedTags.GetByIndex(0), SelectedHandle);
+	}
 }
 
 //
@@ -442,7 +551,7 @@ const FTransform& AGodHandPawn::GetEntityTransform(const FMassEntityHandle& Hand
 
 FMassEntityHandle AGodHandPawn::FindClosestMeshInstance()
 {
-	ARTSOController* PC = GetController<ARTSOController>();
+	const ARTSOController* PC = GetController<ARTSOController>();
 	if (PC == nullptr || PC->IsValidLowLevelFast() == false) { return FMassEntityHandle{INDEX_NONE,INDEX_NONE}; }
 	
 	FHitResult HitResult;

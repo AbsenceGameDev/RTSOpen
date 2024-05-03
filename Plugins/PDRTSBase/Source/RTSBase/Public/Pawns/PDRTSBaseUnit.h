@@ -6,6 +6,7 @@
 #include "Components/InstancedStaticMeshComponent.h"
 #include "GameplayTagContainer.h"
 #include "MassEntityTypes.h"
+#include "AI/Mass/PDMassFragments.h"
 #include "GameFramework/Pawn.h"
 #include "Engine/StreamableManager.h"
 
@@ -35,7 +36,7 @@ public:
 	/** @brief Sets job to the requested job on the requested entity, if possible */
 	void RequestAction(
 		AActor* CallingActor,
-		AActor* NewTarget,
+		const FPDTargetCompound& OptTarget,
 		FGameplayTag RequestedJob,
 		FMassEntityHandle RequestedEntityHandle);
 
@@ -46,7 +47,7 @@ public:
 	void RequestActionMulti(
 		AActor* CallingActor,
 		const TArray<TTuple<
-		AActor*              /*NewTarget*/,
+		const FPDTargetCompound& /*OptTarget*/,
 		const FGameplayTag&  /*RequestedJob*/,
 		FMassEntityHandle    /*RequestedEntityHandle*/>>& EntityHandleCompounds);	
 
@@ -57,7 +58,7 @@ protected:
 	virtual void BeginPlay() override;
 
 	/** @brief Sets job to the requested job on the requested entity, only called when approved */
-	void AssignTask(FMassEntityHandle EntityHandle, const FGameplayTag& JobTag, AActor* NewTarget);
+	void AssignTask(FMassEntityHandle EntityHandle, const FGameplayTag& JobTag, const FPDTargetCompound& OptTarget);
 
 	/** @brief Sets job to the requested job on the requested entity, only called when approved */
 	void AssignTaskMulti(TArray<TTuple<FMassEntityHandle,const FGameplayTag&, AActor*>>& EntityHandleCompounds);
@@ -77,7 +78,7 @@ public:
 	TMap<int32 /*MassEntity index */, FGameplayTag> ActiveJobMap{};
 
 	UPROPERTY(VisibleInstanceOnly, BlueprintReadOnly)
-	TMap<int32 /*MassEntity index */, AActor*> ActiveTargetMap{};
+	TMap<int32 /*MassEntity index */, FPDTargetCompound> ActiveTargetMap{};
 
 	const FMassEntityManager* EntityManager = nullptr;
 	TSharedPtr<FStreamableHandle> LatestJob_AsyncLoadHandle;

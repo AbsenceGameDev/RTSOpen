@@ -32,20 +32,24 @@ EStateTreeRunStatus FPDMTask_MoveToTarget::EnterState(FStateTreeExecutionContext
 	FMassMoveTargetFragment& MoveTarget = Context.GetExternalData(MoveTargetHandle);
 	const FMassMovementParameters& MoveParameters = Context.GetExternalData(MoveParametersHandle);
 	const FTransformFragment& TransformFragment = Context.GetExternalData(TransformHandle);
-	const FMassEntityHandle& ItemHandle = InstanceData.EntityHandle;
-	const AActor* PotentialTargetActor = InstanceData.ActorTarget;
+	const FMassEntityHandle& ItemHandle = InstanceData.OptTargets.ActionTargetAsEntity;
+	const AActor* PotentialTargetActor = InstanceData.OptTargets.ActionTargetAsActor;
+	const FMassInt16Vector PotentialTargetLocation = InstanceData.OptTargets.ActionTargetAsLocation;
 	const UMassEntitySubsystem& EntitySubsystem = Context.GetExternalData(EntitySubsystemHandle);
-
+	
 	const bool bIsEntityValid = EntitySubsystem.GetEntityManager().IsEntityValid(ItemHandle);
-	if ((bIsEntityValid == false) && (PotentialTargetActor == nullptr || PotentialTargetActor->IsValidLowLevelFast() == false))
+	if ((bIsEntityValid == false)
+		&& (PotentialTargetActor == nullptr || PotentialTargetActor->IsValidLowLevelFast() == false)
+		&& (PotentialTargetLocation.Get().Equals(InvalidLoc.Get()) == false))
 	{
 		return EStateTreeRunStatus::Failed;
 	}
 
 	const FVector& StartLocation = TransformFragment.GetTransform().GetLocation();
-	const FVector& TargetLocation = bIsEntityValid
-		? EntitySubsystem.GetEntityManager().GetFragmentDataChecked<FTransformFragment>(ItemHandle).GetTransform().GetLocation()
-		: PotentialTargetActor->GetActorLocation();
+	const FVector& TargetLocation =
+		bIsEntityValid ? EntitySubsystem.GetEntityManager().GetFragmentDataChecked<FTransformFragment>(ItemHandle).GetTransform().GetLocation()
+		: PotentialTargetActor != nullptr ? PotentialTargetActor->GetActorLocation()
+		: PotentialTargetLocation.Get();
 
 	UNavigationPath* Navpath = UNavigationSystemV1::FindPathToLocationSynchronously(EntitySubsystem.GetWorld(), StartLocation, TargetLocation);
 	if (Navpath != nullptr && Navpath->PathPoints.IsEmpty() == false)
@@ -213,7 +217,7 @@ EStateTreeRunStatus FPDMTask_PlayAnimation::EnterState(FStateTreeExecutionContex
 	FInstanceDataType& InstanceData = Context.GetInstanceData(*this);
 	InstanceData.Time = 0; // Reset
 	
-	AnimationFragment.bOveriddenAnimation = true;
+	AnimationFragment.bOverriddenAnimation = true;
 	AnimationFragment.AnimPosition = 0;
 	AnimationFragment.AnimationStateIndex = InstanceData.AnimationIndex;
 	MoveTarget.CreateNewAction(EMassMovementAction::Animate, *Context.GetWorld());
@@ -239,7 +243,7 @@ EStateTreeRunStatus FPDMTask_PlayAnimation::Tick(FStateTreeExecutionContext& Con
 
 	if (Time >= Duration)
 	{
-		AnimationFragment.bOveriddenAnimation = false;
+		AnimationFragment.bOverriddenAnimation = false;
 		return EStateTreeRunStatus::Succeeded;
 	}
 

@@ -7,6 +7,7 @@
 #include "GameplayTagContainer.h"
 #include "InputActionValue.h"
 #include "MassEntityTypes.h"
+#include "Containers/Deque.h"
 #include "GameFramework/Pawn.h"
 #include "Interfaces/RTSOInputInterface.h"
 #include "GodHandPawn.generated.h"
@@ -27,6 +28,10 @@ public:
 
 	/** @brief */
 	virtual void Tick(float DeltaTime) override;
+
+	/** @brief */
+	void RotationTick(float& DeltaTime);
+	
 	/** @brief */
 	void TrackUnitMovement();
 	/** @brief */
@@ -106,6 +111,9 @@ public:
 	virtual void ActionBuildMode_Implementation(const FInputActionValue& Value) override;
 	/** @brief */
 	virtual void ActionClearSelection_Implementation(const FInputActionValue& Value) override;
+	/** @brief */
+	virtual void ActionMoveSelection_Implementation(const FInputActionValue& Value) override;	
+	
 	/* RTSO Input Interface - End */
 
 private:
@@ -196,6 +204,19 @@ public:
 	static inline const FVector InvalidVector{InvalidDistance};
 
 	const FMassEntityManager* EntityManager = nullptr; // Active entity manager
+	
+	// Rotation queue
+	// 1. Get if positive or negative,
+	// 2. Add Direction to queue
+	// 3. In tick: rotate +-90 degree in yaw with interpolation
+	// 4. If rotating direction Positive, then pressing positive again then negative, , final two should cancel eachother out
+	TDeque<int8> RotationDeque{};
+	double CurrentRotationLeft = 0.0;
+	double TargetYaw = 0.0;
+	bool bIsInRotation = false;
+	
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "RTS|Pawn|Cursor|State")
+	double RotationRateModifier = 10.0;
 };
 
 

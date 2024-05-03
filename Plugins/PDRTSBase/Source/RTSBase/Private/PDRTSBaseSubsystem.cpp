@@ -197,8 +197,6 @@ template struct TTagPrivateMember<ISMTag, &FMassInstancedStaticMeshInfo::Instanc
 const TArray<TObjectPtr<UInstancedStaticMeshComponent>> FailDummy{};
 const TArray<TObjectPtr<UInstancedStaticMeshComponent>>& UPDRTSBaseSubsystem::GetMassISMs(const UWorld* InWorld)
 {
-	UE_LOG(LogTemp, Warning, TEXT("UPDRTSBaseSubsystem::GetMassISMs"))
-
 	const UMassCrowdRepresentationSubsystem* RepresentationSubsystem = UWorld::GetSubsystem<UMassCrowdRepresentationSubsystem>(InWorld);
 	if (RepresentationSubsystem == nullptr)
 	{

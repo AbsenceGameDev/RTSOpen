@@ -10,6 +10,7 @@
 const FName UPDRTSBaseUnit::SlotGroup_Default = FName("DefaultGroup");
 const FName UPDRTSBaseUnit::BBKey_TargetRef = FName("Target");
 
+FPDTargetCompound EmptyCompound{};
 UPDRTSBaseUnit::UPDRTSBaseUnit(const FObjectInitializer& ObjectInitializer)
 	: Super(ObjectInitializer)
 {
@@ -23,15 +24,15 @@ TArray<int32> UPDRTSBaseUnit::GetInstancesOverlappingSphere(const FVector& Cente
 
 void UPDRTSBaseUnit::ResetState(FMassEntityHandle RequestedEntityHandle)
 {
-	AssignTask(RequestedEntityHandle, TAG_AI_Job_Idle, nullptr);
+	AssignTask(RequestedEntityHandle, TAG_AI_Job_Idle, EmptyCompound);
 }
 
-void UPDRTSBaseUnit::RequestAction(AActor* CallingActor, AActor* NewTarget, FGameplayTag RequestedJob, FMassEntityHandle RequestedEntityHandle)
+void UPDRTSBaseUnit::RequestAction(AActor* CallingActor, const FPDTargetCompound& OptTarget, FGameplayTag RequestedJob, FMassEntityHandle RequestedEntityHandle)
 {
-	if (NewTarget == nullptr) { return; }
+	if (OptTarget.IsValidCompound() == false) { return; }
 
 	InstigatorActor = CallingActor;
-	AssignTask(RequestedEntityHandle, RequestedJob, NewTarget);
+	AssignTask(RequestedEntityHandle, RequestedJob, OptTarget);
 
 	// @todo Call GM and update unit save data here?
 }
@@ -39,14 +40,14 @@ void UPDRTSBaseUnit::RequestAction(AActor* CallingActor, AActor* NewTarget, FGam
 void UPDRTSBaseUnit::RequestActionMulti(
 	AActor* CallingActor,
 	const TArray<TTuple<
-	AActor*             /*NewTarget*/,
+	const FPDTargetCompound& /*OptTarget*/,
 	const FGameplayTag& /*RequestedJob*/,
 	FMassEntityHandle   /*RequestedEntityHandle*/>>& EntityHandleCompounds)
 {
 	InstigatorActor = CallingActor; // @todo track instigator per entity, or atleast group entities by instigators
 	// Dispatch to different threads if it proves costly, 
 	for (const TTuple<
-		AActor*             /*NewTarget*/,
+		const FPDTargetCompound& /*OptTarget*/,
 		const FGameplayTag& /*RequestedJob*/,
 		FMassEntityHandle   /*RequestedEntityHandle*/>& EntityHandle : EntityHandleCompounds)
 	{
@@ -63,11 +64,11 @@ void UPDRTSBaseUnit::BeginPlay()
 	
 	//
 	// Switch job?
-	AssignTask(FMassEntityHandle{0,0}, TAG_AI_Job_Idle, nullptr);
+	AssignTask(FMassEntityHandle{0,0}, TAG_AI_Job_Idle, EmptyCompound);
 	// AddActorWorldOffset(FVector{0.0, 0.0, -Capsule->GetScaledCapsuleHalfHeight()});
 }
 
-void UPDRTSBaseUnit::AssignTask(FMassEntityHandle EntityHandle, const FGameplayTag& JobTag, AActor* NewTarget)
+void UPDRTSBaseUnit::AssignTask(FMassEntityHandle EntityHandle, const FGameplayTag& JobTag, const FPDTargetCompound& OptTarget)
 {
 	UPDRTSBaseSubsystem* RTSSubsystem = GEngine->GetEngineSubsystem<UPDRTSBaseSubsystem>();
 	if (RTSSubsystem == nullptr) { return; }
@@ -75,22 +76,22 @@ void UPDRTSBaseUnit::AssignTask(FMassEntityHandle EntityHandle, const FGameplayT
 	const FPDWorkUnitDatum* WorkUnitDatum = RTSSubsystem->GetWorkEntry(JobTag);
 	if (WorkUnitDatum == nullptr)
 	{
-		UE_LOG(LogTemp, Warning, TEXT("UPDRTSBaseUnit::AssignTask - NO WORKUNITDATUM"));
+		UE_LOG(LogTemp, Verbose, TEXT("UPDRTSBaseUnit::AssignTask(Ent:%i) - NO WORKUNITDATUM"), EntityHandle.SerialNumber);
 		return;
 	}
 
 	if (EntityManager->IsEntityValid(EntityHandle) == false) { return; }
-
-	UE_LOG(LogTemp, Warning, TEXT("UPDRTSBaseUnit::AssignTask - Updating Tasks and ActionFrgment"))
 	
 	ActiveJobMap.FindOrAdd(EntityHandle.Index) = JobTag;
-	ActiveTargetMap.FindOrAdd(EntityHandle.Index) = NewTarget;
+	ActiveTargetMap.FindOrAdd(EntityHandle.Index) = OptTarget;
 	
 	// For our purposes action fragment should never be nullptr in case the handle itself is valid
 	check(EntityManager->GetFragmentDataPtr<FPDMFragment_Action>(EntityHandle) != nullptr);
 	FPDMFragment_Action* EntityAction = EntityManager->GetFragmentDataPtr<FPDMFragment_Action>(EntityHandle);
 	EntityAction->ActionTag = JobTag;
-	EntityAction->ActionTargetAsActor = NewTarget;
+	EntityAction->OptTargets = OptTarget;
+	// EntityAction->Reward;
+	// EntityAction->RewardAmount;
 }
 
 void UPDRTSBaseUnit::AssignTaskMulti(TArray<TTuple<FMassEntityHandle,const FGameplayTag&, AActor*>>& EntityHandleCompounds)
@@ -100,7 +101,8 @@ void UPDRTSBaseUnit::AssignTaskMulti(TArray<TTuple<FMassEntityHandle,const FGame
 	// Dispatch to different threads if it proves costly, 
 	for (const TTuple<FMassEntityHandle,const FGameplayTag&, AActor*>& EntityHandle : EntityHandleCompounds)
 	{
-		AssignTask(EntityHandle.Get<0>(), EntityHandle.Get<1>(), EntityHandle.Get<2>());
+		const FPDTargetCompound OptTarget{EntityHandle.Get<0>(), FMassInt16Vector(), EntityHandle.Get<2>()};
+		AssignTask(EntityHandle.Get<0>(), EntityHandle.Get<1>(), OptTarget);
 	}
 }
 

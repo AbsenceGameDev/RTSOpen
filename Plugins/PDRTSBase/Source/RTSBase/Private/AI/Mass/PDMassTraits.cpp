@@ -63,8 +63,7 @@ UPDCrowdTrait::UPDCrowdTrait()
 	LODParams.FilterTag = FMassCrowdTag::StaticStruct();
 }
 
-void UPDCrowdTrait::BuildTemplate(FMassEntityTemplateBuildContext& BuildContext,
-	const UWorld& World) const
+void UPDCrowdTrait::BuildTemplate(FMassEntityTemplateBuildContext& BuildContext, const UWorld& World) const
 {
 	Super::BuildTemplate(BuildContext, World);
 

@@ -38,16 +38,6 @@ TAutoConsoleVariable<bool> UPDOctreeProcessor::CVarDrawCells(
 	TEXT("Octree.DebugCells"), false,
 	TEXT("Enables debug drawing for the active worlds octree."));
 
-// using Const = const TConstArrayView<FTransformFragment>;
-
-template<typename TFrag>
-using TConstFragment = const TConstArrayView<TFrag>;
-template<typename TFrag>
-using TMutFragment = const TArrayView<TFrag>;
-template<typename TFrag>
-using TSharedFragment = const TFrag&;
-template<typename TFrag>
-using TMutSharedFragment = TFrag&;
 
 #define CONSTVIEW(Context, FFragment) Context.GetFragmentView<FFragment>()
 #define MUTVIEW(Context, FFragment) Context.GetMutableFragmentView<FFragment>()
@@ -95,21 +85,21 @@ void UPDMProcessor_InitializeEntities::Execute(FMassEntityManager& EntityManager
 	}));
 }
 
-UPDMProcessor_EntityAnimations::UPDMProcessor_EntityAnimations()
+UPDMProcessor_EntityCosmetics::UPDMProcessor_EntityCosmetics()
 {
 	bAutoRegisterWithProcessingPhases = true;
 	ExecutionFlags = static_cast<int32>(EProcessorExecutionFlags::All);
 	ExecutionOrder.ExecuteAfter.Add(UE::Mass::ProcessorGroupNames::Representation);
 }
 
-void UPDMProcessor_EntityAnimations::Initialize(UObject& Owner)
+void UPDMProcessor_EntityCosmetics::Initialize(UObject& Owner)
 {
 	// @todo replace with crowd subsystem
 	Super::Initialize(Owner);
 	RepresentationSubsystem = UWorld::GetSubsystem<UMassCrowdRepresentationSubsystem>(Owner.GetWorld());
 }
 
-void UPDMProcessor_EntityAnimations::ConfigureQueries()
+void UPDMProcessor_EntityCosmetics::ConfigureQueries()
 {
 	// PDM requirements
 	EntityQuery.AddTagRequirement<FPDMTag_RTSEntity>(EMassFragmentPresence::All);
@@ -128,112 +118,245 @@ void UPDMProcessor_EntityAnimations::ConfigureQueries()
 	EntityQuery.RegisterWithProcessor(*this);
 }
 
+bool UPDMProcessor_EntityCosmetics::ProcessVertexAnimation(
+	int32 EntityIdx,
+	TConstFragment<FMassRepresentationLODFragment>& RepresentationLODFragments,
+	const FMassRepresentationFragment& Rep,
+	FPDMFragment_RTSEntityBase* RTSEntityFragment,
+	FPDMFragment_EntityAnimation* AnimationData,
+	const FMassVelocityFragment& Velocity,
+	const FMassInstancedStaticMeshInfoArrayView& MeshInfo,
+	const TArrayView<FMassInstancedStaticMeshInfo>& MeshInfoInnerArray,
+	const UPDMProcessor_EntityCosmetics* Self)
+{
+	if (RTSEntityFragment == nullptr || AnimationData == nullptr) { return false; }
+	
+	if (RTSEntityFragment->MeshSkinIdx == -1) { RTSEntityFragment->MeshSkinIdx = FMath::RandRange(0.f,3.f); }
+
+	// todo, find a way to iterate and update animations based on current action state. can also be used to update other ISM things
+	if (Rep.CurrentRepresentation != EMassRepresentationType::StaticMeshInstance) { return false; }
+	
+	// 0-4 is anim data
+	const float PrevPlayRate = AnimationData->PlayRate;
+	const float GlobalTime = Self->GetWorld()->GetTimeSeconds();
+		
+	const float SpeedSq = Velocity.Value.SizeSquared();
+	constexpr float IdleLimit     = 25. * 25.;
+	constexpr float WalkStart     = 250. * 250.;
+	constexpr float JogStart      = 500. * 500.;
+	constexpr float SprintStart   = 700. * 700.; 
+	if (LIKELY(AnimationData->bOverriddenAnimation == false))
+	{
+		EPDVertexAnimSelector AnimSelectionIndex = EPDVertexAnimSelector::VertexIdle;
+		if (RTSEntityFragment->bAction)
+		{
+			AnimSelectionIndex = EPDVertexAnimSelector::VertexAction;
+		}				
+		else if (SpeedSq <= IdleLimit)
+		{
+			AnimSelectionIndex = EPDVertexAnimSelector::VertexIdle;
+			
+			AnimationData->PlayRate = FMath::Clamp(FMath::Sqrt(SpeedSq), 0.6f, 2.0f);
+		}
+		else if (SpeedSq <= WalkStart)
+		{
+			AnimSelectionIndex = EPDVertexAnimSelector::VertexSlowWalk;
+			
+			AnimationData->PlayRate = FMath::Clamp(FMath::Sqrt(SpeedSq), 0.6f, 2.0f);
+		}
+		else if (SpeedSq <= JogStart)
+		{
+			AnimSelectionIndex = EPDVertexAnimSelector::VertexWalk;
+			
+			AnimationData->PlayRate = FMath::Clamp(FMath::Sqrt(SpeedSq), 0.6f, 2.0f);
+		}
+		else if (SpeedSq <= SprintStart)
+		{
+			AnimSelectionIndex = EPDVertexAnimSelector::VertexJog;
+			
+			AnimationData->PlayRate = FMath::Clamp(FMath::Sqrt(SprintStart / SpeedSq), 0.6f, 2.0f);
+		} else if (SpeedSq > SprintStart)
+		{
+			AnimSelectionIndex = EPDVertexAnimSelector::VertexSprint;
+			
+			AnimationData->PlayRate = FMath::Clamp(FMath::Sqrt(SpeedSq / SprintStart), 0.6f, 2.0f);
+		}
+			
+		AnimationData->AnimationStateIndex = AnimSelectionIndex;
+		AnimationData->InWorldStartTime = GlobalTime - PrevPlayRate * (GlobalTime - AnimationData->InWorldStartTime) / AnimationData->PlayRate;
+	}
+	else
+	{
+		// Animation processing taken over briefly by task
+		AnimationData->PlayRate = 1.f;
+		AnimationData->InWorldStartTime = GlobalTime - PrevPlayRate * (GlobalTime - AnimationData->InWorldStartTime) / AnimationData->PlayRate;
+	}
+
+	// ensuring that MeshInfo has valid data, problematically the actual array being accessed by the [] operator is in private access
+	// and thus we can't actually bounds check it beforehand directly, at-least that would have been the case if we didn't have this in the standard https://eel.is/c++draft/temp.friend 
+	if (MeshInfoInnerArray.IsValidIndex(Rep.StaticMeshDescIndex) == false) { return false; }
+	const FMassRepresentationLODFragment& RepLOD = RepresentationLODFragments.IsValidIndex(EntityIdx) ? RepresentationLODFragments[EntityIdx] : FMassRepresentationLODFragment();
+			
+	FMassInstancedStaticMeshInfo& ISMInfo = MeshInfo[Rep.StaticMeshDescIndex];
+	Self->UpdateISMVertexAnimation(ISMInfo, *AnimationData, RepLOD.LODSignificance, Rep.PrevLODSignificance, 0);
+	ISMInfo.AddBatchedCustomData<float>(RTSEntityFragment->MeshSkinIdx, RepLOD.LODSignificance, Rep.PrevLODSignificance, 4);
+
+	return true;
+}
+
+bool UPDMProcessor_EntityCosmetics::ProcessMaterialInstanceData(
+	const FMassEntityHandle& EntityHandle,
+	const FMassRepresentationLODFragment& RepLOD,
+	const FMassRepresentationFragment& Rep,
+	FMassInstancedStaticMeshInfo& ISMInfo,
+	FPDMFragment_RTSEntityBase* RTSEntityFragment)
+{
+	// if (FMassLODSignificanceRange* Range = GetLODSignificanceRange(LODSignificance))
+	// {
+	// 	Range->AddBatchedTransform(InstanceId, Transform, PrevTransform, TArray<uint32>());
+	// 	if(PrevLODSignificance >= 0.0f)
+	// 	{
+	// 		FMassLODSignificanceRange* PrevRange = GetLODSignificanceRange(PrevLODSignificance);
+	// 		if (ensureMsgf(PrevRange, TEXT("Couldn't find a valid LODSignificanceRange for PrevLODSignificance %f"), PrevLODSignificance)
+	// 			&& PrevRange != Range)
+	// 		{
+	// 			PrevRange->AddBatchedTransform(InstanceId, Transform, PrevTransform, Range->StaticMeshRefs);
+	// 		}
+	// 	}
+	// }
+
+	
+	const FMassLODSignificanceRange* Range = ISMInfo.GetLODSignificanceRange(Rep.PrevLODSignificance);
+	if (Range == nullptr)
+	{
+		UE_LOG(LogTemp, Warning, TEXT("UPDMProcessor_EntityCosmetics::ProcessMaterialInstanceData - Range INVALID"))
+		return false;
+	}
+
+	if (Range->ISMCSharedDataPtr == nullptr) 
+	{
+		UE_LOG(LogTemp, Warning, TEXT("UPDMProcessor_EntityCosmetics::ProcessMaterialInstanceData - RangeData INVALID"))
+		return false;
+	}
+
+	const int32 EntityHashID = GetTypeHash(EntityHandle);
+	FMassISMCSharedData* FirstFoundInstance = nullptr;
+	for (const FMassStaticMeshInstanceVisualizationMeshDesc& Mesh : ISMInfo.GetDesc().Meshes)
+	{
+		const uint32 MeshDescHash = GetTypeHash(Mesh);
+		FMassISMCSharedData* Instance = Range->ISMCSharedDataPtr->Find(MeshDescHash);
+		if (Instance == nullptr || Instance->GetISMComponent() == nullptr || Instance->GetISMComponent()->IsValidInstance(EntityHashID) == false)
+		{
+			continue;
+		}
+
+		// if (Instance->GetISMComponent()->IsValidInstance(EntityHashID))
+		// {
+		// 	UE_LOG(LogTemp, Warning, TEXT("UPDMProcessor_EntityCosmetics::ProcessMaterialInstanceData - Valid Entity"))
+		// }
+		// else
+		// {
+		// 	// UE_LOG(LogTemp, Warning, TEXT("UPDMProcessor_EntityCosmetics::ProcessMaterialInstanceData - NOT VALID Entity"))
+		// 	continue;
+		// }
+		
+		FirstFoundInstance = Instance;
+		break;
+	}
+
+	if (FirstFoundInstance == nullptr)
+	{
+		// UE_LOG(LogTemp, Warning, TEXT("UPDMProcessor_EntityCosmetics::ProcessMaterialInstanceData - Found no valid ISM info"))
+		return false;
+	}
+	
+	double OpacityModifier = 0;
+	double DilationModifier = 0;
+	bool bLog = false;
+	switch (RTSEntityFragment->SelectionState)
+	{
+	case EPDEntitySelectionState::ENTITY_SELECTED:
+		if (RTSEntityFragment->bHasClearedSelection)
+		{
+			bLog = true;
+
+			RTSEntityFragment->bHasClearedSelection = false;
+			OpacityModifier  = 0.0;
+			DilationModifier = 1.0;
+			FirstFoundInstance->GetISMComponent()->SetCustomDataValue(EntityHashID,2, OpacityModifier);
+			FirstFoundInstance->GetISMComponent()->SetCustomDataValue(EntityHashID,3, DilationModifier);
+
+			return true;
+		}
+		break;
+	case EPDEntitySelectionState::ENTITY_NOTSELECTED:
+		// UE_LOG(LogTemp, Warning, TEXT("UPDMProcessor_EntityCosmetics::ProcessMaterialInstanceData - EPDEntitySelectionState::ENTITY_NOTSELECTED"))
+		if (RTSEntityFragment->bHasClearedSelection == false)
+		{
+			bLog = true;
+
+			RTSEntityFragment->bHasClearedSelection = true;
+			OpacityModifier  = 1.0;
+			DilationModifier = 0.0;
+			FirstFoundInstance->GetISMComponent()->SetCustomDataValue(EntityHashID,2, OpacityModifier);
+			FirstFoundInstance->GetISMComponent()->SetCustomDataValue(EntityHashID,3, DilationModifier);					
+		}
+		break;
+	case EPDEntitySelectionState::ENTITY_UNSET:
+		// UE_LOG(LogTemp, Warning, TEXT("UPDMProcessor_EntityCosmetics::ProcessMaterialInstanceData - EPDEntitySelectionState::ENTITY_UNSET"))
+
+		break;
+	}
+	
+	if (bLog && FirstFoundInstance->GetISMComponent()->IsValidInstance(EntityHashID))
+	{
+		UE_LOG(LogTemp, Warning, TEXT("UPDMProcessor_EntityCosmetics::ProcessMaterialInstanceData - VALID INSTANCE(%i)"), EntityHashID)
+	}
+	else if (bLog)
+	{
+		UE_LOG(LogTemp, Warning, TEXT("UPDMProcessor_EntityCosmetics::ProcessMaterialInstanceData - INVALID INSTANCE(%i)"), EntityHashID)
+	}
+	
+	return true;	
+}
+
 // Tag private member for safe access, usually avoid this
 // BUT: The amount of work fetching the engine source just to make a tiny change in FMassInstancedStaticMeshInfoArrayView would not be worth it,
 // this is portable and allowed by ISO so deal with it
 using MassISMArrayTagType = TAccessorTypeHandler<FMassInstancedStaticMeshInfoArrayView, TArrayView<FMassInstancedStaticMeshInfo>>; 
 template struct TTagPrivateMember<MassISMArrayTagType, &FMassInstancedStaticMeshInfoArrayView::InstancedStaticMeshInfos>;
-
-void UPDMProcessor_EntityAnimations::Execute(FMassEntityManager& EntityManager, FMassExecutionContext& Context)
+void UPDMProcessor_EntityCosmetics::Execute(FMassEntityManager& EntityManager, FMassExecutionContext& Context)
 {
-	EntityQuery.ForEachEntityChunk(EntityManager, Context, [this](FMassExecutionContext& Context)
+	EntityQuery.ForEachEntityChunk(EntityManager, Context, [&](FMassExecutionContext& InContext)
 	{
-		TConstFragment<FMassVelocityFragment> VelocityFragments = CONSTVIEW(Context, FMassVelocityFragment);
-		TConstFragment<FMassRepresentationLODFragment> RepresentationLODFragments = CONSTVIEW(Context, FMassRepresentationLODFragment);
-		TMutFragment<FMassRepresentationFragment> RepresentationFragments = MUTVIEW(Context, FMassRepresentationFragment);
-		TMutFragment<FPDMFragment_RTSEntityBase> RTSEntityFragments = MUTVIEW(Context, FPDMFragment_RTSEntityBase);
-		TMutFragment<FPDMFragment_EntityAnimation> EntityAnimationData = MUTVIEW(Context, FPDMFragment_EntityAnimation);
+		TConstFragment<FMassVelocityFragment> VelocityFragments = CONSTVIEW(InContext, FMassVelocityFragment);
+		TConstFragment<FMassRepresentationLODFragment> RepresentationLODFragments = CONSTVIEW(InContext, FMassRepresentationLODFragment);
+		TMutFragment<FMassRepresentationFragment> RepresentationFragments = MUTVIEW(InContext, FMassRepresentationFragment);
+		TMutFragment<FPDMFragment_RTSEntityBase> RTSEntityFragments = MUTVIEW(InContext, FPDMFragment_RTSEntityBase);
+		TMutFragment<FPDMFragment_EntityAnimation> EntityAnimationData = MUTVIEW(InContext, FPDMFragment_EntityAnimation);
 		
 		const FMassInstancedStaticMeshInfoArrayView MeshInfo = RepresentationSubsystem->GetMutableInstancedStaticMeshInfos();
 
 		// Access private member safely and legally according to ISO: https://eel.is/c++draft/temp.friend
 		const TArrayView<FMassInstancedStaticMeshInfo>& MeshInfoInnerArray = MeshInfo.*TPrivateAccessor<MassISMArrayTagType>::TypeValue;
 		
-		for (int32 EntityIndex = 0; EntityIndex < Context.GetNumEntities(); ++EntityIndex)
+		for (int32 EntityIdx = 0; EntityIdx < InContext.GetNumEntities(); ++EntityIdx)
 		{
-			const FMassVelocityFragment& Velocity          = VelocityFragments.IsValidIndex(EntityIndex)       ? VelocityFragments[EntityIndex]       : FMassVelocityFragment(); ;
-			const FMassRepresentationFragment& Rep         = RepresentationFragments.IsValidIndex(EntityIndex) ? RepresentationFragments[EntityIndex] : FMassRepresentationFragment();
-			FPDMFragment_RTSEntityBase* RTSEntityFragment  = RTSEntityFragments.IsValidIndex(EntityIndex)      ? &RTSEntityFragments[EntityIndex]     : nullptr;
-			FPDMFragment_EntityAnimation* AnimationData          = EntityAnimationData.IsValidIndex(EntityIndex)     ? &EntityAnimationData[EntityIndex]     : nullptr;
-
-			if (RTSEntityFragment == nullptr || AnimationData == nullptr) { continue; }
+			const FMassVelocityFragment& Velocity          = VelocityFragments.IsValidIndex(EntityIdx)       ? VelocityFragments[EntityIdx]       : FMassVelocityFragment(); ;
+			const FMassRepresentationFragment& Rep         = RepresentationFragments.IsValidIndex(EntityIdx) ? RepresentationFragments[EntityIdx] : FMassRepresentationFragment();
+			FPDMFragment_RTSEntityBase* RTSEntityFragment  = RTSEntityFragments.IsValidIndex(EntityIdx)      ? &RTSEntityFragments[EntityIdx]     : nullptr;
+			FPDMFragment_EntityAnimation* AnimationData    = EntityAnimationData.IsValidIndex(EntityIdx)     ? &EntityAnimationData[EntityIdx]     : nullptr;
 			
-			if (RTSEntityFragment->MeshSkinIdx == -1) { RTSEntityFragment->MeshSkinIdx = FMath::RandRange(0.f,3.f); }
+			const FMassRepresentationLODFragment& RepLOD = RepresentationLODFragments.IsValidIndex(EntityIdx) ? RepresentationLODFragments[EntityIdx] : FMassRepresentationLODFragment();
+			ProcessMaterialInstanceData(InContext.GetEntity(EntityIdx), RepLOD, Rep,MeshInfo[Rep.StaticMeshDescIndex], RTSEntityFragment);
+			ProcessVertexAnimation(EntityIdx, RepresentationLODFragments, Rep, RTSEntityFragment, AnimationData, Velocity, MeshInfo, MeshInfoInnerArray, this);
+
 			
-			// todo, find a way to iterate and update animations based on current action state. can also be used to update other ISM things
-			if (Rep.CurrentRepresentation != EMassRepresentationType::StaticMeshInstance) { continue; }
-
-			// 0-4 is anim data
-			const float PrevPlayRate = AnimationData->PlayRate;
-			const float GlobalTime = GetWorld()->GetTimeSeconds();
-			
-			const float SpeedSq = Velocity.Value.SizeSquared();
-			constexpr float IdleLimit     = 25. * 25.;
-			constexpr float WalkStart     = 250. * 250.;
-			constexpr float JogStart      = 500. * 500.;
-			constexpr float SprintStart   = 700. * 700.; 
-			if (LIKELY(AnimationData->bOveriddenAnimation == false))
-			{
-				EPDVertexAnimSelector AnimSelectionIndex = EPDVertexAnimSelector::VertexIdle;
-
-				if (RTSEntityFragment->bAction)
-				{
-					AnimSelectionIndex = EPDVertexAnimSelector::VertexAction;
-				}				
-				else if (SpeedSq <= IdleLimit)
-				{
-					AnimSelectionIndex = EPDVertexAnimSelector::VertexIdle;
-					
-					AnimationData->PlayRate = FMath::Clamp(FMath::Sqrt(SpeedSq), 0.6f, 2.0f);
-				}
-				else if (SpeedSq <= WalkStart)
-				{
-					AnimSelectionIndex = EPDVertexAnimSelector::VertexSlowWalk;
-					
-					AnimationData->PlayRate = FMath::Clamp(FMath::Sqrt(SpeedSq), 0.6f, 2.0f);
-				}
-				else if (SpeedSq <= JogStart)
-				{
-					AnimSelectionIndex = EPDVertexAnimSelector::VertexWalk;
-					
-					AnimationData->PlayRate = FMath::Clamp(FMath::Sqrt(SpeedSq), 0.6f, 2.0f);
-				}
-				else if (SpeedSq <= SprintStart)
-				{
-					AnimSelectionIndex = EPDVertexAnimSelector::VertexJog;
-					
-					AnimationData->PlayRate = FMath::Clamp(FMath::Sqrt(SprintStart / SpeedSq), 0.6f, 2.0f);
-				} else if (SpeedSq > SprintStart)
-				{
-					AnimSelectionIndex = EPDVertexAnimSelector::VertexSprint;
-					
-					AnimationData->PlayRate = FMath::Clamp(FMath::Sqrt(SpeedSq / SprintStart), 0.6f, 2.0f);
-				} 
-
-				
-				AnimationData->AnimationStateIndex = AnimSelectionIndex;
-				AnimationData->InWorldStartTime = GlobalTime - PrevPlayRate * (GlobalTime - AnimationData->InWorldStartTime) / AnimationData->PlayRate;
-			}
-			else
-			{
-				// Animation processing taken over briefly by task
-				AnimationData->PlayRate = 1.f;
-				AnimationData->InWorldStartTime = GlobalTime - PrevPlayRate * (GlobalTime - AnimationData->InWorldStartTime) / AnimationData->PlayRate;
-			}
-
-			// ensuring that MeshInfo has valid data, problematically the actual array being accessed by the [] operator is in private access
-			// and thus we can't actually bounds check it beforehand directly, at-least that would have been the case if we didn't have this in the standard https://eel.is/c++draft/temp.friend 
-			if (MeshInfoInnerArray.IsValidIndex(Rep.StaticMeshDescIndex) == false) { continue; }
-			const FMassRepresentationLODFragment& RepLOD = RepresentationLODFragments.IsValidIndex(EntityIndex) ? RepresentationLODFragments[EntityIndex] : FMassRepresentationLODFragment();
-			
-			FMassInstancedStaticMeshInfo& ISMInfo = MeshInfo[Rep.StaticMeshDescIndex];
-			UpdateISMVertexAnimation(ISMInfo, *AnimationData, RepLOD.LODSignificance, Rep.PrevLODSignificance, 0);
-			MeshInfo[Rep.StaticMeshDescIndex].AddBatchedCustomData<float>(RTSEntityFragment->MeshSkinIdx, RepLOD.LODSignificance, Rep.PrevLODSignificance, 4);
 		}
 	});
 }
 
-void UPDMProcessor_EntityAnimations::UpdateISMVertexAnimation(FMassInstancedStaticMeshInfo& ISMInfo, FPDMFragment_EntityAnimation& AnimationData, const float LODSignificance, const float PrevLODSignificance, const int32 NumFloatsToPad /*= 0*/) const
+void UPDMProcessor_EntityCosmetics::UpdateISMVertexAnimation(FMassInstancedStaticMeshInfo& ISMInfo, FPDMFragment_EntityAnimation& AnimationData, const float LODSignificance, const float PrevLODSignificance, const int32 NumFloatsToPad /*= 0*/) const
 {
 	const float DeltaTimeSinceStart = GetWorld()->GetTimeSeconds() - AnimationData.InWorldStartTime;
 	

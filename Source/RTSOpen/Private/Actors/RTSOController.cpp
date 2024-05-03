@@ -3,12 +3,18 @@
 
 #include "EnhancedInputComponent.h"
 #include "EnhancedInputSubsystems.h"
+#include "MassCrowdRepresentationSubsystem.h"
 #include "NativeGameplayTags.h"
 #include "PDRTSBaseSubsystem.h"
 #include "PDRTSCommon.h"
+#include "Actors/GodHandPawn.h"
+#include "AI/Mass/PDMassFragments.h"
 #include "AI/Mass/PDMassProcessors.h"
 #include "Chaos/DebugDrawQueue.h"
+#include "Components/InstancedStaticMeshComponent.h"
 #include "Kismet/KismetMathLibrary.h"
+#include "Misc/CString.h"
+
 
 ARTSOController::ARTSOController(const FObjectInitializer& ObjectInitializer)
 	: Super(ObjectInitializer), bIsDrawingMarquee(0)
@@ -42,7 +48,7 @@ void ARTSOController::SetupInputComponent()
 	if (AsEnhancedInput == nullptr) { return; }
 	AsEnhancedInput->BindAction(CtrlActionMove, ETriggerEvent::Triggered, this, &ARTSOController::ActionMove_Implementation);
 	AsEnhancedInput->BindAction(CtrlActionMagnify, ETriggerEvent::Triggered, this, &ARTSOController::ActionMagnify_Implementation);	
-	AsEnhancedInput->BindAction(CtrlActionRotate, ETriggerEvent::Triggered, this, &ARTSOController::ActionRotate_Implementation);
+	AsEnhancedInput->BindAction(CtrlActionRotate, ETriggerEvent::Started, this, &ARTSOController::ActionRotate_Implementation);
 	AsEnhancedInput->BindAction(CtrlActionDragMove, ETriggerEvent::Triggered, this, &ARTSOController::ActionDragMove_Implementation);	
 
 	AsEnhancedInput->BindAction(CtrlActionWorkerUnit, ETriggerEvent::Triggered, this, &ARTSOController::ActionWorkerUnit_Triggered_Implementation);	
@@ -50,6 +56,7 @@ void ARTSOController::SetupInputComponent()
 	AsEnhancedInput->BindAction(CtrlActionWorkerUnit, ETriggerEvent::Canceled, this, &ARTSOController::ActionWorkerUnit_Cancelled_Implementation);	
 	AsEnhancedInput->BindAction(CtrlActionWorkerUnit, ETriggerEvent::Completed, this, &ARTSOController::ActionWorkerUnit_Completed_Implementation);	
 	AsEnhancedInput->BindAction(CtrlActionClearSelection, ETriggerEvent::Triggered, this, &ARTSOController::ActionClearSelection_Implementation);	
+	AsEnhancedInput->BindAction(CtrlActionMoveSelection, ETriggerEvent::Triggered, this, &ARTSOController::ActionMoveSelection_Implementation);	
 
 	AsEnhancedInput->BindAction(CtrlActionBuildMode, ETriggerEvent::Triggered, this, &ARTSOController::ActionBuildMode_Implementation);		
 }
@@ -63,7 +70,7 @@ void ARTSOController::OverwriteMappingContextSettings(const FGameplayTag& Contex
 {
 	if (ContextTag.IsValid() == false)
 	{
-		const FString BuildString = FString::Printf(TEXT("AGodHandPawn(%s)::OverwriteMappingContext -- "), *GetName())
+		const FString BuildString = FString::Printf(TEXT("ARTSOController(%s)::OverwriteMappingContext -- "), *GetName())
 		+ FString::Printf(TEXT("\n Input tag was invalid. Skipping processing entry "));
 		UE_LOG(LogTemp, Warning, TEXT("%s"), *BuildString);
 		return;
@@ -84,7 +91,7 @@ void ARTSOController::ActivateMappingContext(const FGameplayTag& ContextTag)
 
 	if (MappingContexts.Contains(ContextTag) == false)
 	{
-		const FString BuildString = FString::Printf(TEXT("AGodHandPawn(%s)::AddMappingContext -- "), *GetName())
+		const FString BuildString = FString::Printf(TEXT("ARTSOController(%s)::AddMappingContext -- "), *GetName())
 		+ FString::Printf(TEXT("\n Failed to find a valid mapping context mapped to tag (%s). Skipping processing entry "), *ContextTag.GetTagName().ToString());
 		UE_LOG(LogTemp, Error, TEXT("%s"), *BuildString);
 		return;
@@ -106,7 +113,7 @@ void ARTSOController::DeactivateMappingContext(const FGameplayTag& ContextTag)
 
 	if (MappingContexts.Contains(ContextTag) == false)
 	{
-		const FString BuildString = FString::Printf(TEXT("AGodHandPawn(%s)::RemoveMappingContext -- "), *GetName())
+		const FString BuildString = FString::Printf(TEXT("ARTSOController(%s)::RemoveMappingContext -- "), *GetName())
 		+ FString::Printf(TEXT("\n Failed to find a valid mapping context mapped to tag (%s). Skipping processing entry "), *ContextTag.GetTagName().ToString());
 		UE_LOG(LogTemp, Error, TEXT("%s"), *BuildString);
 		return;
@@ -165,6 +172,7 @@ void ARTSOController::ActionClearSelection_Implementation(const FInputActionValu
 {
 	IRTSOInputInterface::ActionClearSelection_Implementation(Value);
 
+	OnSelectionChange(true);
 	MarqueeSelectedHandles.Empty();
 	TArray<int32> NoKeys{};
 	OnMarqueeSelectionUpdated(NoKeys);
@@ -173,6 +181,22 @@ void ARTSOController::ActionClearSelection_Implementation(const FInputActionValu
 	IRTSOInputInterface::Execute_ActionClearSelection(GetPawn(), Value);	
 }
 
+
+void ARTSOController::ActionMoveSelection_Implementation(const FInputActionValue& Value)
+{
+	if (MarqueeSelectedHandles.IsEmpty()
+		|| GetPawn() == nullptr
+		|| GetPawn()->GetClass()->ImplementsInterface(URTSOInputInterface::StaticClass()) == false)
+	{
+		const FString BuildString = FString::Printf(TEXT("ARTSOController(%s)::ActionMoveSelection -- "), *GetName())
+		+ FString::Printf(TEXT("\n MarqueeSelectedHandles.Num: %i, GetPawn(): %i"), MarqueeSelectedHandles.Num(), GetPawn() != nullptr);
+		UE_LOG(LogTemp, Warning, TEXT("%s"), *BuildString);
+		
+		return;
+	}
+	
+	IRTSOInputInterface::Execute_ActionMoveSelection(GetPawn(), Value);
+}
 
 //
 // Mouse projections and marquee selection, @todo possibly move to controller class
@@ -316,6 +340,70 @@ void ARTSOController::MarqueeSelection(EMarqueeSelectionEvent SelectionEvent)
 	}
 }
 
+void ARTSOController::DrawBoxAndTextChaos(const FVector BoundsCenter, FQuat Rotation, const FVector DebugExtent, const FString DebugBoxTitle, FColor LineColour)
+{
+#if CHAOS_DEBUG_DRAW
+	constexpr int32 SeedOffset = 0x00a7b95; // just some random number with little significance, used to offset value so a seed based on the same hex colour code
+	static int32 StaticShift = 0x0; // just some random number with little significance, used to offset value so a seed based on the same hex colour code
+	StaticShift = (StaticShift + 0x1) % 0x7;
+	
+	Chaos::FDebugDrawQueue::GetInstance()
+		.DrawDebugBox(
+			BoundsCenter,
+			DebugExtent,
+			Rotation,
+			LineColour,
+			false,
+			20,
+			0,
+			5.0
+		);
+	Chaos::FDebugDrawQueue::GetInstance()
+		.DrawDebugString(
+			BoundsCenter + FVector(0, 0, (DebugExtent.Z * 2)),
+			DebugBoxTitle,
+			nullptr,
+			FColor::MakeRandomSeededColor((LineColour.R < StaticShift) + (LineColour.G < StaticShift) + (LineColour.B < StaticShift) + (SeedOffset < StaticShift)),
+			20,
+			true,
+			2);
+
+#endif // CHAOS_DEBUG_DRAW
+}
+
+void ARTSOController::AdjustMarqueeHitResultsToMinimumHeight(FHitResult& StartHitResult, FHitResult& CenterHitResult, FHitResult& EndHitResult)
+{
+	const double TargetZ = FMath::Min3(StartHitResult.Location.Z, CenterHitResult.Location.Z, EndHitResult.Location.Z);
+	FVector StartHitDirection = (StartHitResult.Location - StartHitResult.TraceStart).GetSafeNormal();
+	FVector CenterHitDirection = (CenterHitResult.Location - CenterHitResult.TraceStart).GetSafeNormal();
+	FVector EndHitDirection = (EndHitResult.Location - EndHitResult.TraceStart).GetSafeNormal();
+
+	if (StartHitResult.Location.Z > TargetZ + SMALL_NUMBER)
+	{
+		const double ZPerDirection = StartHitDirection.Z;
+		const double ZToDecrease = StartHitResult.Location.Z - TargetZ;
+		const double DirectionIncrease = ZToDecrease / ZPerDirection;
+		
+		StartHitResult.Location = StartHitResult.Location + (StartHitDirection * DirectionIncrease);
+	}	
+	if (CenterHitResult.Location.Z > TargetZ + SMALL_NUMBER)
+	{
+		const double ZPerDirection = CenterHitDirection.Z;
+		const double ZToDecrease = CenterHitResult.Location.Z - TargetZ;
+		const double DirectionIncrease = ZToDecrease / ZPerDirection;
+		
+		CenterHitResult.Location = CenterHitResult.Location + (CenterHitDirection * DirectionIncrease);		
+	}	
+	if (EndHitResult.Location.Z > TargetZ + SMALL_NUMBER)
+	{
+		const double ZPerDirection = EndHitDirection.Z;
+		const double ZToDecrease = EndHitResult.Location.Z - TargetZ;
+		const double DirectionIncrease = ZToDecrease / ZPerDirection;
+		
+		EndHitResult.Location = EndHitResult.Location + (EndHitDirection * DirectionIncrease);		
+	}
+}
+
 void ARTSOController::GetEntitiesOrActorsInMarqueeSelection()
 {
 	// Viewport halfsize
@@ -325,6 +413,7 @@ void ARTSOController::GetEntitiesOrActorsInMarqueeSelection()
 	Params.MobilityType = EQueryMobilityType::Static;
 	Params.AddIgnoredActor(this);
 
+	// Sample three points at the ground, min their z component
 	FHitResult StartHitResult{};
 	FHitResult CenterHitResult{};
 	FHitResult EndHitResult{};
@@ -332,15 +421,48 @@ void ARTSOController::GetEntitiesOrActorsInMarqueeSelection()
 	GetHitResultAtScreenPosition(CenterSelection, ECC_Visibility, Params, CenterHitResult);
 	GetHitResultAtScreenPosition(StartMousePositionMarquee, ECC_Visibility, Params, StartHitResult);
 	GetHitResultAtScreenPosition(CurrentMousePositionMarquee, ECC_Visibility, Params, EndHitResult);
-
+	
+	// @todo Finish function below: Adjusts bounds in case on of our tracers hit something in-between in the foreground 
+	// AdjustMarqueeHitResultsToMinimumHeight(StartHitResult, CenterHitResult, EndHitResult);
+	
+	FMinimalViewInfo OutResult;
+	CalcCamera(GetWorld()->GetDeltaSeconds(), OutResult);
+	
 	const FVector Distance = EndHitResult.Location - StartHitResult.Location; 
-	const FVector BoundsCenter = (StartHitResult.Location + (Distance * 0.5)) - CenterHitResult.TraceStart;
-	const FVector Extent = FVector(Distance.X, Distance.Y, (StartHitResult.TraceStart - StartHitResult.Location).Z * 0.5);
+	FQuat CameraRotation = Distance.GetSafeNormal().ToOrientationQuat();
 
-	MarqueeSelectedHandles.Empty();
+	FVector BoundsCenter = CenterHitResult.Location;
+	FVector Extent = FVector(Distance.X * 0.5, Distance.Y * 0.5, (StartHitResult.TraceStart - StartHitResult.Location).Z * 0.5);
+	Extent = CameraRotation.RotateVector(Extent); // * -1;
+
+	const FVector OffsetZVector = FVector{0,0, (StartHitResult.TraceStart - StartHitResult.Location).Z};
+	const FVector OffsetXVector = FVector{Distance.X,0, 0};
+
+	// assumes we are rotated along one of four cardinal directions
+	FVector RotatedX = OutResult.Rotation.RotateVector(OffsetXVector);
+	const FBox MarqueeWorldBox{
+			{
+				// Bottom points
+				StartHitResult.Location,
+				StartHitResult.Location + RotatedX,
+				EndHitResult.Location,
+				EndHitResult.Location   - RotatedX,
+
+				// Upper Points
+				StartHitResult.Location + OffsetZVector,
+				StartHitResult.Location + OffsetZVector + RotatedX,
+				EndHitResult.Location   + OffsetZVector,
+				EndHitResult.Location   + OffsetZVector - RotatedX
+			}};
+	
+	MarqueeWorldBox.GetCenterAndExtents(BoundsCenter, Extent);
+
+	OnSelectionChange(true);
+	MarqueeSelectedHandles.Empty(); // clear previous selection
 	FBoxCenterAndExtent QueryBounds = FBoxCenterAndExtent(BoundsCenter, Extent);
-	QueryBounds.Center.W = 0;
-	QueryBounds.Extent.W = 0;
+	QueryBounds.Center.W = QueryBounds.Extent.W = 0;
+	
+	// QueryBounds.Extent.Y = 500; // Distance.Y * 0.5;
 	WorldOctree.FindElementsWithBoundsTest(QueryBounds, [&](const FPDEntityOctreeCell& Cell)
 	{
 		if (Cell.EntityHandle.Index == INDEX_NONE) { return; } 
@@ -348,104 +470,43 @@ void ARTSOController::GetEntitiesOrActorsInMarqueeSelection()
 		MarqueeSelectedHandles.Emplace(Cell.EntityHandle.Index, Cell.EntityHandle);
 	}, true);
 
-
+	OnSelectionChange(false);
+	
+	
 #if CHAOS_DEBUG_DRAW
 	if (UPDOctreeProcessor::CVarDrawCells.GetValueOnAnyThread() == false) { return; }
 
 	// Chaos debug draws on an async call
 	const FVector DebugExtent = FVector(25.0);
-	Chaos::FDebugDrawQueue::GetInstance()
-	.DrawDebugBox(
-		StartHitResult.Location,
-		DebugExtent,
-		QueryBounds.Extent.ToOrientationQuat(),
-		FColor::Black,
-		false,
-		20,
-		0,
-		5.0
-		);
-	Chaos::FDebugDrawQueue::GetInstance()
-	.DrawDebugString(
-	StartHitResult.Location + FVector(0, 0, (DebugExtent.Z * 2)),
-	FString("StartSelection"),
-	nullptr,
-	FColor::MakeRandomSeededColor(MarqueeSelectedHandles.Num()),
-	20,
-	true,
-	2);	
+	DrawBoxAndTextChaos(StartHitResult.Location, QueryBounds.Extent.ToOrientationQuat(), DebugExtent, FString("StartSelection"));
+	DrawBoxAndTextChaos(CenterHitResult.Location, QueryBounds.Extent.ToOrientationQuat(), DebugExtent, FString("CenterSelection"));
+	DrawBoxAndTextChaos(EndHitResult.Location, QueryBounds.Extent.ToOrientationQuat(), DebugExtent, FString("EndSelection"));
+	DrawBoxAndTextChaos(FVector(QueryBounds.Center), FQuat(0) , FVector(QueryBounds.Extent), FString("MarqueeSelection"), FColor::Yellow);
 	
-	Chaos::FDebugDrawQueue::GetInstance()
-	.DrawDebugBox(
-		CenterHitResult.Location,
-		DebugExtent,
-		QueryBounds.Extent.ToOrientationQuat(),
-		FColor::Black,
-		false,
-		20,
-		0,
-		5.0
-		);
-	Chaos::FDebugDrawQueue::GetInstance()
-	.DrawDebugString(
-	CenterHitResult.Location + FVector(0, 0, (DebugExtent.Z * 2)),
-	FString("CenterSelection"),
-	nullptr,
-	FColor::MakeRandomSeededColor(MarqueeSelectedHandles.Num()),
-	20,
-	true,
-	2);	
-	
-	Chaos::FDebugDrawQueue::GetInstance()
-	.DrawDebugBox(
-		EndHitResult.Location,
-		DebugExtent,
-		QueryBounds.Extent.ToOrientationQuat(),
-		FColor::Black,
-		false,
-		20,
-		0,
-		5.0
-		);
-	Chaos::FDebugDrawQueue::GetInstance()
-	.DrawDebugString(
-	EndHitResult.Location + FVector(0, 0, (DebugExtent.Z * 2)),
-	FString("EndSelection"),
-	nullptr,
-	FColor::MakeRandomSeededColor(MarqueeSelectedHandles.Num()),
-	20,
-	true,
-	2);	
-
-	
-	const FString BuildString = FString::Printf(TEXT("ARTSOController(%s)::GetEntitiesOrActorsInMarqueeSelection -- Debug Draw"), *GetName())
-	+ FString::Printf(TEXT("\n Extent: %f : { %f, %f, %f }"), Extent.Length(), Extent.X, Extent.Y, Extent.Z)
-	+ FString::Printf(TEXT("\n QueryBounds.Extent: %f : { %f, %f, %f, %f }"), QueryBounds.Extent.Size3(), QueryBounds.Extent.X, QueryBounds.Extent.Y, QueryBounds.Extent.Z, QueryBounds.Extent.W)
-	+ FString::Printf(TEXT("\n BoundsCenter:: { %f, %f, %f }"), BoundsCenter.X, BoundsCenter.Y, BoundsCenter.Z);
-	UE_LOG(LogTemp, Log, TEXT("%s"), *BuildString);
-
-	Chaos::FDebugDrawQueue::GetInstance()
-	.DrawDebugBox(
-	BoundsCenter,
-	Extent,
-	QueryBounds.Extent.ToOrientationQuat(),
-	FColor::White,
-	false,
-	20,
-	0,
-	5.0f);
-	
-	Chaos::FDebugDrawQueue::GetInstance()
-	.DrawDebugString(
-	BoundsCenter + FVector(0, 0, (Extent.Z * 2)),
-	FString("MarqueeSelection"),
-	nullptr,
-	FColor::MakeRandomSeededColor(MarqueeSelectedHandles.Num()),
-	20,
-	true,
-	2);
 #endif
 	
+}
+
+void ARTSOController::OnSelectionChange(const bool bClearSelection)
+{
+	// Parallel task for enabling custom mesh data 
+	
+	AGodHandPawn* PawnAsGodhand = GetPawn<AGodHandPawn>();
+	if (PawnAsGodhand == nullptr) { return; }
+	
+	// const TArray<TObjectPtr<UInstancedStaticMeshComponent>>& ISMs = GEngine->GetEngineSubsystem<UPDRTSBaseSubsystem>()->GetMassISMs(PawnAsGodhand->GetWorld());
+	TArray<FMassEntityHandle> MarqueeSelectionArray;
+	GetMarqueeSelectionMap().GenerateValueArray(MarqueeSelectionArray);
+
+	for (const FMassEntityHandle& EntityHandle : MarqueeSelectionArray)
+	{
+		if (PawnAsGodhand->EntityManager->IsEntityValid(EntityHandle) == false) { return; }
+
+		FPDMFragment_RTSEntityBase* PermadevEntityBase = PawnAsGodhand->EntityManager->GetFragmentDataPtr<FPDMFragment_RTSEntityBase>(EntityHandle);
+		if (PermadevEntityBase == nullptr) { return; }
+		
+		PermadevEntityBase->SelectionState = bClearSelection ? EPDEntitySelectionState::ENTITY_NOTSELECTED : EPDEntitySelectionState::ENTITY_SELECTED; // Processing handled in UPDMProcessor_EntityCosmetics::Execute function
+	}
 }
 
 

@@ -57,7 +57,8 @@ class RTSOPEN_API ARTSOController : public APlayerController, public IRTSOInputI
 	virtual void ActionWorkerUnit_Cancelled_Implementation(const FInputActionValue& Value) override;
 	virtual void ActionWorkerUnit_Completed_Implementation(const FInputActionValue& Value) override;
 	virtual void ActionBuildMode_Implementation(const FInputActionValue& Value) override;
-	virtual void ActionClearSelection_Implementation(const FInputActionValue& Value) override;	
+	virtual void ActionClearSelection_Implementation(const FInputActionValue& Value) override;
+	virtual void ActionMoveSelection_Implementation(const FInputActionValue& Value) override;	
 	/* RTSO Input Interface - End */
 
 	
@@ -94,7 +95,13 @@ class RTSOPEN_API ARTSOController : public APlayerController, public IRTSOInputI
 	UFUNCTION() FORCEINLINE FVector2D GetCurrentMousePositionMarquee() const {return CurrentMousePositionMarquee;}
 	UFUNCTION(BlueprintImplementableEvent) void OnMarqueeSelectionUpdated(const TArray<int32>& NewSelection) const;
 	UFUNCTION(BlueprintCallable) void MarqueeSelection(EMarqueeSelectionEvent SelectionEvent);
+	void DrawBoxAndTextChaos(FVector BoundsCenter, FQuat Rotation, FVector DebugExtent, FString DebugBoxTitle, FColor LineColour = FColor::Black);
+	void AdjustMarqueeHitResultsToMinimumHeight(FHitResult& StartHitResult, FHitResult& CenterHitResult, FHitResult& EndHitResult);
 	UFUNCTION() void GetEntitiesOrActorsInMarqueeSelection();
+	UFUNCTION() const TMap<int32, FMassEntityHandle>& GetMarqueeSelectionMap() { return MarqueeSelectedHandles; }
+
+protected:
+	void OnSelectionChange(bool bClearSelection);
 	/* RTSO Marquee selection - End */
 
 public:	
@@ -117,7 +124,8 @@ public:
 	class UInputAction* CtrlActionWorkerUnit = nullptr;
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "RTS|Input")
 	class UInputAction* CtrlActionClearSelection = nullptr;
-	
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "RTS|Input")
+	class UInputAction* CtrlActionMoveSelection = nullptr;	
 	/* Input Actions - If I have time to implement */
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "RTS|Input")
 	class UInputAction* CtrlActionBuildMode = nullptr;

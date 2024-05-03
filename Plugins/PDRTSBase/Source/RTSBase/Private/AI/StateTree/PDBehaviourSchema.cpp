@@ -74,7 +74,7 @@ bool FHandleValidityTagCondition::TestCondition(FStateTreeExecutionContext& Cont
 	const UMassEntitySubsystem* EntitySubsystem = Context.GetWorld()->GetSubsystem<UMassEntitySubsystem>();
 	const FInstanceDataType& InstanceData = Context.GetInstanceData(*this);
 	
-	return InstanceData.ActionTest.ActionTag.IsValid() && (InstanceData.ActionTest.ActionTargetAsActor != nullptr || EntitySubsystem->GetEntityManager().IsEntityValid(InstanceData.ActionTest.ActionTargetAsEntity));
+	return InstanceData.ActionTest.ActionTag.IsValid() && InstanceData.ActionTest.OptTargets.IsValidCompoundByManager(EntitySubsystem->GetEntityManager());
 }
 
 

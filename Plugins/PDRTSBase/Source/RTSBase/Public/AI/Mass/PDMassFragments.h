@@ -5,6 +5,8 @@
 #include "AI/PDMassCommon.h"
 
 #include "HierarchicalHashGrid2D.h"
+#include "MassCommonTypes.h"
+#include "MassEntityManager.h"
 #include "MassEntityTypes.h"
 #include "PDRTSCommon.h"
 #include "SmartObjectTypes.h"
@@ -26,6 +28,13 @@ struct FPDMFragment_SimpleMovement : public FMassFragment
 	FVector Target;
 };
 
+UENUM()
+enum class EPDEntitySelectionState : uint8
+{
+	ENTITY_SELECTED = 0,
+	ENTITY_NOTSELECTED = 1,
+	ENTITY_UNSET = 2, 
+};
 
 /**
  * @brief Base fragment for RTS Agents
@@ -41,11 +50,17 @@ struct PDRTSBASE_API FPDMFragment_RTSEntityBase : public FMassFragment
 
 	/** @todo Is the entity performing an action or not? */
 	UPROPERTY()
-	bool bAction = false;
+	bool bAction  = false;
 
-	/** @todo Do we have any queued entity-to-entity interactions */
 	UPROPERTY()
-	TArray<FMassEntityHandle> QueuedInteractables;
+	EPDEntitySelectionState SelectionState = EPDEntitySelectionState::ENTITY_UNSET;	
+	
+	UPROPERTY()
+	bool bHasClearedSelection = true;	
+	
+	// /** @todo Do we have any queued entity-to-entity interactions */
+	// UPROPERTY()
+	// TArray<FMassEntityHandle> QueuedInteractables;
 };
 
 USTRUCT()
@@ -59,7 +74,7 @@ struct PDRTSBASE_API FPDMFragment_EntityAnimation : public FMassFragment
 
 	/** @brief Override animation set-up via task or other processor than default animation processor */
 	UPROPERTY(EditAnywhere)
-	uint8 bOveriddenAnimation : 1;
+	uint8 bOverriddenAnimation : 1;
 	
 	/** @brief World start time for the animation */
 	UPROPERTY(EditAnywhere)
@@ -78,6 +93,43 @@ struct PDRTSBASE_API FPDMFragment_EntityAnimation : public FMassFragment
 	int AnimPosition = 0;
 };
 
+static const FMassInt16Vector InvalidLoc = FMassInt16Vector{};
+static const FMassEntityHandle InvalidHandle = FMassEntityHandle{INDEX_NONE, INDEX_NONE};
+
+USTRUCT(Blueprintable)
+struct PDRTSBASE_API FPDTargetCompound
+{
+	GENERATED_BODY()
+
+	bool IsValidCompound() const
+	{
+		return
+			ActionTargetAsActor != nullptr
+			|| ActionTargetAsLocation.Get() != InvalidLoc.Get()
+			|| ActionTargetAsEntity != InvalidHandle;
+	};
+	bool IsValidCompoundByManager(const FMassEntityManager& Manager) const
+	{
+		return
+			ActionTargetAsActor != nullptr
+			|| ActionTargetAsLocation.Get() != InvalidLoc.Get()
+			|| (ActionTargetAsEntity != InvalidHandle && Manager.IsEntityValid(ActionTargetAsEntity));
+	};
+
+	
+	/** @brief Target (if entity) */
+	UPROPERTY(EditAnywhere)
+	FMassEntityHandle ActionTargetAsEntity = FMassEntityHandle{INDEX_NONE, INDEX_NONE};
+
+	/** @brief Target (if static location) */
+	UPROPERTY(EditAnywhere)
+	FMassInt16Vector ActionTargetAsLocation;
+	
+	/** @brief Target (if actor) */
+	UPROPERTY(EditAnywhere)
+	AActor* ActionTargetAsActor = nullptr;
+};
+
 /**
  * @brief Fragment given to entities to grant resources
  */
@@ -89,14 +141,10 @@ struct PDRTSBASE_API FPDMFragment_Action : public FMassFragment
 	/** @brief Action/Job tag */
 	UPROPERTY(EditAnywhere)
 	FGameplayTag ActionTag;
-	
-	/** @brief Target (if entity) */
-	UPROPERTY(EditAnywhere)
-	FMassEntityHandle ActionTargetAsEntity;
 
-	/** @brief Target (if actor) */
+	/** @brief Optional targets to go with teh job-tag, in case teh job is associated with a given object or target */
 	UPROPERTY(EditAnywhere)
-	AActor* ActionTargetAsActor;
+	FPDTargetCompound OptTargets;
 	
 	/** @brief (Potential) Reward Type */
 	UPROPERTY(EditAnywhere)
