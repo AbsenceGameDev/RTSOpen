@@ -2,14 +2,17 @@
 #include "PDRTSBaseSubsystem.h"
 
 #include "DelayAction.h"
+#include "MassCommonFragments.h"
 #include "MassCrowdRepresentationSubsystem.h"
 #include "MassEntitySubsystem.h"
 #include "MassRepresentationTypes.h"
 #include "MassVisualizationComponent.h"
 #include "MassVisualizer.h"
+#include "NavigationSystem.h"
 #include "RTSBase/Classes/PDRTSCommon.h"
 
 
+struct FTransformFragment;
 class UMassCrowdRepresentationSubsystem;
 class AMassVisualizer;
 
@@ -149,6 +152,24 @@ void UPDRTSBaseSubsystem::ProcessTables()
 	}
 	ProcessFailCounter = 0;
 	bHasProcessedTables = true;
+}
+
+void UPDRTSBaseSubsystem::RequestNavpathGenerationForSelectionGroup(
+	const int32 SelectionGroup,
+	const FVector& SelectionCenter,
+	const FPDTargetCompound& TargetCompound)
+{
+	if (SelectionGroup != INDEX_NONE)
+	{
+		const FVector TargetLocation =
+			TargetCompound.ActionTargetAsActor != nullptr ? TargetCompound.ActionTargetAsActor->GetActorLocation()
+			: EntityManager->IsEntityValid(TargetCompound.ActionTargetAsEntity) ? EntityManager->GetFragmentDataPtr<FTransformFragment>(TargetCompound.ActionTargetAsEntity)->GetTransform().GetLocation()
+			: TargetCompound.ActionTargetAsLocation.Get();
+
+		const UNavigationPath* Navpath = UNavigationSystemV1::FindPathToLocationSynchronously(GetWorld(), SelectionCenter, TargetLocation);
+		SelectionGroupPaths.FindOrAdd(SelectionGroup) = Navpath;
+		bGroupPathsDirtied = true;
+	}	
 }
 
 const FPDWorkUnitDatum* UPDRTSBaseSubsystem::GetWorkEntry(const FGameplayTag& JobTag)

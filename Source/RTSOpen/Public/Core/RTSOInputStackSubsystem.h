@@ -1,83 +1,39 @@
 ﻿/* @author: Ario Amin @ Permafrost Development. @copyright: Full BSL(1.1) License included at bottom of the file  */
+
 #pragma once
 
 #include "CoreMinimal.h"
-#include "UObject/Interface.h"
-#include "RTSOInputInterface.generated.h"
-
-// This class does not need to be modified.
-UINTERFACE()
-class URTSOInputInterface : public UInterface
-{
-	GENERATED_BODY()
-};
+#include "Containers/Deque.h"
+#include "Subsystems/WorldSubsystem.h"
+#include "RTSOInputStackSubsystem.generated.h"
 
 /**
- * @brief RTSO input interface, used for the controller and the godhand pawn
- */
-class RTSOPEN_API IRTSOInputInterface
+ * There is a bug causing any modifier I am applying to the IA to be called but the modified value to be discarded,
+ * I have however confirmed that the value in here at-least is correct
+ * A temporary way around it maybe have to be a subsystem or other singleton which caches a stack of modifier values 
+*/
+UCLASS()
+class RTSOPEN_API URTSOInputStackSubsystem : public UWorldSubsystem
 {
 	GENERATED_BODY()
 
 public:
-	/* Enhanced Input */
-	UFUNCTION(BlueprintNativeEvent, BlueprintCallable)
-	void ActionMove(const FInputActionValue& Value);
-	virtual void ActionMove_Implementation(const FInputActionValue& Value) {};
-	
-	UFUNCTION(BlueprintNativeEvent, BlueprintCallable)
-	void ActionMagnify(const FInputActionValue& Value);
-	virtual void ActionMagnify_Implementation(const FInputActionValue& Value) {};
-	
-	UFUNCTION(BlueprintNativeEvent, BlueprintCallable)
-	void ActionRotate(const FInputActionValue& Value);
-	virtual void ActionRotate_Implementation(const FInputActionValue& Value) {};
+	virtual void OnWorldBeginPlay(UWorld& InWorld) override;
 
-	UFUNCTION(BlueprintNativeEvent, BlueprintCallable)
-	void ActionDragMove(const FInputActionValue& Value);
-	virtual void ActionDragMove_Implementation(const FInputActionValue& Value) {};
-
-	UFUNCTION(BlueprintNativeEvent, BlueprintCallable)
-	void ActionWorkerUnit_Triggered(const FInputActionValue& Value);
-	virtual void ActionWorkerUnit_Triggered_Implementation(const FInputActionValue& Value) {};
-
-	UFUNCTION(BlueprintNativeEvent, BlueprintCallable)
-	void ActionWorkerUnit_Started(const FInputActionValue& Value);
-	virtual void ActionWorkerUnit_Started_Implementation(const FInputActionValue& Value) {};
-
-	UFUNCTION(BlueprintNativeEvent, BlueprintCallable)
-	void ActionWorkerUnit_Cancelled(const FInputActionValue& Value);
-	virtual void ActionWorkerUnit_Cancelled_Implementation(const FInputActionValue& Value) {};
+	void DispatchValueStackReset();
 	
-	UFUNCTION(BlueprintNativeEvent, BlueprintCallable)
-	void ActionWorkerUnit_Completed(const FInputActionValue& Value);
-	virtual void ActionWorkerUnit_Completed_Implementation(const FInputActionValue& Value) {};
+	UFUNCTION()
+	void ResetValueStacks()
+	{
+		UE_LOG(LogTemp, Warning, TEXT("URTSOInputStackSubsystem :: ResetValueStacks()"));
+		InputStackIntegers.Empty();
+		InputStackDouble.Empty();
+		InputStackVectors.Empty();
+	};
 	
-	UFUNCTION(BlueprintNativeEvent, BlueprintCallable)
-	void ActionBuildMode(const FInputActionValue& Value);
-	virtual void ActionBuildMode_Implementation(const FInputActionValue& Value) {};
-
-	UFUNCTION(BlueprintNativeEvent, BlueprintCallable)
-	void ActionClearSelection(const FInputActionValue& Value);
-	virtual void ActionClearSelection_Implementation(const FInputActionValue& Value) {};
-
-	UFUNCTION(BlueprintNativeEvent, BlueprintCallable)
-	void ActionMoveSelection(const FInputActionValue& Value);
-	virtual void ActionMoveSelection_Implementation(const FInputActionValue& Value) {};
-	
-	UFUNCTION(BlueprintNativeEvent, BlueprintCallable)
-	void ActionAssignSelectionToHotkey(const FInputActionValue& Value);
-	virtual void ActionAssignSelectionToHotkey_Implementation(const FInputActionValue& Value) {};
-
-	UFUNCTION(BlueprintNativeEvent, BlueprintCallable)
-	void ActionHotkeySelection(const FInputActionValue& Value);
-	virtual void ActionHotkeySelection_Implementation(const FInputActionValue& Value) {};	
-	
-	UFUNCTION(BlueprintNativeEvent, BlueprintCallable)
-	void ActionChordedBase(const FInputActionValue& Value);
-	virtual void ActionChordedBase_Implementation(const FInputActionValue& Value) {};
-	
-public:
+	TDeque<int32> InputStackIntegers;
+	TDeque<double> InputStackDouble;
+	TDeque<FVector> InputStackVectors;
 };
 
 

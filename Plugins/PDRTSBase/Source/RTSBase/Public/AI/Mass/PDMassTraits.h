@@ -21,7 +21,7 @@ public:
 };
 
 /** @brief
- * Adds Fragments: FPDMFragment_EntityAnimation, FPDMFragment_RTSEntityBase, FPDMFragment_SharedAnimData
+ * Adds Fragments:  FPDMFragment_SharedAnimData, FPDMFragment_SharedNavigation
  * Adds Tags: FPDMTag_RTSEntity
  * @note Has no fragment nor tag requirements
  */
@@ -35,6 +35,9 @@ protected:
 
 	UPROPERTY(EditAnywhere)
 	FPDMFragment_SharedAnimData SharedAnimData;
+
+	UPROPERTY(EditAnywhere)
+	FPDMFragment_SharedNavigation SharedNavData;	
 };
 
 

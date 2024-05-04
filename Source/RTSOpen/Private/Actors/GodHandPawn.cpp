@@ -38,6 +38,7 @@
 #include "NavigationPath.h"
 #include "NavigationSystem.h"
 #include "AI/Mass/PDMassFragments.h"
+#include "Core/RTSOInputStackSubsystem.h"
 
 #include "Kismet/KismetMathLibrary.h"
 #include "Kismet/KismetSystemLibrary.h"
@@ -389,6 +390,14 @@ void AGodHandPawn::ActionWorkerUnit_Completed_Implementation(const FInputActionV
 		Cast<UPDRTSBaseUnit>(ISMs[0])->RequestAction(this, OptTarget, AssociatedTags.GetByIndex(0), SelectedWorkerUnitHandle);
 	}
 	
+	FPDMFragment_RTSEntityBase* PermadevEntityBase = EntityManager->GetFragmentDataPtr<FPDMFragment_RTSEntityBase>(SelectedWorkerUnitHandle);
+	if (PermadevEntityBase != nullptr)
+	{
+		// The initial call to the walk task will overwrite this,
+		// but if it is empty it will default to using a shared path instead
+		PermadevEntityBase->QueuedUnitPath.Emplace(FVector::ZeroVector);
+	}
+	
 	if (NC_WorkerPath != nullptr) { NC_WorkerPath->Deactivate(); }
 	bUpdatePathOnTick = false;
 	SelectedWorkerUnitHandle = {INDEX_NONE, INDEX_NONE};
@@ -417,6 +426,12 @@ void AGodHandPawn::ActionMoveSelection_Implementation(const FInputActionValue& V
 	{
 		// BuildString += FString::Printf(TEXT("\n PC INVALID "));
 		// UE_LOG(LogTemp, Warning, TEXT("%s"), *BuildString);
+		return;
+	}
+	
+	const int32 CurrentGroupID = PC->GetCurrentGroupID();
+	if (PC->GetMarqueeSelectionMap().Contains(CurrentGroupID) == false)
+	{
 		return;
 	}
 	
@@ -456,13 +471,40 @@ void AGodHandPawn::ActionMoveSelection_Implementation(const FInputActionValue& V
 	const FPDTargetCompound OptTarget = {InvalidHandle, SelectedLocation, WorkerUnitActionTarget};
 	const FGameplayTagContainer AssociatedTags = WorkerUnitActionTarget != nullptr && WorkerUnitActionTarget->Implements<UPDInteractInterface>()
 		? IPDInteractInterface::Execute_GetGenericTagContainer(WorkerUnitActionTarget)
-		: FallbackContainer; 
+		: FallbackContainer;
+
+
+	const FHitResult& Start = PC->GetLatestStartHitResult();
+	const FHitResult& Center = PC->GetLatestCenterHitResult();
+	const FHitResult& End    = PC->GetLatestEndHitResult();
+	const FVector StartLocation =
+		Center.bBlockingHit  ? Center.Location
+		: Start.bBlockingHit ? Start.Location
+		: End.bBlockingHit   ? StartLocation
+		: FVector::ZeroVector;
 	
-	for (const TTuple<int, FMassEntityHandle>& SelectedEntityIt : PC->GetMarqueeSelectionMap())
-	{
-		const FMassEntityHandle& SelectedHandle = SelectedEntityIt.Value;
-		Cast<UPDRTSBaseUnit>(ISMs[0])->RequestAction(this, OptTarget, AssociatedTags.GetByIndex(0), SelectedHandle);
-	}
+	Cast<UPDRTSBaseUnit>(ISMs[0])->RequestActionMulti(
+		this,
+		OptTarget,
+		AssociatedTags.GetByIndex(0),
+		*PC->GetMarqueeSelectionMap().Find(CurrentGroupID), 
+		StartLocation,
+		CurrentGroupID);
+}
+
+void AGodHandPawn::ActionAssignSelectionToHotkey_Implementation(const FInputActionValue& Value)
+{
+
+}
+
+void AGodHandPawn::ActionHotkeySelection_Implementation(const FInputActionValue& Value)
+{
+	
+}
+
+void AGodHandPawn::ActionChordedBase_Implementation(const FInputActionValue& Value)
+{
+
 }
 
 //
@@ -611,6 +653,14 @@ void AGodHandPawn::BeginPlay()
 
 	UpdateMagnification();
 	InitializeISMAgent();
+
+
+
+	// There is a bug causing any modifier I am applying to the IA to be called but the modified value to be discarded,
+	// I have however confirmed that the value in here at-least is correct
+	// A temporary way around it maybe have to be a subsystem or other singleton which caches a stack of modifier values 	
+	URTSOInputStackSubsystem* InputStackWorkaround = GetWorld()->GetSubsystem<URTSOInputStackSubsystem>();
+	InputStackWorkaround->DispatchValueStackReset();
 }
 
 void AGodHandPawn::OnConstruction(const FTransform& Transform)
@@ -647,8 +697,13 @@ void AGodHandPawn::PossessedBy(AController* NewController)
 {
 	Super::PossessedBy(NewController);
 
-	//
-	// @todo At this line: Bind input switch function
+	if (GetWorld() == nullptr) { return; }
+	
+	// There is a bug causing any modifier I am applying to the IA to be called but the modified value to be discarded,
+	// I have however confirmed that the value in here at-least is correct
+	// A temporary way around it maybe have to be a subsystem or other singleton which caches a stack of modifier values 	
+	URTSOInputStackSubsystem* InputStackWorkaround = GetWorld()->GetSubsystem<URTSOInputStackSubsystem>();
+	InputStackWorkaround->DispatchValueStackReset();	
 }
 
 //

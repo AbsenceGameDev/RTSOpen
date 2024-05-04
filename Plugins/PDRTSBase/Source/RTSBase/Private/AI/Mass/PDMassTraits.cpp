@@ -21,8 +21,12 @@ void UPDMTrait_RTSEntity::BuildTemplate(FMassEntityTemplateBuildContext& BuildCo
 	BuildContext.AddFragment<FPDMFragment_EntityAnimation>();
 	BuildContext.AddTag<FPDMTag_RTSEntity>();
 	
-	const FConstSharedStruct RTSEntityFragment = EntitySubsystem->GetMutableEntityManager().GetOrCreateConstSharedFragment(SharedAnimData);
-	BuildContext.AddConstSharedFragment(RTSEntityFragment);
+	const FConstSharedStruct AnimDataFragment = EntitySubsystem->GetMutableEntityManager().GetOrCreateConstSharedFragment(SharedAnimData);
+	BuildContext.AddConstSharedFragment(AnimDataFragment);
+	
+	const uint32 NavDataHash = UE::StructUtils::GetStructCrc32(FConstStructView::Make(SharedNavData));
+	const FSharedStruct NavDataFragment = EntitySubsystem->GetMutableEntityManager().GetOrCreateSharedFragmentByHash<FPDMFragment_SharedNavigation>(NavDataHash, SharedNavData);
+	BuildContext.AddSharedFragment(NavDataFragment);	
 }
 
 UPDCrowdTrait::UPDCrowdTrait()

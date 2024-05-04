@@ -8,6 +8,7 @@
 #include "AI/Mass/PDMassFragments.h"
 #include "PDMassTasks.generated.h"
 
+class UNavigationPath;
 struct FPDMFragment_EntityAnimation;
 struct FTransformFragment;
 struct FMassMoveTargetFragment;
@@ -28,6 +29,7 @@ class UMassSignalSubsystem;
 
 //
 /// MOVETOHANDLE
+
 
 /** @brief Instance data for entity running FPDMTask_MoveToTarget */
 USTRUCT()
@@ -56,6 +58,50 @@ struct FPDMTaskData_MoveToHandle
 	int16 CurrentNavPathIndex;	
 };
 
+struct FPDMPathParameters
+{
+	FPDMPathParameters(const FPDMPathParameters& Other)
+		: InstanceData(Other.InstanceData)
+		, MoveTarget(Other.MoveTarget)
+		, TransformFragment(Other.TransformFragment)
+		, EntitySubsystem(Other.EntitySubsystem)
+		, bIsEntityValid(Other.bIsEntityValid)
+		, Target(Other.Target)
+		, NavPath(Other.NavPath)
+	{
+	} ;
+	
+	FPDMPathParameters(
+		FPDMTaskData_MoveToHandle& InputInstanceData,
+		FMassMoveTargetFragment& MoveTargetInput,
+		const FTransformFragment& InputTransformFragment,
+		UMassEntitySubsystem& InputEntitySubsystem,
+		bool bInputIsEntityValid,
+		FPDTargetCompound& InputTarget,
+		const UNavigationPath* InputNavPath = nullptr
+	)
+		:
+			InstanceData(InputInstanceData),
+			MoveTarget(MoveTargetInput),
+			TransformFragment(InputTransformFragment),
+			EntitySubsystem(InputEntitySubsystem),
+			bIsEntityValid(bInputIsEntityValid),
+			Target(InputTarget),
+			NavPath(InputNavPath)
+	{};
+
+	FPDMPathParameters& operator=(const FPDMPathParameters& Other);
+	FVector ResolveLocation() const;
+
+	FPDMTaskData_MoveToHandle& InstanceData;
+	FMassMoveTargetFragment& MoveTarget; 
+	const FTransformFragment& TransformFragment;
+	UMassEntitySubsystem& EntitySubsystem;
+	bool bIsEntityValid;
+	FPDTargetCompound& Target;
+	const UNavigationPath* NavPath = nullptr;
+};
+
 /**
  * @brief Task to move to a given target, either another entity or a world actor.
  * @note Works by generating a path for the movement processor to read from
@@ -66,6 +112,10 @@ struct PDRTSBASE_API FPDMTask_MoveToTarget : public FMassStateTreeTaskBase
 	GENERATED_BODY()
 	
 	DECLARE_TASK_BODY(MoveToHandle)
+
+	void ProcessNewPriorityPath(FPDMPathParameters& Params) const;
+	void ProcessNewSharedPath(FPDMPathParameters& Params) const;
+
 	
 	TStateTreeExternalDataHandle<UMassEntitySubsystem> EntitySubsystemHandle;
 	TStateTreeExternalDataHandle<UMassSignalSubsystem> MassSignalSubsystemHandle;
@@ -73,6 +123,7 @@ struct PDRTSBASE_API FPDMTask_MoveToTarget : public FMassStateTreeTaskBase
 	TStateTreeExternalDataHandle<FTransformFragment> TransformHandle;
 	TStateTreeExternalDataHandle<FMassMoveTargetFragment> MoveTargetHandle;
 	TStateTreeExternalDataHandle<FMassMovementParameters> MoveParametersHandle;
+	TStateTreeExternalDataHandle<FPDMFragment_RTSEntityBase> RTSDataHandle;
 };
 
 

@@ -2,7 +2,9 @@
 
 #include "Pawns/PDRTSBaseUnit.h"
 #include "GameplayTagContainer.h"
+#include "MassCommonFragments.h"
 #include "MassEntityManager.h"
+#include "NavigationSystem.h"
 #include "PDRTSBaseSubsystem.h"
 #include "PDRTSCommon.h"
 #include "AI/Mass/PDMassFragments.h"
@@ -42,16 +44,49 @@ void UPDRTSBaseUnit::RequestActionMulti(
 	const TArray<TTuple<
 	const FPDTargetCompound& /*OptTarget*/,
 	const FGameplayTag& /*RequestedJob*/,
-	FMassEntityHandle   /*RequestedEntityHandle*/>>& EntityHandleCompounds)
+	FMassEntityHandle /*RequestedEntityHandle*/>>& EntityHandleCompounds,
+	int32                                          SelectionGroup)
+{
+	// // @todo come back to this and finish it within the ned of the week
+	
+	// InstigatorActor = CallingActor; // @todo track instigator per entity, or atleast group entities by instigators
+	//
+	// UPDRTSBaseSubsystem* RTSSubsystem = GEngine->GetEngineSubsystem<UPDRTSBaseSubsystem>();
+	// if (RTSSubsystem != nullptr)
+	// {
+	// 	RTSSubsystem->RequestNavpathGenerationForSelectionGroup(SelectionGroup, SelectionCenter, TargetCompound);
+	// }
+	//
+	// // Dispatch to different threads if it proves costly, 
+	// for (const TTuple<
+	// 	const FPDTargetCompound& /*OptTarget*/,
+	// 	const FGameplayTag& /*RequestedJob*/,
+	// 	FMassEntityHandle   /*RequestedEntityHandle*/>& EntityHandle : EntityHandleCompounds)
+	// {
+	// 	AssignTask(EntityHandle.Get<2>(), EntityHandle.Get<1>(), EntityHandle.Get<0>());
+	// }	
+}
+
+void UPDRTSBaseUnit::RequestActionMulti(
+	AActor*                               CallingActor,
+	const FPDTargetCompound&              TargetCompound,
+	const FGameplayTag&                   RequestedJob,
+	const TMap<int32, FMassEntityHandle>& EntityHandleMap,
+	const FVector&                        SelectionCenter,
+	int32                                 SelectionGroup)
 {
 	InstigatorActor = CallingActor; // @todo track instigator per entity, or atleast group entities by instigators
-	// Dispatch to different threads if it proves costly, 
-	for (const TTuple<
-		const FPDTargetCompound& /*OptTarget*/,
-		const FGameplayTag& /*RequestedJob*/,
-		FMassEntityHandle   /*RequestedEntityHandle*/>& EntityHandle : EntityHandleCompounds)
+
+	UPDRTSBaseSubsystem* RTSSubsystem = GEngine->GetEngineSubsystem<UPDRTSBaseSubsystem>();
+	if (RTSSubsystem != nullptr)
 	{
-		AssignTask(EntityHandle.Get<2>(), EntityHandle.Get<1>(), EntityHandle.Get<0>());
+		RTSSubsystem->RequestNavpathGenerationForSelectionGroup(SelectionGroup, SelectionCenter, TargetCompound);
+	}
+	
+	for (const TTuple<int, FMassEntityHandle>& SelectedEntityIt : EntityHandleMap)
+	{
+		const FMassEntityHandle& SelectedHandle = SelectedEntityIt.Value;
+		RequestAction(CallingActor, TargetCompound, RequestedJob, SelectedHandle);
 	}	
 }
 
@@ -88,22 +123,12 @@ void UPDRTSBaseUnit::AssignTask(FMassEntityHandle EntityHandle, const FGameplayT
 	// For our purposes action fragment should never be nullptr in case the handle itself is valid
 	check(EntityManager->GetFragmentDataPtr<FPDMFragment_Action>(EntityHandle) != nullptr);
 	FPDMFragment_Action* EntityAction = EntityManager->GetFragmentDataPtr<FPDMFragment_Action>(EntityHandle);
+	
+	
 	EntityAction->ActionTag = JobTag;
 	EntityAction->OptTargets = OptTarget;
 	// EntityAction->Reward;
 	// EntityAction->RewardAmount;
-}
-
-void UPDRTSBaseUnit::AssignTaskMulti(TArray<TTuple<FMassEntityHandle,const FGameplayTag&, AActor*>>& EntityHandleCompounds)
-{
-	TRACE_CPUPROFILER_EVENT_SCOPE(TEXT("UPDRTSBaseUnit::AssignTaskMulti"))
-	
-	// Dispatch to different threads if it proves costly, 
-	for (const TTuple<FMassEntityHandle,const FGameplayTag&, AActor*>& EntityHandle : EntityHandleCompounds)
-	{
-		const FPDTargetCompound OptTarget{EntityHandle.Get<0>(), FMassInt16Vector(), EntityHandle.Get<2>()};
-		AssignTask(EntityHandle.Get<0>(), EntityHandle.Get<1>(), OptTarget);
-	}
 }
 
 void UPDRTSBaseUnit::OnTaskFinished(FMassEntityHandle WorkerEntity, const FGameplayTag& JobTag)

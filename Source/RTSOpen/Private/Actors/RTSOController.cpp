@@ -3,7 +3,6 @@
 
 #include "EnhancedInputComponent.h"
 #include "EnhancedInputSubsystems.h"
-#include "MassCrowdRepresentationSubsystem.h"
 #include "NativeGameplayTags.h"
 #include "PDRTSBaseSubsystem.h"
 #include "PDRTSCommon.h"
@@ -11,8 +10,9 @@
 #include "AI/Mass/PDMassFragments.h"
 #include "AI/Mass/PDMassProcessors.h"
 #include "Chaos/DebugDrawQueue.h"
-#include "Components/InstancedStaticMeshComponent.h"
+#include "Core/RTSOInputStackSubsystem.h"
 #include "Kismet/KismetMathLibrary.h"
+#include "Misc/DataValidation.h"
 #include "Misc/CString.h"
 
 
@@ -54,9 +54,14 @@ void ARTSOController::SetupInputComponent()
 	AsEnhancedInput->BindAction(CtrlActionWorkerUnit, ETriggerEvent::Triggered, this, &ARTSOController::ActionWorkerUnit_Triggered_Implementation);	
 	AsEnhancedInput->BindAction(CtrlActionWorkerUnit, ETriggerEvent::Started, this, &ARTSOController::ActionWorkerUnit_Started_Implementation);	
 	AsEnhancedInput->BindAction(CtrlActionWorkerUnit, ETriggerEvent::Canceled, this, &ARTSOController::ActionWorkerUnit_Cancelled_Implementation);	
-	AsEnhancedInput->BindAction(CtrlActionWorkerUnit, ETriggerEvent::Completed, this, &ARTSOController::ActionWorkerUnit_Completed_Implementation);	
+	AsEnhancedInput->BindAction(CtrlActionWorkerUnit, ETriggerEvent::Completed, this, &ARTSOController::ActionWorkerUnit_Completed_Implementation);
+
+	// Selection
 	AsEnhancedInput->BindAction(CtrlActionClearSelection, ETriggerEvent::Triggered, this, &ARTSOController::ActionClearSelection_Implementation);	
 	AsEnhancedInput->BindAction(CtrlActionMoveSelection, ETriggerEvent::Triggered, this, &ARTSOController::ActionMoveSelection_Implementation);	
+	AsEnhancedInput->BindAction(CtrlActionHotkeySelection, ETriggerEvent::Completed, this, &ARTSOController::ActionHotkeySelection_Implementation);
+	AsEnhancedInput->BindAction(CtrlActionAssignSelectionToHotkey, ETriggerEvent::Completed, this, &ARTSOController::ActionAssignSelectionToHotkey_Implementation);
+	AsEnhancedInput->BindAction(CtrlActionChordedBase, ETriggerEvent::Completed, this, &ARTSOController::ActionChordedBase_Implementation);	
 
 	AsEnhancedInput->BindAction(CtrlActionBuildMode, ETriggerEvent::Triggered, this, &ARTSOController::ActionBuildMode_Implementation);		
 }
@@ -173,14 +178,13 @@ void ARTSOController::ActionClearSelection_Implementation(const FInputActionValu
 	IRTSOInputInterface::ActionClearSelection_Implementation(Value);
 
 	OnSelectionChange(true);
-	MarqueeSelectedHandles.Empty();
-	TArray<int32> NoKeys{};
-	OnMarqueeSelectionUpdated(NoKeys);
+	MarqueeSelectedHandles.Remove(CurrentSelectionID);
+	const TArray<int32> NoKeys{};
+	OnMarqueeSelectionUpdated(CurrentSelectionID, NoKeys);
 	
 	if (GetPawn() == nullptr || GetPawn()->GetClass()->ImplementsInterface(URTSOInputInterface::StaticClass()) == false) { return; }
 	IRTSOInputInterface::Execute_ActionClearSelection(GetPawn(), Value);	
 }
-
 
 void ARTSOController::ActionMoveSelection_Implementation(const FInputActionValue& Value)
 {
@@ -197,6 +201,153 @@ void ARTSOController::ActionMoveSelection_Implementation(const FInputActionValue
 	
 	IRTSOInputInterface::Execute_ActionMoveSelection(GetPawn(), Value);
 }
+
+void ARTSOController::ActionAssignSelectionToHotkey_Implementation(const FInputActionValue& Value)
+{
+	// Crude workaround for engine bug with modifiers being triggered and run but values outputted gets discarded in the end
+	// & Crude workaround for another engine bug where the same keys targeted by two different IA mappings always applies all modifiers from both anytime any of them calls them. 
+	URTSOInputStackSubsystem* InputStackWorkaround = GetWorld()->GetSubsystem<URTSOInputStackSubsystem>();
+	int32 Tail = 0;
+	InputStackWorkaround->InputStackIntegers.TryPopLast(Tail);
+	InputStackWorkaround->InputStackIntegers.Empty(); // temporary system
+	const int32 ImmutableIndex = Tail;
+	
+	UE_LOG(LogTemp, Warning, TEXT("ARTSOController::ActionAssignSelectionToHotkey : Requested ID : %i"), ImmutableIndex);
+	const bool bShouldSet = MarqueeSelectedHandles.Contains(CurrentSelectionID);
+	if (bShouldSet)
+	{
+		UE_LOG(LogTemp, Warning, TEXT("ARTSOController::ActionAssignSelectionToHotkey : Should assign, OldID: %i, NewID: %i"), CurrentSelectionID, ImmutableIndex);
+		
+		HotKeyedSelectionGroups.FindOrAdd(ImmutableIndex);
+		ReorderGroupIndex(CurrentSelectionID, ImmutableIndex);
+		CurrentSelectionID = ImmutableIndex;
+		
+		// Dispatch to BP, for visual effects and n();, and as such we only want to know the groupID if it is a explicitly stored hotkey
+		TArray<int32> Keys;
+		const TMap<int32, FMassEntityHandle>& FoundHandleMap = MarqueeSelectedHandles.FindRef(ImmutableIndex);
+		if (FoundHandleMap.IsEmpty() == false)
+		{
+			UE_LOG(LogTemp, Warning, TEXT("ARTSOController::ActionAssignSelectionToHotkey - Calling 'OnMarqueeSelectionUpdated' : (Head) Requested ID : %i"), CurrentSelectionID);
+			FoundHandleMap.GenerateKeyArray(Keys);
+			OnMarqueeSelectionUpdated( ImmutableIndex, Keys);
+		}
+	}
+	else
+	{
+		UE_LOG(LogTemp, Warning, TEXT("ARTSOController::ActionAssignSelectionToHotkey : Should remove assignment"));
+
+		HotKeyedSelectionGroups.Remove(ImmutableIndex);
+		MarqueeSelectedHandles.Remove(ImmutableIndex);
+		OnMarqueeSelectionUpdated(INDEX_NONE, {});
+	}
+	
+	if (GetPawn() == nullptr || GetPawn()->GetClass()->ImplementsInterface(URTSOInputInterface::StaticClass()) == false) { return; }
+	IRTSOInputInterface::Execute_ActionAssignSelectionToHotkey(GetPawn(), Value);
+}
+
+// This always gets called due to a quirk in the design of enhanced input not allowing anything like chorded actions that disallows triggering if a certain chord is detected, due ot it sharing the same target keys 
+void ARTSOController::ActionHotkeySelection_Implementation(const FInputActionValue& Value)
+{
+	// Crude workaround for engine bug with modifiers being triggered and run but values outputted gets discarded in the end
+	// & Crude workaround for another engine bug where the same keys targeted by two different IA mappings always applies all modifiers from both anytime any of them calls them.
+	// & Crude workaround for Enhanced Input design flaw where there is not logical opposite to the chorded action behaviour
+	URTSOInputStackSubsystem* InputStackWorkaround = GetWorld()->GetSubsystem<URTSOInputStackSubsystem>();
+	const UEnhancedInputLocalPlayerSubsystem* InputSubsystem = ULocalPlayer::GetSubsystem<UEnhancedInputLocalPlayerSubsystem>(GetLocalPlayer());
+	const bool bIsChordActive = InputSubsystem->GetPlayerInput()->GetActionValue(CtrlActionChordedBase).Get<bool>();
+	if (bIsChordActive) { return; }
+	
+	int32 Tail = 0;
+	InputStackWorkaround->InputStackIntegers.TryPopLast(Tail);
+	InputStackWorkaround->InputStackIntegers.Empty(); // temporary system
+	CurrentSelectionID = Tail;
+	
+	UE_LOG(LogTemp, Warning, TEXT("ARTSOController::ActionHotkeySelection : (Head) Requested ID : %i"), CurrentSelectionID);
+	if (MarqueeSelectedHandles.Contains(CurrentSelectionID))
+	{
+		// Dispatch to BP, for visual effects and n();, and as such we only want to know the groupID if it is a explicitly stored hotkey
+		const int32 SelectedGID = *HotKeyedSelectionGroups.Find(CurrentSelectionID);
+		TArray<int32> Keys;
+		const TMap<int32, FMassEntityHandle>* FoundHandleMap = MarqueeSelectedHandles.Find(CurrentSelectionID);
+		if (FoundHandleMap != nullptr && FoundHandleMap->IsEmpty() == false)
+		{
+			UE_LOG(LogTemp, Warning, TEXT("ARTSOController::ActionHotkeySelection - Calling 'OnMarqueeSelectionUpdated' : (Head) Requested ID : %i"), CurrentSelectionID);
+			FoundHandleMap->GenerateKeyArray(Keys);
+			OnMarqueeSelectionUpdated( SelectedGID, Keys);
+		}
+	}
+	
+	if (GetPawn() == nullptr || GetPawn()->GetClass()->ImplementsInterface(URTSOInputInterface::StaticClass()) == false) { return; }
+	IRTSOInputInterface::Execute_ActionHotkeySelection(GetPawn(), Value);
+}
+
+void ARTSOController::ActionChordedBase_Implementation(const FInputActionValue& Value)
+{
+	if (GetPawn() == nullptr || GetPawn()->GetClass()->ImplementsInterface(URTSOInputInterface::StaticClass()) == false) { return; }
+	IRTSOInputInterface::Execute_ActionChordedBase(GetPawn(), Value);
+}
+
+#if WITH_EDITOR
+#define LOCTEXT_NAMESPACE "InputModifier_IntegerPassthrough"
+EDataValidationResult UInputModifierIntegerPassthrough::IsDataValid(FDataValidationContext& Context) const
+{
+	EDataValidationResult Result = CombineDataValidationResults(Super::IsDataValid(Context), EDataValidationResult::Valid);
+
+	UInputAction* IA = Cast<UInputAction>(GetOuter());
+	if (IA == nullptr) { return Result; }
+
+	return Result;
+}
+#undef LOCTEXT_NAMESPACE 
+#endif
+
+// There is a bug causing any modifier I am applying to the IA to be called but the modified value to be discarded,
+// I have however confirmed that the value in here at-least is correct
+// A temporary way around it maybe have to be a subsystem or other singleton which caches a stack of modifier values 
+FInputActionValue UInputModifierIntegerPassthrough::ModifyRaw_Implementation(const UEnhancedPlayerInput* PlayerInput, FInputActionValue CurrentValue, float DeltaTime)
+{
+	if (PlayerInput->GetWorld() == nullptr || PlayerInput->GetWorld()->IsValidLowLevelFast() == false)
+	{
+		return CurrentValue;
+	}
+	
+	if (UNLIKELY(PlayerInput->GetWorld()->IsGameWorld() == false))
+	{
+		if (UNLIKELY(CurrentValue.GetValueType() == EInputActionValueType::Boolean))
+		{
+			// does nothing, input value always ends up unchanged no matter what value it outputted here,
+			// no matter which inputactionvaluetype,
+			// log calls are triggering however proving the code is being processed.
+			// Just seemingly discarded before being used
+			return IntegerPassthrough;
+		}
+		return FVector(static_cast<float>(IntegerPassthrough) + 0.5);
+	}
+
+	//
+	// Actual workaround
+	// THe input stack needs to be cleared each usage so it doesn't stack to many of them 
+	if (UNLIKELY(InputStackWorkaround == nullptr || InputStackWorkaround->IsValidLowLevelFast() == false))
+	{
+		InputStackWorkaround = PlayerInput->GetWorld()->GetSubsystem<URTSOInputStackSubsystem>();
+	}
+
+	const bool bIsStackEmpty = InputStackWorkaround->InputStackIntegers.IsEmpty();
+	const bool bCanStackNewModifier = bIsStackEmpty ? true : InputStackWorkaround->InputStackIntegers.Last() != IntegerPassthrough; // || AccumulatedTime > TimeLimitForStacking;
+	
+	if (UNLIKELY(bCanStackNewModifier))
+	{
+		UE_LOG(LogTemp, Warning, TEXT("UInputModifierIntegerPassthrough::ModifyRaw - Emplacing to the input stack : Val %i"), IntegerPassthrough);
+		InputStackWorkaround->InputStackIntegers.EmplaceLast(IntegerPassthrough);
+
+		if (UNLIKELY(InputStackWorkaround->InputStackIntegers.Num() >= 100))
+		{
+			InputStackWorkaround->InputStackIntegers.Empty();
+		}
+	}
+	
+	return CurrentValue;
+}
+		
 
 //
 // Mouse projections and marquee selection, @todo possibly move to controller class
@@ -331,16 +482,26 @@ void ARTSOController::MarqueeSelection(EMarqueeSelectionEvent SelectionEvent)
 	case EMarqueeSelectionEvent::RELEASEMARQUEE:
 		{
 			GetEntitiesOrActorsInMarqueeSelection();
-			TArray<int32> Keys;
-			MarqueeSelectedHandles.GetKeys(Keys);
-			OnMarqueeSelectionUpdated(Keys);
 			bIsDrawingMarquee = false;
+			
+			// Dispatch to BP, for visual effects and n();, and as such we only want to know the groupID if it is a explicitly stored hotkey
+			const int32 SelectedGID = HotKeyedSelectionGroups.Contains(GetCurrentGroupID()) ? GetCurrentGroupID() : INDEX_NONE;
+			TArray<int32> Keys;
+			const TMap<int32, FMassEntityHandle>* FoundHandleMap = MarqueeSelectedHandles.Find(GetCurrentGroupID());
+			if (FoundHandleMap == nullptr || FoundHandleMap->IsEmpty())
+			{
+				OnMarqueeSelectionUpdated( INDEX_NONE, {});
+				break;
+			}
+		
+			FoundHandleMap->GenerateKeyArray(Keys);
+			OnMarqueeSelectionUpdated( SelectedGID, Keys);
+			break;
 		}
-		break;
 	}
 }
 
-void ARTSOController::DrawBoxAndTextChaos(const FVector BoundsCenter, FQuat Rotation, const FVector DebugExtent, const FString DebugBoxTitle, FColor LineColour)
+void ARTSOController::DrawBoxAndTextChaos(const FVector& BoundsCenter, const FQuat& Rotation, const FVector& DebugExtent, const FString& DebugBoxTitle, const FColor LineColour)
 {
 #if CHAOS_DEBUG_DRAW
 	constexpr int32 SeedOffset = 0x00a7b95; // just some random number with little significance, used to offset value so a seed based on the same hex colour code
@@ -374,9 +535,9 @@ void ARTSOController::DrawBoxAndTextChaos(const FVector BoundsCenter, FQuat Rota
 void ARTSOController::AdjustMarqueeHitResultsToMinimumHeight(FHitResult& StartHitResult, FHitResult& CenterHitResult, FHitResult& EndHitResult)
 {
 	const double TargetZ = FMath::Min3(StartHitResult.Location.Z, CenterHitResult.Location.Z, EndHitResult.Location.Z);
-	FVector StartHitDirection = (StartHitResult.Location - StartHitResult.TraceStart).GetSafeNormal();
-	FVector CenterHitDirection = (CenterHitResult.Location - CenterHitResult.TraceStart).GetSafeNormal();
-	FVector EndHitDirection = (EndHitResult.Location - EndHitResult.TraceStart).GetSafeNormal();
+	const FVector StartHitDirection = (StartHitResult.Location - StartHitResult.TraceStart).GetSafeNormal();
+	const FVector CenterHitDirection = (CenterHitResult.Location - CenterHitResult.TraceStart).GetSafeNormal();
+	const FVector EndHitDirection = (EndHitResult.Location - EndHitResult.TraceStart).GetSafeNormal();
 
 	if (StartHitResult.Location.Z > TargetZ + SMALL_NUMBER)
 	{
@@ -412,64 +573,72 @@ void ARTSOController::GetEntitiesOrActorsInMarqueeSelection()
 	FCollisionQueryParams Params;
 	Params.MobilityType = EQueryMobilityType::Static;
 	Params.AddIgnoredActor(this);
-
-	// Sample three points at the ground, min their z component
-	FHitResult StartHitResult{};
-	FHitResult CenterHitResult{};
-	FHitResult EndHitResult{};
-	FVector2D CenterSelection = StartMousePositionMarquee + ((CurrentMousePositionMarquee - StartMousePositionMarquee) * 0.5) ; 
-	GetHitResultAtScreenPosition(CenterSelection, ECC_Visibility, Params, CenterHitResult);
-	GetHitResultAtScreenPosition(StartMousePositionMarquee, ECC_Visibility, Params, StartHitResult);
-	GetHitResultAtScreenPosition(CurrentMousePositionMarquee, ECC_Visibility, Params, EndHitResult);
 	
-	// @todo Finish function below: Adjusts bounds in case on of our tracers hit something in-between in the foreground 
+	// // Clear
+	LatestStartHitResult = LatestCenterHitResult = LatestEndHitResult = FHitResult{};
+	
+	// // Sample three points at the ground, min their z component
+	FVector2D CenterSelection = StartMousePositionMarquee + ((CurrentMousePositionMarquee - StartMousePositionMarquee) * 0.5) ; 
+	GetHitResultAtScreenPosition(CenterSelection, ECC_Visibility, Params, LatestCenterHitResult);
+	GetHitResultAtScreenPosition(StartMousePositionMarquee, ECC_Visibility, Params, LatestStartHitResult);
+	GetHitResultAtScreenPosition(CurrentMousePositionMarquee, ECC_Visibility, Params, LatestEndHitResult);
+	
+	// // @todo Finish function below: Adjusts bounds in case on of our tracers hit something in-between in the foreground 
 	// AdjustMarqueeHitResultsToMinimumHeight(StartHitResult, CenterHitResult, EndHitResult);
 	
 	FMinimalViewInfo OutResult;
 	CalcCamera(GetWorld()->GetDeltaSeconds(), OutResult);
 	
-	const FVector Distance = EndHitResult.Location - StartHitResult.Location; 
+	const FVector Distance = LatestEndHitResult.Location - LatestStartHitResult.Location; 
 	FQuat CameraRotation = Distance.GetSafeNormal().ToOrientationQuat();
 
-	FVector BoundsCenter = CenterHitResult.Location;
-	FVector Extent = FVector(Distance.X * 0.5, Distance.Y * 0.5, (StartHitResult.TraceStart - StartHitResult.Location).Z * 0.5);
+	FVector BoundsCenter = LatestCenterHitResult.Location;
+	FVector Extent = FVector(Distance.X * 0.5, Distance.Y * 0.5, (LatestStartHitResult.TraceStart - LatestStartHitResult.Location).Z * 0.5);
 	Extent = CameraRotation.RotateVector(Extent); // * -1;
 
-	const FVector OffsetZVector = FVector{0,0, (StartHitResult.TraceStart - StartHitResult.Location).Z};
+	const FVector OffsetZVector = FVector{0,0, (LatestStartHitResult.TraceStart - LatestStartHitResult.Location).Z};
 	const FVector OffsetXVector = FVector{Distance.X,0, 0};
 
-	// assumes we are rotated along one of four cardinal directions
+	// // assumes we are rotated along one of four cardinal directions
 	FVector RotatedX = OutResult.Rotation.RotateVector(OffsetXVector);
 	const FBox MarqueeWorldBox{
-			{
-				// Bottom points
-				StartHitResult.Location,
-				StartHitResult.Location + RotatedX,
-				EndHitResult.Location,
-				EndHitResult.Location   - RotatedX,
-
-				// Upper Points
-				StartHitResult.Location + OffsetZVector,
-				StartHitResult.Location + OffsetZVector + RotatedX,
-				EndHitResult.Location   + OffsetZVector,
-				EndHitResult.Location   + OffsetZVector - RotatedX
-			}};
+		{
+			// Bottom points
+			LatestStartHitResult.Location,
+			LatestStartHitResult.Location + RotatedX,
+			LatestEndHitResult.Location,
+			LatestEndHitResult.Location   - RotatedX,
+			
+			// Upper Points
+			LatestStartHitResult.Location + OffsetZVector,
+			LatestStartHitResult.Location + OffsetZVector + RotatedX,
+			LatestEndHitResult.Location   + OffsetZVector,
+			LatestEndHitResult.Location   + OffsetZVector - RotatedX
+		}};
 	
 	MarqueeWorldBox.GetCenterAndExtents(BoundsCenter, Extent);
 
 	OnSelectionChange(true);
-	MarqueeSelectedHandles.Empty(); // clear previous selection
 	FBoxCenterAndExtent QueryBounds = FBoxCenterAndExtent(BoundsCenter, Extent);
 	QueryBounds.Center.W = QueryBounds.Extent.W = 0;
 	
-	// QueryBounds.Extent.Y = 500; // Distance.Y * 0.5;
+	TMap<int32, FMassEntityHandle> Handles;
 	WorldOctree.FindElementsWithBoundsTest(QueryBounds, [&](const FPDEntityOctreeCell& Cell)
 	{
 		if (Cell.EntityHandle.Index == INDEX_NONE) { return; } 
 
-		MarqueeSelectedHandles.Emplace(Cell.EntityHandle.Index, Cell.EntityHandle);
+		Handles.Emplace(Cell.EntityHandle.Index, Cell.EntityHandle);
 	}, true);
 
+	//
+	CurrentSelectionID = INDEX_NONE;
+	if (Handles.IsEmpty() == false)
+	{
+		CurrentSelectionID = GeneratedGroupID();
+		UE_LOG(LogTemp, Warning, TEXT("ARTSOController::GetEntitiesOrActorsInMarqueeSelection : (Head) Generated ID : %i"), CurrentSelectionID);
+
+		MarqueeSelectedHandles.FindOrAdd(CurrentSelectionID, std::move(Handles));
+	}
 	OnSelectionChange(false);
 	
 	
@@ -478,35 +647,49 @@ void ARTSOController::GetEntitiesOrActorsInMarqueeSelection()
 
 	// Chaos debug draws on an async call
 	const FVector DebugExtent = FVector(25.0);
-	DrawBoxAndTextChaos(StartHitResult.Location, QueryBounds.Extent.ToOrientationQuat(), DebugExtent, FString("StartSelection"));
-	DrawBoxAndTextChaos(CenterHitResult.Location, QueryBounds.Extent.ToOrientationQuat(), DebugExtent, FString("CenterSelection"));
-	DrawBoxAndTextChaos(EndHitResult.Location, QueryBounds.Extent.ToOrientationQuat(), DebugExtent, FString("EndSelection"));
+	DrawBoxAndTextChaos(LatestStartHitResult.Location, QueryBounds.Extent.ToOrientationQuat(), DebugExtent, FString("StartSelection"));
+	DrawBoxAndTextChaos(LatestCenterHitResult.Location, QueryBounds.Extent.ToOrientationQuat(), DebugExtent, FString("CenterSelection"));
+	DrawBoxAndTextChaos(LatestEndHitResult.Location, QueryBounds.Extent.ToOrientationQuat(), DebugExtent, FString("EndSelection"));
 	DrawBoxAndTextChaos(FVector(QueryBounds.Center), FQuat(0) , FVector(QueryBounds.Extent), FString("MarqueeSelection"), FColor::Yellow);
 	
 #endif
-	
+}
+
+void ARTSOController::ReorderGroupIndex(const int32 OldID, const int32 NewID)
+{
+	if (MarqueeSelectedHandles.Contains(OldID) == false || NewID < 0 || NewID > 10) { return; }
+
+	MarqueeSelectedHandles.FindOrAdd(NewID) = *MarqueeSelectedHandles.Find(OldID);
+	MarqueeSelectedHandles.Remove(OldID);
 }
 
 void ARTSOController::OnSelectionChange(const bool bClearSelection)
 {
-	// Parallel task for enabling custom mesh data 
-	
-	AGodHandPawn* PawnAsGodhand = GetPawn<AGodHandPawn>();
-	if (PawnAsGodhand == nullptr) { return; }
+	const AGodHandPawn* PawnAsGodhand = GetPawn<AGodHandPawn>();
+	if (PawnAsGodhand == nullptr || GetMarqueeSelectionMap().Contains(CurrentSelectionID) == false)
+	{
+		return;
+	}
 	
 	// const TArray<TObjectPtr<UInstancedStaticMeshComponent>>& ISMs = GEngine->GetEngineSubsystem<UPDRTSBaseSubsystem>()->GetMassISMs(PawnAsGodhand->GetWorld());
 	TArray<FMassEntityHandle> MarqueeSelectionArray;
-	GetMarqueeSelectionMap().GenerateValueArray(MarqueeSelectionArray);
+	GetMarqueeSelectionMap().Find(CurrentSelectionID)->GenerateValueArray(MarqueeSelectionArray);
 
-	for (const FMassEntityHandle& EntityHandle : MarqueeSelectionArray)
-	{
-		if (PawnAsGodhand->EntityManager->IsEntityValid(EntityHandle) == false) { return; }
+	const TArray<FMassEntityHandle>& MarqueeSelectionArrayRef = MarqueeSelectionArray; 
+	ParallelFor(MarqueeSelectionArray.Num(),
+		[&MarqueeSelectionArrayRef, &PawnAsGodhand, bClearSelection, SelectionID = CurrentSelectionID](const int32 Idx)
+		{
+			const FMassEntityHandle& EntityHandle = MarqueeSelectionArrayRef[Idx];
+			if (PawnAsGodhand->EntityManager->IsEntityValid(EntityHandle) == false) { return; }
 
-		FPDMFragment_RTSEntityBase* PermadevEntityBase = PawnAsGodhand->EntityManager->GetFragmentDataPtr<FPDMFragment_RTSEntityBase>(EntityHandle);
-		if (PermadevEntityBase == nullptr) { return; }
-		
-		PermadevEntityBase->SelectionState = bClearSelection ? EPDEntitySelectionState::ENTITY_NOTSELECTED : EPDEntitySelectionState::ENTITY_SELECTED; // Processing handled in UPDMProcessor_EntityCosmetics::Execute function
-	}
+			FPDMFragment_RTSEntityBase* PermadevEntityBase = PawnAsGodhand->EntityManager->GetFragmentDataPtr<FPDMFragment_RTSEntityBase>(EntityHandle);
+			if (PermadevEntityBase == nullptr) { return; }
+				
+			// Processing handled in UPDMProcessor_EntityCosmetics::Execute function
+			PermadevEntityBase->SelectionState = bClearSelection ? EPDEntitySelectionState::ENTITY_NOTSELECTED : EPDEntitySelectionState::ENTITY_SELECTED;
+			PermadevEntityBase->SelectionGroupIndex = SelectionID;
+			
+		}, EParallelForFlags::BackgroundPriority);
 }
 
 

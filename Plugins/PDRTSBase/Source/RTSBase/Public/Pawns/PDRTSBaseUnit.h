@@ -40,17 +40,30 @@ public:
 		FGameplayTag RequestedJob,
 		FMassEntityHandle RequestedEntityHandle);
 
+	/** @brief Incomplete, this is emant to be called when dispatching a batch of tasks which arent' sharing navpath */
+	void RequestActionMulti(
+		AActor* CallingActor,
+		const TArray<TTuple<
+		const FPDTargetCompound& /*OptTarget*/,
+		const FGameplayTag&  /*RequestedJob*/,
+		FMassEntityHandle    /*RequestedEntityHandle*/>>& EntityHandleCompounds,
+		int32 SelectionGroup = INDEX_NONE);	
+
 	/**
 	 * @brief Sets job to the requested job on the requested entity, if possible
 	 * @note Entry Tuple<CallingActor, NewTarget, RequestedJob, RequestedEntityHandle>
 	 */
 	void RequestActionMulti(
 		AActor* CallingActor,
-		const TArray<TTuple<
-		const FPDTargetCompound& /*OptTarget*/,
-		const FGameplayTag&  /*RequestedJob*/,
-		FMassEntityHandle    /*RequestedEntityHandle*/>>& EntityHandleCompounds);	
-
+		const FPDTargetCompound& TargetCompound,
+		const FGameplayTag& RequestedJob,
+		const TMap<int32, FMassEntityHandle>& EntityHandleMap,
+		const FVector&                        SelectionCenter,
+		int32 SelectionGroup = INDEX_NONE);		
+	
+	// const TMap<int32, FMassEntityHandle>&
+	
+	
 	/** @brief Assigns the entity manager for the world we are in, so we can refer to it and modify fragments when needed */
 	FORCEINLINE void SetEntityManager(const FMassEntityManager* InEntityManager) { EntityManager = InEntityManager;}
 
@@ -60,9 +73,6 @@ protected:
 	/** @brief Sets job to the requested job on the requested entity, only called when approved */
 	void AssignTask(FMassEntityHandle EntityHandle, const FGameplayTag& JobTag, const FPDTargetCompound& OptTarget);
 
-	/** @brief Sets job to the requested job on the requested entity, only called when approved */
-	void AssignTaskMulti(TArray<TTuple<FMassEntityHandle,const FGameplayTag&, AActor*>>& EntityHandleCompounds);
-	
 	void OnTaskFinished(FMassEntityHandle WorkerEntity, const FGameplayTag& JobTag);
 
 public:

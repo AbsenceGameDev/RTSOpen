@@ -13,6 +13,7 @@
 
 #include "PDMassFragments.generated.h"
 
+class UNavigationPath;
 class UAnimToTextureDataAsset;
 
 // MassTags
@@ -56,7 +57,13 @@ struct PDRTSBASE_API FPDMFragment_RTSEntityBase : public FMassFragment
 	EPDEntitySelectionState SelectionState = EPDEntitySelectionState::ENTITY_UNSET;	
 	
 	UPROPERTY()
-	bool bHasClearedSelection = true;	
+	bool bHasClearedSelection = true;
+
+	UPROPERTY()
+	int32 SelectionGroupIndex = INDEX_NONE;
+
+	UPROPERTY()
+	TArray<FVector> QueuedUnitPath{};	
 	
 	// /** @todo Do we have any queued entity-to-entity interactions */
 	// UPROPERTY()
@@ -129,6 +136,17 @@ struct PDRTSBASE_API FPDTargetCompound
 	UPROPERTY(EditAnywhere)
 	AActor* ActionTargetAsActor = nullptr;
 };
+
+/** @brief Shared fragment for when entities share animation data */
+USTRUCT()
+struct PDRTSBASE_API FPDMFragment_SharedNavigation : public FMassSharedFragment
+{
+	GENERATED_BODY()
+
+	UPROPERTY(EditAnywhere)
+	TMap<int32 /*SelectionGroupIndex*/, const UNavigationPath*> NavPathsPerSelectionGroup;
+};
+
 
 /**
  * @brief Fragment given to entities to grant resources

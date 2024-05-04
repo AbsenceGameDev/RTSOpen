@@ -1,84 +1,30 @@
 ﻿/* @author: Ario Amin @ Permafrost Development. @copyright: Full BSL(1.1) License included at bottom of the file  */
-#pragma once
 
-#include "CoreMinimal.h"
-#include "UObject/Interface.h"
-#include "RTSOInputInterface.generated.h"
+#include "DelayAction.h"
+#include "..\..\Public\Core\RTSOInputStackSubsystem.h"
 
-// This class does not need to be modified.
-UINTERFACE()
-class URTSOInputInterface : public UInterface
+void URTSOInputStackSubsystem::OnWorldBeginPlay(UWorld& InWorld)
 {
-	GENERATED_BODY()
-};
+	Super::OnWorldBeginPlay(InWorld);
 
-/**
- * @brief RTSO input interface, used for the controller and the godhand pawn
- */
-class RTSOPEN_API IRTSOInputInterface
+	DispatchValueStackReset();
+}
+
+void URTSOInputStackSubsystem::DispatchValueStackReset()
 {
-	GENERATED_BODY()
-
-public:
-	/* Enhanced Input */
-	UFUNCTION(BlueprintNativeEvent, BlueprintCallable)
-	void ActionMove(const FInputActionValue& Value);
-	virtual void ActionMove_Implementation(const FInputActionValue& Value) {};
-	
-	UFUNCTION(BlueprintNativeEvent, BlueprintCallable)
-	void ActionMagnify(const FInputActionValue& Value);
-	virtual void ActionMagnify_Implementation(const FInputActionValue& Value) {};
-	
-	UFUNCTION(BlueprintNativeEvent, BlueprintCallable)
-	void ActionRotate(const FInputActionValue& Value);
-	virtual void ActionRotate_Implementation(const FInputActionValue& Value) {};
-
-	UFUNCTION(BlueprintNativeEvent, BlueprintCallable)
-	void ActionDragMove(const FInputActionValue& Value);
-	virtual void ActionDragMove_Implementation(const FInputActionValue& Value) {};
-
-	UFUNCTION(BlueprintNativeEvent, BlueprintCallable)
-	void ActionWorkerUnit_Triggered(const FInputActionValue& Value);
-	virtual void ActionWorkerUnit_Triggered_Implementation(const FInputActionValue& Value) {};
-
-	UFUNCTION(BlueprintNativeEvent, BlueprintCallable)
-	void ActionWorkerUnit_Started(const FInputActionValue& Value);
-	virtual void ActionWorkerUnit_Started_Implementation(const FInputActionValue& Value) {};
-
-	UFUNCTION(BlueprintNativeEvent, BlueprintCallable)
-	void ActionWorkerUnit_Cancelled(const FInputActionValue& Value);
-	virtual void ActionWorkerUnit_Cancelled_Implementation(const FInputActionValue& Value) {};
-	
-	UFUNCTION(BlueprintNativeEvent, BlueprintCallable)
-	void ActionWorkerUnit_Completed(const FInputActionValue& Value);
-	virtual void ActionWorkerUnit_Completed_Implementation(const FInputActionValue& Value) {};
-	
-	UFUNCTION(BlueprintNativeEvent, BlueprintCallable)
-	void ActionBuildMode(const FInputActionValue& Value);
-	virtual void ActionBuildMode_Implementation(const FInputActionValue& Value) {};
-
-	UFUNCTION(BlueprintNativeEvent, BlueprintCallable)
-	void ActionClearSelection(const FInputActionValue& Value);
-	virtual void ActionClearSelection_Implementation(const FInputActionValue& Value) {};
-
-	UFUNCTION(BlueprintNativeEvent, BlueprintCallable)
-	void ActionMoveSelection(const FInputActionValue& Value);
-	virtual void ActionMoveSelection_Implementation(const FInputActionValue& Value) {};
-	
-	UFUNCTION(BlueprintNativeEvent, BlueprintCallable)
-	void ActionAssignSelectionToHotkey(const FInputActionValue& Value);
-	virtual void ActionAssignSelectionToHotkey_Implementation(const FInputActionValue& Value) {};
-
-	UFUNCTION(BlueprintNativeEvent, BlueprintCallable)
-	void ActionHotkeySelection(const FInputActionValue& Value);
-	virtual void ActionHotkeySelection_Implementation(const FInputActionValue& Value) {};	
-	
-	UFUNCTION(BlueprintNativeEvent, BlueprintCallable)
-	void ActionChordedBase(const FInputActionValue& Value);
-	virtual void ActionChordedBase_Implementation(const FInputActionValue& Value) {};
-	
-public:
-};
+	// Due to the nature of the workaround, when initializing the modifier function
+	// it stacks the default values for each keybinding,
+	// this is just to flush it as long as the issue still remains with the input value in the IA to resolve 0
+	// in all values with all modifiers.
+	// This is something local to either this machine or this build of the engine
+	// but either way it causes a blocker that I needed to get past   
+	FLatentActionInfo DelayInfo{0,0, TEXT("ResetValueStacks"), this};
+	FLatentActionManager& LatentActionManager = GetWorld()->GetLatentActionManager();
+	if (LatentActionManager.FindExistingAction<FDelayAction>(DelayInfo.CallbackTarget, DelayInfo.UUID) == nullptr)
+	{
+		LatentActionManager.AddNewAction(DelayInfo.CallbackTarget, DelayInfo.UUID, new FDelayAction(8.0f, DelayInfo));
+	}
+}
 
 
 /**

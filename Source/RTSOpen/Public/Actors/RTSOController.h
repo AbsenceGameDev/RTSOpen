@@ -3,10 +3,13 @@
 
 #include "CoreMinimal.h"
 #include "GameplayTagContainer.h"
+#include "InputModifiers.h"
 #include "MassEntityTypes.h"
 #include "GameFramework/PlayerController.h"
 #include "Interfaces/RTSOInputInterface.h"
 #include "RTSOController.generated.h"
+
+class URTSOInputStackSubsystem;
 
 UENUM()
 enum class EMarqueeSelectionEvent : uint8
@@ -59,6 +62,10 @@ class RTSOPEN_API ARTSOController : public APlayerController, public IRTSOInputI
 	virtual void ActionBuildMode_Implementation(const FInputActionValue& Value) override;
 	virtual void ActionClearSelection_Implementation(const FInputActionValue& Value) override;
 	virtual void ActionMoveSelection_Implementation(const FInputActionValue& Value) override;	
+	virtual void ActionAssignSelectionToHotkey_Implementation(const FInputActionValue& Value) override;
+	virtual void ActionHotkeySelection_Implementation(const FInputActionValue& Value) override;
+	virtual void ActionChordedBase_Implementation(const FInputActionValue& Value) override;
+
 	/* RTSO Input Interface - End */
 
 	
@@ -91,15 +98,32 @@ class RTSOPEN_API ARTSOController : public APlayerController, public IRTSOInputI
 
 	/* RTSO Marquee selection - Start */
 	UFUNCTION() FORCEINLINE bool IsDrawingMarquee() const { return bIsDrawingMarquee; }
-	UFUNCTION() FORCEINLINE FVector2D GetStartMousePositionMarquee() const {return StartMousePositionMarquee;};
+	UFUNCTION() FORCEINLINE FVector2D GetStartMousePositionMarquee() const {return StartMousePositionMarquee;}
+	UFUNCTION() FORCEINLINE int32 GeneratedGroupID()
+	{
+		RollbackSelectionID = CurrentSelectionID;
+		
+		// this is the buffer-space, when we want to map it to a hotkey we move it to a key within the range of 0-9 so we can easily access it
+		const int32 NewStep = ++SelectionBufferIdx %= SelectionBufferSize;
+		CurrentSelectionID = MaxSelectionHotkeyIndex + NewStep;
+		
+		return CurrentSelectionID;
+	} /**<@brief Range loops from 1-10 */
+	UFUNCTION() FORCEINLINE int32 GetLatestGroupID() const { return CurrentSelectionID; }
+	UFUNCTION() FORCEINLINE int32 GetCurrentGroupID() const { return CurrentSelectionID; }
 	UFUNCTION() FORCEINLINE FVector2D GetCurrentMousePositionMarquee() const {return CurrentMousePositionMarquee;}
-	UFUNCTION(BlueprintImplementableEvent) void OnMarqueeSelectionUpdated(const TArray<int32>& NewSelection) const;
+	UFUNCTION(BlueprintImplementableEvent) void OnMarqueeSelectionUpdated(int32 SelectionGroup, const TArray<int32>& NewSelection) const;
 	UFUNCTION(BlueprintCallable) void MarqueeSelection(EMarqueeSelectionEvent SelectionEvent);
-	void DrawBoxAndTextChaos(FVector BoundsCenter, FQuat Rotation, FVector DebugExtent, FString DebugBoxTitle, FColor LineColour = FColor::Black);
-	void AdjustMarqueeHitResultsToMinimumHeight(FHitResult& StartHitResult, FHitResult& CenterHitResult, FHitResult& EndHitResult);
+	static void DrawBoxAndTextChaos(const FVector& BoundsCenter, const FQuat& Rotation, const FVector& DebugExtent, const FString& DebugBoxTitle, FColor LineColour = FColor::Black);
+	static void AdjustMarqueeHitResultsToMinimumHeight(FHitResult& StartHitResult, FHitResult& CenterHitResult, FHitResult& EndHitResult);
 	UFUNCTION() void GetEntitiesOrActorsInMarqueeSelection();
-	UFUNCTION() const TMap<int32, FMassEntityHandle>& GetMarqueeSelectionMap() { return MarqueeSelectedHandles; }
+	UFUNCTION() void ReorderGroupIndex(const int32 OldID, const int32 NewID);
+	const TMap<int32, TMap<int32, FMassEntityHandle>>& GetMarqueeSelectionMap() { return MarqueeSelectedHandles; }
 
+	UFUNCTION() FORCEINLINE FHitResult GetLatestStartHitResult()  { return LatestStartHitResult;};
+	UFUNCTION() FORCEINLINE FHitResult GetLatestCenterHitResult() { return LatestCenterHitResult;};
+	UFUNCTION() FORCEINLINE FHitResult GetLatestEndHitResult()    { return LatestEndHitResult;};	
+	
 protected:
 	void OnSelectionChange(bool bClearSelection);
 	/* RTSO Marquee selection - End */
@@ -125,7 +149,16 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "RTS|Input")
 	class UInputAction* CtrlActionClearSelection = nullptr;
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "RTS|Input")
-	class UInputAction* CtrlActionMoveSelection = nullptr;	
+	class UInputAction* CtrlActionMoveSelection = nullptr;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "RTS|Input")
+	class UInputAction* CtrlActionHotkeySelection = nullptr;
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "RTS|Input")
+	class UInputAction* CtrlActionAssignSelectionToHotkey = nullptr;
+	
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "RTS|Input")
+	class UInputAction* CtrlActionChordedBase = nullptr;
+	
 	/* Input Actions - If I have time to implement */
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "RTS|Input")
 	class UInputAction* CtrlActionBuildMode = nullptr;
@@ -135,6 +168,27 @@ public:
 	TMap<FGameplayTag, UInputMappingContext*> MappingContexts{};
 
 protected:
+
+	UPROPERTY(VisibleInstanceOnly)
+	FHitResult LatestStartHitResult{};
+	UPROPERTY(VisibleInstanceOnly)
+	FHitResult LatestCenterHitResult{};
+	UPROPERTY(VisibleInstanceOnly)
+	FHitResult LatestEndHitResult{};
+
+	UPROPERTY(VisibleInstanceOnly)
+	int32 RollbackSelectionID = INDEX_NONE; /**< @brief */
+	UPROPERTY(VisibleInstanceOnly)
+	int32 LatestSelectionID = INDEX_NONE;   /**< @brief */
+	UPROPERTY(VisibleInstanceOnly)
+	int32 SelectionBufferIdx = INDEX_NONE;   /**< @brief */	
+	UPROPERTY(VisibleInstanceOnly)
+	int32 SelectionBufferSize = 20;   /**< @brief */	
+	UPROPERTY(VisibleInstanceOnly)
+	int32 MaxSelectionHotkeyIndex = 9;   /**< @brief */		
+	UPROPERTY(VisibleInstanceOnly)
+	int32 CurrentSelectionID = INDEX_NONE;  /**< @brief Need function to switch selection group */
+	
 	/** @brief Marquee - active state */
 	uint8 bIsDrawingMarquee : 1;
 	/** @brief Marquee - (Start) screen position */
@@ -143,9 +197,39 @@ protected:
 	FVector2D CurrentMousePositionMarquee{};
 
 	// @todo add some mapping to selection groups
-	TMap<int32, FMassEntityHandle> MarqueeSelectedHandles{};	
+	TSet<int32> HotKeyedSelectionGroups{};	
+	TMap<int32, TMap<int32, FMassEntityHandle>> MarqueeSelectedHandles{};	
 };
 
+
+/** Scalar
+	*  Scales input by a set factor per axis
+	*/
+UCLASS(NotBlueprintable, MinimalAPI, meta = (DisplayName = "IntegerPassthrough"))
+class UInputModifierIntegerPassthrough : public UInputModifier
+{
+	GENERATED_BODY()
+
+public:
+
+#if WITH_EDITOR
+	virtual EDataValidationResult IsDataValid(class FDataValidationContext& Context) const override;
+#endif
+
+	UPROPERTY(EditInstanceOnly, BlueprintReadWrite, Category=Settings)
+	int32 IntegerPassthrough = INDEX_NONE;
+	
+	UPROPERTY()
+	URTSOInputStackSubsystem* InputStackWorkaround = nullptr;
+
+	FInputActionValue CachedLastValue;
+
+	// inline static constexpr double TimeLimitForStacking = 0.3;
+	// double AccumulatedTime = 0.0;
+
+protected:
+	virtual FInputActionValue ModifyRaw_Implementation(const UEnhancedPlayerInput* PlayerInput, FInputActionValue CurrentValue, float DeltaTime) override;
+};
 
 /**
 Business Source License 1.1

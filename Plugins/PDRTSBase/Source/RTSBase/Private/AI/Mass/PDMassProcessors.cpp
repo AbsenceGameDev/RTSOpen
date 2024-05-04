@@ -33,6 +33,7 @@
 #include "Chaos/DebugDrawQueue.h"
 #include "ChaosLog.h"
 #include "MassCrowdRepresentationSubsystem.h"
+#include "NavigationSystem.h"
 
 TAutoConsoleVariable<bool> UPDOctreeProcessor::CVarDrawCells(
 	TEXT("Octree.DebugCells"), false,
@@ -350,8 +351,6 @@ void UPDMProcessor_EntityCosmetics::Execute(FMassEntityManager& EntityManager, F
 			const FMassRepresentationLODFragment& RepLOD = RepresentationLODFragments.IsValidIndex(EntityIdx) ? RepresentationLODFragments[EntityIdx] : FMassRepresentationLODFragment();
 			ProcessMaterialInstanceData(InContext.GetEntity(EntityIdx), RepLOD, Rep,MeshInfo[Rep.StaticMeshDescIndex], RTSEntityFragment);
 			ProcessVertexAnimation(EntityIdx, RepresentationLODFragments, Rep, RTSEntityFragment, AnimationData, Velocity, MeshInfo, MeshInfoInnerArray, this);
-
-			
 		}
 	});
 }
@@ -377,18 +376,35 @@ void UPDProcessor_MoveTarget::ConfigureQueries()
 	EntityQuery.AddRequirement<FTransformFragment>(EMassFragmentAccess::ReadWrite);
 	EntityQuery.AddRequirement<FMassMoveTargetFragment>(EMassFragmentAccess::ReadWrite);
 	EntityQuery.AddChunkRequirement<FMassSimulationVariableTickChunkFragment>(EMassFragmentAccess::ReadOnly, EMassFragmentPresence::Optional);
+	EntityQuery.AddSharedRequirement<FPDMFragment_SharedNavigation>(EMassFragmentAccess::ReadOnly);
 	EntityQuery.SetChunkFilter(&FMassSimulationVariableTickChunkFragment::ShouldTickChunkThisFrame);
 	EntityQuery.RegisterWithProcessor(*this);
 }
 
+
+//
+// Navpath calculations when? somewhere in here in this execute function
 void UPDProcessor_MoveTarget::Execute(FMassEntityManager& EntityManager, FMassExecutionContext& Context)
 {
 	TArray<FMassEntityHandle> EntitiesToSignal;
 	EntityQuery.ForEachEntityChunk(EntityManager, Context, ([this, &EntitiesToSignal](FMassExecutionContext& Context)
 	{
-		TMutFragment<FTransformFragment> TransformsList = MUTVIEW(Context, FTransformFragment);
-		TMutFragment<FMassMoveTargetFragment> MoveTargets = MUTVIEW(Context, FMassMoveTargetFragment);
-
+		TMutFragment<FTransformFragment>& TransformsList = MUTVIEW(Context, FTransformFragment);
+		TMutFragment<FMassMoveTargetFragment>& MoveTargets = MUTVIEW(Context, FMassMoveTargetFragment);
+		FPDMFragment_SharedNavigation& SharedFragment = MUTSHAREDVIEW(Context, FPDMFragment_SharedNavigation);
+		
+		//
+		// Update Shared navpath fragments 
+		UPDRTSBaseSubsystem* RTSSubsystem = GEngine->GetEngineSubsystem<UPDRTSBaseSubsystem>();
+		if (RTSSubsystem != nullptr)
+		{
+			if (RTSSubsystem->bGroupPathsDirtied)
+			{
+				SharedFragment.NavPathsPerSelectionGroup = RTSSubsystem->SelectionGroupPaths;
+				RTSSubsystem->bGroupPathsDirtied = false;
+			}
+		}
+		
 		for (int32 EntityIndex = 0; EntityIndex < Context.GetNumEntities(); ++EntityIndex)
 		{
 			FMassMoveTargetFragment& MoveTarget = MoveTargets[EntityIndex];

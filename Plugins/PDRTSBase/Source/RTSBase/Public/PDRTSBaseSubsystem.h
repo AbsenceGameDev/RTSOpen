@@ -5,6 +5,7 @@
 #include "CoreMinimal.h"
 #include "GameplayTagContainer.h"
 #include "MassEntityTypes.h"
+#include "AI/Mass/PDMassFragments.h"
 #include "Engine/StreamableManager.h"
 #include "Subsystems/EngineSubsystem.h"
 #include "PDRTSBaseSubsystem.generated.h"
@@ -130,6 +131,12 @@ public:
 
 	UFUNCTION()
 	virtual void ProcessTables();
+
+	UFUNCTION()
+	virtual void RequestNavpathGenerationForSelectionGroup(
+		int32 SelectionGroup,
+		const FVector& SelectionCenter,
+		const FPDTargetCompound& TargetCompound);
 	
 	const FPDWorkUnitDatum* GetWorkEntry(const FGameplayTag& JobTag);
 	const FPDWorkUnitDatum* GetWorkEntry(const FName& JobRowName);
@@ -139,6 +146,10 @@ public:
 public:	
 	UPROPERTY()
 	TArray<UDataTable*> WorkTables;
+
+	UPROPERTY()
+	TMap<int32 /*SelectionGroupIndex*/, const UNavigationPath*> SelectionGroupPaths{};
+	bool bGroupPathsDirtied = false;
 	
 	TMap<const FGameplayTag, const FPDWorkUnitDatum*> TagToJobMap{};
 	TMap<const FName, FGameplayTag> NameToTagMap{};
@@ -156,6 +167,7 @@ public:
 	PD::Mass::Entity::FPDSafeOctree WorldOctree;
 
 	TMap<void*, bool> WorldsWithOctrees{};
+	
 };
 
 /** @brief Subsystem (developer) settings, set the uniform bounds, the default grid cell size and the work tables for the entities to use */

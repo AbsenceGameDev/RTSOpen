@@ -112,8 +112,13 @@ public:
 	/** @brief */
 	virtual void ActionClearSelection_Implementation(const FInputActionValue& Value) override;
 	/** @brief */
-	virtual void ActionMoveSelection_Implementation(const FInputActionValue& Value) override;	
-	
+	virtual void ActionMoveSelection_Implementation(const FInputActionValue& Value) override;
+	/** @brief */
+	virtual void ActionAssignSelectionToHotkey_Implementation(const FInputActionValue& Value) override;
+	/** @brief */
+	virtual void ActionHotkeySelection_Implementation(const FInputActionValue& Value) override;
+	/** @brief */
+	virtual void ActionChordedBase_Implementation(const FInputActionValue& Value) override;
 	/* RTSO Input Interface - End */
 
 private:
