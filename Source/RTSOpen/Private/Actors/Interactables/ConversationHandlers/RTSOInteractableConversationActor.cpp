@@ -48,21 +48,20 @@ void ARTSOInteractableConversationActor::OnInteract_Implementation(
 	}
 	
 	if (InteractionParams.InteractionPercent <= .85) { return; }
-
-
-
+	
 	
 
 	// open conversation here with instigator
 
 	UPDConversationInstance* ConversationInstance =
-		Cast<UPDConversationInstance>(UConversationLibrary::StartConversation(
-			FGameplayTag ConversationEntryTag,
-			this, 
+		Cast<UPDConversationInstance>(
+			UConversationLibrary::StartConversation(
+			LoadedConversationPointer->PhaseRequiredTags[LoadedConversationPointer->BaseProgression].ConversationEntryTag,
+			(AActor*)this, 
 			TAG_Conversation_Participants_Speaker, 
 			InteractionParams.InstigatorActor,
 			TAG_Conversation_Participants_Listener,
-			UPDConversationInstance::StaticClass));
+			UPDConversationInstance::StaticClass()));
 
 
 	//

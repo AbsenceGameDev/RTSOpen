@@ -17,6 +17,9 @@ USTRUCT()
 struct FRTSOConversationRules
 {
 	GENERATED_BODY()
+
+	UPROPERTY()
+	FGameplayTag ConversationEntryTag; /**< @brief  Tag for entry data that these rules pertain */
 	
 	UPROPERTY()
 	TArray<FGameplayTag> RequiredTags; /**< @brief  Tags required for this instance to be loaded */	
@@ -31,7 +34,7 @@ struct FRTSOConversationMetaProgressionDatum : public FTableRowBase
 	int32 BaseProgression = INDEX_NONE; /* Starting progression */
 	
 	UPROPERTY()
-	TMap<FGameplayTag /* ConversationTag */, FRTSOConversationRules> RequiredTags;	
+	TArray<FRTSOConversationRules> PhaseRequiredTags;	
 };
 
 UCLASS()
