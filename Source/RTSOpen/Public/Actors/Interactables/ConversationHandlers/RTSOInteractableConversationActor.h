@@ -1,35 +1,73 @@
-/* @author: Ario Amin @ Permafrost Development. @copyright: Full BSL(1.1) License included at bottom of the file  */
+﻿/* @author: Ario Amin @ Permafrost Development. @copyright: Full BSL(1.1) License included at bottom of the file  */
 
-using UnrealBuildTool;
-using System.IO;
+#pragma once
 
-public class RTSOpen : ModuleRules
+#include "CoreMinimal.h"
+#include "NativeGameplayTags.h"
+#include "Actors/PDInteractActor.h"
+#include "RTSOInteractableConversationActor.generated.h"
+
+/**
+ * @todo @note: If I have time then write a small mission system, but avoid putting to much time into it
+ * @todo @cont: as I am working on a separate repo as-well with a full fledged mission system,
+ * @todo @cont: so not worth making two fully fledged ones,
+ * @todo @cont: this one well have to be made with some shortcuts in design and implementation
+ */
+USTRUCT()
+struct FRTSOConversationRules
 {
-	public RTSOpen(ReadOnlyTargetRules Target) : base(Target)
-	{
-		PCHUsage = PCHUsageMode.UseExplicitOrSharedPCHs;
+	GENERATED_BODY()
 	
-		PublicIncludePaths.Add(Path.Combine(ModuleDirectory, "Classes"));
-		
-		PublicDependencyModuleNames.AddRange(new string[] 
-			{ "Core", "CoreUObject", "Engine", 
-			"InputCore", "GameplayTags", "NetCore", "PDRTSBase", "PDInventory", "EnhancedInput"
-			});
+	UPROPERTY()
+	TArray<FGameplayTag> RequiredTags; /**< @brief  Tags required for this instance to be loaded */	
+};
 
-		PublicDependencyModuleNames.AddRange(new string[]
-		{
-			"MassEntity", "MassCommon", "MassNavigation", "StructUtils", "MassMovement", "NavigationSystem",
-			"AIModule", "MassAIBehavior", "StateTreeModule", "SmartObjectsModule", "MassSmartObjects", "MassSignals",
-			"MassRepresentation", "MassLOD", "AnimToTexture", "MassSpawner", "Chaos"
-		});
-		
-		PrivateDependencyModuleNames.AddRange(new string[] 
-			{ "PDInteraction", "PDInventory", "PDRTSBase", "GameplayTags", "EnhancedInput", "CommonUI", "UMG", "Niagara", "MassCrowd", "CommonConversationRuntime", "PDConversationHelper"
-			});
-	}
-}
+USTRUCT()
+struct FRTSOConversationMetaProgressionDatum : public FTableRowBase
+{
+	GENERATED_BODY()
 
-/*
+	UPROPERTY()
+	int32 BaseProgression = INDEX_NONE; /* Starting progression */
+	
+	UPROPERTY()
+	TMap<FGameplayTag /* ConversationTag */, FRTSOConversationRules> RequiredTags;	
+};
+
+UCLASS()
+class RTSOPEN_API ARTSOInteractableConversationActor : public APDInteractActor
+{
+	GENERATED_BODY()
+
+	virtual void OnConstruction(const FTransform& Transform) override;
+
+	virtual void OnInteract_Implementation(const FPDInteractionParamsWithCustomHandling& InteractionParams, EPDInteractResult& InteractResult) const override;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Meta = (RowType = "/Script/RTSBase.RTSOConversationMetaProgressionDatum"))
+	FDataTableRowHandle ConversationSettingsHandle;	
+
+	/** @note This pointer is just so we can modify the underlying value without restriction in OnConstruction*/
+	FRTSOConversationMetaProgressionDatum* LoadedConversationPointer{};
+	FRTSOConversationMetaProgressionDatum LoadedConversationDatumAsValue{};
+};
+
+/**
+ * Declaring the "Conversation.Entry" gameplay tags. to be defined in an object-file
+ * @todo move to a 'conversation commons' file which I need to create
+ */
+RTSOPEN_API UE_DECLARE_GAMEPLAY_TAG_EXTERN(TAG_Conversation_Entry_Intro);
+RTSOPEN_API UE_DECLARE_GAMEPLAY_TAG_EXTERN(TAG_Conversation_Entry_00);
+RTSOPEN_API UE_DECLARE_GAMEPLAY_TAG_EXTERN(TAG_Conversation_Entry_01);
+
+/**
+ * Declaring the "Conversation.Participants" gameplay tags. to be defined in an object-file
+ * @todo move to a 'conversation commons' file which I need to create
+ */
+RTSOPEN_API UE_DECLARE_GAMEPLAY_TAG_EXTERN(TAG_Conversation_Participants_Speaker);
+RTSOPEN_API UE_DECLARE_GAMEPLAY_TAG_EXTERN(TAG_Conversation_Participants_Listener);
+
+
+/**
 Business Source License 1.1
 
 Parameters

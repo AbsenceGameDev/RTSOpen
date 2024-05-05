@@ -1,35 +1,76 @@
-/* @author: Ario Amin @ Permafrost Development. @copyright: Full BSL(1.1) License included at bottom of the file  */
+﻿/* @author: Ario Amin @ Permafrost Development. @copyright: Full BSL(1.1) License included at bottom of the file  */
 
-using UnrealBuildTool;
-using System.IO;
+#include "Actors/Interactables/ConversationHandlers/RTSOInteractableConversationActor.h"
+#include "ConversationInstance.h"
+#include "ConversationLibrary.h"
+#include "PDConversationCommons.h"
 
-public class RTSOpen : ModuleRules
+/** Declaring the "Conversation.Entry" gameplay tags. to be defined in an object-file
+ * @todo move to a 'conversation commons' file which I need to create */
+UE_DEFINE_GAMEPLAY_TAG(TAG_Conversation_Entry_Intro, "Conversation.Entry.Intro");
+UE_DEFINE_GAMEPLAY_TAG(TAG_Conversation_Entry_00, "Conversation.Entry.00");
+UE_DEFINE_GAMEPLAY_TAG(TAG_Conversation_Entry_01, "Conversation.Entry.01");
+
+
+/** Declaring the "Conversation.Participants" gameplay tags. to be defined in an object-file
+ * @todo move to a 'conversation commons' file which I need to create */
+UE_DEFINE_GAMEPLAY_TAG(TAG_Conversation_Participants_Speaker, "Conversation.Participants.Speaker");
+UE_DEFINE_GAMEPLAY_TAG(TAG_Conversation_Participants_Listener, "Conversation.Participants.Listener");
+
+void ARTSOInteractableConversationActor::OnConstruction(const FTransform& Transform)
 {
-	public RTSOpen(ReadOnlyTargetRules Target) : base(Target)
-	{
-		PCHUsage = PCHUsageMode.UseExplicitOrSharedPCHs;
-	
-		PublicIncludePaths.Add(Path.Combine(ModuleDirectory, "Classes"));
-		
-		PublicDependencyModuleNames.AddRange(new string[] 
-			{ "Core", "CoreUObject", "Engine", 
-			"InputCore", "GameplayTags", "NetCore", "PDRTSBase", "PDInventory", "EnhancedInput"
-			});
+	Super::OnConstruction(Transform);
 
-		PublicDependencyModuleNames.AddRange(new string[]
-		{
-			"MassEntity", "MassCommon", "MassNavigation", "StructUtils", "MassMovement", "NavigationSystem",
-			"AIModule", "MassAIBehavior", "StateTreeModule", "SmartObjectsModule", "MassSmartObjects", "MassSignals",
-			"MassRepresentation", "MassLOD", "AnimToTexture", "MassSpawner", "Chaos"
-		});
-		
-		PrivateDependencyModuleNames.AddRange(new string[] 
-			{ "PDInteraction", "PDInventory", "PDRTSBase", "GameplayTags", "EnhancedInput", "CommonUI", "UMG", "Niagara", "MassCrowd", "CommonConversationRuntime", "PDConversationHelper"
-			});
-	}
+
+	// @todo handle loading progression from save game here in OnConstruction
+
+	if (ConversationSettingsHandle.IsNull()) { return; }
+	const FString Context = FString::Printf(TEXT("ARTSOInteractableConversationActor(%s)::OnConstruction -- Attempting to access ConversationSettingsHandle.GetRow<FRTSOConversationMetaProgressionDatum>() "), *GetName());
+	LoadedConversationDatumAsValue = *ConversationSettingsHandle.GetRow<FRTSOConversationMetaProgressionDatum>(Context);
+	LoadedConversationPointer = (&LoadedConversationDatumAsValue);
 }
 
-/*
+void ARTSOInteractableConversationActor::OnInteract_Implementation(
+	const FPDInteractionParamsWithCustomHandling& InteractionParams,
+	EPDInteractResult& InteractResult) const
+{
+	Super::OnInteract_Implementation(InteractionParams, InteractResult);
+
+	IPDInteractInterface::OnInteract_Implementation(InteractionParams, InteractResult);
+	switch (InteractResult)
+	{
+	case EPDInteractResult::INTERACT_SUCCESS:
+	case EPDInteractResult::INTERACT_FAIL:
+	case EPDInteractResult::INTERACT_DELAYED:
+		return; // was handled by the delegate in InteractionParams
+	case EPDInteractResult::INTERACT_UNHANDLED:
+		break; // was not handled by a supplied delegate
+	}
+	
+	if (InteractionParams.InteractionPercent <= .85) { return; }
+
+
+
+	
+
+	// open conversation here with instigator
+
+	UPDConversationInstance* ConversationInstance =
+		Cast<UPDConversationInstance>(UConversationLibrary::StartConversation(
+			FGameplayTag ConversationEntryTag,
+			this, 
+			TAG_Conversation_Participants_Speaker, 
+			InteractionParams.InstigatorActor,
+			TAG_Conversation_Participants_Listener,
+			UPDConversationInstance::StaticClass));
+
+
+	//
+	// @todo Some progression logic is needed
+	// LoadedConversationPointer->BaseProgression += 1;
+}
+
+/**
 Business Source License 1.1
 
 Parameters
