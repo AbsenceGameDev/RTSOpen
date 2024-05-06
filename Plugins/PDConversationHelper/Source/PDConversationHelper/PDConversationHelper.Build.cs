@@ -13,6 +13,7 @@ public class PDConversationHelper : ModuleRules
 			{
 				"Core", 
 				"CommonConversationRuntime",
+				"GameFeatures",
 			}
 			);
 			

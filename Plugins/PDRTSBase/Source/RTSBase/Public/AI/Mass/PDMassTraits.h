@@ -37,7 +37,7 @@ protected:
 	FPDMFragment_SharedAnimData SharedAnimData;
 
 	UPROPERTY(EditAnywhere)
-	FPDMFragment_SharedNavigation SharedNavData;	
+	FPDMFragment_SharedEntity SharedEntData;	
 };
 
 

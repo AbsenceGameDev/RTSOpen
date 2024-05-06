@@ -4,6 +4,7 @@
 
 #include "MassEntitySubsystem.h"
 #include "MassSignalSubsystem.h"
+#include "MassStateTreeExecutionContext.h"
 #include "PDRTSBaseSubsystem.h"
 
 #include "StateTreeExecutionContext.h"
@@ -22,6 +23,8 @@ bool FRTSOTask_Interact::Link(FStateTreeLinker& Linker)
 
 EStateTreeRunStatus FRTSOTask_Interact::EnterState(FStateTreeExecutionContext& Context, const FStateTreeTransitionResult& Transition) const
 {
+	const FMassStateTreeExecutionContext& MassContext = static_cast<FMassStateTreeExecutionContext&>(Context);
+
 	FInstanceDataType& InstanceData = Context.GetInstanceData(*this);
 	FMassEntityHandle& OtherEntityHandle = InstanceData.PotentialEntityHandle;
 	IPDInteractInterface* OtherInteractable = Cast<IPDInteractInterface>(InstanceData.PotentialInteractableActor);
@@ -41,7 +44,7 @@ EStateTreeRunStatus FRTSOTask_Interact::EnterState(FStateTreeExecutionContext& C
 		// Temp.OptionalInteractionTags;
 		
 		Params.InteractionPercent = 1.01;
-		Params.InstigatorFragment = &InventoryFragment;
+		Params.InstigatorEntity = MassContext.GetEntity();
 
 		EPDInteractResult InteractResult;
 		IPDInteractInterface::Execute_OnInteract(InstanceData.PotentialInteractableActor, Params, InteractResult);

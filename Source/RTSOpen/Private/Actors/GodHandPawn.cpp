@@ -387,15 +387,16 @@ void AGodHandPawn::ActionWorkerUnit_Completed_Implementation(const FInputActionV
 	if (ISMs.IsEmpty() == false && Cast<UPDRTSBaseUnit>(ISMs[0]))
 	{
 		FPDTargetCompound OptTarget = {InvalidHandle, FMassInt16Vector(), WorkerUnitActionTarget};
-		Cast<UPDRTSBaseUnit>(ISMs[0])->RequestAction(this, OptTarget, AssociatedTags.GetByIndex(0), SelectedWorkerUnitHandle);
+		Cast<UPDRTSBaseUnit>(ISMs[0])->RequestAction(PC->GetActorID(), OptTarget, AssociatedTags.GetByIndex(0), SelectedWorkerUnitHandle);
 	}
 	
 	FPDMFragment_RTSEntityBase* PermadevEntityBase = EntityManager->GetFragmentDataPtr<FPDMFragment_RTSEntityBase>(SelectedWorkerUnitHandle);
 	if (PermadevEntityBase != nullptr)
 	{
-		// The initial call to the walk task will overwrite this,
+		// The initial call to the walk task will overwrite this in case it has an entry,
 		// but if it is empty it will default to using a shared path instead
 		PermadevEntityBase->QueuedUnitPath.Emplace(FVector::ZeroVector);
+		PermadevEntityBase->OwnerID = PC->GetActorID();
 	}
 	
 	if (NC_WorkerPath != nullptr) { NC_WorkerPath->Deactivate(); }
@@ -472,8 +473,7 @@ void AGodHandPawn::ActionMoveSelection_Implementation(const FInputActionValue& V
 	const FGameplayTagContainer AssociatedTags = WorkerUnitActionTarget != nullptr && WorkerUnitActionTarget->Implements<UPDInteractInterface>()
 		? IPDInteractInterface::Execute_GetGenericTagContainer(WorkerUnitActionTarget)
 		: FallbackContainer;
-
-
+	
 	const FHitResult& Start = PC->GetLatestStartHitResult();
 	const FHitResult& Center = PC->GetLatestCenterHitResult();
 	const FHitResult& End    = PC->GetLatestEndHitResult();
@@ -484,7 +484,7 @@ void AGodHandPawn::ActionMoveSelection_Implementation(const FInputActionValue& V
 		: FVector::ZeroVector;
 	
 	Cast<UPDRTSBaseUnit>(ISMs[0])->RequestActionMulti(
-		this,
+		PC->GetActorID(),
 		OptTarget,
 		AssociatedTags.GetByIndex(0),
 		*PC->GetMarqueeSelectionMap().Find(CurrentGroupID), 

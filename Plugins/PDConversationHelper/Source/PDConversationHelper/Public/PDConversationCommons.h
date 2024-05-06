@@ -3,11 +3,8 @@
 #pragma once
 
 #include "CoreMinimal.h"
-#include "ConversationParticipantComponent.h"
 #include "GameFeaturesSubsystem.h"
 #include "ConversationInstance.h"
-
-#include "GameFeaturePluginOperationResult.h"
 #include "Kismet/BlueprintAsyncActionBase.h"
 
 #include "PDConversationCommons.generated.h"

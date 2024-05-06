@@ -3,55 +3,116 @@
 #pragma once
 
 #include "CoreMinimal.h"
+#include "ConversationTypes.h"
 #include "NativeGameplayTags.h"
 #include "Actors/PDInteractActor.h"
+#include "Interfaces/RTSOConversationInterface.h"
 #include "RTSOInteractableConversationActor.generated.h"
 
+class UPDConversationInstance;
 /**
  * @todo @note: If I have time then write a small mission system, but avoid putting to much time into it
  * @todo @cont: as I am working on a separate repo as-well with a full fledged mission system,
  * @todo @cont: so not worth making two fully fledged ones,
  * @todo @cont: this one well have to be made with some shortcuts in design and implementation
  */
+UENUM()
+enum ERTSOConversationState
+{
+	CurrentStateActive,
+	CurrentStateInactive,
+	CurrentStateCompleted,
+	Invalid,
+	Valid,
+};
 USTRUCT()
 struct FRTSOConversationRules
 {
 	GENERATED_BODY()
-
-	UPROPERTY()
-	FGameplayTag ConversationEntryTag; /**< @brief  Tag for entry data that these rules pertain */
 	
-	UPROPERTY()
-	TArray<FGameplayTag> RequiredTags; /**< @brief  Tags required for this instance to be loaded */	
+	UPROPERTY(EditAnywhere)
+	FGameplayTag EntryTag; /**< @brief Tag for entry data that these rules pertain */
+	
+	UPROPERTY(EditAnywhere)
+	TEnumAsByte<ERTSOConversationState> State = ERTSOConversationState::CurrentStateInactive; /**< @brief StartingState and ActiveState for this conversation instance */
+
+	UPROPERTY(EditAnywhere)
+	TArray<FGameplayTag> RequiredTags; /**< @brief Tags required for this instance to be loaded */
+
+	UPROPERTY(EditAnywhere)
+	bool bCanRepeatConversation = true;
 };
+
 
 USTRUCT()
 struct FRTSOConversationMetaProgressionDatum : public FTableRowBase
 {
 	GENERATED_BODY()
-
-	UPROPERTY()
-	int32 BaseProgression = INDEX_NONE; /* Starting progression */
 	
-	UPROPERTY()
-	TArray<FRTSOConversationRules> PhaseRequiredTags;	
+	UPROPERTY(EditAnywhere)
+	int32 BaseProgression = 0; /**< @brief Starting progression, @todo map to actual player/owner ID */
+	
+	UPROPERTY(EditAnywhere)
+	TArray<FRTSOConversationRules> PhaseRequiredTags;
 };
 
-UCLASS()
-class RTSOPEN_API ARTSOInteractableConversationActor : public APDInteractActor
+USTRUCT()
+struct FRTSOConversationMetaState
 {
 	GENERATED_BODY()
 
+	void ApplyValuesFromProgressionTable(FRTSOConversationMetaProgressionDatum& ConversationProgressionEntry);
+
+	UPROPERTY(VisibleInstanceOnly)
+	FRTSOConversationMetaProgressionDatum Datum;
+	
+	UPROPERTY(VisibleInstanceOnly)
+	TDeque<AActor*> InteractingActors; // Used as storage
+
+	UPROPERTY()
+	UPDConversationInstance* ActiveConversationInstance = nullptr;
+};
+
+UCLASS()
+class RTSOPEN_API ARTSOInteractableConversationActor
+	: public APDInteractActor
+	, public IRTSOConversationSpeakerInterface
+{
+	GENERATED_BODY()
+
+public:
 	virtual void OnConstruction(const FTransform& Transform) override;
+	void ConversationStarted();
+	void ConversationTaskChoiceDataUpdated(const FConversationNodeHandle& NodeHandle, const FClientConversationOptionEntry& OptionEntry);
+	void ConversationUpdated(const FClientConversationMessagePayload& Payload);
+	void ConversationStatusChanged(bool bDidStatusChange);
+	virtual void BeginPlay() override;
 
 	virtual void OnInteract_Implementation(const FPDInteractionParamsWithCustomHandling& InteractionParams, EPDInteractResult& InteractResult) const override;
+	
+	UFUNCTION(BlueprintCallable)
+	virtual void BeginWaitingForChoices() override;
 
+	UFUNCTION(BlueprintCallable)
+	virtual void ReplyChoice(AActor* Caller, int32 Choice) override;
+	
+	virtual ERTSOConversationState ValidateRequiredTags(const FGameplayTag& EntryTag, AActor* CallingActor) const;
+	bool CanRepeatConversation(int32 ConversationProgression) const;
+	virtual const FGameplayTag& ResolveTagForProgressionLevel(const int32 ConversationProgression) const;
+	virtual void OnConversationPhaseStateChanged(const FGameplayTag& EntryTag, ERTSOConversationState NewState);
+	
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Meta = (RowType = "/Script/RTSBase.RTSOConversationMetaProgressionDatum"))
 	FDataTableRowHandle ConversationSettingsHandle;	
 
-	/** @note This pointer is just so we can modify the underlying value without restriction in OnConstruction*/
-	FRTSOConversationMetaProgressionDatum* LoadedConversationPointer{};
-	FRTSOConversationMetaProgressionDatum LoadedConversationDatumAsValue{};
+	/** @note This pointer is just so we can modify the underlying value without restrictions in const functions*/
+	FRTSOConversationMetaState* InstanceDataPtr{};
+	FRTSOConversationMetaState InstanceData{};
+
+	UPROPERTY(VisibleInstanceOnly)
+	UConversationParticipantComponent* ParticipantComponent;
+
+	UPROPERTY(EditAnywhere)
+	FString GameFeatureName = "ConversationData";
 };
 
 /**

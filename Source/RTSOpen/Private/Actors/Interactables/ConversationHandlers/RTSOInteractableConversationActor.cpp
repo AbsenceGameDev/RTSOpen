@@ -3,7 +3,13 @@
 #include "Actors/Interactables/ConversationHandlers/RTSOInteractableConversationActor.h"
 #include "ConversationInstance.h"
 #include "ConversationLibrary.h"
+#include "ConversationParticipantComponent.h"
+#include "MassEntitySubsystem.h"
 #include "PDConversationCommons.h"
+#include "PDRTSBaseSubsystem.h"
+#include "AI/Mass/PDMassFragments.h"
+#include "Interfaces/RTSOConversationInterface.h"
+#include "Kismet/KismetSystemLibrary.h"
 
 /** Declaring the "Conversation.Entry" gameplay tags. to be defined in an object-file
  * @todo move to a 'conversation commons' file which I need to create */
@@ -17,17 +23,55 @@ UE_DEFINE_GAMEPLAY_TAG(TAG_Conversation_Entry_01, "Conversation.Entry.01");
 UE_DEFINE_GAMEPLAY_TAG(TAG_Conversation_Participants_Speaker, "Conversation.Participants.Speaker");
 UE_DEFINE_GAMEPLAY_TAG(TAG_Conversation_Participants_Listener, "Conversation.Participants.Listener");
 
+void FRTSOConversationMetaState::ApplyValuesFromProgressionTable(FRTSOConversationMetaProgressionDatum& ConversationProgressionEntry)
+{
+	Datum.BaseProgression = ConversationProgressionEntry.BaseProgression;
+	Datum.PhaseRequiredTags = ConversationProgressionEntry.PhaseRequiredTags;
+	
+	
+}
+
 void ARTSOInteractableConversationActor::OnConstruction(const FTransform& Transform)
 {
 	Super::OnConstruction(Transform);
 
 
-	// @todo handle loading progression from save game here in OnConstruction
+	// @todo handle loading progression from server or game-save here in OnConstruction
 
 	if (ConversationSettingsHandle.IsNull()) { return; }
 	const FString Context = FString::Printf(TEXT("ARTSOInteractableConversationActor(%s)::OnConstruction -- Attempting to access ConversationSettingsHandle.GetRow<FRTSOConversationMetaProgressionDatum>() "), *GetName());
-	LoadedConversationDatumAsValue = *ConversationSettingsHandle.GetRow<FRTSOConversationMetaProgressionDatum>(Context);
-	LoadedConversationPointer = (&LoadedConversationDatumAsValue);
+
+	InstanceData.ApplyValuesFromProgressionTable(*ConversationSettingsHandle.GetRow<FRTSOConversationMetaProgressionDatum>(Context));
+	InstanceDataPtr = &InstanceData;
+}
+
+void ARTSOInteractableConversationActor::ConversationStarted()
+{
+}
+void ARTSOInteractableConversationActor::ConversationTaskChoiceDataUpdated(const FConversationNodeHandle& NodeHandle, const FClientConversationOptionEntry& OptionEntry)
+{
+}
+void ARTSOInteractableConversationActor::ConversationUpdated(const FClientConversationMessagePayload& Payload)
+{
+}
+void ARTSOInteractableConversationActor::ConversationStatusChanged(bool bDidStatusChange)
+{
+}
+
+void ARTSOInteractableConversationActor::BeginPlay()
+{
+	Super::BeginPlay();
+
+	ParticipantComponent =
+		Cast<UConversationParticipantComponent>(AddComponentByClass(UConversationParticipantComponent::StaticClass(), false, FTransform::Identity, false));
+
+	ParticipantComponent->ConversationStarted.AddUObject(this, &ARTSOInteractableConversationActor::ConversationStarted);
+	ParticipantComponent->ConversationTaskChoiceDataUpdated.AddUObject(this, &ARTSOInteractableConversationActor::ConversationTaskChoiceDataUpdated);
+	ParticipantComponent->ConversationUpdated.AddUObject(this, &ARTSOInteractableConversationActor::ConversationUpdated);
+	ParticipantComponent->ConversationStatusChanged.AddUObject(this, &ARTSOInteractableConversationActor::ConversationStatusChanged);
+	
+	UPDAsyncAction_ActivateFeature* ActiveFeature = UPDAsyncAction_ActivateFeature::CreateActionInstance(this, GameFeatureName);
+	ActiveFeature->Activate();
 }
 
 void ARTSOInteractableConversationActor::OnInteract_Implementation(
@@ -48,25 +92,159 @@ void ARTSOInteractableConversationActor::OnInteract_Implementation(
 	}
 	
 	if (InteractionParams.InteractionPercent <= .85) { return; }
+
+	const TMap<int32, AActor*>& IDToActorMap =  GEngine->GetEngineSubsystem<UPDRTSBaseSubsystem>()->SharedOwnerIDMappings;
+	const UMassEntitySubsystem& EntitySubsystem = *GetWorld()->GetSubsystem<UMassEntitySubsystem>();
+	const FPDMFragment_RTSEntityBase* EntityBase = EntitySubsystem.GetEntityManager().GetFragmentDataPtr<FPDMFragment_RTSEntityBase>(InteractionParams.InstigatorEntity);
+
+	AActor* SelectedActor = EntityBase != nullptr && IDToActorMap.Contains(EntityBase->OwnerID) ?
+		IDToActorMap.FindRef(EntityBase->OwnerID) : InteractionParams.InstigatorActor;
+
+	if (SelectedActor == nullptr) { return; }
+
 	
-	
+	const int32 CurrentProgression = InstanceDataPtr->Datum.BaseProgression;
+	ERTSOConversationState ConversationState =
+		ValidateRequiredTags(ResolveTagForProgressionLevel(CurrentProgression), SelectedActor);
+	switch (ConversationState)
+	{
+	case CurrentStateCompleted:
+		// handle based on conversation rules
+		if (CanRepeatConversation(CurrentProgression) == false) { return; }
+		break;
+	case Invalid:
+		// @todo fail log
+		return;
+	case Valid:
+		// Continue on as normal 
+		break;
+	default: return; // ValidateRequiredTags Never returns anything outside of the three above states
+	}
 
 	// open conversation here with instigator
-
-	UPDConversationInstance* ConversationInstance =
+	InstanceDataPtr->ActiveConversationInstance =
 		Cast<UPDConversationInstance>(
 			UConversationLibrary::StartConversation(
-			LoadedConversationPointer->PhaseRequiredTags[LoadedConversationPointer->BaseProgression].ConversationEntryTag,
+			InstanceDataPtr->Datum.PhaseRequiredTags[CurrentProgression].EntryTag,
 			(AActor*)this, 
 			TAG_Conversation_Participants_Speaker, 
-			InteractionParams.InstigatorActor,
+			SelectedActor,
 			TAG_Conversation_Participants_Listener,
 			UPDConversationInstance::StaticClass()));
 
+	if (InstanceDataPtr->ActiveConversationInstance == nullptr) { return; }
+	
+	InstanceDataPtr->ActiveConversationInstance->OnBegin_WaitingForChoices.AddDynamic(this, &ARTSOInteractableConversationActor::BeginWaitingForChoices);
+	if (InstanceDataPtr->ActiveConversationInstance->bWaitingForChoices)
+	{
+		// Nasty, I know, but right now I can't mark the function as const and be able to bind it to the dynamic delegate 
+		((ARTSOInteractableConversationActor*)this)->BeginWaitingForChoices();
+	}
+}
 
-	//
-	// @todo Some progression logic is needed
-	// LoadedConversationPointer->BaseProgression += 1;
+void ARTSOInteractableConversationActor::BeginWaitingForChoices() 
+{
+	const FClientConversationMessagePayload& Payload = ParticipantComponent->GetLastMessage();
+	UPDConversationBPFL::PrintConversationMessageToScreen(this, Payload.Message, FLinearColor::Blue);
+
+	for (const FClientConversationOptionEntry& Opt : Payload.Options)
+	{
+		FName Participant{};
+		switch (Opt.ChoiceType)
+		{
+		case EConversationChoiceType::ServerOnly:
+			break;
+		case EConversationChoiceType::UserChoiceAvailable:
+			break;
+		case EConversationChoiceType::UserChoiceUnavailable:
+			Participant = FName("(Can't select)");
+			break;
+		}
+
+		UPDConversationBPFL::PrintConversationTextToScreen(this, Participant, Opt.ChoiceText,FLinearColor::Blue);
+	}
+}
+
+void ARTSOInteractableConversationActor::ReplyChoice(AActor* Caller, int32 Choice)
+{
+	const FClientConversationMessagePayload& Payload = ParticipantComponent->GetLastMessage();
+	if (Payload.Options.IsValidIndex(Choice)) { return; }
+
+	const FClientConversationOptionEntry& OptionEntry = Payload.Options[Choice];
+	
+	FAdvanceConversationRequest AdvanceRequest{OptionEntry.ChoiceReference};
+	AdvanceRequest.UserParameters = OptionEntry.ExtraData;
+	
+	UPDConversationBPFL::RequestToAdvance(InstanceDataPtr->ActiveConversationInstance, ParticipantComponent, AdvanceRequest);
+
+	const FString BuildString = "Selected{" + FString::FromInt(Choice) + "}";
+	UKismetSystemLibrary::PrintString(this, BuildString, true, true, FLinearColor::Blue, 50);
+}
+
+ERTSOConversationState ARTSOInteractableConversationActor::ValidateRequiredTags(const FGameplayTag& EntryTag, AActor* CallingActor) const
+{
+	ERTSOConversationState ValidatedTagState = ERTSOConversationState::Invalid;
+	if (CallingActor == nullptr || CallingActor->GetClass()->ImplementsInterface(URTSOConversationInterface::StaticClass()) == false)
+	{
+		return ValidatedTagState;
+	}
+	
+	const TSet<FGameplayTag>& ActorTagSet = Cast<IRTSOConversationInterface>(CallingActor)->GetProgressionTagSet();
+
+	const int32 LastConversationProgressionIndex = InstanceDataPtr->Datum.PhaseRequiredTags.Num();
+	int32 ConversationProgressionLevel = 0;
+	
+	for (; ConversationProgressionLevel < LastConversationProgressionIndex ;)
+	{
+		if (ConversationProgressionLevel > InstanceDataPtr->Datum.BaseProgression) { break; }
+		
+		const FRTSOConversationRules& RequiredRules =
+				InstanceDataPtr->Datum.PhaseRequiredTags[ConversationProgressionLevel];
+		ConversationProgressionLevel++;
+
+		// Invalid entry tag, might be too early in that conversation 'tree'
+		if (RequiredRules.EntryTag != EntryTag) { continue; }
+
+		// Already completed
+		if(RequiredRules.State == ERTSOConversationState::CurrentStateCompleted)
+		{
+			return ERTSOConversationState::CurrentStateCompleted;
+		}
+
+		// Wish epic had implemented some form of set comparator,
+		// but in-case it would be an mmo with lets say 5-10 thousand players at most we can expect that many conversations to be held as a max limit,
+		// and should be easy for the servers to handle.
+		// Realistically at a given moment the amount of validation calls will likely by much fewer
+		bool bFoundAllRequiredTags = true; // Default to true if there are no requirements
+		for (const FGameplayTag& RequiredTag : RequiredRules.RequiredTags)
+		{
+			bFoundAllRequiredTags &= ActorTagSet.Contains(RequiredTag); // Needs them all to exist in the actor tag set
+		}
+		ValidatedTagState = bFoundAllRequiredTags ?
+			ERTSOConversationState::Valid : ERTSOConversationState::Invalid; 
+	}
+
+	return ValidatedTagState;
+}
+
+bool ARTSOInteractableConversationActor::CanRepeatConversation(const int32 ConversationProgression) const
+{
+	const bool bIsValidIndex = InstanceDataPtr->Datum.PhaseRequiredTags.IsValidIndex(ConversationProgression);
+	if (bIsValidIndex == false) { return false; }
+
+	return InstanceDataPtr->Datum.PhaseRequiredTags[ConversationProgression].bCanRepeatConversation;
+}
+
+const FGameplayTag& ARTSOInteractableConversationActor::ResolveTagForProgressionLevel(const int32 ConversationProgression) const
+{
+	const bool bIsValidIndex = InstanceDataPtr->Datum.PhaseRequiredTags.IsValidIndex(ConversationProgression);
+	if (bIsValidIndex == false) { return FGameplayTag::EmptyTag; }
+
+	return InstanceDataPtr->Datum.PhaseRequiredTags[ConversationProgression].EntryTag;
+}
+
+void ARTSOInteractableConversationActor::OnConversationPhaseStateChanged(const FGameplayTag& EntryTag, ERTSOConversationState NewState)
+{
 }
 
 /**

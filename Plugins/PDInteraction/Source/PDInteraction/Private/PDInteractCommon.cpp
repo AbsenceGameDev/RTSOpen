@@ -1,7 +1,7 @@
 ﻿/* @author: Ario Amin @ Permafrost Development. @copyright: Full BSL(1.1) License included at bottom of the file  */
 
 #include "PDInteractCommon.h"
-// #include "InputCoreTypes.h"
+#include "MassEntityTypes.h"
 
 FString FPDKeyCombination::ConvertToString()
 {

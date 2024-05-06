@@ -24,8 +24,8 @@ void UPDMTrait_RTSEntity::BuildTemplate(FMassEntityTemplateBuildContext& BuildCo
 	const FConstSharedStruct AnimDataFragment = EntitySubsystem->GetMutableEntityManager().GetOrCreateConstSharedFragment(SharedAnimData);
 	BuildContext.AddConstSharedFragment(AnimDataFragment);
 	
-	const uint32 NavDataHash = UE::StructUtils::GetStructCrc32(FConstStructView::Make(SharedNavData));
-	const FSharedStruct NavDataFragment = EntitySubsystem->GetMutableEntityManager().GetOrCreateSharedFragmentByHash<FPDMFragment_SharedNavigation>(NavDataHash, SharedNavData);
+	const uint32 NavDataHash = UE::StructUtils::GetStructCrc32(FConstStructView::Make(SharedEntData));
+	const FSharedStruct NavDataFragment = EntitySubsystem->GetMutableEntityManager().GetOrCreateSharedFragmentByHash<FPDMFragment_SharedEntity>(NavDataHash, SharedEntData);
 	BuildContext.AddSharedFragment(NavDataFragment);	
 }
 

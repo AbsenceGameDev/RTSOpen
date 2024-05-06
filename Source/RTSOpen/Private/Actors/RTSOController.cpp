@@ -38,6 +38,43 @@ void ARTSOController::BeginPlay()
 	
 	ActivateMappingContext(TAG_CTRL_Ctxt_BaseInput);
 	ActivateMappingContext(TAG_CTRL_Ctxt_WorkerUnitMode);
+
+
+	// add id-actor mapping	
+	TMap<AActor*, int32>& ActorToIDMap =  GEngine->GetEngineSubsystem<UPDRTSBaseSubsystem>()->SharedOwnerIDBackMappings;
+	TMap<int32, AActor*>& IDToActorMap =  GEngine->GetEngineSubsystem<UPDRTSBaseSubsystem>()->SharedOwnerIDMappings;
+
+	if (ActorToIDMap.Contains(this))
+	{
+		ActorID = ActorToIDMap.FindRef(this);
+		IDToActorMap.FindOrAdd(ActorID) = this;
+	}
+	else
+	{
+		ActorID = GenerateActorID();
+		ActorToIDMap.FindOrAdd(this) = ActorID;
+		IDToActorMap.FindOrAdd(ActorID) = this;
+	}
+	
+}
+
+void ARTSOController::EndPlay(const EEndPlayReason::Type EndPlayReason)
+{
+	TMap<AActor*, int32>& ActorToIDMap =  GEngine->GetEngineSubsystem<UPDRTSBaseSubsystem>()->SharedOwnerIDBackMappings;
+	TMap<int32, AActor*>& IDToActorMap =  GEngine->GetEngineSubsystem<UPDRTSBaseSubsystem>()->SharedOwnerIDMappings;
+
+	// Remove id-actor mapping
+	if (ActorToIDMap.Contains(this))
+	{
+		ActorID = ActorToIDMap.FindRef(this);
+		ActorToIDMap.Remove(this);
+	}
+	if (IDToActorMap.Contains(ActorID))
+	{
+		IDToActorMap.Remove(ActorID);
+	}
+	
+	Super::EndPlay(EndPlayReason);
 }
 
 void ARTSOController::SetupInputComponent()
@@ -674,10 +711,10 @@ void ARTSOController::OnSelectionChange(const bool bClearSelection)
 	// const TArray<TObjectPtr<UInstancedStaticMeshComponent>>& ISMs = GEngine->GetEngineSubsystem<UPDRTSBaseSubsystem>()->GetMassISMs(PawnAsGodhand->GetWorld());
 	TArray<FMassEntityHandle> MarqueeSelectionArray;
 	GetMarqueeSelectionMap().Find(CurrentSelectionID)->GenerateValueArray(MarqueeSelectionArray);
-
+	
 	const TArray<FMassEntityHandle>& MarqueeSelectionArrayRef = MarqueeSelectionArray; 
 	ParallelFor(MarqueeSelectionArray.Num(),
-		[&MarqueeSelectionArrayRef, &PawnAsGodhand, bClearSelection, SelectionID = CurrentSelectionID](const int32 Idx)
+		[&MarqueeSelectionArrayRef, &PawnAsGodhand, bClearSelection, SelectionID = CurrentSelectionID, OwnerID = ActorID](const int32 Idx)
 		{
 			const FMassEntityHandle& EntityHandle = MarqueeSelectionArrayRef[Idx];
 			if (PawnAsGodhand->EntityManager->IsEntityValid(EntityHandle) == false) { return; }
@@ -688,6 +725,7 @@ void ARTSOController::OnSelectionChange(const bool bClearSelection)
 			// Processing handled in UPDMProcessor_EntityCosmetics::Execute function
 			PermadevEntityBase->SelectionState = bClearSelection ? EPDEntitySelectionState::ENTITY_NOTSELECTED : EPDEntitySelectionState::ENTITY_SELECTED;
 			PermadevEntityBase->SelectionGroupIndex = SelectionID;
+			PermadevEntityBase->OwnerID = OwnerID;
 			
 		}, EParallelForFlags::BackgroundPriority);
 }

@@ -155,6 +155,7 @@ void UPDRTSBaseSubsystem::ProcessTables()
 }
 
 void UPDRTSBaseSubsystem::RequestNavpathGenerationForSelectionGroup(
+	const int32 OwnerID,
 	const int32 SelectionGroup,
 	const FVector& SelectionCenter,
 	const FPDTargetCompound& TargetCompound)
@@ -167,8 +168,9 @@ void UPDRTSBaseSubsystem::RequestNavpathGenerationForSelectionGroup(
 			: TargetCompound.ActionTargetAsLocation.Get();
 
 		const UNavigationPath* Navpath = UNavigationSystemV1::FindPathToLocationSynchronously(GetWorld(), SelectionCenter, TargetLocation);
-		SelectionGroupPaths.FindOrAdd(SelectionGroup) = Navpath;
-		bGroupPathsDirtied = true;
+		SelectionGroupNavData.FindOrAdd(OwnerID).SelectionGroupNavData.FindOrAdd(SelectionGroup) = Navpath;
+		DirtySharedData.Emplace(OwnerID, SelectionGroup);
+		// bGroupPathsDirtied = true;
 	}	
 }
 

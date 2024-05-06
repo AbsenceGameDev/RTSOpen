@@ -35,14 +35,14 @@ public:
 	
 	/** @brief Sets job to the requested job on the requested entity, if possible */
 	void RequestAction(
-		AActor* CallingActor,
+		int32 CallingOwnerID,
 		const FPDTargetCompound& OptTarget,
 		FGameplayTag RequestedJob,
 		FMassEntityHandle RequestedEntityHandle);
 
 	/** @brief Incomplete, this is emant to be called when dispatching a batch of tasks which arent' sharing navpath */
 	void RequestActionMulti(
-		AActor* CallingActor,
+		int32 CallingOwnerID,
 		const TArray<TTuple<
 		const FPDTargetCompound& /*OptTarget*/,
 		const FGameplayTag&  /*RequestedJob*/,
@@ -54,7 +54,7 @@ public:
 	 * @note Entry Tuple<CallingActor, NewTarget, RequestedJob, RequestedEntityHandle>
 	 */
 	void RequestActionMulti(
-		AActor* CallingActor,
+		int32 CallingOwnerID,
 		const FPDTargetCompound& TargetCompound,
 		const FGameplayTag& RequestedJob,
 		const TMap<int32, FMassEntityHandle>& EntityHandleMap,
@@ -81,8 +81,8 @@ public:
 	UPROPERTY(VisibleInstanceOnly, BlueprintReadOnly)
 	AActor* TargetRef = nullptr;
 
-	UPROPERTY(VisibleInstanceOnly, BlueprintReadOnly)
-	AActor* InstigatorActor = nullptr;
+	// UPROPERTY(VisibleInstanceOnly, BlueprintReadOnly)
+	// AActor* InstigatorActor = nullptr;
 	
 	UPROPERTY(VisibleInstanceOnly, BlueprintReadOnly)
 	TMap<int32 /*MassEntity index */, FGameplayTag> ActiveJobMap{};
@@ -92,9 +92,6 @@ public:
 
 	const FMassEntityManager* EntityManager = nullptr;
 	TSharedPtr<FStreamableHandle> LatestJob_AsyncLoadHandle;
-
-	static const FName SlotGroup_Default;
-	static const FName BBKey_TargetRef;
 };
 
 /**

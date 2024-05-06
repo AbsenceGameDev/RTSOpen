@@ -63,6 +63,9 @@ struct PDRTSBASE_API FPDMFragment_RTSEntityBase : public FMassFragment
 	int32 SelectionGroupIndex = INDEX_NONE;
 
 	UPROPERTY()
+	int32 OwnerID = INDEX_NONE;
+
+	UPROPERTY()
 	TArray<FVector> QueuedUnitPath{};	
 	
 	// /** @todo Do we have any queued entity-to-entity interactions */
@@ -139,12 +142,23 @@ struct PDRTSBASE_API FPDTargetCompound
 
 /** @brief Shared fragment for when entities share animation data */
 USTRUCT()
-struct PDRTSBASE_API FPDMFragment_SharedNavigation : public FMassSharedFragment
+struct PDRTSBASE_API FPDWrappedSelectionGroupNavData
 {
 	GENERATED_BODY()
 
 	UPROPERTY(EditAnywhere)
-	TMap<int32 /*SelectionGroupIndex*/, const UNavigationPath*> NavPathsPerSelectionGroup;
+	TMap<int32 /*SelectionGroupIndex*/, const UNavigationPath*> SelectionGroupNavData;
+};
+
+
+/** @brief Shared fragment for when entities share navigation data */
+USTRUCT()
+struct PDRTSBASE_API FPDMFragment_SharedEntity : public FMassSharedFragment
+{
+	GENERATED_BODY()
+
+	UPROPERTY(EditAnywhere)
+	TMap<int32 /* OwnerID */, FPDWrappedSelectionGroupNavData> SharedNavData;
 };
 
 

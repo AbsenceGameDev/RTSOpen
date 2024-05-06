@@ -5,6 +5,7 @@
 #include "Actors/PDInteractActor.h"
 #include "RTSOInteractableResourceBase.generated.h"
 
+class UMassEntitySubsystem;
 /**
  * @brief An actor with a job tag tied to it along with rewards, meant to be used for interactable resources
  */
@@ -59,6 +60,10 @@ private:
 	 */	
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Meta = (AllowPrivateAccess="true", RowType="/Script/PDInventory.PDItemDefaultDatum"))
 	TMap<FGameplayTag /*resource/item tag*/, int32 /*count*/> LinkedItemResources;
+
+	UPROPERTY()
+	UMassEntitySubsystem* EntitySubsystem = nullptr;
+	const FMassEntityManager* EntManager = nullptr;
 };
 
 

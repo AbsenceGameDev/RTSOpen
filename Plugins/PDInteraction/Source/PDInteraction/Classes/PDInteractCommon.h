@@ -5,8 +5,8 @@
 #include "CoreMinimal.h"
 #include "UObject/Interface.h"
 #include "GameplayTagContainer.h"
-#include "Containers/Deque.h"
 #include "MassEntityTypes.h"
+#include "Containers/Deque.h"
 #include "PDInteractCommon.generated.h"
 
 constexpr float DEFAULT_PEROBJECT_MAX_INTERACTION_DISTANCE = 150;
@@ -156,8 +156,11 @@ struct PDINTERACTION_API FPDInteractionParams
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Interaction|Params")
 	TSubclassOf<UActorComponent> InstigatorComponentClass = nullptr;
 
+	// /** @brief Passing in the instigator fragment */
+	// struct FMassFragment* InstigatorFragment = nullptr;	
+
 	/** @brief Passing in the instigator fragment */
-	FMassFragment* InstigatorFragment = nullptr;	
+    FMassEntityHandle InstigatorEntity{}; // @todo replace usage of above fragment with this entity
 	
 	/** @brief A set of optional tags to be handled as seen fit by game module implementations */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Interaction|Params")

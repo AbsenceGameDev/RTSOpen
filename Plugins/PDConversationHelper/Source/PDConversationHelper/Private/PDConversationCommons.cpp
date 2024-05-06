@@ -70,7 +70,6 @@ void UPDConversationBPFL::PrintConversationTextToScreen(UObject* WorldContext, c
 	UKismetSystemLibrary::PrintString(WorldContext, BuildString, true, true, MessageColour, 50);	
 }
 
-
 //
 // Conversation async action
 UPDAsyncAction_ActivateFeature::UPDAsyncAction_ActivateFeature(const FObjectInitializer& ObjectInitializer)

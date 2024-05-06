@@ -376,7 +376,7 @@ void UPDProcessor_MoveTarget::ConfigureQueries()
 	EntityQuery.AddRequirement<FTransformFragment>(EMassFragmentAccess::ReadWrite);
 	EntityQuery.AddRequirement<FMassMoveTargetFragment>(EMassFragmentAccess::ReadWrite);
 	EntityQuery.AddChunkRequirement<FMassSimulationVariableTickChunkFragment>(EMassFragmentAccess::ReadOnly, EMassFragmentPresence::Optional);
-	EntityQuery.AddSharedRequirement<FPDMFragment_SharedNavigation>(EMassFragmentAccess::ReadOnly);
+	EntityQuery.AddSharedRequirement<FPDMFragment_SharedEntity>(EMassFragmentAccess::ReadOnly);
 	EntityQuery.SetChunkFilter(&FMassSimulationVariableTickChunkFragment::ShouldTickChunkThisFrame);
 	EntityQuery.RegisterWithProcessor(*this);
 }
@@ -391,18 +391,27 @@ void UPDProcessor_MoveTarget::Execute(FMassEntityManager& EntityManager, FMassEx
 	{
 		TMutFragment<FTransformFragment>& TransformsList = MUTVIEW(Context, FTransformFragment);
 		TMutFragment<FMassMoveTargetFragment>& MoveTargets = MUTVIEW(Context, FMassMoveTargetFragment);
-		FPDMFragment_SharedNavigation& SharedFragment = MUTSHAREDVIEW(Context, FPDMFragment_SharedNavigation);
+		FPDMFragment_SharedEntity& SharedFragment = MUTSHAREDVIEW(Context, FPDMFragment_SharedEntity);
 		
 		//
 		// Update Shared navpath fragments 
 		UPDRTSBaseSubsystem* RTSSubsystem = GEngine->GetEngineSubsystem<UPDRTSBaseSubsystem>();
-		if (RTSSubsystem != nullptr)
+		if (RTSSubsystem != nullptr && RTSSubsystem->DirtySharedData.IsEmpty() == false)
 		{
-			if (RTSSubsystem->bGroupPathsDirtied)
+			TMap<int32, FPDWrappedSelectionGroupNavData>& NavSelections = RTSSubsystem->SelectionGroupNavData;
+			// only copy over the dirty keys, the clear the dirty list
+			for (const TTuple<int32 /*OwnerID*/,int32 /*SelectionIdx*/> DirtyKey : RTSSubsystem->DirtySharedData)
 			{
-				SharedFragment.NavPathsPerSelectionGroup = RTSSubsystem->SelectionGroupPaths;
-				RTSSubsystem->bGroupPathsDirtied = false;
+				if (NavSelections.Contains(DirtyKey.Key) == false
+					|| NavSelections.Find(DirtyKey.Key)->SelectionGroupNavData.Contains(DirtyKey.Value))
+				{
+					continue;
+				}
+				
+				SharedFragment.SharedNavData.FindOrAdd(DirtyKey.Key).SelectionGroupNavData.FindOrAdd(DirtyKey.Value) =
+					NavSelections.FindRef(DirtyKey.Key).SelectionGroupNavData.FindRef(DirtyKey.Value);
 			}
+			RTSSubsystem->DirtySharedData.Empty();
 		}
 		
 		for (int32 EntityIndex = 0; EntityIndex < Context.GetNumEntities(); ++EntityIndex)

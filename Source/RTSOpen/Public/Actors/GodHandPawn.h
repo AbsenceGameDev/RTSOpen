@@ -9,6 +9,7 @@
 #include "MassEntityTypes.h"
 #include "Containers/Deque.h"
 #include "GameFramework/Pawn.h"
+#include "Interfaces/RTSOConversationInterface.h"
 #include "Interfaces/RTSOInputInterface.h"
 #include "GodHandPawn.generated.h"
 
@@ -19,7 +20,10 @@ class UPDInventoryComponent;
  * @brief The players main means of action. This is the RTS god-hand. This tracks and controls your units.  
  */
 UCLASS()
-class RTSOPEN_API AGodHandPawn : public APawn, public IRTSOInputInterface
+class RTSOPEN_API AGodHandPawn
+	: public APawn
+	, public IRTSOInputInterface
+	, public IRTSOConversationInterface
 {
 	GENERATED_BODY()
 

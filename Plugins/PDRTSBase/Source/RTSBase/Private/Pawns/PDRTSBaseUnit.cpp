@@ -4,13 +4,9 @@
 #include "GameplayTagContainer.h"
 #include "MassCommonFragments.h"
 #include "MassEntityManager.h"
-#include "NavigationSystem.h"
 #include "PDRTSBaseSubsystem.h"
 #include "PDRTSCommon.h"
 #include "AI/Mass/PDMassFragments.h"
-
-const FName UPDRTSBaseUnit::SlotGroup_Default = FName("DefaultGroup");
-const FName UPDRTSBaseUnit::BBKey_TargetRef = FName("Target");
 
 FPDTargetCompound EmptyCompound{};
 UPDRTSBaseUnit::UPDRTSBaseUnit(const FObjectInitializer& ObjectInitializer)
@@ -29,18 +25,17 @@ void UPDRTSBaseUnit::ResetState(FMassEntityHandle RequestedEntityHandle)
 	AssignTask(RequestedEntityHandle, TAG_AI_Job_Idle, EmptyCompound);
 }
 
-void UPDRTSBaseUnit::RequestAction(AActor* CallingActor, const FPDTargetCompound& OptTarget, FGameplayTag RequestedJob, FMassEntityHandle RequestedEntityHandle)
+void UPDRTSBaseUnit::RequestAction(int32 CallingOwnerID, const FPDTargetCompound& OptTarget, FGameplayTag RequestedJob, FMassEntityHandle RequestedEntityHandle)
 {
 	if (OptTarget.IsValidCompound() == false) { return; }
-
-	InstigatorActor = CallingActor;
+	
 	AssignTask(RequestedEntityHandle, RequestedJob, OptTarget);
 
 	// @todo Call GM and update unit save data here?
 }
 
 void UPDRTSBaseUnit::RequestActionMulti(
-	AActor* CallingActor,
+	int32 CallingOwnerID,
 	const TArray<TTuple<
 	const FPDTargetCompound& /*OptTarget*/,
 	const FGameplayTag& /*RequestedJob*/,
@@ -49,7 +44,6 @@ void UPDRTSBaseUnit::RequestActionMulti(
 {
 	// // @todo come back to this and finish it within the ned of the week
 	
-	// InstigatorActor = CallingActor; // @todo track instigator per entity, or atleast group entities by instigators
 	//
 	// UPDRTSBaseSubsystem* RTSSubsystem = GEngine->GetEngineSubsystem<UPDRTSBaseSubsystem>();
 	// if (RTSSubsystem != nullptr)
@@ -68,25 +62,23 @@ void UPDRTSBaseUnit::RequestActionMulti(
 }
 
 void UPDRTSBaseUnit::RequestActionMulti(
-	AActor*                               CallingActor,
+	int32                                 CallingOwnerID,
 	const FPDTargetCompound&              TargetCompound,
 	const FGameplayTag&                   RequestedJob,
 	const TMap<int32, FMassEntityHandle>& EntityHandleMap,
 	const FVector&                        SelectionCenter,
 	int32                                 SelectionGroup)
 {
-	InstigatorActor = CallingActor; // @todo track instigator per entity, or atleast group entities by instigators
-
 	UPDRTSBaseSubsystem* RTSSubsystem = GEngine->GetEngineSubsystem<UPDRTSBaseSubsystem>();
 	if (RTSSubsystem != nullptr)
 	{
-		RTSSubsystem->RequestNavpathGenerationForSelectionGroup(SelectionGroup, SelectionCenter, TargetCompound);
+		RTSSubsystem->RequestNavpathGenerationForSelectionGroup(CallingOwnerID, SelectionGroup, SelectionCenter, TargetCompound);
 	}
 	
 	for (const TTuple<int, FMassEntityHandle>& SelectedEntityIt : EntityHandleMap)
 	{
 		const FMassEntityHandle& SelectedHandle = SelectedEntityIt.Value;
-		RequestAction(CallingActor, TargetCompound, RequestedJob, SelectedHandle);
+		RequestAction(CallingOwnerID, TargetCompound, RequestedJob, SelectedHandle);
 	}	
 }
 
@@ -133,7 +125,6 @@ void UPDRTSBaseUnit::AssignTask(FMassEntityHandle EntityHandle, const FGameplayT
 
 void UPDRTSBaseUnit::OnTaskFinished(FMassEntityHandle WorkerEntity, const FGameplayTag& JobTag)
 {
-	InstigatorActor = nullptr; // @todo track instigator per entity, or atleast group entities by instigators
 }
 
 

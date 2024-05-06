@@ -32,6 +32,7 @@ class RTSOPEN_API ARTSOController : public APlayerController, public IRTSOInputI
 	GENERATED_UCLASS_BODY()
 
 	virtual void BeginPlay() override;
+	virtual void EndPlay(const EEndPlayReason::Type EndPlayReason) override;
 	
 	/** @brief Sets up bindings for enhanced input */
 	virtual void SetupInputComponent() override;
@@ -109,6 +110,12 @@ class RTSOPEN_API ARTSOController : public APlayerController, public IRTSOInputI
 		
 		return CurrentSelectionID;
 	} /**<@brief Range loops from 1-10 */
+	UFUNCTION() FORCEINLINE int32 GenerateActorID()
+	{
+		static int32 StaticGroupIDStart = 99;
+		return ++StaticGroupIDStart;
+	} /**<@brief Range loops from 1-10 */
+	
 	UFUNCTION() FORCEINLINE int32 GetLatestGroupID() const { return CurrentSelectionID; }
 	UFUNCTION() FORCEINLINE int32 GetCurrentGroupID() const { return CurrentSelectionID; }
 	UFUNCTION() FORCEINLINE FVector2D GetCurrentMousePositionMarquee() const {return CurrentMousePositionMarquee;}
@@ -119,6 +126,7 @@ class RTSOPEN_API ARTSOController : public APlayerController, public IRTSOInputI
 	UFUNCTION() void GetEntitiesOrActorsInMarqueeSelection();
 	UFUNCTION() void ReorderGroupIndex(const int32 OldID, const int32 NewID);
 	const TMap<int32, TMap<int32, FMassEntityHandle>>& GetMarqueeSelectionMap() { return MarqueeSelectedHandles; }
+	UFUNCTION() int32 GetActorID() { return ActorID; };
 
 	UFUNCTION() FORCEINLINE FHitResult GetLatestStartHitResult()  { return LatestStartHitResult;};
 	UFUNCTION() FORCEINLINE FHitResult GetLatestCenterHitResult() { return LatestCenterHitResult;};
@@ -177,6 +185,8 @@ protected:
 	FHitResult LatestEndHitResult{};
 
 	UPROPERTY(VisibleInstanceOnly)
+	int32 ActorID = INDEX_NONE;
+	UPROPERTY(VisibleInstanceOnly)
 	int32 RollbackSelectionID = INDEX_NONE; /**< @brief */
 	UPROPERTY(VisibleInstanceOnly)
 	int32 LatestSelectionID = INDEX_NONE;   /**< @brief */
@@ -198,7 +208,8 @@ protected:
 
 	// @todo add some mapping to selection groups
 	TSet<int32> HotKeyedSelectionGroups{};	
-	TMap<int32, TMap<int32, FMassEntityHandle>> MarqueeSelectedHandles{};	
+	TMap<int32, TMap<int32, FMassEntityHandle>> MarqueeSelectedHandles{};
+	
 };
 
 
@@ -215,7 +226,10 @@ public:
 #if WITH_EDITOR
 	virtual EDataValidationResult IsDataValid(class FDataValidationContext& Context) const override;
 #endif
+protected:
+	virtual FInputActionValue ModifyRaw_Implementation(const UEnhancedPlayerInput* PlayerInput, FInputActionValue CurrentValue, float DeltaTime) override;
 
+public:
 	UPROPERTY(EditInstanceOnly, BlueprintReadWrite, Category=Settings)
 	int32 IntegerPassthrough = INDEX_NONE;
 	
@@ -223,12 +237,6 @@ public:
 	URTSOInputStackSubsystem* InputStackWorkaround = nullptr;
 
 	FInputActionValue CachedLastValue;
-
-	// inline static constexpr double TimeLimitForStacking = 0.3;
-	// double AccumulatedTime = 0.0;
-
-protected:
-	virtual FInputActionValue ModifyRaw_Implementation(const UEnhancedPlayerInput* PlayerInput, FInputActionValue CurrentValue, float DeltaTime) override;
 };
 
 /**

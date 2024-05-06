@@ -1,6 +1,7 @@
 ﻿/* @author: Ario Amin @ Permafrost Development. @copyright: Full BSL(1.1) License included at bottom of the file  */
 #include "Actors/Interactables/Resources/RTSOInteractableResourceBase.h"
 
+#include "MassEntitySubsystem.h"
 #include "PDInventorySubsystem.h"
 #include "PDItemCommon.h"
 #include "PDRTSCommon.h"
@@ -19,6 +20,9 @@ ARTSOInteractableResourceBase::ARTSOInteractableResourceBase()
 void ARTSOInteractableResourceBase::BeginPlay()
 {
 	Super::BeginPlay();
+
+	EntitySubsystem = GetWorld()->GetSubsystem<UMassEntitySubsystem>();
+	EntManager = &EntitySubsystem->GetEntityManager();
 }
 
 void ARTSOInteractableResourceBase::Tick(float DeltaTime)
@@ -42,9 +46,6 @@ void ARTSOInteractableResourceBase::OnInteract_Implementation(const FPDInteracti
 		break;
 	}
 	
-	// InteractionParams.InteractionPercent;  // @todo, need an interaction funciton to actually call OnInteract form the interaction component 
-	// if (InteractionParams.InteractionPercent) // @todo ^^^^^^^^^^^^^^^^ , after then the below code will make sense
-	
 	InteractResult = EPDInteractResult::INTERACT_FAIL;
 	if (RefreshTickAcc < RefreshInterval) { return ; }
 	(float&)RefreshTickAcc = 0.0;
@@ -54,8 +55,15 @@ void ARTSOInteractableResourceBase::OnInteract_Implementation(const FPDInteracti
 	const AActor* InstigatorActor = InteractionParams.InstigatorActor;
 	
 	UPDInventoryComponent* InvComponent = InstigatorActor != nullptr ? Cast<UPDInventoryComponent>(InstigatorActor->GetComponentByClass(InteractionParams.InstigatorComponentClass)) : nullptr;
-	FRTSOLightInventoryFragment* AsInventoryFragment = static_cast<FRTSOLightInventoryFragment*>(InteractionParams.InstigatorFragment);
-	if (InvComponent == nullptr && AsInventoryFragment == nullptr) { return; }
+	FRTSOLightInventoryFragment* AsInventoryFragment = nullptr;// static_cast<FRTSOLightInventoryFragment*>(InteractionParams.InstigatorEntity);
+	if (InvComponent == nullptr)
+	{
+		AsInventoryFragment = EntManager->GetFragmentDataPtr<FRTSOLightInventoryFragment>(InteractionParams.InstigatorEntity);
+		if (AsInventoryFragment == nullptr)
+		{
+			return;
+		}
+	}
 
 	UPDInventorySubsystem* InvSubsystem = GEngine->GetEngineSubsystem<UPDInventorySubsystem>();
 	check(InvSubsystem != nullptr)

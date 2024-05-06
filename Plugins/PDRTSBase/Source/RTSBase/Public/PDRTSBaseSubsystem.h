@@ -134,6 +134,7 @@ public:
 
 	UFUNCTION()
 	virtual void RequestNavpathGenerationForSelectionGroup(
+		int32 OwnerID,
 		int32 SelectionGroup,
 		const FVector& SelectionCenter,
 		const FPDTargetCompound& TargetCompound);
@@ -148,8 +149,10 @@ public:
 	TArray<UDataTable*> WorkTables;
 
 	UPROPERTY()
-	TMap<int32 /*SelectionGroupIndex*/, const UNavigationPath*> SelectionGroupPaths{};
-	bool bGroupPathsDirtied = false;
+	TMap<int32 /*OwnerID*/, FPDWrappedSelectionGroupNavData> SelectionGroupNavData{};
+	// bool bGroupPathsDirtied = false;
+	// @todo think on a solution which marks which actual data we want to update for teh group, but this for now works as a solid enough optimization
+	TArray<TTuple<int32 /*OwnerID*/, int32/*Player 'Selection' Index for non-hotkeyed groups*/> > DirtySharedData{};
 	
 	TMap<const FGameplayTag, const FPDWorkUnitDatum*> TagToJobMap{};
 	TMap<const FName, FGameplayTag> NameToTagMap{};
@@ -167,7 +170,13 @@ public:
 	PD::Mass::Entity::FPDSafeOctree WorldOctree;
 
 	TMap<void*, bool> WorldsWithOctrees{};
-	
+
+
+	// This will be useful on a server or shared screen environment
+	UPROPERTY(EditAnywhere)
+	TMap<int32 /*OwnerID*/, AActor* /*OwningActor*/> SharedOwnerIDMappings;
+	UPROPERTY(EditAnywhere)
+	TMap<AActor* /*OwningActor*/, int32 /*OwnerID*/> SharedOwnerIDBackMappings;	
 };
 
 /** @brief Subsystem (developer) settings, set the uniform bounds, the default grid cell size and the work tables for the entities to use */

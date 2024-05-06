@@ -104,16 +104,21 @@ EStateTreeRunStatus FPDMTask_MoveToTarget::EnterState(FStateTreeExecutionContext
 	const FTransformFragment& TransformFragment = Context.GetExternalData(TransformHandle);
 	const FMassEntityHandle& ActionTargetAsEntity = InstanceData.OptTargets.ActionTargetAsEntity;
 	
-	const FPDMFragment_SharedNavigation& SharedNav = EntityView.GetSharedFragmentData<FPDMFragment_SharedNavigation>();
+	const FPDMFragment_SharedEntity& SharedEntity = EntityView.GetSharedFragmentData<FPDMFragment_SharedEntity>();
 	
 	const bool bIsEntityValid = EntitySubsystem.GetEntityManager().IsEntityValid(ActionTargetAsEntity);
 	if (InstanceData.OptTargets.IsValidCompoundByManager(EntitySubsystem.GetEntityManager()) == false)
 	{
 		return EStateTreeRunStatus::Failed;
 	}
-
-	const bool bShouldUseSharedNavigation = RTSData.QueuedUnitPath.IsEmpty() && RTSData.SelectionGroupIndex != INDEX_NONE && SharedNav.NavPathsPerSelectionGroup.Contains(RTSData.SelectionGroupIndex);
-	const UNavigationPath* NavPath = bShouldUseSharedNavigation ? *SharedNav.NavPathsPerSelectionGroup.Find(RTSData.SelectionGroupIndex) : nullptr;
+	
+	const bool bShouldUseSharedNavigation =
+		RTSData.QueuedUnitPath.IsEmpty()
+		&& RTSData.SelectionGroupIndex != INDEX_NONE
+		&& SharedEntity.SharedNavData.Contains(RTSData.OwnerID)
+		&& SharedEntity.SharedNavData.Find(RTSData.OwnerID)->SelectionGroupNavData.Contains(RTSData.SelectionGroupIndex);
+	const UNavigationPath* NavPath =
+		bShouldUseSharedNavigation ? *SharedEntity.SharedNavData.Find(RTSData.OwnerID)->SelectionGroupNavData.Find(RTSData.SelectionGroupIndex) : nullptr;
 
 	const bool bShouldOverwriteQueuedPath = NavPath == nullptr && RTSData.QueuedUnitPath.IsEmpty() == false ?
 		RTSData.QueuedUnitPath.Last() == FVector::ZeroVector : false;
