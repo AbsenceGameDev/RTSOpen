@@ -372,21 +372,33 @@ void AGodHandPawn::ActionWorkerUnit_Completed_Implementation(const FInputActionV
 	const FGameplayTagContainer AssociatedTags = WorkerUnitActionTarget != nullptr && WorkerUnitActionTarget->Implements<UPDInteractInterface>()
 		? IPDInteractInterface::Execute_GetGenericTagContainer(WorkerUnitActionTarget)
 		: FGameplayTagContainer{}; 
+
+	if (NC_WorkerPath != nullptr) { NC_WorkerPath->Deactivate(); }
 	if (AssociatedTags.IsEmpty() || EntityManager->IsEntityValid(SelectedWorkerUnitHandle) == false)
 	{
 		UE_LOG(LogTemp, Warning, TEXT("ActionWorkerUnit_Completed -- Unexpected error -- Clearing selected worker unit "))
 
-		if (NC_WorkerPath != nullptr) { NC_WorkerPath->Deactivate(); }
 		bUpdatePathOnTick = false;
 		WorkUnitTargetLocation = FVector::ZeroVector;
 		WorkerUnitActionTarget = nullptr;
 		return;
 	}
 
+	FVector2D ScreenCoordinates;
+	bool bFoundInputType;
+
+	FMassInt16Vector FallbackTargetLocation{};
+	if (WorkerUnitActionTarget == nullptr)
+	{
+		FHitResult HitResult = PC->ProjectMouseToGroundPlane(PC->DedicatedLandscapeTraceChannel, ScreenCoordinates, bFoundInputType);
+		FallbackTargetLocation = HitResult.bBlockingHit ? FMassInt16Vector{HitResult.Location} : FMassInt16Vector{};
+	}
+
+
 	const TArray<TObjectPtr<UInstancedStaticMeshComponent>>& ISMs = UPDRTSBaseSubsystem::GetMassISMs(GetWorld());
 	if (ISMs.IsEmpty() == false && Cast<UPDRTSBaseUnit>(ISMs[0]))
 	{
-		FPDTargetCompound OptTarget = {InvalidHandle, FMassInt16Vector(), WorkerUnitActionTarget};
+		FPDTargetCompound OptTarget = {InvalidHandle, FallbackTargetLocation, WorkerUnitActionTarget};
 		Cast<UPDRTSBaseUnit>(ISMs[0])->RequestAction(PC->GetActorID(), OptTarget, AssociatedTags.GetByIndex(0), SelectedWorkerUnitHandle);
 	}
 	
@@ -542,7 +554,6 @@ FMassEntityHandle AGodHandPawn::OctreeEntityTrace(const FVector& StartLocation, 
 		ClosestVectorSlow = Cell.Bounds.GetBox().GetCenter();
 		RetHandleSlow = Cell.EntityHandle;
 	}
-	
 
 #if 1
 

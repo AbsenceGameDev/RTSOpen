@@ -36,26 +36,30 @@ USTRUCT()
 struct FPDMTaskData_MoveToHandle
 {
 	GENERATED_BODY()
-	
-	// /** Result of the candidates search request (Input) */
-	// UPROPERTY(VisibleAnywhere, Category = Input)
-	// FMassEntityHandle EntityHandle;
-	//
-	// /** Result of the candidates search request (Input) */
-	// UPROPERTY(VisibleAnywhere, Category = Parameter)
-	// AActor* ActorTarget;
 
 	/** Result of the candidates search request (Input) */
 	UPROPERTY(EditAnywhere, Category = Input)
 	FPDTargetCompound OptTargets;	
-	
+
 	/** Result of the candidates search request (Input) */
-	UPROPERTY(VisibleAnywhere, Category = "Data")
+	UPROPERTY(VisibleAnywhere, Category = "Parameter")
 	TArray<FVector> NavPath;
+	
+	/** Minimum Average speed, polled every 10 seconds to make sure the entity is not stuck */
+	UPROPERTY(VisibleAnywhere, Category = "Data")
+	float MinimumAverageSpeedPer5SecondInterval = 20.0f;
 
 	/** Result of the candidates search request (Input) */
 	UPROPERTY(VisibleAnywhere, Category = "Data")
-	int16 CurrentNavPathIndex;	
+	int16 CurrentNavPathIndex;
+
+	/** Used to ensure the entity is not stuck */
+	UPROPERTY(VisibleAnywhere, Category = "Data")
+	float LastDistance = 0.0;		
+	UPROPERTY(VisibleAnywhere, Category = "Data")
+	float DistanceDeltaAccumulator = 0.0;
+	UPROPERTY(VisibleAnywhere, Category = "Data")
+	float TimeDeltaAccumulator = 0.0;	
 };
 
 struct FPDMPathParameters

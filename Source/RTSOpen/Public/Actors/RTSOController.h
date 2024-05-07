@@ -2,11 +2,18 @@
 #pragma once
 
 #include "CoreMinimal.h"
+#include "Interfaces/RTSOInputInterface.h"
+
+#include "Blueprint/UserWidget.h"
+#include "Blueprint/IUserObjectListEntry.h"
+
+#include "ConversationTypes.h"
 #include "GameplayTagContainer.h"
 #include "InputModifiers.h"
 #include "MassEntityTypes.h"
 #include "GameFramework/PlayerController.h"
-#include "Interfaces/RTSOInputInterface.h"
+
+
 #include "RTSOController.generated.h"
 
 class URTSOInputStackSubsystem;
@@ -17,6 +24,102 @@ enum class EMarqueeSelectionEvent : uint8
 	STARTMARQUEE,
 	HOLDMARQUEE,
 	RELEASEMARQUEE,
+};
+
+#pragma once
+
+// Inefficient, consider moving over 
+UCLASS()
+class URTSOStructWrapper : public UObject
+{
+	GENERATED_BODY()
+public:
+
+	UPROPERTY()
+	FText SelectionEntry{};
+};
+
+UCLASS(Abstract)
+class URTSOModularTile : public UUserWidget
+{
+	GENERATED_BODY()
+
+public:
+	virtual void NativePreConstruct() override;
+	
+	
+	UPROPERTY(Meta=(BindWidget))
+	class USizeBox* SizeBoxContainer = nullptr;
+
+	UPROPERTY(Meta=(BindWidget))
+	class UImage* ImageShadow = nullptr;
+
+	UPROPERTY(Meta=(BindWidget))
+	class UNamedSlot* NamedSlot = nullptr;
+
+	UPROPERTY(Meta=(BindWidget))
+	class UTextBlock* TextName = nullptr;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	FText TileText{};
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	float Height{0};		
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	float Width{0};		
+	
+};
+
+UCLASS(Abstract)
+class URTSOConversationSelectionEntry : public UUserWidget, public IUserObjectListEntry
+{
+	GENERATED_BODY()
+protected:
+	// IUserObjectListEntry
+	virtual void NativeOnListItemObjectSet(UObject* ListItemObject) override;
+	// IUserObjectListEntry
+
+	UPROPERTY(Meta=(BindWidget))
+	class URTSOModularTile* Tile = nullptr;
+
+	UPROPERTY(Meta=(BindWidget))
+	class UCommonTextBlock* TextContent = nullptr;	
+};
+
+UCLASS(BlueprintType, Blueprintable)
+class URTSOConversationMessageWidget : public UUserWidget
+{
+	GENERATED_BODY()
+public:
+
+	UFUNCTION(BlueprintNativeEvent, BlueprintCallable)
+	void SetPayload(const FClientConversationMessagePayload& Payload);
+	virtual void SetPayload_Implementation(const FClientConversationMessagePayload& Payload)
+	{
+		UE_LOG(LogTemp, Warning, TEXT("URTSOConversationMessageWidget::SetPayload_Implementation"))
+		// reserved for possible implementation
+	}
+
+
+	UPROPERTY(Meta = (BindWidget))
+	class UTileView* ConversationSelectors = nullptr;	
+};
+
+UCLASS(BlueprintType, Blueprintable)
+class URTSOConversationWidget : public UUserWidget
+{
+	GENERATED_BODY()
+public:
+
+	UFUNCTION(BlueprintNativeEvent, BlueprintCallable)
+	void SetPayload(const FClientConversationMessagePayload& Payload);
+	virtual void SetPayload_Implementation(const FClientConversationMessagePayload& Payload)
+	{
+		UE_LOG(LogTemp, Warning, TEXT("URTSOConversationWidget::SetPayload_Implementation"))
+		// reserved for possible implementation
+	}
+	
+	UPROPERTY(BlueprintReadWrite, Meta = (BindWidget))
+	URTSOConversationMessageWidget* ConversationMessageWidget = nullptr;
 };
 
 class UInputMappingContext;
@@ -100,6 +203,7 @@ class RTSOPEN_API ARTSOController : public APlayerController, public IRTSOInputI
 	/* RTSO Marquee selection - Start */
 	UFUNCTION() FORCEINLINE bool IsDrawingMarquee() const { return bIsDrawingMarquee; }
 	UFUNCTION() FORCEINLINE FVector2D GetStartMousePositionMarquee() const {return StartMousePositionMarquee;}
+	/** @brief Range loops from 1-10 */
 	UFUNCTION() FORCEINLINE int32 GeneratedGroupID()
 	{
 		RollbackSelectionID = CurrentSelectionID;
@@ -109,12 +213,12 @@ class RTSOPEN_API ARTSOController : public APlayerController, public IRTSOInputI
 		CurrentSelectionID = MaxSelectionHotkeyIndex + NewStep;
 		
 		return CurrentSelectionID;
-	} /**<@brief Range loops from 1-10 */
+	} 
 	UFUNCTION() FORCEINLINE int32 GenerateActorID()
 	{
 		static int32 StaticGroupIDStart = 99;
 		return ++StaticGroupIDStart;
-	} /**<@brief Range loops from 1-10 */
+	} 
 	
 	UFUNCTION() FORCEINLINE int32 GetLatestGroupID() const { return CurrentSelectionID; }
 	UFUNCTION() FORCEINLINE int32 GetCurrentGroupID() const { return CurrentSelectionID; }
@@ -127,6 +231,7 @@ class RTSOPEN_API ARTSOController : public APlayerController, public IRTSOInputI
 	UFUNCTION() void ReorderGroupIndex(const int32 OldID, const int32 NewID);
 	const TMap<int32, TMap<int32, FMassEntityHandle>>& GetMarqueeSelectionMap() { return MarqueeSelectedHandles; }
 	UFUNCTION() int32 GetActorID() { return ActorID; };
+	UFUNCTION() FORCEINLINE URTSOConversationWidget* GetConversationWidget() const { return ConversationWidget;};
 
 	UFUNCTION() FORCEINLINE FHitResult GetLatestStartHitResult()  { return LatestStartHitResult;};
 	UFUNCTION() FORCEINLINE FHitResult GetLatestCenterHitResult() { return LatestCenterHitResult;};
@@ -176,7 +281,11 @@ public:
 	TMap<FGameplayTag, UInputMappingContext*> MappingContexts{};
 
 protected:
-
+	UPROPERTY(VisibleInstanceOnly)
+	URTSOConversationWidget* ConversationWidget = nullptr;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	TSubclassOf<URTSOConversationWidget> ConversationWidgetClass = nullptr;
+	
 	UPROPERTY(VisibleInstanceOnly)
 	FHitResult LatestStartHitResult{};
 	UPROPERTY(VisibleInstanceOnly)

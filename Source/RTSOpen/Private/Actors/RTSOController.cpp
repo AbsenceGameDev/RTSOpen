@@ -15,6 +15,29 @@
 #include "Misc/DataValidation.h"
 #include "Misc/CString.h"
 
+#include "CommonTextBlock.h"
+#include "Components/Image.h"
+#include "Components/SizeBox.h"
+#include "Components/TextBlock.h"
+
+void URTSOModularTile::NativePreConstruct()
+{
+	Super::NativePreConstruct();
+
+	TextName->SetText(TileText);
+
+	SizeBoxContainer->SetHeightOverride(Height);	
+	SizeBoxContainer->SetWidthOverride(Width);	
+}
+
+void URTSOConversationSelectionEntry::NativeOnListItemObjectSet(UObject* ListItemObject)
+{
+	URTSOStructWrapper* Item = Cast<URTSOStructWrapper>(ListItemObject);
+	TextContent->SetText(Item->SelectionEntry);
+	
+	// Wont need the Tile for any updating 
+	// Tile;
+}
 
 ARTSOController::ARTSOController(const FObjectInitializer& ObjectInitializer)
 	: Super(ObjectInitializer), bIsDrawingMarquee(0)
@@ -55,7 +78,9 @@ void ARTSOController::BeginPlay()
 		ActorToIDMap.FindOrAdd(this) = ActorID;
 		IDToActorMap.FindOrAdd(ActorID) = this;
 	}
-	
+
+	if (ConversationWidgetClass->IsValidLowLevelFast() == false) { return; }
+	ConversationWidget = NewObject<URTSOConversationWidget>(this, ConversationWidgetClass);
 }
 
 void ARTSOController::EndPlay(const EEndPlayReason::Type EndPlayReason)

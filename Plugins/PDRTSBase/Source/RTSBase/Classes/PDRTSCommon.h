@@ -12,6 +12,7 @@ class UBehaviorTree;
 /** Declaring the "AI.Job" gameplay tag. to be defined in an object-file */
 PDRTSBASE_API UE_DECLARE_GAMEPLAY_TAG_EXTERN(TAG_AI_Job_Idle);
 PDRTSBASE_API UE_DECLARE_GAMEPLAY_TAG_EXTERN(TAG_AI_Job_WalkToTarget);
+PDRTSBASE_API UE_DECLARE_GAMEPLAY_TAG_EXTERN(TAG_AI_Job_GenericInteract);
 PDRTSBASE_API UE_DECLARE_GAMEPLAY_TAG_EXTERN(TAG_AI_Job_GatherResource);
 
 /** Declaring the "Control.Context." gameplay tags. to be defined in an object-file */
@@ -42,17 +43,19 @@ struct FPDWorkUnitDatum : public FTableRowBase
 {
 	GENERATED_BODY()
 
+	FPDWorkUnitDatum() : bCanShareJob(0) {};
+
 	/** @brief The tag for the actual job this entry defines */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "RTSBase|WorkerUnits")
-	FGameplayTag JobTag;
+	FGameplayTag JobTag = FGameplayTag();
 
 	/** @brief The tag for the required unit type(s) for this job, if empty all types are valid. Block all types if AI.Type.InvalidUnit is set */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "RTSBase|WorkerUnits")
-	TArray<FGameplayTag> RequiredUnitTypeTags;
+	TArray<FGameplayTag> RequiredUnitTypeTags{};
 
-	/** @brief The tag for the required unit type(s) for this job, if empty all types are valid */
+	/** @brief If job can be shared between players */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "RTSBase|WorkerUnits")
-	uint8 bCanShareJob;
+	uint8 bCanShareJob : 1;
 };
 
 /**

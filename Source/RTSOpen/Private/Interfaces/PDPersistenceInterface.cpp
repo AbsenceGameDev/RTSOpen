@@ -1,32 +1,8 @@
 ﻿/* @author: Ario Amin @ Permafrost Development. @copyright: Full BSL(1.1) License included at bottom of the file  */
 
-#include "Actors/Interactables/Buildings/RTSOInteractableBuildingBase.h"
 
-#include "PDRTSCommon.h"
+#include "Interfaces/PDPersistenceInterface.h"
 
-ARTSOInteractableBuildingBase::ARTSOInteractableBuildingBase()
-{
-	PrimaryActorTick.bCanEverTick = true;
-
-	JobTag = TAG_AI_Job_WalkToTarget;
-}
-
-void ARTSOInteractableBuildingBase::BeginPlay()
-{
-	Super::BeginPlay();
-}
-
-FGameplayTagContainer ARTSOInteractableBuildingBase::GetGenericTagContainer_Implementation() const
-{
-	FGameplayTagContainer GeneratedTags;
-	GeneratedTags.AddTag(JobTag);
-	return GeneratedTags;
-}
-
-void ARTSOInteractableBuildingBase::Tick(float DeltaTime)
-{
-	Super::Tick(DeltaTime);
-}
 
 
 /**

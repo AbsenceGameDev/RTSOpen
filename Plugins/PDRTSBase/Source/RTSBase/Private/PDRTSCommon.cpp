@@ -5,6 +5,7 @@
 /** Define the gameplay "AI.Jobs." tags */
 UE_DEFINE_GAMEPLAY_TAG(TAG_AI_Job_Idle, "AI.Jobs.Idle");
 UE_DEFINE_GAMEPLAY_TAG(TAG_AI_Job_WalkToTarget, "AI.Jobs.WalkToTarget");
+UE_DEFINE_GAMEPLAY_TAG(TAG_AI_Job_GenericInteract, "AI.Jobs.GenericInteract");
 UE_DEFINE_GAMEPLAY_TAG(TAG_AI_Job_GatherResource, "AI.Jobs.GatherResource");
 
 /** Define the gameplay "CTRL.Ctxt." tags */

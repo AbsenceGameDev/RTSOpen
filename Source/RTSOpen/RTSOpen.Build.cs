@@ -13,7 +13,7 @@ public class RTSOpen : ModuleRules
 		
 		PublicDependencyModuleNames.AddRange(new string[] 
 			{ "Core", "CoreUObject", "Engine", 
-			"InputCore", "GameplayTags", "NetCore", "PDRTSBase", "PDInventory", "EnhancedInput"
+			"InputCore", "GameplayTags", "NetCore", "PDRTSBase", "PDInventory", "EnhancedInput", "CommonConversationRuntime"
 			});
 
 		PublicDependencyModuleNames.AddRange(new string[]

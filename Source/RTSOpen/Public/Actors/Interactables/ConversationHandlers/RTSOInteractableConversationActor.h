@@ -50,7 +50,7 @@ struct FRTSOConversationMetaProgressionDatum : public FTableRowBase
 	GENERATED_BODY()
 	
 	UPROPERTY(EditAnywhere)
-	int32 BaseProgression = 0; /**< @brief Starting progression, @todo map to actual player/owner ID */
+	int32 BaseProgression = 0; /**< @brief Starting progression */
 	
 	UPROPERTY(EditAnywhere)
 	TArray<FRTSOConversationRules> PhaseRequiredTags;
@@ -62,11 +62,13 @@ struct FRTSOConversationMetaState
 	GENERATED_BODY()
 
 	void ApplyValuesFromProgressionTable(FRTSOConversationMetaProgressionDatum& ConversationProgressionEntry);
-
-	UPROPERTY(VisibleInstanceOnly)
-	FRTSOConversationMetaProgressionDatum Datum;
 	
-	UPROPERTY(VisibleInstanceOnly)
+	UPROPERTY(EditAnywhere)
+	TMap<int32/*ActorID*/, int32/*ProgressionLever*/> ProgressionPerPlayer; /**< @brief progression*/
+	
+	UPROPERTY(EditAnywhere)
+	TArray<FRTSOConversationRules> PhaseRequiredTags;	
+	
 	TDeque<AActor*> InteractingActors; // Used as storage
 
 	UPROPERTY()
@@ -81,12 +83,13 @@ class RTSOPEN_API ARTSOInteractableConversationActor
 	GENERATED_BODY()
 
 public:
-	virtual void OnConstruction(const FTransform& Transform) override;
 	void ConversationStarted();
 	void ConversationTaskChoiceDataUpdated(const FConversationNodeHandle& NodeHandle, const FClientConversationOptionEntry& OptionEntry);
 	void ConversationUpdated(const FClientConversationMessagePayload& Payload);
 	void ConversationStatusChanged(bool bDidStatusChange);
 	virtual void BeginPlay() override;
+
+	virtual FGameplayTagContainer GetGenericTagContainer_Implementation() const override;
 
 	virtual void OnInteract_Implementation(const FPDInteractionParamsWithCustomHandling& InteractionParams, EPDInteractResult& InteractResult) const override;
 	
@@ -95,13 +98,14 @@ public:
 
 	UFUNCTION(BlueprintCallable)
 	virtual void ReplyChoice(AActor* Caller, int32 Choice) override;
-	
+	void TryInitializeOwnerProgression(int32 OwnerID) const;
+
 	virtual ERTSOConversationState ValidateRequiredTags(const FGameplayTag& EntryTag, AActor* CallingActor) const;
 	bool CanRepeatConversation(int32 ConversationProgression) const;
 	virtual const FGameplayTag& ResolveTagForProgressionLevel(const int32 ConversationProgression) const;
 	virtual void OnConversationPhaseStateChanged(const FGameplayTag& EntryTag, ERTSOConversationState NewState);
 	
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Meta = (RowType = "/Script/RTSBase.RTSOConversationMetaProgressionDatum"))
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Meta = (RowType = "/Script/RTSOpen.RTSOConversationMetaProgressionDatum"))
 	FDataTableRowHandle ConversationSettingsHandle;	
 
 	/** @note This pointer is just so we can modify the underlying value without restrictions in const functions*/
@@ -111,8 +115,15 @@ public:
 	UPROPERTY(VisibleInstanceOnly)
 	UConversationParticipantComponent* ParticipantComponent;
 
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	FName ActorName{};
+	
 	UPROPERTY(EditAnywhere)
 	FString GameFeatureName = "ConversationData";
+
+private:
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Meta = (AllowPrivateAccess="true"))
+	FGameplayTag JobTag{};	
 };
 
 /**

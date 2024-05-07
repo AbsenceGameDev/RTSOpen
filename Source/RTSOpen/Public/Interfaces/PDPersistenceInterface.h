@@ -1,32 +1,125 @@
 ﻿/* @author: Ario Amin @ Permafrost Development. @copyright: Full BSL(1.1) License included at bottom of the file  */
 
-#include "Actors/Interactables/Buildings/RTSOInteractableBuildingBase.h"
+#pragma once
 
-#include "PDRTSCommon.h"
+#include "CoreMinimal.h"
+#include "UObject/Interface.h"
+#include "PDPersistenceInterface.generated.h"
 
-ARTSOInteractableBuildingBase::ARTSOInteractableBuildingBase()
+// Imagine a static set of all possible server IDs, it would contain 65535 values, * 2 bytes = approx. 130kb
+//
+
+constexpr uint32 INVALID_ID = 0; // is our INVALID_ID
+USTRUCT()
+struct FPDPersistentID
 {
-	PrimaryActorTick.bCanEverTick = true;
+	GENERATED_BODY()
 
-	JobTag = TAG_AI_Job_WalkToTarget;
+public:
+	FPDPersistentID() : BitSet_ID(0) {}
+	uint32 GetID() const { return BitSet_ID; }
+	bool IsValidID() const { return BitSet_ID != INVALID_ID; }
+
+	static FPDPersistentID GenerateNewPersistentID(const TSet<FPDPersistentID>& ExistingIDs)
+	{
+		if (ExistingIDs.Num() > UINT32_MAX)
+		{
+			// Too many in the set, log as a warning and return invalid ID
+			return FPDPersistentID{INVALID_ID};
+		}
+
+		// simple iteration algorithm which is reliable and in most cases should be faster than a regular iteration
+		// 1. Generate random Search start point, and pick random search direction
+		const int64 RandomStartingPoint = FMath::RandRange(0, UINT32_MAX);
+		const bool  RandomDirectionForward = FMath::RandBool();
+
+		
+		// 2. Search first in randomly selected direction.
+		// If first search fails, reverse directions and start over from the selected point
+		if (RandomDirectionForward)
+		{
+			FPDPersistentID Value;
+			if (ForwardSearch(ExistingIDs, RandomStartingPoint, Value)) { return Value; }
+			if (ReverseSearch(ExistingIDs, RandomStartingPoint, Value)) { return Value; }
+		}
+		else
+		{
+			FPDPersistentID Value;
+			if (ReverseSearch(ExistingIDs, RandomStartingPoint, Value)) { return Value; }
+			if (ForwardSearch(ExistingIDs, RandomStartingPoint, Value)) { return Value; }
+		}
+
+		// Search failed, @todo log error here
+		return FPDPersistentID{INVALID_ID};
+	}
+	
+
+	bool operator==(const FPDPersistentID& Other) const { return this->BitSet_ID == Other.BitSet_ID; }
+
+	bool operator!=(const FPDPersistentID& Other) const { return (*this == Other) == false; }
+	bool operator> (const FPDPersistentID& Other) const { return this->BitSet_ID > Other.BitSet_ID; }
+	bool operator< (const FPDPersistentID& Other) const { return this->BitSet_ID < Other.BitSet_ID; }
+	bool operator>=(const FPDPersistentID& Other) const { return this->BitSet_ID >= Other.BitSet_ID; }
+	bool operator<=(const FPDPersistentID& Other) const { return this->BitSet_ID <= Other.BitSet_ID; }
+
+	bool operator==(const uint32& OtherID) const { return this->BitSet_ID == OtherID; }
+	bool operator!=(const uint32& OtherID) const { return (*this == OtherID) == false; }
+	bool operator> (const uint32 OtherID) const { return this->BitSet_ID > OtherID; }
+	bool operator< (const uint32 OtherID) const { return this->BitSet_ID < OtherID; }	
+	bool operator>=(const uint32 OtherID) const { return this->BitSet_ID >= OtherID; }
+	bool operator<=(const uint32 OtherID) const { return this->BitSet_ID <= OtherID; }	
+	FPDPersistentID operator+(const FPDPersistentID& Other) const { return this->BitSet_ID + Other.BitSet_ID;}
+	FPDPersistentID operator+=(const FPDPersistentID& Other){ return this->BitSet_ID = this->BitSet_ID + Other.BitSet_ID;}
+	FPDPersistentID& operator++(){ BitSet_ID++; return *this;}
+	FPDPersistentID& operator++(int){ FPDPersistentID Old = *this; BitSet_ID++; return Old;}
+	
+private:
+	FPDPersistentID(uint32 InID) : BitSet_ID(InID) {} 
+	uint32 BitSet_ID; // Wrapped data (Player ID)
+	
+	static bool ReverseSearch(const TSet<FPDPersistentID>& ExistingIDs, const int64 RandomStartingPoint, FPDPersistentID& Value)
+	{
+		if (ExistingIDs.IsEmpty()) { Value = RandomStartingPoint; return true; }
+
+		// relies on uintwrapping
+		for (uint32 Step = RandomStartingPoint; Step != UINT32_MAX ;)
+		{
+			if (ExistingIDs.Contains(Step)) { --Step; }
+			else { Value = Step; return true; }
+		}
+		return false;
+	}
+	static bool ForwardSearch(const TSet<FPDPersistentID>& ExistingIDs, const int64 RandomStartingPoint, FPDPersistentID& Value)
+	{
+		if (ExistingIDs.IsEmpty()) { Value = RandomStartingPoint; return true; }
+		
+		for (FPDPersistentID Step = RandomStartingPoint; Step < UINT32_MAX;)
+		{
+			if (ExistingIDs.Contains(Step)) { ++Step; }
+			else { Value = Step; return true; }
+		}
+		return false;
+	}
+};
+
+inline uint32 GetTypeHash(const FPDPersistentID& PersistentID)
+{
+	return FCrc::MemCrc32(&PersistentID,sizeof(FPDPersistentID));
 }
 
-void ARTSOInteractableBuildingBase::BeginPlay()
-{
-	Super::BeginPlay();
-}
+/** @brief Engine boilerplate */
+UINTERFACE() class UPDPersistenceInterface : public UInterface { GENERATED_BODY() };
 
-FGameplayTagContainer ARTSOInteractableBuildingBase::GetGenericTagContainer_Implementation() const
+/** @brief Persistence interface */
+class RTSOPEN_API IPDPersistenceInterface
 {
-	FGameplayTagContainer GeneratedTags;
-	GeneratedTags.AddTag(JobTag);
-	return GeneratedTags;
-}
+	GENERATED_BODY()
 
-void ARTSOInteractableBuildingBase::Tick(float DeltaTime)
-{
-	Super::Tick(DeltaTime);
-}
+public:
+	// default impl returns an invalid ID
+	virtual FPDPersistentID GetPersistentID() { return FPDPersistentID(); };
+};
+
 
 
 /**

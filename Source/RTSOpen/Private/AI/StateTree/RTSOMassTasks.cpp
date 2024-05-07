@@ -33,6 +33,17 @@ EStateTreeRunStatus FRTSOTask_Interact::EnterState(FStateTreeExecutionContext& C
 	const TArray<TObjectPtr<UInstancedStaticMeshComponent>>& ISMs = UPDRTSBaseSubsystem::GetMassISMs(Context.GetWorld());
 	if (ISMs.IsEmpty()) { return EStateTreeRunStatus::Failed; }
 
+	const FMassEntityManager& EntityManager = EntitySubsystem.GetEntityManager();
+	
+	// @todo move this somewhere more appropriate, possibly have a generic callback whe nan AI job is completed and at that point reset the actiontag and opttargetscompound
+	// Clear job now that it has been performed
+	// For our purposes action fragment should never be nullptr in case the handle itself is valid
+	check(EntityManager.GetFragmentDataPtr<FPDMFragment_Action>(MassContext.GetEntity()) != nullptr);
+	FPDMFragment_Action* EntityAction = EntityManager.GetFragmentDataPtr<FPDMFragment_Action>(MassContext.GetEntity());
+	EntityAction->ActionTag = TAG_AI_Job_Idle;
+	EntityAction->OptTargets = FPDTargetCompound{};
+	
+
 	if (OtherInteractable != nullptr)
 	{
 		// call interact function on interactables

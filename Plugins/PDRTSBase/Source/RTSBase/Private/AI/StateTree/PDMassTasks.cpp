@@ -13,6 +13,7 @@
 #include "NavigationPath.h"
 #include "NavigationSystem.h"
 #include "StateTreeLinker.h"
+#include "Chaos/DebugDrawQueue.h"
 
 
 FPDMPathParameters& FPDMPathParameters::operator=(const FPDMPathParameters& Other)
@@ -48,24 +49,68 @@ bool FPDMTask_MoveToTarget::Link(FStateTreeLinker& Linker)
 }
 
 
+void DrawBoxAndTextChaos(const FVector& BoundsCenter, const FQuat& Rotation, const FVector& DebugExtent, const FString& DebugBoxTitle, const FColor LineColour)
+{
+#if CHAOS_DEBUG_DRAW
+	constexpr int32 SeedOffset = 0x00a7b95; // just some random number with little significance, used to offset value so a seed based on the same hex colour code
+	static int32 StaticShift = 0x0; // just some random number with little significance, used to offset value so a seed based on the same hex colour code
+	StaticShift = (StaticShift + 0x1) % 0x7;
+	
+	Chaos::FDebugDrawQueue::GetInstance()
+		.DrawDebugBox(
+			BoundsCenter,
+			DebugExtent,
+			Rotation,
+			LineColour,
+			false,
+			20,
+			0,
+			5.0
+		);
+	Chaos::FDebugDrawQueue::GetInstance()
+		.DrawDebugString(
+			BoundsCenter + FVector(0, 0, (DebugExtent.Z * 2)),
+			DebugBoxTitle,
+			nullptr,
+			FColor::MakeRandomSeededColor((LineColour.R < StaticShift) + (LineColour.G < StaticShift) + (LineColour.B < StaticShift) + (SeedOffset < StaticShift)),
+			20,
+			true,
+			2);
+
+#endif // CHAOS_DEBUG_DRAW
+}
+
 void FPDMTask_MoveToTarget::ProcessNewPriorityPath(FPDMPathParameters& Params) const
 {
 	const FVector& StartLocation = Params.TransformFragment.GetTransform().GetLocation();
 	const FVector& TargetLocation = Params.ResolveLocation();
 
-	UNavigationPath* Navpath = UNavigationSystemV1::FindPathToLocationSynchronously(Params.EntitySubsystem.GetWorld(), StartLocation, TargetLocation);
-	if (Navpath != nullptr && Navpath->PathPoints.IsEmpty() == false)
+	// @todo debug why the generated path is not functioning, debugging it showed it provides a valid location
+	// UNavigationPath* Navpath = UNavigationSystemV1::FindPathToLocationSynchronously(Params.EntitySubsystem.GetWorld(), StartLocation, TargetLocation);
+	// if (Navpath != nullptr && Navpath->PathPoints.IsEmpty() == false)
+	// {
+	// 	UE_LOG(LogTemp, Warning, TEXT("FPDMTask_MoveToTarget::ProcessNewPriorityPath -- NavPath Generated"))
+	//
+	// 	TArray<FVector>& PathPoints = Navpath->PathPoints;
+	// 	PathPoints[0] = StartLocation;
+	// 	PathPoints.Last() = TargetLocation;
+	//
+	// 	Params.InstanceData.NavPath = std::move(PathPoints);
+	// 	Params.InstanceData.CurrentNavPathIndex = 0;
+	// 	Params.MoveTarget.Center = Params.InstanceData.NavPath[Params.InstanceData.CurrentNavPathIndex];
+	// 	
+	// 	{
+	// 		int32 Step = 0;
+	// 		for (const FVector& PathPoint : Params.InstanceData.NavPath)
+	// 		{
+	// 			DrawBoxAndTextChaos(PathPoint, FQuat::Identity, FVector(5), FString::Printf(TEXT("Point(%i)"), Step++), FColor::Cyan);
+	// 		}			
+	// 	}
+	// 	
+	// }
+	// else
 	{
-		TArray<FVector>& PathPoints = Navpath->PathPoints;
-		PathPoints[0] = StartLocation;
-		PathPoints.Last() = TargetLocation;
-
-		Params.InstanceData.NavPath = std::move(PathPoints);
-		Params.InstanceData.CurrentNavPathIndex = 0;
-		Params.MoveTarget.Center = Params.InstanceData.NavPath[Params.InstanceData.CurrentNavPathIndex];
-	}
-	else
-	{
+		UE_LOG(LogTemp, Warning, TEXT("FPDMTask_MoveToTarget::ProcessNewPriorityPath -- Failed being generated"))
 		Params.MoveTarget.Center = TargetLocation;
 	}
 }
@@ -76,6 +121,8 @@ void FPDMTask_MoveToTarget::ProcessNewSharedPath(FPDMPathParameters& Params) con
 
 	if (Params.NavPath->PathPoints.IsEmpty() == false)
 	{
+		UE_LOG(LogTemp, Warning, TEXT("FPDMTask_MoveToTarget::ProcessNewSharedPath -- NavPath Generated"))
+		
 		TArray<FVector> PathPoints = Params.NavPath->PathPoints;
 		PathPoints[0] = StartLocation;
 
@@ -85,6 +132,7 @@ void FPDMTask_MoveToTarget::ProcessNewSharedPath(FPDMPathParameters& Params) con
 	}
 	else
 	{
+		UE_LOG(LogTemp, Warning, TEXT("FPDMTask_MoveToTarget::ProcessNewSharedPath -- Failed being generated"))
 		Params.MoveTarget.Center = Params.ResolveLocation();
 	}
 }
@@ -147,6 +195,20 @@ EStateTreeRunStatus FPDMTask_MoveToTarget::Tick(FStateTreeExecutionContext& Cont
 	// When entity reaches target, mark as complete
 	FMassMoveTargetFragment& MoveTarget = Context.GetExternalData(MoveTargetHandle);
 	FPDMFragment_RTSEntityBase& RTSData = Context.GetExternalData(RTSDataHandle);
+
+	// Abort if moving far too slow.
+	InstanceData.TimeDeltaAccumulator += DeltaTime;
+	InstanceData.DistanceDeltaAccumulator += FMath::Abs(MoveTarget.DistanceToGoal - InstanceData.LastDistance);
+	InstanceData.LastDistance = MoveTarget.DistanceToGoal;
+	if (InstanceData.TimeDeltaAccumulator >= 10.0f)
+	{
+		if (InstanceData.MinimumAverageSpeedPer5SecondInterval > (InstanceData.DistanceDeltaAccumulator / InstanceData.TimeDeltaAccumulator))
+		{
+			return EStateTreeRunStatus::Failed;
+		}
+		
+		InstanceData.TimeDeltaAccumulator = 0;
+	}
 
 	if (MoveTarget.DistanceToGoal <= MoveTarget.SlackRadius)
 	{
