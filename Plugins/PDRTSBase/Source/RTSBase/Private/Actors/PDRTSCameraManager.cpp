@@ -15,6 +15,8 @@ void APDCameraManager::OnConstruction(const FTransform& Transform)
 void APDCameraManager::BeginPlay()
 {
 	Super::BeginPlay();
+
+	ProcessTables();
 }
 
 // Called by the engine

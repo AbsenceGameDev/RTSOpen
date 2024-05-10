@@ -17,8 +17,10 @@
 
 #include "CommonTextBlock.h"
 #include "Components/Image.h"
+#include "Components/Border.h"
 #include "Components/SizeBox.h"
 #include "Components/TextBlock.h"
+#include "Components/TileView.h"
 
 void URTSOModularTile::NativePreConstruct()
 {
@@ -35,13 +37,146 @@ void URTSOModularTile::Refresh()
 	SizeBoxContainer->SetWidthOverride(Width);		
 }
 
+
+FEventReply URTSOConversationSelectionEntry::MouseMove(FGeometry MyGeometry, const FPointerEvent& MouseEvent)
+{
+	URTSOConversationMessageWidget* ParentAsMessageWidget = Cast<URTSOConversationMessageWidget>(DirectParentReference);
+	if (ParentAsMessageWidget == nullptr) { return FEventReply(); }
+	
+	return ParentAsMessageWidget->MouseMove(ChoiceIndex, MyGeometry, MouseEvent);
+}
+
+FEventReply URTSOConversationSelectionEntry::MouseButtonDown(FGeometry MyGeometry, const FPointerEvent& MouseEvent)
+{
+	URTSOConversationMessageWidget* ParentAsMessageWidget = Cast<URTSOConversationMessageWidget>(DirectParentReference);
+	if (ParentAsMessageWidget == nullptr) { return FEventReply(); }
+	
+	return ParentAsMessageWidget->MouseButtonDown(ChoiceIndex, MyGeometry, MouseEvent);
+}
+
+FEventReply URTSOConversationSelectionEntry::MouseButtonUp(FGeometry MyGeometry, const FPointerEvent& MouseEvent)
+{
+	URTSOConversationMessageWidget* ParentAsMessageWidget = Cast<URTSOConversationMessageWidget>(DirectParentReference);
+	if (ParentAsMessageWidget == nullptr) { return FEventReply(); }
+	
+	return ParentAsMessageWidget->MouseButtonUp(ChoiceIndex, MyGeometry, MouseEvent);
+}
+
+FEventReply URTSOConversationSelectionEntry::MouseDoubleClick(FGeometry MyGeometry, const FPointerEvent& MouseEvent)
+{
+	URTSOConversationMessageWidget* ParentAsMessageWidget = Cast<URTSOConversationMessageWidget>(DirectParentReference);
+	if (ParentAsMessageWidget == nullptr) { return FEventReply(); }
+	
+	return ParentAsMessageWidget->MouseDoubleClick(ChoiceIndex, MyGeometry, MouseEvent);
+}
+
 void URTSOConversationSelectionEntry::NativeOnListItemObjectSet(UObject* ListItemObject)
 {
-	URTSOStructWrapper* Item = Cast<URTSOStructWrapper>(ListItemObject);
-	TextContent->SetText(Item->SelectionEntry);
+	const URTSOStructWrapper* Item = Cast<URTSOStructWrapper>(ListItemObject);
+	if (Item == nullptr) { return; }
 	
-	// Wont need the Tile for any updating 
-	// Tile;
+	TextContent->SetText(Item->SelectionEntry);
+	ChoiceIndex           = Item->ChoiceIndex;
+	DirectParentReference = Item->DirectParentReference;
+	Tile->TileText = FText::FromString("Reply {" + FString::FromInt(ChoiceIndex) + "}");
+	Tile->Refresh();
+	
+	// 1. Bind delegates
+	TextContentBorder->OnMouseMoveEvent.BindDynamic(this, &URTSOConversationSelectionEntry::MouseMove); 
+	TextContentBorder->OnMouseButtonDownEvent.BindDynamic(this, &URTSOConversationSelectionEntry::MouseButtonDown);
+	TextContentBorder->OnMouseButtonUpEvent.BindDynamic(this, &URTSOConversationSelectionEntry::MouseButtonUp);
+	TextContentBorder->OnMouseDoubleClickEvent.BindDynamic(this, &URTSOConversationSelectionEntry::MouseDoubleClick);
+}
+
+FEventReply URTSOConversationMessageWidget::MouseMove_Implementation(int32 ChoiceIdx, FGeometry MyGeometry, const FPointerEvent& MouseEvent)
+{
+	return FEventReply(true);
+}
+
+FEventReply URTSOConversationMessageWidget::MouseButtonDown_Implementation(int32 ChoiceIdx, FGeometry MyGeometry, const FPointerEvent& MouseEvent)
+{
+	LatestInteractedChoice = ChoiceIdx;
+	return FEventReply(true);
+}
+
+FEventReply URTSOConversationMessageWidget::MouseButtonUp_Implementation(int32 ChoiceIdx, FGeometry MyGeometry, const FPointerEvent& MouseEvent)
+{
+	if (LatestInteractedChoice != ChoiceIdx) { return FEventReply();}
+	SelectChoice(ChoiceIdx);
+	
+	return FEventReply(true);
+}
+
+FEventReply URTSOConversationMessageWidget::MouseDoubleClick_Implementation(int32 ChoiceIdx, FGeometry MyGeometry, const FPointerEvent& MouseEvent)
+{
+	return FEventReply(true);
+}
+
+void URTSOConversationMessageWidget::SetPayload_Implementation(const FClientConversationMessagePayload& Payload, AActor* PotentialCallbackActor)
+{
+	UE_LOG(LogTemp, Warning, TEXT("URTSOConversationMessageWidget::SetPayload_Implementation"))
+	// reserved for possible implementation
+
+	CurrentPotentialCallbackActor = PotentialCallbackActor;
+
+	ConversationSelectors->ClearListItems();
+
+	if (Payload.Options.IsEmpty()) { return; }
+	
+	const int32 MaxStep = Payload.Options.Num() - 1;
+	int32 Step = INDEX_NONE;
+	for (;Step < MaxStep;)
+	{
+		const FClientConversationOptionEntry& Option = Payload.Options[++Step];
+		FText BuildText = Option.ChoiceText;
+		switch (Option.ChoiceType)
+		{
+		case EConversationChoiceType::ServerOnly:
+			break;
+		case EConversationChoiceType::UserChoiceAvailable:
+			break;
+		case EConversationChoiceType::UserChoiceUnavailable:
+			BuildText = FText::FromString("(INVALID:) " + Option.ChoiceText.ToString());
+			break;
+		}
+		
+		URTSOStructWrapper* DataWrapper =
+			InstantiatedEntryObjects.IsValidIndex(Step) ? InstantiatedEntryObjects[Step] 
+			: NewObject<URTSOStructWrapper>(this, URTSOStructWrapper::StaticClass());
+		DataWrapper->SelectionEntry = BuildText;
+		DataWrapper->ChoiceIndex = Step;
+		DataWrapper->DirectParentReference = this;
+		
+		if (InstantiatedEntryObjects.IsValidIndex(Step) == false)
+		{
+			InstantiatedEntryObjects.Emplace(DataWrapper);
+		}
+		ConversationSelectors->AddItem(DataWrapper);
+	}
+
+	const FString BuildString =
+		FString::Printf(TEXT("URTSOConversationMessageWidget::SetPayload -- Options Count %i"), Payload.Options.Num());
+	UE_LOG(LogTemp, Error, TEXT("%s"), *BuildString);	
+	
+}
+
+void URTSOConversationMessageWidget::SelectChoice_Implementation(int32 ChoiceSelection)
+{
+	UE_LOG(LogTemp, Warning, TEXT("URTSOConversationMessageWidget::SelectChoice_Implementation"))
+	// reserved for possible implementation
+
+	if (CurrentPotentialCallbackActor == nullptr || CurrentPotentialCallbackActor->GetClass()->ImplementsInterface(URTSOConversationSpeakerInterface::StaticClass()) == false)
+	{
+		return;
+	}
+	IRTSOConversationSpeakerInterface::Execute_ReplyChoice(CurrentPotentialCallbackActor, nullptr, ChoiceSelection);
+	
+}
+
+void URTSOConversationMessageWidget::NativeDestruct()
+{
+	CurrentPotentialCallbackActor = nullptr; 
+	Super::NativeDestruct();
 }
 
 ARTSOController::ARTSOController(const FObjectInitializer& ObjectInitializer)
@@ -59,6 +194,28 @@ ARTSOController::ARTSOController(const FObjectInitializer& ObjectInitializer)
 
 	HitResultTraceDistance = 10000000.0;
 }
+
+void URTSOConversationWidget::SetPayload_Implementation(const FClientConversationMessagePayload& Payload, AActor* PotentialCallbackActor)
+{
+	UE_LOG(LogTemp, Warning, TEXT("URTSOConversationWidget::SetPayload_Implementation"))
+	// reserved for possible implementation
+	
+	TextContent->SetText(Payload.Message.Text);
+	Tile->TileText = Payload.Message.ParticipantDisplayName;
+	ConversationMessageWidget->SetPayload(Payload, PotentialCallbackActor);
+	
+	Tile->Refresh();
+	Tile->InvalidateLayoutAndVolatility();
+	ConversationMessageWidget->InvalidateLayoutAndVolatility();
+	InvalidateLayoutAndVolatility();
+}
+
+void URTSOConversationWidget::SelectChoice_Implementation(int32 ChoiceSelection)
+{
+	UE_LOG(LogTemp, Warning, TEXT("URTSOConversationWidget::SelectChoice_Implementation"))
+	// reserved for possible implementation
+	ConversationMessageWidget->SelectChoice(ChoiceSelection);
+}	
 
 void ARTSOController::BeginPlay()
 {

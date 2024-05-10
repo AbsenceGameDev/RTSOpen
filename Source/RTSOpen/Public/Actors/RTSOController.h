@@ -28,6 +28,21 @@ enum class EMarqueeSelectionEvent : uint8
 
 #pragma once
 
+USTRUCT(Blueprintable)
+struct FRTSOMouseEventDelegateWrapper
+{
+	GENERATED_BODY()
+
+	UPROPERTY(EditAnywhere, Category = "Events", Meta = (IsBindableEvent="True"))
+	UWidget::FOnPointerEvent OnMouseMoveEvent;
+	UPROPERTY(EditAnywhere, Category = "Events", Meta = (IsBindableEvent="True"))
+	UWidget::FOnPointerEvent OnMouseButtonDownEvent;
+	UPROPERTY(EditAnywhere, Category = "Events", Meta = (IsBindableEvent="True"))
+	UWidget::FOnPointerEvent OnMouseButtonUpEvent;
+	UPROPERTY(EditAnywhere, Category = "Events", Meta = (IsBindableEvent="True"))
+	UWidget::FOnPointerEvent OnMouseDoubleClickEvent;
+};
+
 // consider moving away from using tileviews in the future
 UCLASS(Blueprintable)
 class URTSOStructWrapper : public UObject
@@ -37,6 +52,12 @@ public:
 
 	UPROPERTY(BlueprintReadWrite, Meta = (ExposeOnSpawn=true))
 	FText SelectionEntry{};
+	
+	UPROPERTY(BlueprintReadWrite, Meta = (ExposeOnSpawn=true))
+	int32 ChoiceIndex = INDEX_NONE;
+
+	UPROPERTY(BlueprintReadWrite, Meta = (ExposeOnSpawn=true))
+	UUserWidget* DirectParentReference = nullptr;
 };
 
 UCLASS(Abstract)
@@ -77,15 +98,31 @@ class URTSOConversationSelectionEntry : public UUserWidget, public IUserObjectLi
 {
 	GENERATED_BODY()
 protected:
+	
 	// IUserObjectListEntry
 	virtual void NativeOnListItemObjectSet(UObject* ListItemObject) override;
 	// IUserObjectListEntry
 
+	UFUNCTION() FEventReply MouseMove(FGeometry MyGeometry, const FPointerEvent& MouseEvent);
+	UFUNCTION() FEventReply MouseButtonDown(FGeometry MyGeometry, const FPointerEvent& MouseEvent);
+	UFUNCTION() FEventReply MouseButtonUp(FGeometry MyGeometry, const FPointerEvent& MouseEvent);
+	UFUNCTION() FEventReply MouseDoubleClick(FGeometry MyGeometry, const FPointerEvent& MouseEvent);	
+
 	UPROPERTY(BlueprintReadWrite, Meta=(BindWidget))
 	class URTSOModularTile* Tile = nullptr;
 
+	// 1. Bind delegates upon widget creation
 	UPROPERTY(BlueprintReadWrite, Meta=(BindWidget))
-	class UCommonTextBlock* TextContent = nullptr;	
+	class UBorder* TextContentBorder = nullptr;	
+	
+	UPROPERTY(BlueprintReadWrite, Meta=(BindWidget))
+	class UCommonTextBlock* TextContent = nullptr;
+
+	UPROPERTY(BlueprintReadWrite, Meta = (ExposeOnSpawn=true))
+	int32 ChoiceIndex = INDEX_NONE;
+
+	UPROPERTY(BlueprintReadWrite, Meta = (ExposeOnSpawn=true))
+	UUserWidget* DirectParentReference = nullptr;	
 };
 
 UCLASS(BlueprintType, Blueprintable)
@@ -93,24 +130,31 @@ class URTSOConversationMessageWidget : public UUserWidget
 {
 	GENERATED_BODY()
 public:
+	UFUNCTION(BlueprintNativeEvent) FEventReply MouseMove(int32 ChoiceIdx, FGeometry MyGeometry, const FPointerEvent& MouseEvent);
+	UFUNCTION(BlueprintNativeEvent) FEventReply MouseButtonDown(int32 ChoiceIdx, FGeometry MyGeometry, const FPointerEvent& MouseEvent);
+	UFUNCTION(BlueprintNativeEvent) FEventReply MouseButtonUp(int32 ChoiceIdx, FGeometry MyGeometry, const FPointerEvent& MouseEvent);
+	UFUNCTION(BlueprintNativeEvent) FEventReply MouseDoubleClick(int32 ChoiceIdx, FGeometry MyGeometry, const FPointerEvent& MouseEvent);
+	
 	UFUNCTION(BlueprintNativeEvent, BlueprintCallable)
 	void SetPayload(const FClientConversationMessagePayload& Payload, AActor* PotentialCallbackActor);
-	virtual void SetPayload_Implementation(const FClientConversationMessagePayload& Payload, AActor* PotentialCallbackActor)
-	{
-		UE_LOG(LogTemp, Warning, TEXT("URTSOConversationMessageWidget::SetPayload_Implementation"))
-		// reserved for possible implementation
-	}
+	virtual void SetPayload_Implementation(const FClientConversationMessagePayload& Payload, AActor* PotentialCallbackActor);
 
 	UFUNCTION(BlueprintNativeEvent, BlueprintCallable)
 	void SelectChoice(int32 ChoiceSelection);
-	virtual void SelectChoice_Implementation(int32 ChoiceSelection)
-	{
-		UE_LOG(LogTemp, Warning, TEXT("URTSOConversationMessageWidget::SelectChoice_Implementation"))
-		// reserved for possible implementation
-	}	
+	virtual void SelectChoice_Implementation(int32 ChoiceSelection);
+
+	virtual void NativeDestruct() override;
 	
 	UPROPERTY(BlueprintReadWrite, Meta = (BindWidget))
-	class UTileView* ConversationSelectors = nullptr;	
+	class UTileView* ConversationSelectors = nullptr;
+
+	UPROPERTY(BlueprintReadOnly)
+	AActor* CurrentPotentialCallbackActor;
+
+	UPROPERTY(BlueprintReadWrite)
+	TArray<URTSOStructWrapper*> InstantiatedEntryObjects{};
+
+	int32 LatestInteractedChoice = INDEX_NONE;
 };
 
 UCLASS(BlueprintType, Blueprintable)
@@ -121,22 +165,20 @@ public:
 
 	UFUNCTION(BlueprintNativeEvent, BlueprintCallable)
 	void SetPayload(const FClientConversationMessagePayload& Payload, AActor* PotentialCallbackActor);
-	virtual void SetPayload_Implementation(const FClientConversationMessagePayload& Payload, AActor* PotentialCallbackActor)
-	{
-		UE_LOG(LogTemp, Warning, TEXT("URTSOConversationWidget::SetPayload_Implementation"))
-		// reserved for possible implementation
-	}
+	virtual void SetPayload_Implementation(const FClientConversationMessagePayload& Payload, AActor* PotentialCallbackActor);
 
 	UFUNCTION(BlueprintNativeEvent, BlueprintCallable)
 	void SelectChoice(int32 ChoiceSelection);
-	virtual void SelectChoice_Implementation(int32 ChoiceSelection)
-	{
-		UE_LOG(LogTemp, Warning, TEXT("URTSOConversationWidget::SelectChoice_Implementation"))
-		// reserved for possible implementation
-	}	
+	virtual void SelectChoice_Implementation(int32 ChoiceSelection);
 	
 	UPROPERTY(BlueprintReadWrite, Meta = (BindWidget))
 	URTSOConversationMessageWidget* ConversationMessageWidget = nullptr;
+
+	UPROPERTY(BlueprintReadWrite, Meta = (BindWidget))
+	URTSOModularTile* Tile = nullptr;
+
+	UPROPERTY(BlueprintReadWrite, Meta = (BindWidget))
+	UCommonTextBlock* TextContent = nullptr;	
 };
 
 class UInputMappingContext;

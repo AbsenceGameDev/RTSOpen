@@ -74,17 +74,17 @@ protected:
     void ProcessTables();
     
 public:
-    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Camera", Meta = (RowType = "/Script/RTSBase.PDCameraManagerSettings"))
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Camera", Meta = (RowType = "/Script/PDRTSBase.PDCameraManagerSettings"))
     FDataTableRowHandle CurrentSettingsHandle;
     FPDCameraManagerSettings* SettingPtr = nullptr;
     
-    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Camera", Meta = (RequiredAssetDataTags = "RowStructure=/Script/RTSBase.PDCameraManagerSettings"))
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Camera", Meta = (RequiredAssetDataTags = "RowStructure=/Script/PDRTSBase.PDCameraManagerSettings"))
     TArray<UDataTable*> CameraSettingsSources{};
 
-    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = Camera)
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Camera")
     FGameplayTag RequestedCameraState{};
 
-    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = Camera)
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Camera")
     FGameplayTag OldCameraState{};    
 
     // Associative maps
