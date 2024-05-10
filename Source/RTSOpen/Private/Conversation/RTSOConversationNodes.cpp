@@ -1,117 +1,123 @@
 /* @author: Ario Amin @ Permafrost Development. @copyright: Full BSL(1.1) License included at bottom of the file  */
 
-#pragma once
+#include "Conversation/RTSOConversationNodes.h"
+#include "ConversationContext.h"
+#include "PDRTSCommon.h"
+#include "Actors/RTSOController.h"
+#include "Actors/Interactables/ConversationHandlers/RTSOInteractableConversationActor.h"
+#include "Kismet/GameplayStatics.h"
 
-#include "CoreMinimal.h"
-#include "GameFeaturesSubsystem.h"
-#include "ConversationInstance.h"
-#include "Kismet/BlueprintAsyncActionBase.h"
-
-#include "PDConversationCommons.generated.h"
-
-DECLARE_DYNAMIC_MULTICAST_DELEGATE(FCompleted_ActivateFeature);
-//DECLARE_DYNAMIC_MULTICAST_DELEGATE_TwoParams(FBeginWaitingForChoicesDlgt, UObject*, InterfaceObject,  int32, ActorID);
-DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FBeginWaitingForChoicesDlgt, int32, ActorID);
-
-UENUM(Blueprintable, BlueprintType)
-enum class EPDKeyProcessResult : uint8 
+URTSOConversationTask_Speak::URTSOConversationTask_Speak()
 {
-	KEY_SUCCESS UMETA(DisplayName="Valid or whitelisted Key"), 
-	KEY_FAIL    UMETA(DisplayName="Invalid or blacklisted Key"),
-};
+	bHasDynamicChoices = true;
+}
 
-/** @brief This instance adds some flags we want to use alongside with an overridden function so the system works as intended in singleplayer  */
-UCLASS(BlueprintType)
-class PDCONVERSATIONHELPER_API UPDConversationInstance : public UConversationInstance
+FConversationTaskResult URTSOConversationTask_Speak::ExecuteTaskNode_Implementation(const FConversationContext& Context) const
 {
-	GENERATED_BODY()
+	// Speaker
+	ARTSOInteractableConversationActor* AsConversationActor = Cast<ARTSOInteractableConversationActor>(Context.GetParticipantActor(TAG_Conversation_Participant_Speaker));
+	const FText SelectedName = AsConversationActor == nullptr ? FText::FromString("Speaker") : FText::FromName(AsConversationActor->ActorName);
 
-public:
-	/** @brief */
-	UFUNCTION(BlueprintCallable)
-	virtual void PauseConversationAndSendClientChoices(const FConversationContext& Context, const FClientConversationMessage& ClientMessage) override;
+	// Listener
+	AActor* ListenerActor = Context.GetParticipantActor(TAG_Conversation_Participant_Listener);
+	const APawn* ListenerAsPawn = Cast<APawn>(ListenerActor);
+	ARTSOController* ListenerAsController = ListenerAsPawn != nullptr ?
+		ListenerAsPawn->GetController<ARTSOController>() : Cast<ARTSOController>(ListenerActor);
+	check(ListenerAsController != nullptr) // Just a sanity check, should never be nullptr
 
-	// Deprecated, remove soon
-	UPROPERTY(BlueprintAssignable)
-	FBeginWaitingForChoicesDlgt OnBegin_WaitingForChoices;
-	// Deprecated, remove soon
-	UPROPERTY(BlueprintReadWrite)
-	bool bWaitingForChoices;
+	FClientConversationMessagePayload ConstructedPayLoad;
+	ConstructedPayLoad.Message.SpeakerID = TAG_Conversation_Participant_Speaker;
+	ConstructedPayLoad.Message.ParticipantDisplayName = SelectedName;
+	ConstructedPayLoad.Message.Text = Message;
+
+	// Calls into the right function but participants list is empty by some reason, trying to debug this currently
+	// Cast<URTSOConversationInstance>(Context.GetActiveConversation())->PauseConversationAndSendClientChoices(Context, ConstructedPayLoad.Message);
+
+	FConversationBranchPointBuilder StaticBranchBuilder;
+	GatherStaticChoices(StaticBranchBuilder, Context);
+	UE_LOG(
+		LogTemp,
+		Warning,
+		TEXT("URTSOConversationTask_Speak::ExecuteTaskNode - Num Static Choices: %i"),
+		StaticBranchBuilder.GetBranches().Num());
+
+	// GatherDynamicChoices has no default implementation,
+	// any choices set up in the conversation graph looks to be counted as static options,
+	// and thus it seems that dynamic options are something we could define and load via code at runtime, defining child-nodes/trees
+	// and then an override to this function would need to be defined and to iterate through the dynamic options to display them  
+	FConversationBranchPointBuilder DynamicBranchBuilder;
+	GatherDynamicChoices(DynamicBranchBuilder, Context);
+	UE_LOG(
+		LogTemp,
+		Warning,
+		TEXT("URTSOConversationTask_Speak::ExecuteTaskNode - Num Dynamic Choices: %i"),
+		DynamicBranchBuilder.GetBranches().Num());
 	
-	/** @brief Send a request for the conversation to advance/resume */
-	UPROPERTY()
-	TMap<int32 /*ActorID*/, FBeginWaitingForChoicesDlgt> OnBegin_WaitChoicesDelegateMap;
 	
-	/** @brief */
-	UPROPERTY(BlueprintReadWrite)
-	TMap<int32 /*ActorID*/, bool> ChoiceWaitingStateMap;
-};
+	// Todo expand on this
+	if (ListenerAsController->GetConversationWidget()->IsInViewport() && StaticBranchBuilder.GetBranches().IsEmpty())
+	{
+		return UConversationContextHelpers::AdvanceConversation(Context);
+	}
+	else
+	{
+		return UConversationContextHelpers::PauseConversationAndSendClientChoices(Context, ConstructedPayLoad.Message);
+	}
+	
+}
 
-/** @brief This class holds some helper and possibly debug functions we might want to use */
-UCLASS()
-class PDCONVERSATIONHELPER_API UPDConversationBPFL : public UBlueprintFunctionLibrary
+URTSOConversationTask_Question::URTSOConversationTask_Question()
 {
-	GENERATED_BODY()
+	bHasDynamicChoices = true;
+}
 
-public:
-	
-	/** @brief Gets the previous/latest message that was sent */
-	UFUNCTION(BlueprintCallable)
-	static const FClientConversationMessagePayload& GetPreviousMessage(UConversationParticipantComponent* ConversationParticipantComponent);
-
-	/** @brief Gets the conversation task node object related to the task node we are calling from */
-	UFUNCTION(BlueprintCallable)
-	static const UConversationTaskNode* GetTaskNode(const FConversationContext& Context);
-	
-	/** @brief Checks with teh game feature subsystem if the given plugin has been loaded and activated */
-	UFUNCTION(BlueprintCallable)
-	static bool IsGameFeaturePluginActive(FString PluginName);
-
-	/** @brief Prints the message to screen */
-	UFUNCTION(BlueprintCallable, Category = "Action|Interface", Meta = (ExpandEnumAsExecs="Results"))
-	static int32 ProcessInputKey(const FKey& PressedKey, const TArray<FKey>& ValidKeys, EPDKeyProcessResult& Results);	
-
-	/** @brief Prints the message to screen */
-	UFUNCTION(BlueprintCallable)
-	static void PrintConversationMessageToScreen(UObject* WorldContext, const FClientConversationMessage& Message, FLinearColor MessageColour);
-
-	/** @brief Prints the message to screen, alternative input parameters */
-	UFUNCTION(BlueprintCallable)
-	static void PrintConversationTextToScreen(UObject* WorldContext, const FName& Participant, const FText& Text, FLinearColor MessageColour);		
-};
-
-
-/** @brief This class is an async latent action based class, deriving from UBlueprintAsyncActionBase.
- * We dispatch a call from at and it works much like a delay in the graph, as in it resumes the execution from the correct node when a reply has been received.  */
-UCLASS()
-class PDCONVERSATIONHELPER_API UPDAsyncAction_ActivateFeature : public UBlueprintAsyncActionBase
+FConversationTaskResult URTSOConversationTask_Question::ExecuteTaskNode_Implementation(const FConversationContext& Context) const
 {
-	GENERATED_BODY()
+	const ARTSOInteractableConversationActor* AsConversationActor = Cast<ARTSOInteractableConversationActor>(Context.GetParticipantActor(TAG_Conversation_Participant_Speaker));
 
-public:
-	UPDAsyncAction_ActivateFeature(const FObjectInitializer& ObjectInitializer);
+	const FText SelectedName = AsConversationActor == nullptr ?
+		FText::FromString("Speaker")
+		: FText::FromName(AsConversationActor->ActorName);
 
-	/** @brief Called when the action activates */
-	virtual void Activate() override;
-	/** @brief Called when the action completes */
-	void Completed(const UE::GameFeatures::FResult& Result);
-	
-	/** @brief Static helper to create an action instance of this object */
-	UFUNCTION(BlueprintCallable, Meta = (WorldContext = "WorldContextObject", BlueprintInternalUseOnly = "true" ))
-	static UPDAsyncAction_ActivateFeature* CreateActionInstance(UObject* WorldContextObject, FString GameFeatureName);
-public:
-	/** @brief Cached name to the game feature data plugin */
-	UPROPERTY()
-	FString GameFeatureDataPluginName;
-	
-	/** @brief Delegate to (possibly) fire at end of the action*/
-	UPROPERTY(BlueprintAssignable)
-	FCompleted_ActivateFeature Succeeded;
+	const FClientConversationMessage ClientMessage{TAG_Conversation_Participant_Speaker, SelectedName, Message};
+	return UConversationContextHelpers::PauseConversationAndSendClientChoices(Context, ClientMessage);
+}
 
-	/** @brief Delegate to (possibly) fire at end of the action*/
-	UPROPERTY(BlueprintAssignable)
-	FCompleted_ActivateFeature Failed;
-};
+FConversationTaskResult URTSOConversationTask_RevertLatest::ExecuteTaskNode_Implementation(const FConversationContext& Context) const
+{
+	// return UConversationContextHelpers::ReturnToLastClientChoice(Context);
+	// return UConversationContextHelpers::ReturnToConversationStart(Context);
+	return UConversationContextHelpers::ReturnToCurrentClientChoice(Context);
+}
+
+URTSOConversationTask_RandomChoice::URTSOConversationTask_RandomChoice()
+{
+	bHasDynamicChoices = true;
+}
+
+
+FConversationTaskResult URTSOConversationTask_RandomChoice::ExecuteTaskNode_Implementation(const FConversationContext& Context) const
+{
+	// Reserved
+	return Super::ExecuteTaskNode_Implementation(Context);
+}
+
+void URTSOConversationEffect_PlayEffects::ServerCauseSideEffect_Implementation(const FConversationContext& Context) const
+{
+	const UWorld* World = Context.GetWorld();
+	UGameplayStatics::PlaySound2D(World, Sound, 1.0f, 1.0f);
+	Super::ServerCauseSideEffect_Implementation(Context);
+	return; 
+}
+
+
+EConversationRequirementResult URTSOConversationReq_AlwaysFail::IsRequirementSatisfied_Implementation(
+	const FConversationContext& Context) const
+{
+	return EConversationRequirementResult::FailedButVisible;
+}
+
+
 
 /**
 Business Source License 1.1

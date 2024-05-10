@@ -28,14 +28,14 @@ enum class EMarqueeSelectionEvent : uint8
 
 #pragma once
 
-// Inefficient, consider moving over 
-UCLASS()
+// consider moving away from using tileviews in the future
+UCLASS(Blueprintable)
 class URTSOStructWrapper : public UObject
 {
 	GENERATED_BODY()
 public:
 
-	UPROPERTY()
+	UPROPERTY(BlueprintReadWrite, Meta = (ExposeOnSpawn=true))
 	FText SelectionEntry{};
 };
 
@@ -46,18 +46,21 @@ class URTSOModularTile : public UUserWidget
 
 public:
 	virtual void NativePreConstruct() override;
+
+	UFUNCTION(BlueprintCallable)
+	virtual void Refresh();
 	
 	
-	UPROPERTY(Meta=(BindWidget))
+	UPROPERTY(BlueprintReadWrite, Meta=(BindWidget))
 	class USizeBox* SizeBoxContainer = nullptr;
 
-	UPROPERTY(Meta=(BindWidget))
+	UPROPERTY(BlueprintReadWrite, Meta=(BindWidget))
 	class UImage* ImageShadow = nullptr;
 
-	UPROPERTY(Meta=(BindWidget))
+	UPROPERTY(BlueprintReadWrite, Meta=(BindWidget))
 	class UNamedSlot* NamedSlot = nullptr;
 
-	UPROPERTY(Meta=(BindWidget))
+	UPROPERTY(BlueprintReadWrite, Meta=(BindWidget))
 	class UTextBlock* TextName = nullptr;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
@@ -78,10 +81,10 @@ protected:
 	virtual void NativeOnListItemObjectSet(UObject* ListItemObject) override;
 	// IUserObjectListEntry
 
-	UPROPERTY(Meta=(BindWidget))
+	UPROPERTY(BlueprintReadWrite, Meta=(BindWidget))
 	class URTSOModularTile* Tile = nullptr;
 
-	UPROPERTY(Meta=(BindWidget))
+	UPROPERTY(BlueprintReadWrite, Meta=(BindWidget))
 	class UCommonTextBlock* TextContent = nullptr;	
 };
 
@@ -90,17 +93,23 @@ class URTSOConversationMessageWidget : public UUserWidget
 {
 	GENERATED_BODY()
 public:
-
 	UFUNCTION(BlueprintNativeEvent, BlueprintCallable)
-	void SetPayload(const FClientConversationMessagePayload& Payload);
-	virtual void SetPayload_Implementation(const FClientConversationMessagePayload& Payload)
+	void SetPayload(const FClientConversationMessagePayload& Payload, AActor* PotentialCallbackActor);
+	virtual void SetPayload_Implementation(const FClientConversationMessagePayload& Payload, AActor* PotentialCallbackActor)
 	{
 		UE_LOG(LogTemp, Warning, TEXT("URTSOConversationMessageWidget::SetPayload_Implementation"))
 		// reserved for possible implementation
 	}
 
-
-	UPROPERTY(Meta = (BindWidget))
+	UFUNCTION(BlueprintNativeEvent, BlueprintCallable)
+	void SelectChoice(int32 ChoiceSelection);
+	virtual void SelectChoice_Implementation(int32 ChoiceSelection)
+	{
+		UE_LOG(LogTemp, Warning, TEXT("URTSOConversationMessageWidget::SelectChoice_Implementation"))
+		// reserved for possible implementation
+	}	
+	
+	UPROPERTY(BlueprintReadWrite, Meta = (BindWidget))
 	class UTileView* ConversationSelectors = nullptr;	
 };
 
@@ -111,12 +120,20 @@ class URTSOConversationWidget : public UUserWidget
 public:
 
 	UFUNCTION(BlueprintNativeEvent, BlueprintCallable)
-	void SetPayload(const FClientConversationMessagePayload& Payload);
-	virtual void SetPayload_Implementation(const FClientConversationMessagePayload& Payload)
+	void SetPayload(const FClientConversationMessagePayload& Payload, AActor* PotentialCallbackActor);
+	virtual void SetPayload_Implementation(const FClientConversationMessagePayload& Payload, AActor* PotentialCallbackActor)
 	{
 		UE_LOG(LogTemp, Warning, TEXT("URTSOConversationWidget::SetPayload_Implementation"))
 		// reserved for possible implementation
 	}
+
+	UFUNCTION(BlueprintNativeEvent, BlueprintCallable)
+	void SelectChoice(int32 ChoiceSelection);
+	virtual void SelectChoice_Implementation(int32 ChoiceSelection)
+	{
+		UE_LOG(LogTemp, Warning, TEXT("URTSOConversationWidget::SelectChoice_Implementation"))
+		// reserved for possible implementation
+	}	
 	
 	UPROPERTY(BlueprintReadWrite, Meta = (BindWidget))
 	URTSOConversationMessageWidget* ConversationMessageWidget = nullptr;
@@ -153,6 +170,11 @@ class RTSOPEN_API ARTSOController : public APlayerController, public IRTSOInputI
 	void DeactivateMappingContext(const FNativeGameplayTag& ContextTag);
 	/** @brief De-activates a mapping context if it exists in the mapping context settings, keyed by a regular GameplayTag*/
 	void DeactivateMappingContext(const FGameplayTag& ContextTag);	
+
+	/** @brief De-activates a mapping context if it exists in the mapping context settings, keyed by a NativeGameplayTag*/
+	bool IsMappingContextActive(const FNativeGameplayTag& ContextTag);
+	/** @brief De-activates a mapping context if it exists in the mapping context settings, keyed by a regular GameplayTag*/
+	bool IsMappingContextActive(const FGameplayTag& ContextTag);	
 	
 	/* RTSO Input Interface - Start. Almost all of these only calls into the pawn in case it has the same interface */
 	virtual void ActionMove_Implementation(const FInputActionValue& Value) override;
@@ -169,7 +191,9 @@ class RTSOPEN_API ARTSOController : public APlayerController, public IRTSOInputI
 	virtual void ActionAssignSelectionToHotkey_Implementation(const FInputActionValue& Value) override;
 	virtual void ActionHotkeySelection_Implementation(const FInputActionValue& Value) override;
 	virtual void ActionChordedBase_Implementation(const FInputActionValue& Value) override;
+	virtual void ActionExitConversation_Implementation(const FInputActionValue& Value) override;	
 
+	void HandleConversationChoiceInput(int32 ChoiceSelection) const;
 	/* RTSO Input Interface - End */
 
 	
@@ -225,6 +249,9 @@ class RTSOPEN_API ARTSOController : public APlayerController, public IRTSOInputI
 	UFUNCTION() FORCEINLINE FVector2D GetCurrentMousePositionMarquee() const {return CurrentMousePositionMarquee;}
 	UFUNCTION(BlueprintImplementableEvent) void OnMarqueeSelectionUpdated(int32 SelectionGroup, const TArray<int32>& NewSelection) const;
 	UFUNCTION(BlueprintCallable) void MarqueeSelection(EMarqueeSelectionEvent SelectionEvent);
+	UFUNCTION() void OnBeginConversation(const FClientConversationMessagePayload& Payload, AActor* PotentialCallbackActor);
+	UFUNCTION() void OnAdvanceConversation(const FClientConversationMessagePayload& Payload, AActor* PotentialCallbackActor);
+	UFUNCTION() void OnEndConversation(const FClientConversationMessagePayload& Payload, AActor* PotentialCallbackActor);
 	static void DrawBoxAndTextChaos(const FVector& BoundsCenter, const FQuat& Rotation, const FVector& DebugExtent, const FString& DebugBoxTitle, FColor LineColour = FColor::Black);
 	static void AdjustMarqueeHitResultsToMinimumHeight(FHitResult& StartHitResult, FHitResult& CenterHitResult, FHitResult& EndHitResult);
 	UFUNCTION() void GetEntitiesOrActorsInMarqueeSelection();
@@ -271,6 +298,9 @@ public:
 	
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "RTS|Input")
 	class UInputAction* CtrlActionChordedBase = nullptr;
+	
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "RTS|Input")
+	class UInputAction* CtrlActionExitConversation = nullptr;	
 	
 	/* Input Actions - If I have time to implement */
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "RTS|Input")

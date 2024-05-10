@@ -1,8 +1,11 @@
 ﻿/* @author: Ario Amin @ Permafrost Development. @copyright: Full BSL(1.1) License included at bottom of the file  */
 
 #include "Actors/Interactables/ConversationHandlers/RTSOInteractableConversationActor.h"
+
+#include "ConversationContext.h"
 #include "ConversationInstance.h"
 #include "ConversationLibrary.h"
+#include "ConversationSettings.h"
 #include "ConversationParticipantComponent.h"
 #include "MassEntitySubsystem.h"
 #include "PDConversationCommons.h"
@@ -19,10 +22,10 @@ UE_DEFINE_GAMEPLAY_TAG(TAG_Conversation_Entry_00, "Conversation.Entry.00");
 UE_DEFINE_GAMEPLAY_TAG(TAG_Conversation_Entry_01, "Conversation.Entry.01");
 
 
-/** Declaring the "Conversation.Participants" gameplay tags. to be defined in an object-file
+/** Declaring the "Conversation.Participant" gameplay tags. to be defined in an object-file
  * @todo move to a 'conversation commons' file which I need to create */
-UE_DEFINE_GAMEPLAY_TAG(TAG_Conversation_Participants_Speaker, "Conversation.Participants.Speaker");
-UE_DEFINE_GAMEPLAY_TAG(TAG_Conversation_Participants_Listener, "Conversation.Participants.Listener");
+UE_DEFINE_GAMEPLAY_TAG(TAG_Conversation_Participant_Speaker, "Conversation.Participant.Speaker");
+UE_DEFINE_GAMEPLAY_TAG(TAG_Conversation_Participant_Listener, "Conversation.Participant.Listener");
 
 void FRTSOConversationMetaState::ApplyValuesFromProgressionTable(FRTSOConversationMetaProgressionDatum& ConversationProgressionEntry)
 {
@@ -42,6 +45,95 @@ void ARTSOInteractableConversationActor::ConversationUpdated(const FClientConver
 void ARTSOInteractableConversationActor::ConversationStatusChanged(bool bDidStatusChange)
 {
 }
+
+void URTSOConversationInstance::PauseConversationAndSendClientChoices(
+	const FConversationContext& Context,
+	const FClientConversationMessage& ClientMessage)
+{
+	Super::PauseConversationAndSendClientChoices(Context, ClientMessage);
+
+	AActor* ListenerActor = Context.GetParticipantActor(TAG_Conversation_Participant_Listener);
+
+	const APawn* ListenerAsPawn = Cast<APawn>(ListenerActor);
+	const ARTSOController* ListenerAsController = ListenerAsPawn != nullptr ?
+		ListenerAsPawn->GetController<ARTSOController>() : Cast<ARTSOController>(ListenerActor);
+	
+	const int32 ActorID =  GEngine->GetEngineSubsystem<UPDRTSBaseSubsystem>()->SharedOwnerIDBackMappings.FindRef(ListenerAsController);
+	if (ChoiceWaitingStateMap.Contains(ActorID) == false || OnBegin_WaitChoicesDelegateMap.Contains(ActorID) == false)
+	{
+		UE_LOG(LogTemp, Warning, TEXT("URTSOConversationInstance::PauseConversationAndSendClientChoices -- fail"));
+		return;
+	}
+	
+	UE_LOG(LogTemp, Warning, TEXT("URTSOConversationInstance::PauseConversationAndSendClientChoices -- Broadcasting"));
+	*ChoiceWaitingStateMap.Find(ActorID) = true;
+	OnBegin_WaitChoicesDelegateMap.Find(ActorID)->Broadcast(ActorID);
+}
+
+//
+// Conversation function lib
+void URTSOConversationBPFL::RequestToAdvance(UPDConversationInstance* Conversation, UConversationParticipantComponent* ConversationParticipantComponent, const FAdvanceConversationRequest& InChoicePicked)
+{
+	if(Conversation == nullptr || ConversationParticipantComponent == nullptr) { return; }
+
+	const int32 ActorID =
+		GEngine->GetEngineSubsystem<UPDRTSBaseSubsystem>()->SharedOwnerIDBackMappings
+		.FindRef(ConversationParticipantComponent->GetParticipantActor(TAG_Conversation_Participant_Listener));
+
+	if (Conversation->ChoiceWaitingStateMap.Contains(ActorID))
+	{
+		*Conversation->ChoiceWaitingStateMap.Find(ActorID) = false;
+	}
+	
+	ConversationParticipantComponent->RequestServerAdvanceConversation(InChoicePicked);
+}
+
+URTSOConversationInstance* URTSOConversationBPFL::StartConversation(FGameplayTag ConversationEntryTag, AActor* Instigator,
+	FGameplayTag InstigatorTag, AActor* Target, FGameplayTag TargetTag, const TSubclassOf<UConversationInstance> ConversationInstanceClass)
+{
+#if WITH_SERVER_CODE
+	if (Instigator == nullptr || Target == nullptr)
+	{
+		return nullptr;
+	}
+
+	if (UWorld* World = GEngine->GetWorldFromContextObject(Instigator, EGetWorldErrorMode::LogAndReturnNull))
+	{
+		UClass* InstanceClass = ConversationInstanceClass;
+		if (!InstanceClass)
+		{
+			InstanceClass = GetDefault<UConversationSettings>()->GetConversationInstanceClass();
+			if (InstanceClass == nullptr)
+			{
+				InstanceClass = UConversationInstance::StaticClass();
+			}
+		}
+		URTSOConversationInstance* ConversationInstance = NewObject<URTSOConversationInstance>(World, InstanceClass);
+		if (ensure(ConversationInstance))
+		{
+			FConversationContext Context = FConversationContext::CreateServerContext(ConversationInstance, nullptr);
+
+			UConversationContextHelpers::MakeConversationParticipant(Context, Target, TargetTag);
+			UConversationContextHelpers::MakeConversationParticipant(Context, Instigator, InstigatorTag);
+
+			// @todo Generalize nad move out of the game module
+			const int32 ActorID = GEngine->GetEngineSubsystem<UPDRTSBaseSubsystem>()->SharedOwnerIDBackMappings.FindRef(Target);
+			if (ConversationInstance->ChoiceWaitingStateMap.Contains(ActorID) == false)
+			{
+				ConversationInstance->ChoiceWaitingStateMap.Add(ActorID) = false;
+			}
+			
+			ConversationInstance->OnBegin_WaitChoicesDelegateMap.FindOrAdd(ActorID).AddDynamic(Cast<IRTSOConversationSpeakerInterface>(Instigator), &IRTSOConversationSpeakerInterface::BeginWaitingForChoices);
+			ConversationInstance->ServerStartConversation(ConversationEntryTag);
+		}
+
+		return ConversationInstance;
+	}
+#endif
+
+	return nullptr;	
+}
+
 
 void ARTSOInteractableConversationActor::BeginPlay()
 {
@@ -80,9 +172,7 @@ void ARTSOInteractableConversationActor::OnInteract_Implementation(
 	EPDInteractResult& InteractResult) const
 {
 	Super::OnInteract_Implementation(InteractionParams, InteractResult);
-
 	
-	IPDInteractInterface::OnInteract_Implementation(InteractionParams, InteractResult);
 	switch (InteractResult)
 	{
 	case EPDInteractResult::INTERACT_SUCCESS:
@@ -101,14 +191,12 @@ void ARTSOInteractableConversationActor::OnInteract_Implementation(
 
 	AActor* SelectedActor = EntityBase != nullptr && IDToActorMap.Contains(EntityBase->OwnerID) ?
 		IDToActorMap.FindRef(EntityBase->OwnerID) : InteractionParams.InstigatorActor;
-
 	
 	APawn* AsCallingPawn = Cast<APawn>(SelectedActor);
 	ARTSOController* AsCallingController = AsCallingPawn != nullptr ?
 		AsCallingPawn->GetController<ARTSOController>() : Cast<ARTSOController>(SelectedActor);
 	if (AsCallingController == nullptr) { return; }
 	AsCallingPawn = AsCallingPawn == nullptr ? AsCallingController->GetPawn() : AsCallingPawn;
-	
 	
 	const int32 OwnerID = AsCallingController->GetActorID();
 	TryInitializeOwnerProgression(OwnerID);
@@ -133,46 +221,37 @@ void ARTSOInteractableConversationActor::OnInteract_Implementation(
 	}
 
 	UE_LOG(LogTemp, Warning, TEXT("ARTSOInteractableConversationActor::OnInteract - 2"));
-	
+
 	// open conversation here with instigator
 	InstanceDataPtr->ActiveConversationInstance =
-		Cast<UPDConversationInstance>(
-			UConversationLibrary::StartConversation(
+		Cast<URTSOConversationInstance>(
+			URTSOConversationBPFL::StartConversation(
 			InstanceDataPtr->PhaseRequiredTags[CurrentProgression].EntryTag,
-			(AActor*)this, 
-			TAG_Conversation_Participants_Speaker, 
-			SelectedActor,
-			TAG_Conversation_Participants_Listener,
-			UPDConversationInstance::StaticClass()));
-
+			(ARTSOInteractableConversationActor*)this, 
+			TAG_Conversation_Participant_Speaker, 
+			AsCallingController,
+			TAG_Conversation_Participant_Listener,
+			URTSOConversationInstance::StaticClass()));
 	if (InstanceDataPtr->ActiveConversationInstance == nullptr) { return; }
 	
+	const int32 ActorID =  GEngine->GetEngineSubsystem<UPDRTSBaseSubsystem>()->SharedOwnerIDBackMappings.FindRef(AsCallingController);
 	InstanceDataPtr->ActiveConversationInstance->ServerRefreshConversationChoices();
-	
-	InstanceDataPtr->ActiveConversationInstance->OnBegin_WaitingForChoices.AddDynamic(this, &ARTSOInteractableConversationActor::BeginWaitingForChoices);
-	// Nasty, I know, but right now I can't mark the function as const and still be able to bind it to the dynamic delegate 
-	((ARTSOInteractableConversationActor*)this)->BeginWaitingForChoices();
-	// if (InstanceDataPtr->ActiveConversationInstance->bWaitingForChoices)
-	// {
-	// 	// Nasty, I know, but right now I can't mark the function as const and still be able to bind it to the dynamic delegate 
-	//
-	// 	((ARTSOInteractableConversationActor*)this)->BeginWaitingForChoices();
-	//
-	// }
+	if (InstanceDataPtr->ActiveConversationInstance->ChoiceWaitingStateMap.FindRef(ActorID))
+	{
+		// Nasty, I know, but right now I can't mark the function as const and still be able to bind it to the dynamic delegate 
+		ARTSOInteractableConversationActor* MutableSelf = ((ARTSOInteractableConversationActor*)this);
+		ARTSOInteractableConversationActor::Execute_BeginWaitingForChoices(MutableSelf, ActorID);
+	}
 	
 	UE_LOG(LogTemp, Warning, TEXT("ARTSOInteractableConversationActor::OnInteract - 3"));
 }
 
-void ARTSOInteractableConversationActor::BeginWaitingForChoices() 
+void ARTSOInteractableConversationActor::BeginWaitingForChoices_Implementation(int32 ActorID) 
 {
 	const FClientConversationMessagePayload& Payload = ParticipantComponent->GetLastMessage();
 	UPDConversationBPFL::PrintConversationMessageToScreen(this, Payload.Message, FLinearColor::Blue);
-
-	ARTSOController* ListenerAsController = Cast<ARTSOController>(ParticipantComponent->GetParticipantActor(TAG_Conversation_Participants_Listener));
-	
 	
 	UE_LOG(LogTemp, Warning, TEXT("ARTSOInteractableConversationActor::BeginWaitingForChoices"));
-	
 	for (const FClientConversationOptionEntry& Opt : Payload.Options)
 	{
 		FName Participant{};
@@ -187,26 +266,41 @@ void ARTSOInteractableConversationActor::BeginWaitingForChoices()
 			break;
 		}
 
-
 		UPDConversationBPFL::PrintConversationTextToScreen(this, Participant, Opt.ChoiceText,FLinearColor::Blue);
 	}
+
+	// bug: some engine bug causing participant component to always fail returning TAG_Conversation_Participant_Listener even though it was set in the same frame
+	// workaround, use the PDRTSBaseSubsystem id mappings and add an ID parameter to find the proper controller 
+	//ParticipantComponent->GetParticipantActor(TAG_Conversation_Participant_Listener));
+	const TMap<int32, AActor*>& IDToActorMap =  GEngine->GetEngineSubsystem<UPDRTSBaseSubsystem>()->SharedOwnerIDMappings;
+	ARTSOController* ListenerAsController = Cast<ARTSOController>(IDToActorMap.FindRef(ActorID));
+
+	if (ListenerAsController->IsMappingContextActive(TAG_CTRL_Ctxt_ConversationMode) == false)
+	{
+		ListenerAsController->OnBeginConversation(Payload, this);
+		return;
+	}
+	ListenerAsController->OnAdvanceConversation(Payload, this);
 	
-	ListenerAsController->GetConversationWidget()->SetPayload(Payload);
 }
 
-void ARTSOInteractableConversationActor::ReplyChoice(AActor* Caller, int32 Choice)
+void ARTSOInteractableConversationActor::ReplyChoice_Implementation(AActor* Caller, int32 Choice)
 {
 	UE_LOG(LogTemp, Warning, TEXT("ARTSOInteractableConversationActor::ReplyChoice - Choice: %i"), Choice);
-
 	const FClientConversationMessagePayload& Payload = ParticipantComponent->GetLastMessage();
-	if (Payload.Options.IsValidIndex(Choice)) { return; }
+	if (Payload.Options.IsValidIndex(Choice) == false)
+	{
+		const FAdvanceConversationRequest AdvanceRequest{FConversationChoiceReference::Empty};
+		URTSOConversationBPFL::RequestToAdvance(InstanceDataPtr->ActiveConversationInstance, ParticipantComponent, AdvanceRequest);		
+		return;
+	}
 
 	const FClientConversationOptionEntry& OptionEntry = Payload.Options[Choice];
 	
 	FAdvanceConversationRequest AdvanceRequest{OptionEntry.ChoiceReference};
 	AdvanceRequest.UserParameters = OptionEntry.ExtraData;
 	
-	UPDConversationBPFL::RequestToAdvance(InstanceDataPtr->ActiveConversationInstance, ParticipantComponent, AdvanceRequest);
+	URTSOConversationBPFL::RequestToAdvance(InstanceDataPtr->ActiveConversationInstance, ParticipantComponent, AdvanceRequest);
 
 	const FString BuildString = "Selected{" + FString::FromInt(Choice) + "}";
 	UKismetSystemLibrary::PrintString(this, BuildString, true, true, FLinearColor::Blue, 50);

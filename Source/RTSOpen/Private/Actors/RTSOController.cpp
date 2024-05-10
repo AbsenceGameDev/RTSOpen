@@ -24,10 +24,15 @@ void URTSOModularTile::NativePreConstruct()
 {
 	Super::NativePreConstruct();
 
+	Refresh();	
+}
+
+void URTSOModularTile::Refresh()
+{
 	TextName->SetText(TileText);
 
 	SizeBoxContainer->SetHeightOverride(Height);	
-	SizeBoxContainer->SetWidthOverride(Width);	
+	SizeBoxContainer->SetWidthOverride(Width);		
 }
 
 void URTSOConversationSelectionEntry::NativeOnListItemObjectSet(UObject* ListItemObject)
@@ -123,6 +128,7 @@ void ARTSOController::SetupInputComponent()
 	AsEnhancedInput->BindAction(CtrlActionMoveSelection, ETriggerEvent::Triggered, this, &ARTSOController::ActionMoveSelection_Implementation);	
 	AsEnhancedInput->BindAction(CtrlActionHotkeySelection, ETriggerEvent::Completed, this, &ARTSOController::ActionHotkeySelection_Implementation);
 	AsEnhancedInput->BindAction(CtrlActionAssignSelectionToHotkey, ETriggerEvent::Completed, this, &ARTSOController::ActionAssignSelectionToHotkey_Implementation);
+	AsEnhancedInput->BindAction(CtrlActionExitConversation, ETriggerEvent::Completed, this, &ARTSOController::ActionExitConversation_Implementation);
 	AsEnhancedInput->BindAction(CtrlActionChordedBase, ETriggerEvent::Completed, this, &ARTSOController::ActionChordedBase_Implementation);	
 
 	AsEnhancedInput->BindAction(CtrlActionBuildMode, ETriggerEvent::Triggered, this, &ARTSOController::ActionBuildMode_Implementation);		
@@ -187,6 +193,22 @@ void ARTSOController::DeactivateMappingContext(const FGameplayTag& ContextTag)
 	}
 
 	Subsystem->RemoveMappingContext(*MappingContexts.Find(ContextTag));
+}
+
+bool ARTSOController::IsMappingContextActive(const FNativeGameplayTag& ContextTag)
+{
+	return IsMappingContextActive(ContextTag.GetTag());
+}
+
+bool ARTSOController::IsMappingContextActive(const FGameplayTag& ContextTag)
+{
+	UEnhancedInputLocalPlayerSubsystem* Subsystem = ULocalPlayer::GetSubsystem<UEnhancedInputLocalPlayerSubsystem>(GetLocalPlayer());
+	if (Subsystem == nullptr || MappingContexts.Contains(ContextTag) == false)
+	{
+		return false;
+	}
+	
+	return Subsystem->HasMappingContext(MappingContexts.FindRef(ContextTag));
 }
 
 void ARTSOController::ActionMove_Implementation(const FInputActionValue& Value)
@@ -310,18 +332,27 @@ void ARTSOController::ActionAssignSelectionToHotkey_Implementation(const FInputA
 // This always gets called due to a quirk in the design of enhanced input not allowing anything like chorded actions that disallows triggering if a certain chord is detected, due ot it sharing the same target keys 
 void ARTSOController::ActionHotkeySelection_Implementation(const FInputActionValue& Value)
 {
-	// Crude workaround for engine bug with modifiers being triggered and run but values outputted gets discarded in the end
+	// RTSOInputStackSubsystem is a Crude workaround for engine bug with modifiers being triggered and run but values outputted gets discarded in the end
 	// & Crude workaround for another engine bug where the same keys targeted by two different IA mappings always applies all modifiers from both anytime any of them calls them.
-	// & Crude workaround for Enhanced Input design flaw where there is not logical opposite to the chorded action behaviour
+	// & Crude workaround for Enhanced Input design flaw where there is no logical opposite to the chorded action behaviour
 	URTSOInputStackSubsystem* InputStackWorkaround = GetWorld()->GetSubsystem<URTSOInputStackSubsystem>();
 	const UEnhancedInputLocalPlayerSubsystem* InputSubsystem = ULocalPlayer::GetSubsystem<UEnhancedInputLocalPlayerSubsystem>(GetLocalPlayer());
 	const bool bIsChordActive = InputSubsystem->GetPlayerInput()->GetActionValue(CtrlActionChordedBase).Get<bool>();
 	if (bIsChordActive) { return; }
-	
+
 	int32 Tail = 0;
 	InputStackWorkaround->InputStackIntegers.TryPopLast(Tail);
 	InputStackWorkaround->InputStackIntegers.Empty(); // temporary system
 	CurrentSelectionID = Tail;
+	
+	if (IsMappingContextActive(TAG_CTRL_Ctxt_ConversationMode))
+	{
+		UE_LOG(LogTemp, Warning, TEXT("ARTSOController::ActionHotkeySelection : Processing Conversation Input"));
+		HandleConversationChoiceInput(CurrentSelectionID);
+		return;
+	}
+	
+	
 	
 	UE_LOG(LogTemp, Warning, TEXT("ARTSOController::ActionHotkeySelection : (Head) Requested ID : %i"), CurrentSelectionID);
 	if (MarqueeSelectedHandles.Contains(CurrentSelectionID))
@@ -348,16 +379,29 @@ void ARTSOController::ActionChordedBase_Implementation(const FInputActionValue& 
 	IRTSOInputInterface::Execute_ActionChordedBase(GetPawn(), Value);
 }
 
+void ARTSOController::ActionExitConversation_Implementation(const FInputActionValue& Value)
+{
+	IRTSOInputInterface::ActionExitConversation_Implementation(Value);
+
+	const FClientConversationMessagePayload DummyPayload;
+	OnEndConversation(DummyPayload, nullptr);	
+}
+
+void ARTSOController::HandleConversationChoiceInput(int32 ChoiceSelection) const
+{
+	if (ConversationWidget == nullptr) { return; }
+	ConversationWidget->SelectChoice(ChoiceSelection);
+}
+
 #if WITH_EDITOR
 #define LOCTEXT_NAMESPACE "InputModifier_IntegerPassthrough"
 EDataValidationResult UInputModifierIntegerPassthrough::IsDataValid(FDataValidationContext& Context) const
 {
-	EDataValidationResult Result = CombineDataValidationResults(Super::IsDataValid(Context), EDataValidationResult::Valid);
-
-	UInputAction* IA = Cast<UInputAction>(GetOuter());
+	const EDataValidationResult Result = CombineDataValidationResults(Super::IsDataValid(Context), EDataValidationResult::Invalid);
+	const UInputAction* IA = Cast<UInputAction>(GetOuter());
 	if (IA == nullptr) { return Result; }
+	return CombineDataValidationResults(Super::IsDataValid(Context), EDataValidationResult::Invalid);
 
-	return Result;
 }
 #undef LOCTEXT_NAMESPACE 
 #endif
@@ -561,6 +605,29 @@ void ARTSOController::MarqueeSelection(EMarqueeSelectionEvent SelectionEvent)
 			break;
 		}
 	}
+}
+
+void ARTSOController::OnBeginConversation(const FClientConversationMessagePayload& Payload, AActor* PotentialCallbackActor)
+{
+	if (ConversationWidget == nullptr) { return; }
+
+	ActivateMappingContext(TAG_CTRL_Ctxt_ConversationMode);
+	ConversationWidget->AddToViewport();
+	ConversationWidget->SetPayload(Payload, PotentialCallbackActor);	
+}
+
+void ARTSOController::OnAdvanceConversation(const FClientConversationMessagePayload& Payload, AActor* PotentialCallbackActor)
+{
+	if (ConversationWidget == nullptr) { return; }
+	ConversationWidget->SetPayload(Payload, PotentialCallbackActor);		
+}
+
+void ARTSOController::OnEndConversation(const FClientConversationMessagePayload& Payload, AActor* PotentialCallbackActor)
+{
+	DeactivateMappingContext(TAG_CTRL_Ctxt_ConversationMode);
+	
+	if (ConversationWidget == nullptr) { return; }
+	ConversationWidget->RemoveFromParent();
 }
 
 void ARTSOController::DrawBoxAndTextChaos(const FVector& BoundsCenter, const FQuat& Rotation, const FVector& DebugExtent, const FString& DebugBoxTitle, const FColor LineColour)

@@ -1,117 +1,95 @@
-/* @author: Ario Amin @ Permafrost Development. @copyright: Full BSL(1.1) License included at bottom of the file  */
+﻿/* @author: Ario Amin @ Permafrost Development. @copyright: Full BSL(1.1) License included at bottom of the file  */
 
 #pragma once
 
-#include "CoreMinimal.h"
-#include "GameFeaturesSubsystem.h"
-#include "ConversationInstance.h"
-#include "Kismet/BlueprintAsyncActionBase.h"
+#include "ConversationRequirementNode.h"
+#include "ConversationSideEffectNode.h"
+#include "ConversationTaskNode.h"
+#include "GameplayTags.h"
 
-#include "PDConversationCommons.generated.h"
+#include "RTSOConversationNodes.generated.h"
 
-DECLARE_DYNAMIC_MULTICAST_DELEGATE(FCompleted_ActivateFeature);
-//DECLARE_DYNAMIC_MULTICAST_DELEGATE_TwoParams(FBeginWaitingForChoicesDlgt, UObject*, InterfaceObject,  int32, ActorID);
-DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FBeginWaitingForChoicesDlgt, int32, ActorID);
-
-UENUM(Blueprintable, BlueprintType)
-enum class EPDKeyProcessResult : uint8 
-{
-	KEY_SUCCESS UMETA(DisplayName="Valid or whitelisted Key"), 
-	KEY_FAIL    UMETA(DisplayName="Invalid or blacklisted Key"),
-};
-
-/** @brief This instance adds some flags we want to use alongside with an overridden function so the system works as intended in singleplayer  */
-UCLASS(BlueprintType)
-class PDCONVERSATIONHELPER_API UPDConversationInstance : public UConversationInstance
-{
-	GENERATED_BODY()
-
-public:
-	/** @brief */
-	UFUNCTION(BlueprintCallable)
-	virtual void PauseConversationAndSendClientChoices(const FConversationContext& Context, const FClientConversationMessage& ClientMessage) override;
-
-	// Deprecated, remove soon
-	UPROPERTY(BlueprintAssignable)
-	FBeginWaitingForChoicesDlgt OnBegin_WaitingForChoices;
-	// Deprecated, remove soon
-	UPROPERTY(BlueprintReadWrite)
-	bool bWaitingForChoices;
-	
-	/** @brief Send a request for the conversation to advance/resume */
-	UPROPERTY()
-	TMap<int32 /*ActorID*/, FBeginWaitingForChoicesDlgt> OnBegin_WaitChoicesDelegateMap;
-	
-	/** @brief */
-	UPROPERTY(BlueprintReadWrite)
-	TMap<int32 /*ActorID*/, bool> ChoiceWaitingStateMap;
-};
-
-/** @brief This class holds some helper and possibly debug functions we might want to use */
 UCLASS()
-class PDCONVERSATIONHELPER_API UPDConversationBPFL : public UBlueprintFunctionLibrary
+class URTSOConversationTask_Speak : public UConversationTaskNode
 {
 	GENERATED_BODY()
 
 public:
+	URTSOConversationTask_Speak();
 	
-	/** @brief Gets the previous/latest message that was sent */
-	UFUNCTION(BlueprintCallable)
-	static const FClientConversationMessagePayload& GetPreviousMessage(UConversationParticipantComponent* ConversationParticipantComponent);
+	virtual FConversationTaskResult ExecuteTaskNode_Implementation(const FConversationContext& Context) const override;
 
-	/** @brief Gets the conversation task node object related to the task node we are calling from */
-	UFUNCTION(BlueprintCallable)
-	static const UConversationTaskNode* GetTaskNode(const FConversationContext& Context);
-	
-	/** @brief Checks with teh game feature subsystem if the given plugin has been loaded and activated */
-	UFUNCTION(BlueprintCallable)
-	static bool IsGameFeaturePluginActive(FString PluginName);
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	FText Message{};
 
-	/** @brief Prints the message to screen */
-	UFUNCTION(BlueprintCallable, Category = "Action|Interface", Meta = (ExpandEnumAsExecs="Results"))
-	static int32 ProcessInputKey(const FKey& PressedKey, const TArray<FKey>& ValidKeys, EPDKeyProcessResult& Results);	
-
-	/** @brief Prints the message to screen */
-	UFUNCTION(BlueprintCallable)
-	static void PrintConversationMessageToScreen(UObject* WorldContext, const FClientConversationMessage& Message, FLinearColor MessageColour);
-
-	/** @brief Prints the message to screen, alternative input parameters */
-	UFUNCTION(BlueprintCallable)
-	static void PrintConversationTextToScreen(UObject* WorldContext, const FName& Participant, const FText& Text, FLinearColor MessageColour);		
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	FGameplayTag ParticipantTag{};	
 };
 
-
-/** @brief This class is an async latent action based class, deriving from UBlueprintAsyncActionBase.
- * We dispatch a call from at and it works much like a delay in the graph, as in it resumes the execution from the correct node when a reply has been received.  */
 UCLASS()
-class PDCONVERSATIONHELPER_API UPDAsyncAction_ActivateFeature : public UBlueprintAsyncActionBase
+class URTSOConversationTask_Question : public UConversationTaskNode
 {
 	GENERATED_BODY()
 
 public:
-	UPDAsyncAction_ActivateFeature(const FObjectInitializer& ObjectInitializer);
+	URTSOConversationTask_Question();
+	virtual FConversationTaskResult ExecuteTaskNode_Implementation(const FConversationContext& Context) const override;
 
-	/** @brief Called when the action activates */
-	virtual void Activate() override;
-	/** @brief Called when the action completes */
-	void Completed(const UE::GameFeatures::FResult& Result);
-	
-	/** @brief Static helper to create an action instance of this object */
-	UFUNCTION(BlueprintCallable, Meta = (WorldContext = "WorldContextObject", BlueprintInternalUseOnly = "true" ))
-	static UPDAsyncAction_ActivateFeature* CreateActionInstance(UObject* WorldContextObject, FString GameFeatureName);
-public:
-	/** @brief Cached name to the game feature data plugin */
-	UPROPERTY()
-	FString GameFeatureDataPluginName;
-	
-	/** @brief Delegate to (possibly) fire at end of the action*/
-	UPROPERTY(BlueprintAssignable)
-	FCompleted_ActivateFeature Succeeded;
-
-	/** @brief Delegate to (possibly) fire at end of the action*/
-	UPROPERTY(BlueprintAssignable)
-	FCompleted_ActivateFeature Failed;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	FText Message{};
 };
+
+UCLASS()
+class URTSOConversationTask_RevertLatest : public UConversationTaskNode
+{
+	GENERATED_BODY()
+
+public:
+	virtual FConversationTaskResult ExecuteTaskNode_Implementation(const FConversationContext& Context) const override;
+};
+
+UCLASS()
+class URTSOConversationTask_RandomChoice : public UConversationTaskNode
+{
+	GENERATED_BODY()
+
+public:
+	URTSOConversationTask_RandomChoice();
+	virtual FConversationTaskResult ExecuteTaskNode_Implementation(const FConversationContext& Context) const override;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	FText Message{};
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	FGameplayTag ParticipantTag{};		
+};
+
+UCLASS()
+class URTSOConversationEffect_PlayEffects : public UConversationSideEffectNode
+{
+	GENERATED_BODY()
+
+public:
+	virtual void ServerCauseSideEffect_Implementation(const FConversationContext& Context) const override;
+	
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	class USoundBase* Sound = nullptr;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	class UNiagaraSystem* VFX = nullptr;	
+	
+};
+
+UCLASS()
+class URTSOConversationReq_AlwaysFail : public UConversationRequirementNode
+{
+	GENERATED_BODY()
+
+public:
+	virtual EConversationRequirementResult IsRequirementSatisfied_Implementation(const FConversationContext& Context) const override;
+	
+};
+
 
 /**
 Business Source License 1.1

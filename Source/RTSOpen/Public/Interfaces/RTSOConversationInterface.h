@@ -20,9 +20,13 @@ class RTSOPEN_API IRTSOConversationSpeakerInterface
 	GENERATED_BODY()
 
 public:
-	virtual void BeginWaitingForChoices() = 0;
+	UFUNCTION(BlueprintNativeEvent, BlueprintCallable)
+	void BeginWaitingForChoices(int32 ActorID);
+	// virtual void BeginWaitingForChoices_Implementation(int32 ActorID) = 0;
 
-	virtual void ReplyChoice(AActor* Caller, int32 Choice) = 0;
+	UFUNCTION(BlueprintNativeEvent, BlueprintCallable)
+	void ReplyChoice(AActor* Caller, int32 Choice);
+	// virtual void ReplyChoice_Implementation(AActor* Caller, int32 Choice) = 0;
 };
 
 // This class does not need to be modified.

@@ -1,6 +1,9 @@
 /* @author: Ario Amin @ Permafrost Development. @copyright: Full BSL(1.1) License included at bottom of the file  */
 
 #include "PDConversationCommons.h"
+
+#include "ConversationContext.h"
+#include "ConversationParticipantComponent.h"
 #include "GameFeaturesSubsystem.h"
 #include "Kismet/KismetSystemLibrary.h"
 
@@ -12,20 +15,10 @@ void UPDConversationInstance::PauseConversationAndSendClientChoices(
 	const FClientConversationMessage& ClientMessage)
 {
 	Super::PauseConversationAndSendClientChoices(Context, ClientMessage);
-	bWaitingForChoices = true;
-	OnBegin_WaitingForChoices.Broadcast();
 }
 
 //
-// Conversation function lib
-void UPDConversationBPFL::RequestToAdvance(UPDConversationInstance* Conversation, UConversationParticipantComponent* ConversationParticipantComponent, const FAdvanceConversationRequest& InChoicePicked)
-{
-	if(Conversation == nullptr || ConversationParticipantComponent == nullptr) { return; }
-
-	Conversation->bWaitingForChoices = false;
-	ConversationParticipantComponent->RequestServerAdvanceConversation(InChoicePicked);
-}
-
+// Conversation function library
 const FClientConversationMessagePayload& UPDConversationBPFL::GetPreviousMessage(UConversationParticipantComponent* ConversationParticipantComponent)
 {
 	check(ConversationParticipantComponent)

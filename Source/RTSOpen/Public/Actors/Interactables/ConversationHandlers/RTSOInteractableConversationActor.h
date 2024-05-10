@@ -4,12 +4,16 @@
 
 #include "CoreMinimal.h"
 #include "ConversationTypes.h"
+
 #include "NativeGameplayTags.h"
+#include "PDConversationCommons.h"
 #include "Actors/PDInteractActor.h"
 #include "Interfaces/RTSOConversationInterface.h"
 #include "RTSOInteractableConversationActor.generated.h"
 
 class UPDConversationInstance;
+class URTSOConversationInstance;
+
 /**
  * @todo @note: If I have time then write a small mission system, but avoid putting to much time into it
  * @todo @cont: as I am working on a separate repo as-well with a full fledged mission system,
@@ -25,7 +29,7 @@ enum ERTSOConversationState
 	Invalid,
 	Valid,
 };
-USTRUCT()
+USTRUCT(Blueprintable)
 struct FRTSOConversationRules
 {
 	GENERATED_BODY()
@@ -44,7 +48,7 @@ struct FRTSOConversationRules
 };
 
 
-USTRUCT()
+USTRUCT(Blueprintable)
 struct FRTSOConversationMetaProgressionDatum : public FTableRowBase
 {
 	GENERATED_BODY()
@@ -56,23 +60,59 @@ struct FRTSOConversationMetaProgressionDatum : public FTableRowBase
 	TArray<FRTSOConversationRules> PhaseRequiredTags;
 };
 
-USTRUCT()
+USTRUCT(Blueprintable)
 struct FRTSOConversationMetaState
 {
 	GENERATED_BODY()
 
 	void ApplyValuesFromProgressionTable(FRTSOConversationMetaProgressionDatum& ConversationProgressionEntry);
 	
-	UPROPERTY(EditAnywhere)
+	UPROPERTY(EditAnywhere, BlueprintReadOnly)
 	TMap<int32/*ActorID*/, int32/*ProgressionLever*/> ProgressionPerPlayer; /**< @brief progression*/
 	
-	UPROPERTY(EditAnywhere)
+	UPROPERTY(EditAnywhere, BlueprintReadOnly)
 	TArray<FRTSOConversationRules> PhaseRequiredTags;	
 	
 	TDeque<AActor*> InteractingActors; // Used as storage
 
-	UPROPERTY()
-	UPDConversationInstance* ActiveConversationInstance = nullptr;
+	UPROPERTY(BlueprintReadOnly)
+	URTSOConversationInstance* ActiveConversationInstance = nullptr;
+};
+
+/** @brief This instance adds some flags we want to use alongside with an overridden function so the system works as intended in singleplayer  */
+UCLASS(BlueprintType)
+class RTSOPEN_API URTSOConversationInstance : public UPDConversationInstance
+{
+	GENERATED_BODY()
+
+public:
+	/** @brief */
+	virtual void PauseConversationAndSendClientChoices(const FConversationContext& Context, const FClientConversationMessage& ClientMessage) override;
+};
+
+/** @brief This class holds some helper and possibly debug functions we might want to use */
+UCLASS()
+class RTSOPEN_API URTSOConversationBPFL : public UPDConversationBPFL
+{
+	GENERATED_BODY()
+
+public:
+
+	/** @brief Send a request for the conversation to advance/resume */
+	UFUNCTION(BlueprintCallable)
+	static void RequestToAdvance(
+		UPDConversationInstance* Conversation,
+		UConversationParticipantComponent* ConversationParticipantComponent,
+		const FAdvanceConversationRequest& InChoicePicked);
+
+	UFUNCTION()
+	static URTSOConversationInstance* StartConversation(
+		FGameplayTag ConversationEntryTag,
+		AActor* Instigator,
+		FGameplayTag InstigatorTag,
+		AActor* Target,
+		FGameplayTag TargetTag,
+		const TSubclassOf<UConversationInstance> ConversationInstanceClass);
 };
 
 UCLASS()
@@ -93,11 +133,9 @@ public:
 
 	virtual void OnInteract_Implementation(const FPDInteractionParamsWithCustomHandling& InteractionParams, EPDInteractResult& InteractResult) const override;
 	
-	UFUNCTION(BlueprintCallable)
-	virtual void BeginWaitingForChoices() override;
-
-	UFUNCTION(BlueprintCallable)
-	virtual void ReplyChoice(AActor* Caller, int32 Choice) override;
+	virtual void BeginWaitingForChoices_Implementation(int32 ActorID) override;
+	virtual void ReplyChoice_Implementation(AActor* Caller, int32 Choice) override;
+	
 	void TryInitializeOwnerProgression(int32 OwnerID) const;
 
 	virtual ERTSOConversationState ValidateRequiredTags(const FGameplayTag& EntryTag, AActor* CallingActor) const;
@@ -110,6 +148,8 @@ public:
 
 	/** @note This pointer is just so we can modify the underlying value without restrictions in const functions*/
 	FRTSOConversationMetaState* InstanceDataPtr{};
+	
+	UPROPERTY(VisibleInstanceOnly, BlueprintReadWrite)
 	FRTSOConversationMetaState InstanceData{};
 
 	UPROPERTY(VisibleInstanceOnly)
@@ -123,7 +163,7 @@ public:
 
 private:
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Meta = (AllowPrivateAccess="true"))
-	FGameplayTag JobTag{};	
+	FGameplayTag JobTag{};
 };
 
 /**
@@ -135,11 +175,11 @@ RTSOPEN_API UE_DECLARE_GAMEPLAY_TAG_EXTERN(TAG_Conversation_Entry_00);
 RTSOPEN_API UE_DECLARE_GAMEPLAY_TAG_EXTERN(TAG_Conversation_Entry_01);
 
 /**
- * Declaring the "Conversation.Participants" gameplay tags. to be defined in an object-file
+ * Declaring the "Conversation.Participant" gameplay tags. to be defined in an object-file
  * @todo move to a 'conversation commons' file which I need to create
  */
-RTSOPEN_API UE_DECLARE_GAMEPLAY_TAG_EXTERN(TAG_Conversation_Participants_Speaker);
-RTSOPEN_API UE_DECLARE_GAMEPLAY_TAG_EXTERN(TAG_Conversation_Participants_Listener);
+RTSOPEN_API UE_DECLARE_GAMEPLAY_TAG_EXTERN(TAG_Conversation_Participant_Speaker);
+RTSOPEN_API UE_DECLARE_GAMEPLAY_TAG_EXTERN(TAG_Conversation_Participant_Listener);
 
 
 /**
