@@ -241,6 +241,13 @@ void ARTSOController::BeginPlay()
 		IDToActorMap.FindOrAdd(ActorID) = this;
 	}
 
+	if (MainMenuWidget == nullptr)
+	{
+		MainMenuWidget = CreateWidget<URTSOMainMenuBase>(GetWorld(), MMWidgetClass);
+	}
+	// if (MainMenuWidget->IsInViewport() == false) { MainMenuWidget->AddToViewport(); }
+	// if (MainMenuWidget->IsActivated() == false) { MainMenuWidget->ActivateWidget(); }	
+	
 	if (ConversationWidgetClass->IsValidLowLevelFast() == false) { return; }
 	ConversationWidget = NewObject<URTSOConversationWidget>(this, ConversationWidgetClass);
 }
@@ -286,7 +293,10 @@ void ARTSOController::SetupInputComponent()
 	AsEnhancedInput->BindAction(CtrlActionHotkeySelection, ETriggerEvent::Completed, this, &ARTSOController::ActionHotkeySelection_Implementation);
 	AsEnhancedInput->BindAction(CtrlActionAssignSelectionToHotkey, ETriggerEvent::Completed, this, &ARTSOController::ActionAssignSelectionToHotkey_Implementation);
 	AsEnhancedInput->BindAction(CtrlActionExitConversation, ETriggerEvent::Completed, this, &ARTSOController::ActionExitConversation_Implementation);
-	AsEnhancedInput->BindAction(CtrlActionChordedBase, ETriggerEvent::Completed, this, &ARTSOController::ActionChordedBase_Implementation);	
+	AsEnhancedInput->BindAction(CtrlActionChordedBase, ETriggerEvent::Completed, this, &ARTSOController::ActionChordedBase_Implementation);
+	AsEnhancedInput->BindAction(CtrlActionToggleMainMenu, ETriggerEvent::Completed, this, &ARTSOController::ActionToggleMainMenu_Implementation);
+	
+
 
 	AsEnhancedInput->BindAction(CtrlActionBuildMode, ETriggerEvent::Triggered, this, &ARTSOController::ActionBuildMode_Implementation);		
 }
@@ -538,10 +548,28 @@ void ARTSOController::ActionChordedBase_Implementation(const FInputActionValue& 
 
 void ARTSOController::ActionExitConversation_Implementation(const FInputActionValue& Value)
 {
+	UE_LOG(LogTemp, Warning, TEXT("ARTSOController::ActionExitConversation"));
+
+	
 	IRTSOInputInterface::ActionExitConversation_Implementation(Value);
 
 	const FClientConversationMessagePayload DummyPayload;
 	OnEndConversation(DummyPayload, nullptr);	
+}
+
+void ARTSOController::ActionToggleMainMenu_Implementation(const FInputActionValue& Value)
+{
+	UE_LOG(LogTemp, Warning, TEXT("ARTSOController::ActionToggleMainMenu"));
+	
+	if (MainMenuWidget == nullptr)
+	{
+		MainMenuWidget = CreateWidget<URTSOMainMenuBase>(GetWorld(), MMWidgetClass);
+	}
+	if (MainMenuWidget->IsInViewport() == false) { MainMenuWidget->AddToViewport(); }
+	else { MainMenuWidget->RemoveFromParent(); }
+
+	if (MainMenuWidget->IsActivated() == false) { MainMenuWidget->ActivateWidget(); }
+	else { MainMenuWidget->DeactivateWidget(); }
 }
 
 void ARTSOController::HandleConversationChoiceInput(int32 ChoiceSelection) const
@@ -554,10 +582,7 @@ void ARTSOController::HandleConversationChoiceInput(int32 ChoiceSelection) const
 #define LOCTEXT_NAMESPACE "InputModifier_IntegerPassthrough"
 EDataValidationResult UInputModifierIntegerPassthrough::IsDataValid(FDataValidationContext& Context) const
 {
-	const EDataValidationResult Result = CombineDataValidationResults(Super::IsDataValid(Context), EDataValidationResult::Invalid);
-	const UInputAction* IA = Cast<UInputAction>(GetOuter());
-	if (IA == nullptr) { return Result; }
-	return CombineDataValidationResults(Super::IsDataValid(Context), EDataValidationResult::Invalid);
+	return CombineDataValidationResults(Super::IsDataValid(Context), EDataValidationResult::Valid);
 
 }
 #undef LOCTEXT_NAMESPACE 
@@ -768,7 +793,15 @@ void ARTSOController::OnBeginConversation(const FClientConversationMessagePayloa
 {
 	if (ConversationWidget == nullptr) { return; }
 
+	// Transition camera
+	FViewTargetTransitionParams TransitionParams;
+	TransitionParams.BlendTime = 3.5f;
+	PlayerCameraManager->SetViewTarget(PotentialCallbackActor, TransitionParams);
+
 	ActivateMappingContext(TAG_CTRL_Ctxt_ConversationMode);
+	DeactivateMappingContext(TAG_CTRL_Ctxt_WorkerUnitMode);
+	DeactivateMappingContext(TAG_CTRL_Ctxt_BaseInput);
+	
 	ConversationWidget->AddToViewport();
 	ConversationWidget->SetPayload(Payload, PotentialCallbackActor);	
 }
@@ -782,6 +815,14 @@ void ARTSOController::OnAdvanceConversation(const FClientConversationMessagePayl
 void ARTSOController::OnEndConversation(const FClientConversationMessagePayload& Payload, AActor* PotentialCallbackActor)
 {
 	DeactivateMappingContext(TAG_CTRL_Ctxt_ConversationMode);
+	ActivateMappingContext(TAG_CTRL_Ctxt_WorkerUnitMode);
+	ActivateMappingContext(TAG_CTRL_Ctxt_BaseInput);
+
+	// Transition camera
+	FViewTargetTransitionParams TransitionParams;
+	TransitionParams.BlendTime = 2.5f;
+	PlayerCameraManager->SetViewTarget(GetPawn(), TransitionParams);
+
 	
 	if (ConversationWidget == nullptr) { return; }
 	ConversationWidget->RemoveFromParent();

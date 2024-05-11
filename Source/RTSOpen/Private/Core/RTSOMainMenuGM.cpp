@@ -11,11 +11,10 @@ void ARTSOMainMenuGM::BeginPlay()
 	Super::BeginPlay();
 	
 	if (MainMenuWidget == nullptr) { MainMenuWidget = CreateWidget<URTSOMainMenuBase>(GetWorld(), MMWidgetClass); }
-	if (MainMenuWidget->IsInViewport() == false) { MainMenuWidget->AddToViewport(); }
-	if (MainMenuWidget->IsActivated() == false) { MainMenuWidget->ActivateWidget(); }
+	// if (MainMenuWidget->IsInViewport() == false) { MainMenuWidget->AddToViewport(); }
+	// if (MainMenuWidget->IsActivated() == false) { MainMenuWidget->ActivateWidget(); }
 	
 	URTSOBaseGI* GI = GetGameInstance<URTSOBaseGI>();
-	
 	GI->StartTransition();
 
 	// @todo main menu music?

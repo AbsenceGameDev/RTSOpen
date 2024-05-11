@@ -11,6 +11,7 @@
 #include "Interfaces/RTSOConversationInterface.h"
 #include "RTSOInteractableConversationActor.generated.h"
 
+class UCameraComponent;
 class UPDConversationInstance;
 class URTSOConversationInstance;
 
@@ -123,6 +124,8 @@ class RTSOPEN_API ARTSOInteractableConversationActor
 	GENERATED_BODY()
 
 public:
+	ARTSOInteractableConversationActor();
+	
 	void ConversationStarted();
 	void ConversationTaskChoiceDataUpdated(const FConversationNodeHandle& NodeHandle, const FClientConversationOptionEntry& OptionEntry);
 	void ConversationUpdated(const FClientConversationMessagePayload& Payload);
@@ -164,6 +167,9 @@ public:
 private:
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Meta = (AllowPrivateAccess="true"))
 	FGameplayTag JobTag{};
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Meta = (AllowPrivateAccess="true"))
+	UCameraComponent* ConversationCamera = nullptr;	
 };
 
 /**

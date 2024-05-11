@@ -6,6 +6,7 @@
 #include "GameFramework/GameModeBase.h"
 #include "RTSOBaseGM.generated.h"
 
+class URTSOMainMenuBase;
 class URTSOpenSaveGame;
 
 UENUM()
@@ -57,6 +58,7 @@ public: // Method members
 	void SaveUnits();
 	
 public: // Variable members
+	
 	/** @brief Actual game save-data */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
 	URTSOpenSaveGame* GameSave = nullptr;

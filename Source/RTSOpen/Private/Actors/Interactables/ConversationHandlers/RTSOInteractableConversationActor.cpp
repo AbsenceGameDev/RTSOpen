@@ -12,6 +12,7 @@
 #include "PDRTSBaseSubsystem.h"
 #include "Actors/RTSOController.h"
 #include "AI/Mass/PDMassFragments.h"
+#include "Camera/CameraComponent.h"
 #include "Interfaces/RTSOConversationInterface.h"
 #include "Kismet/KismetSystemLibrary.h"
 
@@ -31,6 +32,11 @@ void FRTSOConversationMetaState::ApplyValuesFromProgressionTable(FRTSOConversati
 {
 	// ProgressionPerPlayer = ConversationProgressionEntry.BaseProgression;
 	PhaseRequiredTags = ConversationProgressionEntry.PhaseRequiredTags;
+}
+
+ARTSOInteractableConversationActor::ARTSOInteractableConversationActor()
+{
+	ConversationCamera = CreateDefaultSubobject<UCameraComponent>(TEXT("ConversationCamera"));
 }
 
 void ARTSOInteractableConversationActor::ConversationStarted()

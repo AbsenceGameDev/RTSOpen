@@ -4,6 +4,7 @@
 
 #include "CoreMinimal.h"
 #include "CommonActivatableWidget.h"
+#include "RTSOActiveMainMenu.h"
 #include "RTSOMainMenuBase.generated.h"
 
 /**
@@ -22,7 +23,11 @@ public:
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Meta = (BindWidget))
 	class UCommonActivatableWidgetStack* WidgetStack;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly)
+	TSubclassOf<URTSOMenuWidget> WidgetClass = nullptr;
 };
+
 
 
 /**

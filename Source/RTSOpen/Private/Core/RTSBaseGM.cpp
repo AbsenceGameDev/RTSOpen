@@ -10,6 +10,7 @@
 #include "Kismet/GameplayStatics.h"
 #include "Kismet/KismetMathLibrary.h"
 #include "Kismet/KismetSystemLibrary.h"
+#include "Widgets/RTSOMainMenuBase.h"
 
 const FString ARTSOBaseGM::ROOTSAVE = "ROOTSAVE" ; 
 
@@ -28,13 +29,14 @@ ARTSOBaseGM::ARTSOBaseGM(const FObjectInitializer& ObjectInitializer)
 void ARTSOBaseGM::BeginPlay()
 {
 	Super::BeginPlay();
-
+	
+	
 	URTSOBaseGI* GI = Cast<URTSOBaseGI>(GetWorld()->GetGameInstance());
 	if (GI == nullptr) { return; }
+	// GI->StartTransition();
 
 	MARK_PROPERTY_DIRTY_FROM_NAME(URTSOBaseGI, bGMReady, GI);
 	GI->bGMReady = true;
-	
 	
 }
 

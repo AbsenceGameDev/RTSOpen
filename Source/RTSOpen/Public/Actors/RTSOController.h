@@ -12,6 +12,7 @@
 #include "InputModifiers.h"
 #include "MassEntityTypes.h"
 #include "GameFramework/PlayerController.h"
+#include "Widgets/RTSOMainMenuBase.h"
 
 
 #include "RTSOController.generated.h"
@@ -234,6 +235,7 @@ class RTSOPEN_API ARTSOController : public APlayerController, public IRTSOInputI
 	virtual void ActionHotkeySelection_Implementation(const FInputActionValue& Value) override;
 	virtual void ActionChordedBase_Implementation(const FInputActionValue& Value) override;
 	virtual void ActionExitConversation_Implementation(const FInputActionValue& Value) override;	
+	virtual void ActionToggleMainMenu_Implementation(const FInputActionValue& Value) override;	
 
 	void HandleConversationChoiceInput(int32 ChoiceSelection) const;
 	/* RTSO Input Interface - End */
@@ -343,6 +345,9 @@ public:
 	
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "RTS|Input")
 	class UInputAction* CtrlActionExitConversation = nullptr;	
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "RTS|Input")
+	class UInputAction* CtrlActionToggleMainMenu = nullptr;	
 	
 	/* Input Actions - If I have time to implement */
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "RTS|Input")
@@ -353,6 +358,11 @@ public:
 	TMap<FGameplayTag, UInputMappingContext*> MappingContexts{};
 
 protected:
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Menu|Startscreen")
+	TSubclassOf<URTSOMainMenuBase> MMWidgetClass{};
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Menu|Startscreen")
+	URTSOMainMenuBase* MainMenuWidget = nullptr;
+	
 	UPROPERTY(VisibleInstanceOnly)
 	URTSOConversationWidget* ConversationWidget = nullptr;
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)

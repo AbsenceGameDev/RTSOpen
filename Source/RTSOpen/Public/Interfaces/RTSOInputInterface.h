@@ -76,6 +76,10 @@ public:
 	UFUNCTION(BlueprintNativeEvent, BlueprintCallable)
 	void ActionExitConversation(const FInputActionValue& Value);
 	virtual void ActionExitConversation_Implementation(const FInputActionValue& Value) {};	
+
+	UFUNCTION(BlueprintNativeEvent, BlueprintCallable)
+	void ActionToggleMainMenu(const FInputActionValue& Value);
+	virtual void ActionToggleMainMenu_Implementation(const FInputActionValue& Value) {};	
 	
 	UFUNCTION(BlueprintNativeEvent, BlueprintCallable)
 	void ActionChordedBase(const FInputActionValue& Value);

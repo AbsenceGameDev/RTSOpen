@@ -9,46 +9,55 @@
 
 class UCommonTextBlock;
 
-/**
- * @brief Menu button @todo write supporting code 
- */
-UCLASS()
-class RTSOPEN_API URTSOMenuButton : public UCommonButtonBase
+UCLASS(Blueprintable)
+class URTSOMenuButton : public UUserWidget
 {
 	GENERATED_BODY()
 
 public:
-	UPROPERTY(Meta = (BindWidget)) 
-	UCommonTextBlock* ButtonTitle = nullptr;
+	UPROPERTY(BlueprintReadWrite, Meta=(BindWidget))
+	class UOverlay* Overlay = nullptr;
 
-	UPROPERTY(Meta = (BindWidget)) 
-	UCommonActionWidget* ButtonIcon = nullptr;	
+	UPROPERTY(BlueprintReadWrite, Meta=(BindWidget))
+	class UImage* Image_ButtonBackground = nullptr;
+
+	UPROPERTY(BlueprintReadWrite, Meta=(BindWidget))
+	class UBorder* Border = nullptr;
+
+	UPROPERTY(BlueprintReadWrite, Meta=(BindWidget, ExposeOnSpawn))
+	class UTextBlock* TextBlock = nullptr;	
+	
+	UPROPERTY(BlueprintReadWrite, Meta=(BindWidget))
+	class UButton* Hitbox = nullptr;	
+	
 };
 
-
-/**
- * @brief Menu @todo write supporting code 
- */
-UCLASS()
-class RTSOPEN_API URTSOActiveMainMenu : public UCommonActivatableWidget
+UCLASS(Blueprintable)
+class URTSOMenuWidget : public UCommonActivatableWidget
 {
 	GENERATED_BODY()
 
 public:
-	UPROPERTY(Meta = (BindWidget)) 
-	UCommonTextBlock* GameTitle = nullptr;
+	UPROPERTY(BlueprintReadWrite, Meta=(BindWidget))
+	class URTSOMenuButton* ResumeButton = nullptr;
 
-	UPROPERTY(Meta = (BindWidget)) 
-	URTSOMenuButton* BtnContinue = nullptr;
+	UPROPERTY(BlueprintReadWrite, Meta=(BindWidget))
+	class URTSOMenuButton* SettingsButton = nullptr;
 
-	UPROPERTY(Meta = (BindWidget)) 
-	URTSOMenuButton* BtnNewGame = nullptr;
+	UPROPERTY(BlueprintReadWrite, Meta=(BindWidget))
+	class URTSOMenuButton* SaveButton = nullptr;
 
-	UPROPERTY(Meta = (BindWidget)) 
-	URTSOMenuButton* BtnExitGame = nullptr;	
-	
+	UPROPERTY(BlueprintReadWrite, Meta=(BindWidget))
+	class URTSOMenuButton* LoadButton = nullptr;
+
+	UPROPERTY(BlueprintReadWrite, Meta=(BindWidget))
+	class URTSOMenuButton* QuitButton = nullptr;
+
+	UPROPERTY(BlueprintReadWrite, Meta=(BindWidget))
+	class UVerticalBox* VerticalBoxContainer = nullptr;
+
 	UPROPERTY()
-	UCommonActivatableWidget* OwningStack = nullptr;
+	UCommonActivatableWidget* OwningStack = nullptr;	
 };
 
 

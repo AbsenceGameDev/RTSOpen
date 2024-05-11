@@ -8,7 +8,8 @@ void URTSOMainMenuBase::NativeOnActivated()
 {
 	Super::NativeOnActivated();
 
-	WidgetStack->AddWidget<URTSOActiveMainMenu>(URTSOActiveMainMenu::StaticClass())->OwningStack = this;
+	UClass* SelectedClass = WidgetClass != nullptr ? WidgetClass.Get() : URTSOMenuWidget::StaticClass();
+	WidgetStack->AddWidget<URTSOMenuWidget>(SelectedClass)->OwningStack = this;
 }
 
 void URTSOMainMenuBase::PushToWidgetStack_Implementation(TSubclassOf<UCommonActivatableWidget> Subclass)
