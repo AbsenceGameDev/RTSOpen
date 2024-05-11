@@ -519,8 +519,6 @@ void ARTSOController::ActionHotkeySelection_Implementation(const FInputActionVal
 		return;
 	}
 	
-	
-	
 	UE_LOG(LogTemp, Warning, TEXT("ARTSOController::ActionHotkeySelection : (Head) Requested ID : %i"), CurrentSelectionID);
 	if (MarqueeSelectedHandles.Contains(CurrentSelectionID))
 	{
@@ -563,19 +561,48 @@ void ARTSOController::ActionToggleMainMenu_Implementation(const FInputActionValu
 	
 	if (MainMenuWidget == nullptr)
 	{
-		MainMenuWidget = CreateWidget<URTSOMainMenuBase>(GetWorld(), MMWidgetClass);
+		MainMenuWidget = CreateWidget<URTSOMainMenuBase>(this, MMWidgetClass);
 	}
-	if (MainMenuWidget->IsInViewport() == false) { MainMenuWidget->AddToViewport(); }
-	else { MainMenuWidget->RemoveFromParent(); }
-
-	if (MainMenuWidget->IsActivated() == false) { MainMenuWidget->ActivateWidget(); }
-	else { MainMenuWidget->DeactivateWidget(); }
+	if (MainMenuWidget->IsInViewport() == false)
+	{
+		MainMenuWidget->AddToViewport();
+	    MainMenuWidget->ActivateWidget();
+		MainMenuWidget->BindButtonDelegates(this);
+		return;
+	}
+	
+	MainMenuWidget->RemoveFromParent();
+	MainMenuWidget->DeactivateWidget();
 }
 
 void ARTSOController::HandleConversationChoiceInput(int32 ChoiceSelection) const
 {
 	if (ConversationWidget == nullptr) { return; }
 	ConversationWidget->SelectChoice(ChoiceSelection);
+}
+
+void ARTSOController::OnReleased_Resume()
+{
+	MainMenuWidget->RemoveFromParent();
+	MainMenuWidget->DeactivateWidget();
+}
+
+void ARTSOController::OnReleased_Settings()
+{
+}
+
+void ARTSOController::OnReleased_Save()
+{
+}
+
+void ARTSOController::OnReleased_Load()
+{
+}
+
+void ARTSOController::OnReleased_QuitGame()
+{
+	// @todo (backlog) Warn if progress is not saved
+	ConsoleCommand("quit");
 }
 
 #if WITH_EDITOR

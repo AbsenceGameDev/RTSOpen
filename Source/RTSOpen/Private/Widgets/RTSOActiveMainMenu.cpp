@@ -4,6 +4,17 @@
 #include "Widgets/RTSOActiveMainMenu.h"
 
 
+void URTSOMenuWidget::ClearDelegates() const
+{
+	ResumeButton->Hitbox->OnReleased.Clear();
+	SettingsButton->Hitbox->OnReleased.Clear();
+	SaveButton->Hitbox->OnReleased.Clear();
+	LoadButton->Hitbox->OnReleased.Clear();
+	QuitButton->Hitbox->OnReleased.Clear();	
+}
+
+
+
 
 /**
 Business Source License 1.1

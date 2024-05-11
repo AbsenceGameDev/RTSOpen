@@ -240,6 +240,15 @@ class RTSOPEN_API ARTSOController : public APlayerController, public IRTSOInputI
 	void HandleConversationChoiceInput(int32 ChoiceSelection) const;
 	/* RTSO Input Interface - End */
 
+	/* RTSO Menu interface - Start, @todo move to actual interface if we start making more menus*/
+	UFUNCTION() void OnReleased_Resume();
+	UFUNCTION() void OnReleased_Settings();
+	UFUNCTION() void OnReleased_Save();
+	UFUNCTION() void OnReleased_Load();
+	UFUNCTION() void OnReleased_QuitGame();	
+	/* RTSO Menu interface - End, @todo move to actual interface if we start making more menus*/
+	
+
 	
 	/* RTSO Mouse projections - Start */
 	void ProjectMouseToGroundPlane(
@@ -312,7 +321,10 @@ protected:
 	void OnSelectionChange(bool bClearSelection);
 	/* RTSO Marquee selection - End */
 
-public:	
+public:
+
+	int32 LatestMenuButtonIdx = INDEX_NONE;
+	
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "RTS|Cursor|Settings")
 	int32 ScreenEdgeMovementPadding = 0;
 

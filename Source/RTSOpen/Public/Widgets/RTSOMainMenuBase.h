@@ -21,6 +21,9 @@ public:
 	UFUNCTION(BlueprintNativeEvent, BlueprintCallable)
 	void PushToWidgetStack(TSubclassOf<UCommonActivatableWidget> Subclass);
 
+	UFUNCTION()
+	void BindButtonDelegates(AActor* ActorToBindAt);
+
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Meta = (BindWidget))
 	class UCommonActivatableWidgetStack* WidgetStack;
 

@@ -38,6 +38,8 @@ class URTSOMenuWidget : public UCommonActivatableWidget
 	GENERATED_BODY()
 
 public:
+	void ClearDelegates() const;
+	
 	UPROPERTY(BlueprintReadWrite, Meta=(BindWidget))
 	class URTSOMenuButton* ResumeButton = nullptr;
 

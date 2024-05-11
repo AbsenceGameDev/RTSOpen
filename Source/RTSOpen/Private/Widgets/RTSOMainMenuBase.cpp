@@ -1,6 +1,8 @@
 ﻿/* @author: Ario Amin @ Permafrost Development. @copyright: Full BSL(1.1) License included at bottom of the file  */
 
 #include "Widgets/RTSOMainMenuBase.h"
+
+#include "Actors/RTSOController.h"
 #include "Widgets/RTSOActiveMainMenu.h"
 #include "Widgets/CommonActivatableWidgetContainer.h"
 
@@ -8,8 +10,45 @@ void URTSOMainMenuBase::NativeOnActivated()
 {
 	Super::NativeOnActivated();
 
+	// in lieu of a Clear function, or rather in lieu of an actaul implementation of Clear which clears elements in the stack
+	TArray<UCommonActivatableWidget*> Widgets{};
+	for (UCommonActivatableWidget* ItWidget : WidgetStack->GetWidgetList())
+	{
+		const URTSOMenuWidget* AsMenu = Cast<URTSOMenuWidget>(ItWidget);
+		if (AsMenu == nullptr) { continue; }
+
+		Widgets.Emplace(ItWidget);
+	}
+	for (UCommonActivatableWidget* ItWidget : Widgets)
+	{
+		WidgetStack->RemoveWidget(*ItWidget);
+	}
+	
+
 	UClass* SelectedClass = WidgetClass != nullptr ? WidgetClass.Get() : URTSOMenuWidget::StaticClass();
 	WidgetStack->AddWidget<URTSOMenuWidget>(SelectedClass)->OwningStack = this;
+}
+
+void URTSOMainMenuBase::BindButtonDelegates(AActor* ActorToBindAt)
+{
+	ARTSOController* AsController = Cast<ARTSOController>(ActorToBindAt);
+	if (AsController == nullptr) { return; }
+	
+	for (UCommonActivatableWidget* ItWidget : WidgetStack->GetWidgetList())
+	{
+		const URTSOMenuWidget* AsMenu = Cast<URTSOMenuWidget>(ItWidget);
+		if (AsMenu == nullptr) { continue; }
+
+		UE_LOG(LogTemp, Warning, TEXT("URTSOMainMenuBase::BindButtonDelegates -- Binding delegates"));
+		
+		// All these objects are marked with a metaspecifier BindWidget, thus we can be sure this piece of code never gets run if the stacked URTSOMenuWidget is not valid
+		AsMenu->ClearDelegates();
+		AsMenu->ResumeButton->Hitbox->OnReleased.AddUniqueDynamic(AsController, &ARTSOController::OnReleased_Resume);
+		AsMenu->SettingsButton->Hitbox->OnReleased.AddUniqueDynamic(AsController, &ARTSOController::OnReleased_Settings);
+		AsMenu->SaveButton->Hitbox->OnReleased.AddUniqueDynamic(AsController, &ARTSOController::OnReleased_Save);
+		AsMenu->LoadButton->Hitbox->OnReleased.AddUniqueDynamic(AsController, &ARTSOController::OnReleased_Load);
+		AsMenu->QuitButton->Hitbox->OnReleased.AddUniqueDynamic(AsController, &ARTSOController::OnReleased_QuitGame);
+	}
 }
 
 void URTSOMainMenuBase::PushToWidgetStack_Implementation(TSubclassOf<UCommonActivatableWidget> Subclass)
