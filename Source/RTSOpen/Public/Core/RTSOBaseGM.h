@@ -6,6 +6,7 @@
 #include "GameFramework/GameModeBase.h"
 #include "RTSOBaseGM.generated.h"
 
+class ARTSOController;
 class URTSOMainMenuBase;
 class URTSOpenSaveGame;
 
@@ -41,9 +42,29 @@ public: // Method members
 	UFUNCTION(BlueprintNativeEvent, BlueprintCallable)
 	void SaveGame(const FString& Slot, const bool bAllowOverwrite = false);
 
+	/** @brief Dispatches an async save */
+	UFUNCTION(BlueprintNativeEvent, BlueprintCallable)
+	void ProcessChangesAndSaveGame(const FString& Slot, const bool bAllowOverwrite = false);
+	
 	/** @brief Loads save from slot, if a save exists */
 	UFUNCTION(BlueprintNativeEvent, BlueprintCallable)
 	void LoadGame(const FString& Slot, const bool bDummyParam = false);
+
+	/** @brief Save ConversationProgression */
+	UFUNCTION(BlueprintNativeEvent, BlueprintCallable)
+	void SaveConversationProgression();	
+
+	/** @brief Save ConversationProgression */
+	UFUNCTION(BlueprintNativeEvent, BlueprintCallable)
+	void SaveConversationActorStates();		
+
+	/** @brief Save interactables */
+	UFUNCTION(BlueprintCallable)
+	void SaveAllPlayerStates();	
+	
+	/** @brief Save interactables */
+	UFUNCTION(BlueprintNativeEvent, BlueprintCallable)
+	void SavePlayerState(ARTSOController* PlayerController);
 	
 	/** @brief Save interactables */
 	UFUNCTION(BlueprintNativeEvent, BlueprintCallable)
@@ -56,6 +77,8 @@ public: // Method members
 	/** @brief Save worker/units */
 	UFUNCTION(BlueprintNativeEvent, BlueprintCallable)
 	void SaveUnits();
+
+	virtual void TickActor(float DeltaTime, ELevelTick TickType, FActorTickFunction& ThisTickFunction) override;
 	
 public: // Variable members
 	

@@ -4,6 +4,7 @@
 
 #include "ConversationContext.h"
 #include "ConversationInstance.h"
+#include "ConversationChoiceNode.h"
 #include "ConversationLibrary.h"
 #include "ConversationSettings.h"
 #include "ConversationParticipantComponent.h"
@@ -13,6 +14,7 @@
 #include "Actors/RTSOController.h"
 #include "AI/Mass/PDMassFragments.h"
 #include "Camera/CameraComponent.h"
+#include "Core/RTSOBaseGM.h"
 #include "Interfaces/RTSOConversationInterface.h"
 #include "Kismet/KismetSystemLibrary.h"
 
@@ -76,6 +78,19 @@ void URTSOConversationInstance::PauseConversationAndSendClientChoices(
 	OnBegin_WaitChoicesDelegateMap.Find(ActorID)->Broadcast(ActorID);
 }
 
+void URTSOConversationInstance::OnChoiceNodePickedByUser(const FConversationContext& Context, const UConversationChoiceNode* ChoiceNode,
+	const TArray<FConversationBranchPoint>& ValidDestinations)
+{
+	Super::OnChoiceNodePickedByUser(Context, ChoiceNode, ValidDestinations);
+
+	ARTSOController* ListenerAsController = Cast<ARTSOController>(Context.GetParticipant(TAG_Conversation_Participant_Listener)->Actor);
+
+	// @todo Store selected tags on server
+	ARTSOBaseGM* GM = GetWorld() != nullptr ? GetWorld()->GetAuthGameMode<ARTSOBaseGM>() : nullptr;
+	if (GM == nullptr || ListenerAsController == nullptr) { return; }
+	GM->GameSave->PlayersAndConversationTags.FindOrAdd(ListenerAsController->GetActorID()).AppendTags(ChoiceNode->ChoiceTags);
+}
+
 //
 // Conversation function lib
 void URTSOConversationBPFL::RequestToAdvance(UPDConversationInstance* Conversation, UConversationParticipantComponent* ConversationParticipantComponent, const FAdvanceConversationRequest& InChoicePicked)
@@ -90,7 +105,8 @@ void URTSOConversationBPFL::RequestToAdvance(UPDConversationInstance* Conversati
 	{
 		*Conversation->ChoiceWaitingStateMap.Find(ActorID) = false;
 	}
-	
+
+	// @todo Store choice tags here on client
 	ConversationParticipantComponent->RequestServerAdvanceConversation(InChoicePicked);
 }
 
@@ -145,6 +161,10 @@ void ARTSOInteractableConversationActor::BeginPlay()
 {
 	Super::BeginPlay();
 
+	URTSOConversationActorTrackerSubsystem& ConversationTrackerSubsystem = *GetWorld()->GetSubsystem<URTSOConversationActorTrackerSubsystem>();
+	ConversationTrackerSubsystem.TrackedConversationActors.Emplace(this);
+	
+	
 	ParticipantComponent =
 		Cast<UConversationParticipantComponent>(AddComponentByClass(UConversationParticipantComponent::StaticClass(), false, FTransform::Identity, false));
 
@@ -164,6 +184,20 @@ void ARTSOInteractableConversationActor::BeginPlay()
 	InstanceDataPtr = &InstanceData;
 
 	JobTag = TAG_AI_Job_GenericInteract;
+}
+
+void ARTSOInteractableConversationActor::BeginDestroy()
+{
+	Super::BeginDestroy();
+
+	if (GetWorld() == nullptr
+		|| GetWorld()->bIsWorldInitialized == false
+		|| GetWorld()->GetSubsystem<URTSOConversationActorTrackerSubsystem>() == nullptr)
+	{
+		return;
+	}
+	URTSOConversationActorTrackerSubsystem* ConversationTrackerSubsystem = GetWorld()->GetSubsystem<URTSOConversationActorTrackerSubsystem>();
+	ConversationTrackerSubsystem->TrackedConversationActors.Remove(this);	
 }
 
 FGameplayTagContainer ARTSOInteractableConversationActor::GetGenericTagContainer_Implementation() const

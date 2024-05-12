@@ -9,6 +9,18 @@
 // Imagine a static set of all possible server IDs, it would contain 65535 values, * 2 bytes = approx. 130kb
 //
 
+UCLASS()
+class UPDPersistentIDSubsystem : public UEngineSubsystem
+{
+	GENERATED_BODY()
+
+public:
+	UPROPERTY()
+	TSet<int32> TrackedPersistentIDs;
+	
+};
+
+
 constexpr uint32 INVALID_ID = 0; // is our INVALID_ID
 USTRUCT()
 struct FPDPersistentID
@@ -16,12 +28,15 @@ struct FPDPersistentID
 	GENERATED_BODY()
 
 public:
-	FPDPersistentID() : BitSet_ID(0) {}
+	FPDPersistentID() : BitSet_ID(INVALID_ID) {}
+	FPDPersistentID(uint32 InID) : BitSet_ID(InID) {}
+	
 	uint32 GetID() const { return BitSet_ID; }
 	bool IsValidID() const { return BitSet_ID != INVALID_ID; }
-
-	static FPDPersistentID GenerateNewPersistentID(const TSet<FPDPersistentID>& ExistingIDs)
+	
+	static FPDPersistentID GenerateNewPersistentID()
 	{
+		TSet<int32>& ExistingIDs = GEngine->GetEngineSubsystem<UPDPersistentIDSubsystem>()->TrackedPersistentIDs;
 		if (ExistingIDs.Num() > UINT32_MAX)
 		{
 			// Too many in the set, log as a warning and return invalid ID
@@ -36,17 +51,16 @@ public:
 		
 		// 2. Search first in randomly selected direction.
 		// If first search fails, reverse directions and start over from the selected point
+		FPDPersistentID FoundIdx;
 		if (RandomDirectionForward)
 		{
-			FPDPersistentID Value;
-			if (ForwardSearch(ExistingIDs, RandomStartingPoint, Value)) { return Value; }
-			if (ReverseSearch(ExistingIDs, RandomStartingPoint, Value)) { return Value; }
+			if (ForwardSearch(ExistingIDs, RandomStartingPoint, FoundIdx)) { return FoundIdx; }
+			if (ReverseSearch(ExistingIDs, RandomStartingPoint, FoundIdx)) { return FoundIdx; }
 		}
 		else
 		{
-			FPDPersistentID Value;
-			if (ReverseSearch(ExistingIDs, RandomStartingPoint, Value)) { return Value; }
-			if (ForwardSearch(ExistingIDs, RandomStartingPoint, Value)) { return Value; }
+			if (ReverseSearch(ExistingIDs, RandomStartingPoint, FoundIdx)) { return FoundIdx; }
+			if (ForwardSearch(ExistingIDs, RandomStartingPoint, FoundIdx)) { return FoundIdx; }
 		}
 
 		// Search failed, @todo log error here
@@ -71,32 +85,44 @@ public:
 	FPDPersistentID operator+(const FPDPersistentID& Other) const { return this->BitSet_ID + Other.BitSet_ID;}
 	FPDPersistentID operator+=(const FPDPersistentID& Other){ return this->BitSet_ID = this->BitSet_ID + Other.BitSet_ID;}
 	FPDPersistentID& operator++(){ BitSet_ID++; return *this;}
+	FPDPersistentID& operator--(){ BitSet_ID--; return *this;}
 	FPDPersistentID& operator++(int){ FPDPersistentID Old = *this; BitSet_ID++; return Old;}
 	
 private:
-	FPDPersistentID(uint32 InID) : BitSet_ID(InID) {} 
 	uint32 BitSet_ID; // Wrapped data (Player ID)
 	
-	static bool ReverseSearch(const TSet<FPDPersistentID>& ExistingIDs, const int64 RandomStartingPoint, FPDPersistentID& Value)
+	static bool ReverseSearch(const TSet<int32>& ExistingIDs, const int64 RandomStartingPoint, FPDPersistentID& Value)
 	{
 		if (ExistingIDs.IsEmpty()) { Value = RandomStartingPoint; return true; }
+		TSet<int32>& MutableExistingIDs = GEngine->GetEngineSubsystem<UPDPersistentIDSubsystem>()->TrackedPersistentIDs;
 
 		// relies on uintwrapping
-		for (uint32 Step = RandomStartingPoint; Step != UINT32_MAX ;)
+		for (FPDPersistentID Step = RandomStartingPoint; Step != UINT32_MAX ;)
 		{
-			if (ExistingIDs.Contains(Step)) { --Step; }
-			else { Value = Step; return true; }
+			if (ExistingIDs.Contains(Step.GetID())) { --Step; }
+			else
+			{
+				MutableExistingIDs.Emplace(Step.GetID());
+				Value = Step;
+				return true;
+			}
 		}
 		return false;
 	}
-	static bool ForwardSearch(const TSet<FPDPersistentID>& ExistingIDs, const int64 RandomStartingPoint, FPDPersistentID& Value)
+	static bool ForwardSearch(const TSet<int32>& ExistingIDs, const int64 RandomStartingPoint, FPDPersistentID& Value)
 	{
 		if (ExistingIDs.IsEmpty()) { Value = RandomStartingPoint; return true; }
+		TSet<int32>& MutableExistingIDs = GEngine->GetEngineSubsystem<UPDPersistentIDSubsystem>()->TrackedPersistentIDs;
 		
 		for (FPDPersistentID Step = RandomStartingPoint; Step < UINT32_MAX;)
 		{
-			if (ExistingIDs.Contains(Step)) { ++Step; }
-			else { Value = Step; return true; }
+			if (ExistingIDs.Contains(Step.GetID())) { ++Step; }
+			else
+			{
+				MutableExistingIDs.Emplace(Step.GetID());
+				Value = Step;
+				return true;
+			}
 		}
 		return false;
 	}

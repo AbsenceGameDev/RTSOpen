@@ -13,8 +13,8 @@
 
 void URTSOSaveGameDialog::DialogReplyContinue()
 {
-	ARTSOBaseGM* GM = GetWorld() != nullptr ? GetWorld()->GetAuthGameMode<ARTSOBaseGM>() : nullptr;
-	if (GM == nullptr) { return; }
+	// ARTSOBaseGM* GM = GetWorld() != nullptr ? GetWorld()->GetAuthGameMode<ARTSOBaseGM>() : nullptr;
+	// if (GM == nullptr) { return; }
 
 	SuccessCallback.Execute(FString::FromInt(SlotIdx), true);
 }

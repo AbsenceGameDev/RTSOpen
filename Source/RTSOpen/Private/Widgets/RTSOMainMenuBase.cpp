@@ -134,7 +134,7 @@ void URTSOMainMenuBase::SaveOrLoadSlot(TEnumAsByte<ERTSOSaveType> Type, int32 Sl
 	{
 	case SAVE:
 		Dialog->DialogMessage = FText::FromString("Are you sure you want to save slot (" + FString::Printf(TEXT("%i )"), SlotIdx));
-		Dialog->SuccessCallback.BindUObject(GM, &ARTSOBaseGM::SaveGame);
+		Dialog->SuccessCallback.BindUObject(GM, &ARTSOBaseGM::ProcessChangesAndSaveGame);
 		break;
 	case LOAD:
 		Dialog->DialogMessage = FText::FromString("Are you sure you want to load slot (" + FString::Printf(TEXT("%i )"), SlotIdx));

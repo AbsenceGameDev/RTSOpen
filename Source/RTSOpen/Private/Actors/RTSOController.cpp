@@ -16,6 +16,7 @@
 #include "Misc/CString.h"
 
 #include "CommonTextBlock.h"
+#include "Actors/Interactables/ConversationHandlers/RTSOInteractableConversationActor.h"
 #include "Components/Image.h"
 #include "Components/Border.h"
 #include "Components/SizeBox.h"
@@ -220,25 +221,28 @@ void URTSOConversationWidget::SelectChoice_Implementation(int32 ChoiceSelection)
 void ARTSOController::BeginPlay()
 {
 	Super::BeginPlay();
+
+	URTSOConversationActorTrackerSubsystem* Tracker =GetWorld()->GetSubsystem<URTSOConversationActorTrackerSubsystem>();
+	check(Tracker != nullptr)
+	Tracker->TrackedPlayerControllers.Emplace(this);
 	
 	ActivateMappingContext(TAG_CTRL_Ctxt_BaseInput);
 	ActivateMappingContext(TAG_CTRL_Ctxt_WorkerUnitMode);
-
-
+	
 	// add id-actor mapping	
 	TMap<AActor*, int32>& ActorToIDMap =  GEngine->GetEngineSubsystem<UPDRTSBaseSubsystem>()->SharedOwnerIDBackMappings;
 	TMap<int32, AActor*>& IDToActorMap =  GEngine->GetEngineSubsystem<UPDRTSBaseSubsystem>()->SharedOwnerIDMappings;
 
-	if (ActorToIDMap.Contains(this))
+	if (ActorToIDMap.Contains(this) && ActorToIDMap.FindRef(this) != INVALID_ID)
 	{
 		ActorID = ActorToIDMap.FindRef(this);
-		IDToActorMap.FindOrAdd(ActorID) = this;
+		IDToActorMap.FindOrAdd(ActorID.GetID()) = this;
 	}
 	else
 	{
-		ActorID = GenerateActorID();
-		ActorToIDMap.FindOrAdd(this) = ActorID;
-		IDToActorMap.FindOrAdd(ActorID) = this;
+		ActorID = FPDPersistentID::GenerateNewPersistentID();
+		ActorToIDMap.FindOrAdd(this) = ActorID.GetID();
+		IDToActorMap.FindOrAdd(ActorID.GetID()) = this;
 	}
 
 	if (MainMenuWidget == nullptr)
@@ -263,9 +267,9 @@ void ARTSOController::EndPlay(const EEndPlayReason::Type EndPlayReason)
 		ActorID = ActorToIDMap.FindRef(this);
 		ActorToIDMap.Remove(this);
 	}
-	if (IDToActorMap.Contains(ActorID))
+	if (IDToActorMap.Contains(ActorID.GetID()))
 	{
-		IDToActorMap.Remove(ActorID);
+		IDToActorMap.Remove(ActorID.GetID());
 	}
 	
 	Super::EndPlay(EndPlayReason);
@@ -1030,7 +1034,7 @@ void ARTSOController::OnSelectionChange(const bool bClearSelection)
 			// Processing handled in UPDMProcessor_EntityCosmetics::Execute function
 			PermadevEntityBase->SelectionState = bClearSelection ? EPDEntitySelectionState::ENTITY_NOTSELECTED : EPDEntitySelectionState::ENTITY_SELECTED;
 			PermadevEntityBase->SelectionGroupIndex = SelectionID;
-			PermadevEntityBase->OwnerID = OwnerID;
+			PermadevEntityBase->OwnerID = OwnerID.GetID();
 			
 		}, EParallelForFlags::BackgroundPriority);
 }

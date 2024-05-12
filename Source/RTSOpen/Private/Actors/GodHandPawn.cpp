@@ -33,6 +33,7 @@
 #include "Chaos/DebugDrawQueue.h"
 
 // Navigation
+#include "ConversationParticipantComponent.h"
 #include "MassCrowdRepresentationSubsystem.h"
 #include "MassRepresentationFragments.h"
 #include "NavigationPath.h"
@@ -649,9 +650,8 @@ AGodHandPawn::AGodHandPawn()
 
 	Collision  = CreateDefaultSubobject<USphereComponent>(TEXT("Collision"));
 	Collision->SetupAttachment(SceneRoot);
-
-
 	PawnMovement = CreateDefaultSubobject<UFloatingPawnMovement>(TEXT("FloatingMovement"));
+	ParticipantComponent = CreateDefaultSubobject<UConversationParticipantComponent>(TEXT("ConversationParticipantComponent"));	
 }
 
 void AGodHandPawn::BeginPlay()

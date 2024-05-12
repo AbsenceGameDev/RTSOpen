@@ -133,11 +133,13 @@ private:
 
 public:
 	/* Gameplay system components */	
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category ="RTS|Pawn|GameplayComponents")
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category ="RTS|Pawn|GameplayComponents")
 	class UPDInteractComponent* InteractComponent = nullptr;
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category ="RTS|Pawn|GameplayComponents")
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category ="RTS|Pawn|GameplayComponents")
 	class UPDInventoryComponent* InventoryComponent = nullptr;
-
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category ="RTS|Pawn|GameplayComponents")
+	class UConversationParticipantComponent* ParticipantComponent = nullptr;
+	
 	/* Niagara */
 	UPROPERTY(EditAnywhere, Category = "RTS|Pawn|Effects")
 	class UNiagaraSystem* NS_WorkerPath;

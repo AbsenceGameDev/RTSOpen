@@ -6,6 +6,7 @@
 #include "RTSOpenCommon.h"
 #include "Actors/GodHandPawn.h"
 #include "Actors/RTSOController.h"
+#include "Actors/Interactables/ConversationHandlers/RTSOInteractableConversationActor.h"
 #include "GameFramework/GameStateBase.h"
 #include "Kismet/GameplayStatics.h"
 #include "Kismet/KismetMathLibrary.h"
@@ -38,6 +39,26 @@ void ARTSOBaseGM::BeginPlay()
 
 	MARK_PROPERTY_DIRTY_FROM_NAME(URTSOBaseGI, bGMReady, GI);
 	GI->bGMReady = true;
+}
+
+// @todo expand this into a real autosave function, remove any dependency on tickrate
+constexpr int32 INT32_HALFMAX = INT32_MAX / 2; 
+constexpr int32 StepTickLimit = 60 /*~tickspersecond*/ * 60 /*secondsperminute*/ * 60 /*approx. minutes*/;
+
+void ARTSOBaseGM::TickActor(float DeltaTime, ELevelTick TickType, FActorTickFunction& ThisTickFunction)
+{
+	Super::TickActor(DeltaTime, TickType, ThisTickFunction);
+
+	static int32 CheapMansDelay = 0;
+	++CheapMansDelay %= INT32_HALFMAX;
+
+	if ((CheapMansDelay % StepTickLimit) == 0)
+	{
+		SaveConversationActorStates();
+		SaveInteractables();
+
+		// @todo finish SaveResources & SaveUnits and then call them here as-well
+	}
 }
 
 void ARTSOBaseGM::OnGeneratedLandscapeReady_Implementation()
@@ -84,7 +105,7 @@ void ARTSOBaseGM::SaveGame_Implementation(const FString& Slot, const bool bAllow
 	
 	const bool bDoesExist = UGameplayStatics::DoesSaveGameExist(SelectedSlot,0);
 	if (bDoesExist && bAllowOverwrite == false) { return; }
-
+	
 	bHasSavedDataAsync = false;
 	FAsyncSaveGameToSlotDelegate Dlgt = FAsyncSaveGameToSlotDelegate::CreateLambda(
 		[This = this](const FString&, int, bool bResult)
@@ -95,6 +116,77 @@ void ARTSOBaseGM::SaveGame_Implementation(const FString& Slot, const bool bAllow
 	
 	UGameplayStatics::AsyncSaveGameToSlot(GameSave, SelectedSlot, 0, Dlgt);
 	bHasStartedSaveData = true;
+}
+
+void ARTSOBaseGM::ProcessChangesAndSaveGame_Implementation(const FString& Slot, const bool bAllowOverwrite)
+{
+	// Async call might be needed here and then after it has finished call SaveGame()
+	SaveConversationActorStates();
+	SaveInteractables();
+	SaveAllPlayerStates();
+
+	// @todo finish SaveResources & SaveUnits and then call them here as-well
+	
+	// @todo @note SaveConversationProgression(); is not needed as we update it directly anytime a player makes conversation progress on the server
+
+
+	// Final step, call to write this data to disk
+	SaveGame(Slot, bAllowOverwrite);
+}
+
+void ARTSOBaseGM::SaveConversationProgression_Implementation()
+{
+}
+
+void ARTSOBaseGM::SaveConversationActorStates_Implementation()
+{
+	check(GameSave != nullptr)
+
+	URTSOConversationActorTrackerSubsystem* Tracker =GetWorld()->GetSubsystem<URTSOConversationActorTrackerSubsystem>();
+	check(Tracker != nullptr)
+
+	for (ARTSOInteractableConversationActor* ConversationActor : Tracker->TrackedConversationActors)
+	{
+		if (ConversationActor == nullptr) { continue; }
+		
+		FPDPersistentID IDStruct =
+			ConversationActor->ConversationActorPersistentID.IsValidID()
+			? ConversationActor->ConversationActorPersistentID.GetID()
+			: FPDPersistentID::GenerateNewPersistentID();
+		
+		FRTSSavedConversationActorData& State = GameSave->ConversationActorState.FindOrAdd(IDStruct.GetID());
+		State.Health = 1.0; // Force full health for now
+		State.Location = ConversationActor->GetActorLocation();
+		State.ActorClassType = TSoftClassPtr<ARTSOInteractableConversationActor>(ConversationActor->GetClass());
+		
+		State.ProgressionPerPlayer.Empty();
+		for (TTuple<int32/*PlayerID*/, int32/**/> PlayerInstanceData : ConversationActor->InstanceData.ProgressionPerPlayer)
+		{
+			State.ProgressionPerPlayer.FindOrAdd(PlayerInstanceData.Key) = PlayerInstanceData.Value;
+		}
+	}
+
+	// @todo: store current active savegame slot index and use here, remove placeholder of 'INDEX_NONE'
+	SaveGame(FString::FromInt(INDEX_NONE));	
+}
+
+void ARTSOBaseGM::SaveAllPlayerStates()
+{
+	URTSOConversationActorTrackerSubsystem* Tracker =GetWorld()->GetSubsystem<URTSOConversationActorTrackerSubsystem>();
+	check(Tracker != nullptr)
+
+	for (ARTSOController* Controller : Tracker->TrackedPlayerControllers)
+	{
+		SavePlayerState(Controller);
+	}
+}
+
+void ARTSOBaseGM::SavePlayerState_Implementation(ARTSOController* PlayerController)
+{
+	check(GameSave != nullptr)
+
+	// todo store player stats here as-well when I've finished writing the progression system 
+	GameSave->PlayerLocations.FindOrAdd(PlayerController->GetActorID()) = PlayerController->GetPawn()->GetActorLocation();
 }
 
 void ARTSOBaseGM::SaveInteractables_Implementation()

@@ -12,6 +12,8 @@
 #include "CommonButtonBase.h"
 #include "RTSOpenCommon.generated.h"
 
+
+class ARTSOInteractableConversationActor;
 /** @brief Save data for inventory items */
 USTRUCT(BlueprintType, Blueprintable)
 struct FRTSSavedItems
@@ -20,6 +22,28 @@ struct FRTSSavedItems
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
 	TArray<FPDItemNetDatum> Items;
+};
+
+/** @brief Save data for conversation progression actors and players conversation progressions  */
+USTRUCT(BlueprintType, Blueprintable)
+struct FRTSSavedConversationActorData
+{
+	GENERATED_BODY()
+	
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	TSet<FName /*Missions to load from table*/> Missions{};
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Data|SaveGame|Unit")
+	FVector Location{}; // Location of conversation progression actor it belongs to
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Data|SaveGame|Unit")
+	TSoftClassPtr<ARTSOInteractableConversationActor> ActorClassType{};
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly)
+	TMap<int32/*ActorID*/, int32/*ProgressionLever*/> ProgressionPerPlayer; /**< @brief progression*/
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Data|SaveGame|Unit")
+	double Health = 1.0; // assume it will always be 1.0 for now		
 };
 
 /** @brief Save data for world units/entities*/
@@ -52,12 +76,21 @@ public:
 	double GameTime = 0.0;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "GameInstance|Widgets")
+	TMap<int32 /*Player Persistent ID*/, FVector> PlayerLocations{}; 
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "GameInstance|Widgets")
 	TArray<FRTSSavedInteractables> Interactables;
 
 	/** @brief userid tied to some account id?, in singleplayer keep only one entry */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "GameInstance|Widgets")
 	TMap<int32, FRTSSavedItems> Inventories;
 
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "GameInstance|Widgets")
+	TMap<int32 /*ConversationActorID*/, FRTSSavedConversationActorData> ConversationActorState;
+
+	/** @brief userid tied to some account id?, in singleplayer keep only one entry */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	TMap<int32 /*PlayerID*/, FGameplayTagContainer> PlayersAndConversationTags{};
 };
 
 /** @brief @todo move to new file in UI folder */

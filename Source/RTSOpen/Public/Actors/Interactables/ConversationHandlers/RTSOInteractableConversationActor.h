@@ -8,9 +8,11 @@
 #include "NativeGameplayTags.h"
 #include "PDConversationCommons.h"
 #include "Actors/PDInteractActor.h"
+#include "Interfaces/PDPersistenceInterface.h"
 #include "Interfaces/RTSOConversationInterface.h"
 #include "RTSOInteractableConversationActor.generated.h"
 
+class ARTSOController;
 class UCameraComponent;
 class UPDConversationInstance;
 class URTSOConversationInstance;
@@ -89,6 +91,9 @@ class RTSOPEN_API URTSOConversationInstance : public UPDConversationInstance
 public:
 	/** @brief */
 	virtual void PauseConversationAndSendClientChoices(const FConversationContext& Context, const FClientConversationMessage& ClientMessage) override;
+
+	virtual void OnChoiceNodePickedByUser(const FConversationContext& Context, const UConversationChoiceNode* ChoiceNode, const TArray<FConversationBranchPoint>& ValidDestinations) override;
+	
 };
 
 /** @brief This class holds some helper and possibly debug functions we might want to use */
@@ -125,12 +130,14 @@ class RTSOPEN_API ARTSOInteractableConversationActor
 
 public:
 	ARTSOInteractableConversationActor();
+
 	
 	void ConversationStarted();
 	void ConversationTaskChoiceDataUpdated(const FConversationNodeHandle& NodeHandle, const FClientConversationOptionEntry& OptionEntry);
 	void ConversationUpdated(const FClientConversationMessagePayload& Payload);
 	void ConversationStatusChanged(bool bDidStatusChange);
 	virtual void BeginPlay() override;
+	virtual void BeginDestroy() override;
 
 	virtual FGameplayTagContainer GetGenericTagContainer_Implementation() const override;
 
@@ -164,6 +171,8 @@ public:
 	UPROPERTY(EditAnywhere)
 	FString GameFeatureName = "ConversationData";
 
+	UPROPERTY(EditAnywhere)
+	FPDPersistentID ConversationActorPersistentID;
 private:
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Meta = (AllowPrivateAccess="true"))
 	FGameplayTag JobTag{};
@@ -171,6 +180,22 @@ private:
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Meta = (AllowPrivateAccess="true"))
 	UCameraComponent* ConversationCamera = nullptr;	
 };
+
+UCLASS()
+class URTSOConversationActorTrackerSubsystem : public UWorldSubsystem
+{
+	GENERATED_BODY()
+public:
+
+	// @todo start: make sure these actors copy their progression data before being destroyed
+	// @todo cont:  if being destroyed by lets say an in-game event or via an intentional player interaction
+	UPROPERTY()
+	TSet<ARTSOInteractableConversationActor*> TrackedConversationActors{};
+
+	UPROPERTY()
+	TSet<ARTSOController*> TrackedPlayerControllers{};	
+};
+
 
 /**
  * Declaring the "Conversation.Entry" gameplay tags. to be defined in an object-file

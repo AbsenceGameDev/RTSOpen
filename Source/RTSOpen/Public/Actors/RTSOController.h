@@ -12,6 +12,7 @@
 #include "InputModifiers.h"
 #include "MassEntityTypes.h"
 #include "GameFramework/PlayerController.h"
+#include "Interfaces/PDPersistenceInterface.h"
 #include "Widgets/RTSOMainMenuBase.h"
 
 
@@ -290,12 +291,7 @@ class RTSOPEN_API ARTSOController : public APlayerController, public IRTSOInputI
 		CurrentSelectionID = MaxSelectionHotkeyIndex + NewStep;
 		
 		return CurrentSelectionID;
-	} 
-	UFUNCTION() FORCEINLINE int32 GenerateActorID()
-	{
-		static int32 StaticGroupIDStart = 99;
-		return ++StaticGroupIDStart;
-	} 
+	}
 	
 	UFUNCTION() FORCEINLINE int32 GetLatestGroupID() const { return CurrentSelectionID; }
 	UFUNCTION() FORCEINLINE int32 GetCurrentGroupID() const { return CurrentSelectionID; }
@@ -305,12 +301,12 @@ class RTSOPEN_API ARTSOController : public APlayerController, public IRTSOInputI
 	UFUNCTION() void OnBeginConversation(const FClientConversationMessagePayload& Payload, AActor* PotentialCallbackActor);
 	UFUNCTION() void OnAdvanceConversation(const FClientConversationMessagePayload& Payload, AActor* PotentialCallbackActor);
 	UFUNCTION() void OnEndConversation(const FClientConversationMessagePayload& Payload, AActor* PotentialCallbackActor);
+	UFUNCTION(BlueprintCallable) int32 GetActorID() { return ActorID.GetID(); };
 	static void DrawBoxAndTextChaos(const FVector& BoundsCenter, const FQuat& Rotation, const FVector& DebugExtent, const FString& DebugBoxTitle, FColor LineColour = FColor::Black);
 	static void AdjustMarqueeHitResultsToMinimumHeight(FHitResult& StartHitResult, FHitResult& CenterHitResult, FHitResult& EndHitResult);
 	UFUNCTION() void GetEntitiesOrActorsInMarqueeSelection();
 	UFUNCTION() void ReorderGroupIndex(const int32 OldID, const int32 NewID);
 	const TMap<int32, TMap<int32, FMassEntityHandle>>& GetMarqueeSelectionMap() { return MarqueeSelectedHandles; }
-	UFUNCTION() int32 GetActorID() { return ActorID; };
 	UFUNCTION() FORCEINLINE URTSOConversationWidget* GetConversationWidget() const { return ConversationWidget;};
 
 	UFUNCTION() FORCEINLINE FHitResult GetLatestStartHitResult()  { return LatestStartHitResult;};
@@ -388,7 +384,7 @@ protected:
 	FHitResult LatestEndHitResult{};
 
 	UPROPERTY(VisibleInstanceOnly)
-	int32 ActorID = INDEX_NONE;
+	FPDPersistentID ActorID{};
 	UPROPERTY(VisibleInstanceOnly)
 	int32 RollbackSelectionID = INDEX_NONE; /**< @brief */
 	UPROPERTY(VisibleInstanceOnly)
