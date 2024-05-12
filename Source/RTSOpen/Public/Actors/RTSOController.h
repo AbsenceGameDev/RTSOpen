@@ -242,10 +242,10 @@ class RTSOPEN_API ARTSOController : public APlayerController, public IRTSOInputI
 
 	/* RTSO Menu interface - Start, @todo move to actual interface if we start making more menus*/
 	UFUNCTION() void OnReleased_Resume();
-	UFUNCTION() void OnReleased_Settings();
-	UFUNCTION() void OnReleased_Save();
-	UFUNCTION() void OnReleased_Load();
 	UFUNCTION() void OnReleased_QuitGame();	
+	/*Handled via the buttons target widget class*/ // UFUNCTION() void OnReleased_Settings(); 
+	/*Handled via the buttons target widget class*/ // UFUNCTION() void OnReleased_Save();
+	/*Handled via the buttons target widget class*/ // UFUNCTION() void OnReleased_Load();
 	/* RTSO Menu interface - End, @todo move to actual interface if we start making more menus*/
 	
 

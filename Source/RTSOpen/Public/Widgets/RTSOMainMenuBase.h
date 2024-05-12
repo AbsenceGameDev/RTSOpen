@@ -23,12 +23,39 @@ public:
 
 	UFUNCTION()
 	void BindButtonDelegates(AActor* ActorToBindAt);
+	void SetupInnerMenuDelegates(const URTSOMenuWidget* OuterMenu);
 
+	UFUNCTION() void SettingsTargetWidget();	
+	UFUNCTION() void SaveTargetWidget();
+	UFUNCTION() void LoadTargetWidget();
+
+	// Fix this, not scalable at all
+	UFUNCTION() void SaveOrLoadSlot(TEnumAsByte<ERTSOSaveType> Type, int32 SlotIdx);
+	UFUNCTION() void LoadSlot0() { SaveOrLoadSlot(ERTSOSaveType::LOAD, 0); };
+	UFUNCTION() void LoadSlot1() { SaveOrLoadSlot(ERTSOSaveType::LOAD, 1); };
+	UFUNCTION() void LoadSlot2() { SaveOrLoadSlot(ERTSOSaveType::LOAD, 2); };
+	UFUNCTION() void LoadSlot3() { SaveOrLoadSlot(ERTSOSaveType::LOAD, 3); };
+	UFUNCTION() void LoadSlot4() { SaveOrLoadSlot(ERTSOSaveType::LOAD, 4); };
+	UFUNCTION() void CloseLoadSlot();
+
+	UFUNCTION() void SaveSlot0() { SaveOrLoadSlot(ERTSOSaveType::SAVE, 0); };
+	UFUNCTION() void SaveSlot1() { SaveOrLoadSlot(ERTSOSaveType::SAVE, 1); };
+	UFUNCTION() void SaveSlot2() { SaveOrLoadSlot(ERTSOSaveType::SAVE, 2); };
+	UFUNCTION() void SaveSlot3() { SaveOrLoadSlot(ERTSOSaveType::SAVE, 3); };
+	UFUNCTION() void SaveSlot4() { SaveOrLoadSlot(ERTSOSaveType::SAVE, 4); };
+	UFUNCTION() void CloseSaveSlot();
+	
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Meta = (BindWidget))
 	class UCommonActivatableWidgetStack* WidgetStack;
 
 	UPROPERTY(EditAnywhere, BlueprintReadOnly)
 	TSubclassOf<URTSOMenuWidget> WidgetClass = nullptr;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly)
+	TSubclassOf<URTSOSaveGameDialog> ConfirmDialogClass = nullptr;	
+	
+	UPROPERTY()
+	URTSOMenuWidget* ActiveMenuInstance = nullptr;
 };
 
 

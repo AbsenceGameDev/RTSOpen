@@ -39,11 +39,11 @@ public: // Method members
 
 	/** @brief Dispatches an async save */
 	UFUNCTION(BlueprintNativeEvent, BlueprintCallable)
-	void SaveGame();
+	void SaveGame(const FString& Slot, const bool bAllowOverwrite = false);
 
 	/** @brief Loads save from slot, if a save exists */
 	UFUNCTION(BlueprintNativeEvent, BlueprintCallable)
-	void LoadGame();
+	void LoadGame(const FString& Slot, const bool bDummyParam = false);
 	
 	/** @brief Save interactables */
 	UFUNCTION(BlueprintNativeEvent, BlueprintCallable)

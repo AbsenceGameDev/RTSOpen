@@ -30,6 +30,7 @@ void ARTSOBaseGM::BeginPlay()
 {
 	Super::BeginPlay();
 	
+	GameSave = Cast<URTSOpenSaveGame>(UGameplayStatics::CreateSaveGameObject(URTSOpenSaveGame::StaticClass()));
 	
 	URTSOBaseGI* GI = Cast<URTSOBaseGI>(GetWorld()->GetGameInstance());
 	if (GI == nullptr) { return; }
@@ -37,7 +38,6 @@ void ARTSOBaseGM::BeginPlay()
 
 	MARK_PROPERTY_DIRTY_FROM_NAME(URTSOBaseGI, bGMReady, GI);
 	GI->bGMReady = true;
-	
 }
 
 void ARTSOBaseGM::OnGeneratedLandscapeReady_Implementation()
@@ -45,15 +45,17 @@ void ARTSOBaseGM::OnGeneratedLandscapeReady_Implementation()
 	// Load file data if it exists
 }
 
-void ARTSOBaseGM::LoadGame_Implementation()
+void ARTSOBaseGM::LoadGame_Implementation(const FString& Slot, const bool bDummyParam)
 {
-	const bool bDoesExist = UGameplayStatics::DoesSaveGameExist(ROOTSAVE,0);
-
+	const FString SelectedSlot = Slot == FString() ? ARTSOBaseGM::ROOTSAVE : Slot;
+	
+	const bool bDoesExist = UGameplayStatics::DoesSaveGameExist(SelectedSlot,0);
 	if (bDoesExist)
 	{
- 		GameSave = Cast<URTSOpenSaveGame>(UGameplayStatics::LoadGameFromSlot(ROOTSAVE,0));
+ 		GameSave = Cast<URTSOpenSaveGame>(UGameplayStatics::LoadGameFromSlot(SelectedSlot,0));
 		return;
 	}
+	
 	GameSave = Cast<URTSOpenSaveGame>(UGameplayStatics::CreateSaveGameObject(URTSOpenSaveGame::StaticClass()));
 }
 
@@ -74,9 +76,14 @@ void ARTSOBaseGM::ClearSave_Implementation(const bool bRefreshSeed)
 	bHasStartedSaveData = false;
 }
 
-void ARTSOBaseGM::SaveGame_Implementation()
+void ARTSOBaseGM::SaveGame_Implementation(const FString& Slot, const bool bAllowOverwrite)
 {
 	check(GameSave != nullptr)
+
+	const FString SelectedSlot = Slot == FString() ? ARTSOBaseGM::ROOTSAVE : Slot;
+	
+	const bool bDoesExist = UGameplayStatics::DoesSaveGameExist(SelectedSlot,0);
+	if (bDoesExist && bAllowOverwrite == false) { return; }
 
 	bHasSavedDataAsync = false;
 	FAsyncSaveGameToSlotDelegate Dlgt = FAsyncSaveGameToSlotDelegate::CreateLambda(
@@ -86,7 +93,7 @@ void ARTSOBaseGM::SaveGame_Implementation()
 			This->bHasSavedDataAsync = bResult; 
 		});
 	
-	UGameplayStatics::AsyncSaveGameToSlot(GameSave, "ROOT_SAVE", 0, Dlgt);
+	UGameplayStatics::AsyncSaveGameToSlot(GameSave, SelectedSlot, 0, Dlgt);
 	bHasStartedSaveData = true;
 }
 
@@ -118,7 +125,8 @@ void ARTSOBaseGM::SaveInteractables_Implementation()
 	
 	GameSave->Interactables.Append(SaveInfo.ActorInfo);
 
-	SaveGame();
+	// @todo: store current active savegame slot index and use here, remove placeholder of 'INDEX_NONE'
+	SaveGame(FString::FromInt(INDEX_NONE));
 }
 
 void ARTSOBaseGM::SaveResources_Implementation(const TMap<int32, FRTSSavedItems>& DataRef)

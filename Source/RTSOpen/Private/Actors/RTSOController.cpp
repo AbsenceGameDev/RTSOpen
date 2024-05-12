@@ -587,18 +587,6 @@ void ARTSOController::OnReleased_Resume()
 	MainMenuWidget->DeactivateWidget();
 }
 
-void ARTSOController::OnReleased_Settings()
-{
-}
-
-void ARTSOController::OnReleased_Save()
-{
-}
-
-void ARTSOController::OnReleased_Load()
-{
-}
-
 void ARTSOController::OnReleased_QuitGame()
 {
 	// @todo (backlog) Warn if progress is not saved

@@ -20,7 +20,8 @@ void URTSOBaseGI::InitializeGame_Implementation()
 	}
 
 	// Will only run on the server if multiplayer, which is intended
-	GM->LoadGame();
+	// @todo: store current active savegame slot index and use here, remove placeholder of 'INDEX_NONE'
+	GM->LoadGame(FString::FromInt(INDEX_NONE));
 }
 
 void URTSOBaseGI::OpenLevel_Implementation()

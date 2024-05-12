@@ -9,6 +9,16 @@
 
 class UCommonTextBlock;
 
+DECLARE_DELEGATE_TwoParams(FRTSOSavegameDelegate, const FString&, bool)
+
+UENUM()
+enum ERTSOSaveType
+{
+	SAVE,
+	LOAD
+};
+
+
 UCLASS(Blueprintable)
 class URTSOMenuButton : public UUserWidget
 {
@@ -28,8 +38,98 @@ public:
 	class UTextBlock* TextBlock = nullptr;	
 	
 	UPROPERTY(BlueprintReadWrite, Meta=(BindWidget))
-	class UButton* Hitbox = nullptr;	
+	class UButton* Hitbox = nullptr;
+
+	/** @brief Target of the button press, add this class to the stack */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly)
+	TSubclassOf<UCommonActivatableWidget> PotentialTargetWidgetClass = nullptr;
+	UPROPERTY()
+	class URTSOMainMenuBase* OwningStack = nullptr;	
+};
+
+UCLASS(Blueprintable)
+class URTSOSaveGameDialog : public UUserWidget
+{
+	GENERATED_BODY()
+
+public:
+
+	UFUNCTION()
+	void DialogReplyContinue();
+
+	UFUNCTION()
+	void SetupDelegates();	
+
+	UFUNCTION()
+	void Reply_Yes();	
+
+	UFUNCTION()
+	void Reply_No();	
+
+	UPROPERTY(BlueprintReadWrite, Meta=(BindWidget))
+	class UTextBlock* DialogContent = nullptr;	
 	
+	UPROPERTY(BlueprintReadWrite, Meta=(BindWidget))
+	class URTSOMenuButton* YesButton = nullptr;
+
+	UPROPERTY(BlueprintReadWrite, Meta=(BindWidget))
+	class URTSOMenuButton* NoButton = nullptr;	
+	
+	UPROPERTY(EditAnywhere)
+	FText DialogMessage{};
+	UPROPERTY()
+	TEnumAsByte<ERTSOSaveType> Type = ERTSOSaveType::LOAD;
+	UPROPERTY()
+	int32 SlotIdx = INDEX_NONE;
+
+	FRTSOSavegameDelegate SuccessCallback{};
+};
+
+UCLASS(Blueprintable)
+class URTSOMenuWidget_SaveGame : public UCommonActivatableWidget
+{
+	GENERATED_BODY()
+
+public:
+	void ClearDelegates() const;
+
+	virtual void NativePreConstruct() override;
+	
+	UPROPERTY(BlueprintReadWrite, Meta=(BindWidget))
+	class UCanvasPanel* BaseCanvas = nullptr;
+
+	UPROPERTY(BlueprintReadWrite, Meta=(BindWidget))
+	class UVerticalBox* MainBox = nullptr;
+
+	UPROPERTY(BlueprintReadWrite, Meta=(BindWidget))
+	class UCanvasPanel* BannerCanvas = nullptr;
+
+	UPROPERTY(BlueprintReadWrite, Meta=(BindWidget))
+	class UTextBlock* BannerText = nullptr;
+
+	UPROPERTY(BlueprintReadWrite, Meta=(BindWidget))
+	class UImage* BannerImage = nullptr;
+
+	UPROPERTY(BlueprintReadWrite, Meta=(BindWidget))
+	class URTSOMenuButton* ExitButton = nullptr;
+
+	UPROPERTY(BlueprintReadWrite, Meta=(BindWidget))
+	class UVerticalBox* InnerBox = nullptr;
+
+	// @todo replace with ulistview of slots
+	UPROPERTY(BlueprintReadWrite, Meta=(BindWidget))
+	class URTSOMenuButton* Slot0 = nullptr;	
+	UPROPERTY(BlueprintReadWrite, Meta=(BindWidget))
+	class URTSOMenuButton* Slot1 = nullptr;	
+	UPROPERTY(BlueprintReadWrite, Meta=(BindWidget))
+	class URTSOMenuButton* Slot2 = nullptr;
+	UPROPERTY(BlueprintReadWrite, Meta=(BindWidget))
+	class URTSOMenuButton* Slot3 = nullptr;
+	UPROPERTY(BlueprintReadWrite, Meta=(BindWidget))
+	class URTSOMenuButton* Slot4 = nullptr;	
+	
+	UPROPERTY()
+	class URTSOMainMenuBase* OwningStack = nullptr;	
 };
 
 UCLASS(Blueprintable)
@@ -59,7 +159,7 @@ public:
 	class UVerticalBox* VerticalBoxContainer = nullptr;
 
 	UPROPERTY()
-	UCommonActivatableWidget* OwningStack = nullptr;	
+	class URTSOMainMenuBase* OwningStack = nullptr;	
 };
 
 

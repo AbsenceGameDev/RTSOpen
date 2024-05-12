@@ -3,6 +3,7 @@
 #include "Widgets/RTSOMainMenuBase.h"
 
 #include "Actors/RTSOController.h"
+#include "Core/RTSOBaseGM.h"
 #include "Widgets/RTSOActiveMainMenu.h"
 #include "Widgets/CommonActivatableWidgetContainer.h"
 
@@ -10,7 +11,7 @@ void URTSOMainMenuBase::NativeOnActivated()
 {
 	Super::NativeOnActivated();
 
-	// in lieu of a Clear function, or rather in lieu of an actaul implementation of Clear which clears elements in the stack
+	// in lieu of a Clear function, or rather in lieu of an actual implementation of Clear which clears elements in the stack
 	TArray<UCommonActivatableWidget*> Widgets{};
 	for (UCommonActivatableWidget* ItWidget : WidgetStack->GetWidgetList())
 	{
@@ -26,7 +27,8 @@ void URTSOMainMenuBase::NativeOnActivated()
 	
 
 	UClass* SelectedClass = WidgetClass != nullptr ? WidgetClass.Get() : URTSOMenuWidget::StaticClass();
-	WidgetStack->AddWidget<URTSOMenuWidget>(SelectedClass)->OwningStack = this;
+	ActiveMenuInstance = WidgetStack->AddWidget<URTSOMenuWidget>(SelectedClass);
+	ActiveMenuInstance->OwningStack = this;
 }
 
 void URTSOMainMenuBase::BindButtonDelegates(AActor* ActorToBindAt)
@@ -44,17 +46,130 @@ void URTSOMainMenuBase::BindButtonDelegates(AActor* ActorToBindAt)
 		// All these objects are marked with a metaspecifier BindWidget, thus we can be sure this piece of code never gets run if the stacked URTSOMenuWidget is not valid
 		AsMenu->ClearDelegates();
 		AsMenu->ResumeButton->Hitbox->OnReleased.AddUniqueDynamic(AsController, &ARTSOController::OnReleased_Resume);
-		AsMenu->SettingsButton->Hitbox->OnReleased.AddUniqueDynamic(AsController, &ARTSOController::OnReleased_Settings);
-		AsMenu->SaveButton->Hitbox->OnReleased.AddUniqueDynamic(AsController, &ARTSOController::OnReleased_Save);
-		AsMenu->LoadButton->Hitbox->OnReleased.AddUniqueDynamic(AsController, &ARTSOController::OnReleased_Load);
 		AsMenu->QuitButton->Hitbox->OnReleased.AddUniqueDynamic(AsController, &ARTSOController::OnReleased_QuitGame);
+		SetupInnerMenuDelegates(AsMenu);
+	}
+}
+
+void URTSOMainMenuBase::SetupInnerMenuDelegates(const URTSOMenuWidget* OuterMenu)
+{
+	OuterMenu->SettingsButton->OwningStack =
+		OuterMenu->SaveButton->OwningStack =
+		OuterMenu->LoadButton->OwningStack = this;
+	
+	if (OuterMenu->SettingsButton->PotentialTargetWidgetClass != nullptr)
+	{
+		OuterMenu->SettingsButton->Hitbox->OnReleased.AddDynamic(this, &URTSOMainMenuBase::SettingsTargetWidget);
+	}
+	
+	if (OuterMenu->SaveButton->PotentialTargetWidgetClass != nullptr)
+	{
+		OuterMenu->SaveButton->Hitbox->OnReleased.AddDynamic(this, &URTSOMainMenuBase::SaveTargetWidget);
+	}
+
+	if (OuterMenu->LoadButton->PotentialTargetWidgetClass)
+	{
+		OuterMenu->LoadButton->Hitbox->OnReleased.AddDynamic(this, &URTSOMainMenuBase::LoadTargetWidget);
+	}
+}
+
+void URTSOMainMenuBase::SettingsTargetWidget()
+{
+	if (ActiveMenuInstance == nullptr) { return;; }
+	WidgetStack->AddWidget(ActiveMenuInstance->SettingsButton->PotentialTargetWidgetClass);
+}
+
+void URTSOMainMenuBase::SaveTargetWidget()
+{
+	if (ActiveMenuInstance == nullptr ||
+		ActiveMenuInstance->SaveButton->PotentialTargetWidgetClass->IsChildOf(URTSOMenuWidget_SaveGame::StaticClass()) == false)
+	{
+		return;
+	}
+	
+	URTSOMenuWidget_SaveGame* SaveWidget = WidgetStack->AddWidget<URTSOMenuWidget_SaveGame>(ActiveMenuInstance->SaveButton->PotentialTargetWidgetClass);
+	SaveWidget->OwningStack = this;
+	SaveWidget->Slot0->Hitbox->OnReleased.AddDynamic(this, &URTSOMainMenuBase::SaveSlot0);
+	SaveWidget->Slot1->Hitbox->OnReleased.AddDynamic(this, &URTSOMainMenuBase::SaveSlot1);
+	SaveWidget->Slot2->Hitbox->OnReleased.AddDynamic(this, &URTSOMainMenuBase::SaveSlot2);
+	SaveWidget->Slot3->Hitbox->OnReleased.AddDynamic(this, &URTSOMainMenuBase::SaveSlot3);
+	SaveWidget->Slot4->Hitbox->OnReleased.AddDynamic(this, &URTSOMainMenuBase::SaveSlot4);
+	SaveWidget->ExitButton->Hitbox->OnReleased.AddDynamic(this, &URTSOMainMenuBase::CloseSaveSlot);
+}
+
+void URTSOMainMenuBase::LoadTargetWidget()
+{
+	if (ActiveMenuInstance == nullptr ||
+		ActiveMenuInstance->LoadButton->PotentialTargetWidgetClass->IsChildOf(URTSOMenuWidget_SaveGame::StaticClass()) == false)
+	{
+		return;
+	}
+	
+	URTSOMenuWidget_SaveGame* LoadWidget = WidgetStack->AddWidget<URTSOMenuWidget_SaveGame>(ActiveMenuInstance->LoadButton->PotentialTargetWidgetClass);
+	LoadWidget->OwningStack = this;
+	LoadWidget->Slot0->Hitbox->OnReleased.AddDynamic(this, &URTSOMainMenuBase::LoadSlot0);
+	LoadWidget->Slot1->Hitbox->OnReleased.AddDynamic(this, &URTSOMainMenuBase::LoadSlot1);
+	LoadWidget->Slot2->Hitbox->OnReleased.AddDynamic(this, &URTSOMainMenuBase::LoadSlot2);
+	LoadWidget->Slot3->Hitbox->OnReleased.AddDynamic(this, &URTSOMainMenuBase::LoadSlot3);
+	LoadWidget->Slot4->Hitbox->OnReleased.AddDynamic(this, &URTSOMainMenuBase::LoadSlot4);
+	LoadWidget->ExitButton->Hitbox->OnReleased.AddDynamic(this, &URTSOMainMenuBase::CloseLoadSlot);
+}
+
+void URTSOMainMenuBase::SaveOrLoadSlot(TEnumAsByte<ERTSOSaveType> Type, int32 SlotIdx)
+{
+	ARTSOBaseGM* GM = GetWorld() != nullptr ? GetWorld()->GetAuthGameMode<ARTSOBaseGM>() : nullptr;
+	if (GM == nullptr) { return; }
+	
+	// @todo Finish actual implementation here (URTSOMainMenuBase::SaveOrLoadSlot)
+	// @todo 1. Check if user is sure they want to save or load
+	// @todo 2. Call into the GM and set save/load
+
+	
+	URTSOSaveGameDialog* Dialog = CreateWidget<URTSOSaveGameDialog>(this, ConfirmDialogClass != nullptr ? ConfirmDialogClass.Get() : URTSOSaveGameDialog::StaticClass()); 
+	Dialog->Type = Type;
+	Dialog->SlotIdx = SlotIdx;
+
+	// @todo move dialog-messages into a string-table
+	switch (Type)
+	{
+	case SAVE:
+		Dialog->DialogMessage = FText::FromString("Are you sure you want to save slot (" + FString::Printf(TEXT("%i )"), SlotIdx));
+		Dialog->SuccessCallback.BindUObject(GM, &ARTSOBaseGM::SaveGame);
+		break;
+	case LOAD:
+		Dialog->DialogMessage = FText::FromString("Are you sure you want to load slot (" + FString::Printf(TEXT("%i )"), SlotIdx));
+		Dialog->SuccessCallback.BindUObject(GM, &ARTSOBaseGM::LoadGame);
+		break;
+	}
+	Dialog->AddToViewport(10);
+	Dialog->SetupDelegates();
+}
+
+void URTSOMainMenuBase::CloseLoadSlot()
+{
+	CloseSaveSlot(); // Closes any URTSOMenuWidget_SaveGame, from which both the loadmenu and savemenu derives
+}
+
+void URTSOMainMenuBase::CloseSaveSlot()
+{
+	// in lieu of a Clear function, or rather in lieu of an actual implementation of Clear which clears elements in the stack
+	TArray<UCommonActivatableWidget*> Widgets{};
+	for (UCommonActivatableWidget* ItWidget : WidgetStack->GetWidgetList())
+	{
+		const URTSOMenuWidget_SaveGame* AsMenu = Cast<URTSOMenuWidget_SaveGame>(ItWidget);
+		if (AsMenu == nullptr) { continue; }
+
+		Widgets.Emplace(ItWidget);
+	}
+	for (UCommonActivatableWidget* ItWidget : Widgets)
+	{
+		WidgetStack->RemoveWidget(*ItWidget);
 	}
 }
 
 void URTSOMainMenuBase::PushToWidgetStack_Implementation(TSubclassOf<UCommonActivatableWidget> Subclass)
 {
 	WidgetStack->AddWidget(Subclass);
-	
 }
 
 

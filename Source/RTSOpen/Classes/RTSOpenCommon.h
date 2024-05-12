@@ -28,13 +28,13 @@ struct FRTSSavedWorldUnits
 {
 	GENERATED_BODY()
 
-	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Data|SaveGame|Unit")
 	FGameplayTag UnitType;
 
-	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Data|SaveGame|Unit")
 	FVector Location;
 
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "GameInstance|Widgets")
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Data|SaveGame|Unit")
 	double Health = 0.0;	
 	
 };

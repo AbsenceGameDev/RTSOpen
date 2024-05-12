@@ -3,6 +3,57 @@
 
 #include "Widgets/RTSOActiveMainMenu.h"
 
+#include "Components/TextBlock.h"
+#include "Core/RTSOBaseGM.h"
+#include "Widgets/CommonActivatableWidgetContainer.h"
+// #include "Components/CanvasPanel.h"
+// #include "Components/VerticalBox.h"
+// #include "Components/TextBlock.h"
+// #include "Components/Image.h"
+
+void URTSOSaveGameDialog::DialogReplyContinue()
+{
+	ARTSOBaseGM* GM = GetWorld() != nullptr ? GetWorld()->GetAuthGameMode<ARTSOBaseGM>() : nullptr;
+	if (GM == nullptr) { return; }
+
+	SuccessCallback.Execute(FString::FromInt(SlotIdx), true);
+}
+
+void URTSOSaveGameDialog::SetupDelegates()
+{
+	YesButton->Hitbox->OnReleased.AddDynamic(this, &URTSOSaveGameDialog::Reply_Yes);
+	NoButton->Hitbox->OnReleased.AddDynamic(this, &URTSOSaveGameDialog::Reply_No);
+
+	if (DialogContent == nullptr) { return; }
+	DialogContent->SetText(DialogMessage);
+}
+
+void URTSOSaveGameDialog::Reply_Yes()
+{
+	DialogReplyContinue();
+	RemoveFromParent();
+}
+
+void URTSOSaveGameDialog::Reply_No()
+{
+	RemoveFromParent();
+}
+
+void URTSOMenuWidget_SaveGame::NativePreConstruct()
+{
+	// BaseCanvas->AddChildToCanvas(MainBox);
+	// MainBox->AddChildToVerticalBox(BannerCanvas);
+	// BannerCanvas->AddChildToCanvas(BannerText);
+	// BannerCanvas->AddChildToCanvas(BannerImage);
+	// BannerCanvas->AddChildToCanvas(ExitButton);
+	// MainBox->AddChildToVerticalBox(InnerBox);
+	// InnerBox->AddChildToVerticalBox(Slot0);
+	// InnerBox->AddChildToVerticalBox(Slot1);
+	// InnerBox->AddChildToVerticalBox(Slot2);
+	// InnerBox->AddChildToVerticalBox(Slot3);
+	// InnerBox->AddChildToVerticalBox(Slot4);
+	Super::NativePreConstruct();
+}
 
 void URTSOMenuWidget::ClearDelegates() const
 {
@@ -12,9 +63,6 @@ void URTSOMenuWidget::ClearDelegates() const
 	LoadButton->Hitbox->OnReleased.Clear();
 	QuitButton->Hitbox->OnReleased.Clear();	
 }
-
-
-
 
 /**
 Business Source License 1.1
