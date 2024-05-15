@@ -28,6 +28,7 @@ class PDRTSBASE_API UPDRTSBaseUnit : public UInstancedStaticMeshComponent
 	GENERATED_UCLASS_BODY()
 
 public:
+	/** @brief */
 	virtual TArray<int32> GetInstancesOverlappingSphere(const FVector& Center, float Radius, bool bSphereInWorldSpace) const override;
 	
 	/** @brief Sets job back to idle */
@@ -59,38 +60,43 @@ public:
 		const FGameplayTag& RequestedJob,
 		const TMap<int32, FMassEntityHandle>& EntityHandleMap,
 		const FVector&                        SelectionCenter,
-		int32 SelectionGroup = INDEX_NONE);		
-	
-	// const TMap<int32, FMassEntityHandle>&
-	
+		int32 SelectionGroup = INDEX_NONE);
 	
 	/** @brief Assigns the entity manager for the world we are in, so we can refer to it and modify fragments when needed */
 	FORCEINLINE void SetEntityManager(const FMassEntityManager* InEntityManager) { EntityManager = InEntityManager;}
 
 protected:
+	/** @brief */
 	virtual void BeginPlay() override;
 
 	/** @brief Sets job to the requested job on the requested entity, only called when approved */
 	void AssignTask(FMassEntityHandle EntityHandle, const FGameplayTag& JobTag, const FPDTargetCompound& OptTarget);
 
+	/** @brief */
 	void OnTaskFinished(FMassEntityHandle WorkerEntity, const FGameplayTag& JobTag);
 
 public:
+	/** @brief */
 	virtual void TickComponent(float DeltaTime, ELevelTick TickType, FActorComponentTickFunction* ThisTickFunction) override;
 	
+	/** @brief */
 	UPROPERTY(VisibleInstanceOnly, BlueprintReadOnly)
 	AActor* TargetRef = nullptr;
 
 	// UPROPERTY(VisibleInstanceOnly, BlueprintReadOnly)
 	// AActor* InstigatorActor = nullptr;
 	
+	/** @brief */
 	UPROPERTY(VisibleInstanceOnly, BlueprintReadOnly)
 	TMap<int32 /*MassEntity index */, FGameplayTag> ActiveJobMap{};
 
+	/** @brief */
 	UPROPERTY(VisibleInstanceOnly, BlueprintReadOnly)
 	TMap<int32 /*MassEntity index */, FPDTargetCompound> ActiveTargetMap{};
 
+	/** @brief */
 	const FMassEntityManager* EntityManager = nullptr;
+	/** @brief Reserved for later use */
 	TSharedPtr<FStreamableHandle> LatestJob_AsyncLoadHandle;
 };
 

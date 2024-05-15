@@ -9,13 +9,14 @@
 UINTERFACE() class UPDWorldManagementInterface : public UInterface { GENERATED_BODY() };
 
 /**
- * 
+ *  @brief 
  */
 class PDINTERACTION_API IPDWorldManagementInterface
 {
 	GENERATED_BODY()
 
 public:
+	/** @brief Implement override in classes inheriting from this interface. Has a pure virtual _Implementation function */
 	UFUNCTION(BlueprintNativeEvent, BlueprintCallable)
 	void RegisterWorldInteractable(UWorld* SelectedWorld, AActor* SelectedInteractable);
 	virtual void RegisterWorldInteractable_Implementation(UWorld* SelectedWorld, AActor* SelectedInteractable) = 0;

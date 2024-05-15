@@ -13,54 +13,78 @@
 UCLASS(ClassGroup=(Custom), Meta=(BlueprintSpawnableComponent))
 class PDINTERACTION_API UPDInteractComponent : public UActorComponent
 {
-	GENERATED_UCLASS_BODY() // So ubt allows me to define the obj init. ctor myself
+	GENERATED_UCLASS_BODY() 
 
 public:
+	/** @brief Calls Super::BeginPlay() and Prerequisites()*/
 	virtual void BeginPlay() override; 
+	/** @brief Calls trace functions. Which trace functions depends on which trace type has been assigned to 'TraceSettings.TickTraceType'*/
 	virtual void TickComponent(float DeltaTime, ELevelTick TickType, FActorComponentTickFunction* ThisTickFunction) override;
 
+	/** @brief Empty function. Reserved for later use to: Attempt an interaction with any currently traced interactable */
 	UFUNCTION(BlueprintCallable)
-	virtual void BeginInteraction(); // Attempts an interaction with any currently traced interactable
+	virtual void BeginInteraction(); 
+	/** @brief  Empty function. Reserved for later use to: End a currently active interaction */
 	UFUNCTION(BlueprintCallable)
-	virtual void EndInteraction();   // End a currently active interaction
+	virtual void EndInteraction();
 	
+	/** @brief Returns latest traceresult, or enforcing the latest valid in the buffer if one exists */
 	UFUNCTION(BlueprintCallable)
 	const FPDTraceResult& GetTraceResult(bool bSearchForValidCachedResults) const;
+	/** @brief Returns the active trace settings for this component. This contains the ticktype, tick behaviours etc. */
 	UFUNCTION(BlueprintCallable)
 	const FPDTraceSettings& GetTraceSettings() const;
+	/** @brief Overwrites the current trace settings */
 	UFUNCTION(BlueprintCallable)
 	void SetTraceSettings(const FPDTraceSettings& NewSettings);
+	/** @brief Checks if 'TraceBuffer' contains valid trace results */
 	UFUNCTION(BlueprintCallable)
 	bool ContainsValidTraceResults() const;
 
-	// Returns a list of all interactables
+	/** @brief Returns a list of all interactables within the given radius */
 	UFUNCTION(BlueprintCallable)
 	TArray<AActor*> GetAllInteractablesInRadius(double Radius = 500.0, bool bIgnorePerObjectInteractionDistance = false);
 	
-	// Meant to be used on the server for one-off for comparisons/validations
+	/** @brief Meant to be used on the server for one-off for comparisons/validations */
 	UFUNCTION(BlueprintCallable)
 	void TraceToTarget(const FVector& TraceEnd);
+	/** @brief Meant to be used on the server for one-off for comparisons/validations */
 	void TraceToTarget(const FVector& TraceStart, const FVector& TraceEnd);
+	/** @brief Meant to be used on the server for one-off for comparisons/validations */
 	void TraceToTarget(const FVector& TraceEnd, FCollisionQueryParams& TraceParams);
+	/** @brief Meant to be used on the server for one-off for comparisons/validations */
 	void TraceToTarget(const FVector& TraceStart, const FVector& TraceEnd, FCollisionQueryParams& TraceParams);
+	/** @brief Meant to be used on the server for one-off for comparisons/validations */
 	UFUNCTION(BlueprintCallable)
+	/** @brief Meant to be used on the server for one-off for comparisons/validations */
 	FPDTraceResult TraceToTargetAndReset(const FVector& TraceEnd);
+	/** @brief Meant to be used on the server for one-off for comparisons/validations */
 	FPDTraceResult TraceToTargetAndReset(const FVector& TraceStart, const FVector& TraceEnd);
+	/** @brief Meant to be used on the server for one-off for comparisons/validations */
 	FPDTraceResult TraceToTargetAndReset(const FVector& TraceEnd, FCollisionQueryParams& TraceParams);
+	/** @brief Meant to be used on the server for one-off for comparisons/validations */
 	FPDTraceResult TraceToTargetAndReset(const FVector& TraceStart, const FVector& TraceEnd, FCollisionQueryParams& TraceParams);
 
+	/** @brief Returns the max trace distance allowed for the trace component no matter which object.
+	 * Object can set per interaction distances within the range [0, GetMaxTraceDistance()] */
 	UFUNCTION(BlueprintCallable)
 	FORCEINLINE double GetMaxTraceDistance(const bool bRadial = false) const
 	{
 		return bRadial ? TraceSettings.MaxRadialTraceDistanceInUnrealUnits : TraceSettings.MaxTraceDistanceInUnrealUnits;
 	}
 
+	/** @brief Return the radially traced actor.
+	 * @todo integrate some mass entity tracing into this? Or a subclass of the trace component
+	 * @todo and rewrite the base class slightly to allow smooth integration between the systems on the game module level */
 	UFUNCTION(BlueprintCallable)
 	const TArray<AActor*>& GetRadialTraceResults() const { return TraceBuffer.RadialTraceActors; }
 
+	/** @brief Returns a const reference of the trace buffer */
 	UFUNCTION(BlueprintCallable)
 	const FPDTraceBuffer& GetTraceBuffer() const { return TraceBuffer; }
 
+	/** @brief Set override trace position. This is a temporary override which modifies
+	 * the trace behaviour by translating the trace start position  */
 	UFUNCTION(BlueprintCallable)
 	void SetOverrideTracePosition(FVector NewPosition, const bool bInResetOverrideNextFrame = true)
 	{
@@ -69,43 +93,55 @@ public:
 	};
 	
 protected:
+	/** @brief Sets up TraceSettings & TraceBuffer and then enabling the component tick */
 	UFUNCTION()
 	virtual void Prerequisites();
 	
+	/** @brief Clear the trace buffer */
 	UFUNCTION(BlueprintCallable)
 	void ClearTraceResults();
 	
+	/** @brief Performs a shape trace along a line/direction */
 	UFUNCTION(BlueprintNativeEvent, BlueprintCallable)
 	void PerformLineShapeTrace(double DeltaSeconds);
 
+	/** @brief Performs a radial trace, outwards radially from the start position */
 	UFUNCTION(BlueprintNativeEvent, BlueprintCallable)
 	void PerformRadialTrace(double DeltaSeconds);
 	
+	/** @brief Calls TracePass. Performs a comparative trace between the input start/end trace and a trace towards the same hit location with a
+	 * start position on the owning entities location adjusted in z by eye height. Then making sure they both hit the same target */
 	void PerformComparativeTraces(FVector& TraceStart, FVector& TraceEnd, FCollisionQueryParams& TraceParams, FHitResult& TraceHitResult, EPDTraceResult& TraceResultFlag) const;
+	/** @brief Calls TracePass. Performs a simple trace from the given start/end position and parameters. */
 	void PerformSimpleTrace(const FVector& TraceStart, const FVector& TraceEnd, FCollisionQueryParams& TraceParams, FHitResult& TraceHitResult, bool& bTraceResultFlag) const;
+	/** @brief Actual Shape trace-pass. Sweeps the shape along the direction  */
 	void TracePass(const FVector& TraceFromLocation, const FVector& TraceEnd, FCollisionQueryParams& TraceParams, FHitResult& TraceHitResult, bool& bTraceResultFlag) const;
 	
 public:
-
+	/** @brief Shape extent for shape trace */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
 	double BoxTraceExtent = 10.0;
 
+	/** @brief The assigned settings. Assigned from tablerow struct of type FPDTraceSettings */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Meta = (RowType = "/Script/PDInteraction.PDTraceSettings"))
 	FDataTableRowHandle TraceSettingsHandle;	
 	
 protected:
+	/** @brief Actually loaded trace settings. Loaded from value pointed to by 'TraceSettingsHandle' */
 	UPROPERTY(VisibleInstanceOnly, BlueprintReadWrite)
 	FPDTraceSettings TraceSettings{};
+	/** @brief Actor list of actors to ignore, assignable at runtime*/
 	UPROPERTY(VisibleInstanceOnly, BlueprintReadWrite)
 	TArray<AActor*> RuntimeIgnoreList{};
+	/** @brief The actual trace buffer which holds trace frame data*/
 	UPROPERTY(VisibleInstanceOnly, BlueprintReadOnly)
 	FPDTraceBuffer TraceBuffer{};
-
+	
+	/** @brief Dont access directly and Call 'SetOverrideTracePosition' instead. An override position to start the trace from. */
 	FVector OverridePosition;
+	/** @brief Dont access directly and Call 'SetOverrideTracePosition' instead. An override position to start the trace from. */
 	bool bResetOverrideNextFrame = false;
 };
-
-
 
 /**
 Business Source License 1.1

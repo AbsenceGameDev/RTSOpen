@@ -5,6 +5,12 @@
 #include "CoreMinimal.h"
 #include "Modules/ModuleManager.h"
 
+/**
+ * @brief The preloader module is, as its name implies, preloaded before the interaction system.
+ * Use-case is to write custom collision response channels for the interaction system into the .ini files,
+ * before any relevant modules are loaded. Thus saving the user from going into their editor
+ * project settings to assign this manually.
+ */
 class FPDInteractPreloaderModule : public IModuleInterface
 {
 public:
@@ -12,6 +18,8 @@ public:
 	virtual void StartupModule() override;
 	virtual void ShutdownModule() override;
 	
+	/** @brief Function that attempts to write collision channel responses for the interaction system,
+	 * in-case they are not already being used. Called in StartupModule() */
 	void AttemptToWriteChannelResponses(FConfigSection* CollisionSection);
 };
 

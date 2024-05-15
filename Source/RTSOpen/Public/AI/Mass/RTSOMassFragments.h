@@ -19,22 +19,34 @@ struct FRTSOLightInventoryFragmentHandler
 	FRTSOLightInventoryFragmentHandler(TMap<FGameplayTag, FPDLightItemDatum>& InInner) : Inner(InInner)  {};
 	virtual ~FRTSOLightInventoryFragmentHandler() = default;
 	
+	/** @brief */
 	virtual void ClearItems();
+	/** @brief */
 	virtual void TransferItems(FRTSOLightInventoryFragment& OtherFragment);
+	/** @brief */
 	virtual void TransferItems(UPDInventoryComponent& OtherInventory);
 	
+	/** @brief */
 	virtual void AddItems(const TArray<TTuple<FGameplayTag, FPDLightItemDatum>>& AppendList);
+	/** @brief */
 	virtual void RemoveItems(const TArray<TTuple<FGameplayTag, FPDLightItemDatum>>& RemoveList);
 
+	/** @brief */
 	virtual void AddItems(const TMap<FGameplayTag, FPDLightItemDatum>& AppendList);
+	/** @brief */
 	virtual void RemoveItems(const TMap<FGameplayTag, FPDLightItemDatum>& RemoveList);
 
+	/** @brief */
 	virtual void AddItem(const FPDLightItemDatum& AppendItem);
+	/** @brief */
 	virtual void RemoveItem(const FPDLightItemDatum& RemoveItem);
 
+	/** @brief */
 	virtual void AddItem(const FGameplayTag& AddTag, const int32 Count);
+	/** @brief */
 	virtual void RemoveItem(const FGameplayTag& RemoveTag, const int32 Count);
 
+	/** @brief */
 	FRTSOLightInventoryFragmentHandler& operator=(const FRTSOLightInventoryFragmentHandler& Other)
 	{
 		Inner = Other.Inner;
@@ -55,7 +67,9 @@ struct FRTSOLightInventoryFragment : public FMassFragment
 {
 	GENERATED_BODY();
 
+	/** @brief */
 	FRTSOLightInventoryFragment() : Handler(Inner) {};
+	/** @brief */
 	FRTSOLightInventoryFragment& operator=(const FRTSOLightInventoryFragment& Other)
 	{
 		Inner = TMap<FGameplayTag, FPDLightItemDatum>(Other.Inner);
@@ -63,12 +77,13 @@ struct FRTSOLightInventoryFragment : public FMassFragment
 		return *this;
 	}
 
+	/** @brief */
 	UPROPERTY(BlueprintReadWrite)
 	TMap<FGameplayTag, FPDLightItemDatum> Inner{};
 
+	/** @brief */
 	FRTSOLightInventoryFragmentHandler Handler;
 };
-
 
 /** @brief base and extended classes are unused for now, will likely remove fully */
 USTRUCT()
@@ -88,6 +103,7 @@ struct RTSOPEN_API FRTSOFragment_Agent : public FPDMFragment_RTSEntityBase
 	GENERATED_BODY()
 };
 
+/** @brief */
 USTRUCT()
 struct RTSOPEN_API FRTSOFragment_Animation : public FPDMFragment_EntityAnimation
 {

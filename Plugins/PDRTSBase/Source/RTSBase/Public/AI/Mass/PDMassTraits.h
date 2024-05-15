@@ -17,6 +17,7 @@ class PDRTSBASE_API UPDCrowdTrait : public UMassVisualizationTrait
 public:
 	UPDCrowdTrait();
 
+	/** @brief */
 	virtual void BuildTemplate(FMassEntityTemplateBuildContext& BuildContext, const UWorld& World) const override;
 };
 
@@ -31,11 +32,14 @@ class PDRTSBASE_API UPDMTrait_RTSEntity : public UMassEntityTraitBase
 	GENERATED_BODY()
 
 protected:
+	/** @brief */
 	virtual void BuildTemplate(FMassEntityTemplateBuildContext& BuildContext, const UWorld& World) const override;
 
+	/** @brief */
 	UPROPERTY(EditAnywhere)
 	FPDMFragment_SharedAnimData SharedAnimData;
 
+	/** @brief */
 	UPROPERTY(EditAnywhere)
 	FPDMFragment_SharedEntity SharedEntData;	
 };

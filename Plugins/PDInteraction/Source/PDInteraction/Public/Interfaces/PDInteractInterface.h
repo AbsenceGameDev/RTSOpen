@@ -47,16 +47,20 @@ public:
 	FGameplayTagContainer GetGenericTagContainer() const;
 	virtual FGameplayTagContainer GetGenericTagContainer_Implementation() const;
 
+	/** @brief Registers the world interactable via the 'UPDInteractSubsystem' via it's 'IPDWorldManagementInterface' functions */
 	UFUNCTION(BlueprintNativeEvent, BlueprintCallable)
 	void RegisterWorldInteractable(UWorld* SelectedWorld, AActor* SelectedInteractable);
 	virtual void RegisterWorldInteractable_Implementation(UWorld* SelectedWorld, AActor* SelectedInteractable);
 
+	/** @brief Base-implementation contains an example interaction message function. */
 	UFUNCTION(BlueprintNativeEvent, BlueprintCallable)
 	const FPDInteractMessage GetInteractionMessage();
 	virtual const FPDInteractMessage GetInteractionMessage_Implementation();	
 	
+	/** @brief Flag to tell us if we've been registered with the subsystem */
 	bool bHasBeenRegisteredWithCurrentWorld = false;
 
+	/** @brief The cached return message given from 'GetInteractionMessage()' */
 	FPDInteractMessage OutMessage;
 };
 

@@ -9,83 +9,104 @@
 
 #include "RTSOConversationNodes.generated.h"
 
+/** @brief */
 UCLASS()
 class URTSOConversationTask_Speak : public UConversationTaskNode
 {
 	GENERATED_BODY()
 
 public:
+	/** @brief */
 	URTSOConversationTask_Speak();
 	
+	/** @brief */
 	virtual FConversationTaskResult ExecuteTaskNode_Implementation(const FConversationContext& Context) const override;
 
+	/** @brief */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
 	FText Message{};
 
+	/** @brief */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
 	FGameplayTag ParticipantTag{};	
 };
 
+/** @brief */
 UCLASS()
 class URTSOConversationTask_Question : public UConversationTaskNode
 {
 	GENERATED_BODY()
 
 public:
+	/** @brief */
 	URTSOConversationTask_Question();
+	/** @brief */
 	virtual FConversationTaskResult ExecuteTaskNode_Implementation(const FConversationContext& Context) const override;
 
+	/** @brief */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
 	FText Message{};
 };
 
+/** @brief */
 UCLASS()
 class URTSOConversationTask_RevertLatest : public UConversationTaskNode
 {
 	GENERATED_BODY()
 
 public:
+	/** @brief */
 	virtual FConversationTaskResult ExecuteTaskNode_Implementation(const FConversationContext& Context) const override;
 };
 
+/** @brief */
 UCLASS()
 class URTSOConversationTask_RandomChoice : public UConversationTaskNode
 {
 	GENERATED_BODY()
 
 public:
+	/** @brief */
 	URTSOConversationTask_RandomChoice();
+	/** @brief */
 	virtual FConversationTaskResult ExecuteTaskNode_Implementation(const FConversationContext& Context) const override;
 
+	/** @brief */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
 	FText Message{};
 
+	/** @brief */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
 	FGameplayTag ParticipantTag{};		
 };
 
+/** @brief */
 UCLASS()
 class URTSOConversationEffect_PlayEffects : public UConversationSideEffectNode
 {
 	GENERATED_BODY()
 
 public:
+	/** @brief */
 	virtual void ServerCauseSideEffect_Implementation(const FConversationContext& Context) const override;
 	
+	/** @brief */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
 	class USoundBase* Sound = nullptr;
 
+	/** @brief */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
-	class UNiagaraSystem* VFX = nullptr;	
-	
+	class UNiagaraSystem* VFX = nullptr;
 };
 
+/** @brief */
 UCLASS()
 class URTSOConversationReq_AlwaysFail : public UConversationRequirementNode
 {
 	GENERATED_BODY()
 
 public:
+	/** @brief */
 	virtual EConversationRequirementResult IsRequirementSatisfied_Implementation(const FConversationContext& Context) const override;
 	
 };

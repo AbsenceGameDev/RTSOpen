@@ -14,14 +14,20 @@ class UButton;
 class UTextBlock;
 class UImage;
 
+/**
+ * @brief Base interactable widget. Has events and data related to interaction messages/popups
+ */
 UCLASS(BlueprintType, Blueprintable)
 class UPDWInteractable_Base : public UUserWidget
 {
 	GENERATED_BODY()
 public:
+	/** @brief Does nothing significant for now ( calls into super ). Reserved for later use */
 	virtual void NativeConstruct() override;
+	/** @brief Does nothing significant for now ( calls into super ). Reserved for later use */
 	virtual void NativeTick(const FGeometry& MyGeometry, float InDeltaTime) override;
 	
+	/** @brief Sets the current message cache with an optional parameter to allow to apply it immediately to the widget */
 	UFUNCTION(BlueprintCallable, Category = "Interaction|UI")
 	FORCEINLINE void SetCurrentMessage(const FPDInteractMessage& InMessage, const bool bApplyImmediate = true)
 	{
@@ -29,40 +35,55 @@ public:
 
 		if (bApplyImmediate) { ApplyMessageChanges(); }
 	}
+
+	/** @brief Apply cached message data to the relevant widget text object */
 	UFUNCTION(BlueprintCallable, Category = "Interaction|UI")
 	void ApplyMessageChanges();
 
+	/** @brief Sets the current tracked actor */
 	UFUNCTION(BlueprintCallable, Category = "Interaction|UI")
 	void SetTrackedActor(AActor* InActor) { TrackedActor = InActor;}
+	/** @brief Gets the current tracked actor */
 	AActor* GetTrackedActor() const { return TrackedActor;}
-
+	/** @brief Event call when an interact widget pop-up is spawned */
 	void OnSpawnWidgetPopup(class UPDWRadialInteract_HUD* UpdwRadialInteract_HUD);
 	
 protected:
+	/** @brief The currently represented interaction message */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
 	FPDInteractMessage CurrentMessage;
 	
+	/** @brief The current interaction trace type. Radial trace or Shape trace along line */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
 	EPDTickTraceType TraceType = EPDTickTraceType::TRACE_RADIAL;
 	
+	/** @brief Title textblock widget. Usually represents the interactable actor name */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Meta = (BindWidget))
 	UTextBlock* InteractableTitle = nullptr;
+	/** @brief KeyIndicator textblock widget. Represents the key(s) needing to be pressed to perform the interaction */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Meta = (BindWidget))
 	UTextBlock* KeyIndicator_Action = nullptr;
+	/** @brief KeyIndicator image widget. Background for the KeyIndicator textblock */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Meta = (BindWidget))
 	UImage* KeyIndicator_Image = nullptr;
+	/** @brief GameMessage_Action textblock widget. Represents the action being performed with this interaction */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Meta = (BindWidget))
 	UTextBlock* GameMessage_Action = nullptr;
 
+	/** @brief Actual pressable UI button for performing the interaction,
+	 * as an alternative way to interact outside of using the keyboard */
 	UPROPERTY(VisibleAnywhere, BlueprintReadWrite, Meta = (BindWidget))
 	UButton* OnScreenInteractButton = nullptr;
 	
+	/** @brief Actor being tracked for this widget. Will dictate where, on-screen, this widget will be at all times */
 	UPROPERTY(VisibleAnywhere, BlueprintReadWrite)
 	AActor* TrackedActor = nullptr;
 
 };
 
-
+/**
+ * @brief Radial trace interact hud. Mainly meant to be used for representing the units surroundings when tracing radially 
+ */
 UCLASS(BlueprintType, Blueprintable)
 class UPDWRadialInteract_HUD : public UUserWidget
 {
@@ -71,21 +92,27 @@ public:
 	virtual void NativeConstruct() override;
 	virtual void NativeTick(const FGeometry& MyGeometry, float InDeltaTime) override;
 
+	/** @brief Ticks the onscreen interactables, widgets that represent interactables we see on screen within the interaction range */
 	void TickInteractables();
 
-	// override GetOverridePawn_Implementation in a child class, for projects where the pawn in question is controlled but not owned by the controller 
+	/** @brief override GetOverridePawn_Implementation in a child class, for projects where the pawn in question is controlled but not owned by the controller */
 	UFUNCTION(BlueprintNativeEvent)
 	APawn* GetOverridePawn();
 	
+	/** @brief Spawns a new interactable widget, given a message and an actor to track*/
 	UFUNCTION(BlueprintNativeEvent, BlueprintCallable)
 	void SpawnNewInteractableWidget(const FPDInteractMessage& Message, AActor* ActorToTrack);
 	
+	/** @brief Map to keep track of the onscreen interactables.
+	 * Map is keyed by the actor pointer and value is the actual base widget that is being diaplayed for it */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
 	TMap<AActor*, UPDWInteractable_Base*> OnScreenInteractables;
 
+	/** @brief The max amount of on-screen interactables the user can have */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
 	int32 MaxOnScreenInteractables = 50;
 
+	/** @brief The widget class for the tracked interactables */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
 	TSubclassOf<UPDWInteractable_Base> SpawnWidgetInteractableClass;
 

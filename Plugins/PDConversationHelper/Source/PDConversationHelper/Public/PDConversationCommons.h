@@ -20,29 +20,26 @@ enum class EPDKeyProcessResult : uint8
 	KEY_FAIL    UMETA(DisplayName="Invalid or blacklisted Key"),
 };
 
-/** @brief This instance adds some flags we want to use alongside with an overridden function so the system works as intended in singleplayer  */
+/**
+ * @brief This instance adds some flags we want to use alongside with an overridden function,
+ * so the system works as intended in singleplayer and in co-op/multiplayer alongside with a map of owner/actor IDs
+ * and their waiting-state
+ */
 UCLASS(BlueprintType)
 class PDCONVERSATIONHELPER_API UPDConversationInstance : public UConversationInstance
 {
 	GENERATED_BODY()
 
 public:
-	/** @brief */
+	/** @brief Empty, reserved for further use */
 	UFUNCTION(BlueprintCallable)
 	virtual void PauseConversationAndSendClientChoices(const FConversationContext& Context, const FClientConversationMessage& ClientMessage) override;
-
-	// Deprecated, remove soon
-	UPROPERTY(BlueprintAssignable)
-	FBeginWaitingForChoicesDlgt OnBegin_WaitingForChoices;
-	// Deprecated, remove soon
-	UPROPERTY(BlueprintReadWrite)
-	bool bWaitingForChoices;
 	
-	/** @brief Send a request for the conversation to advance/resume */
+	/** @brief Delegate to send a request for the conversation to advance/resume to the given actor/owner ID */
 	UPROPERTY()
 	TMap<int32 /*ActorID*/, FBeginWaitingForChoicesDlgt> OnBegin_WaitChoicesDelegateMap;
 	
-	/** @brief */
+	/** @brief Map of Actor/Owner IDs and their waiting state*/
 	UPROPERTY(BlueprintReadWrite)
 	TMap<int32 /*ActorID*/, bool> ChoiceWaitingStateMap;
 };
@@ -54,30 +51,21 @@ class PDCONVERSATIONHELPER_API UPDConversationBPFL : public UBlueprintFunctionLi
 	GENERATED_BODY()
 
 public:
-	
 	/** @brief Gets the previous/latest message that was sent */
 	UFUNCTION(BlueprintCallable)
 	static const FClientConversationMessagePayload& GetPreviousMessage(UConversationParticipantComponent* ConversationParticipantComponent);
-
-	/** @brief Gets the conversation task node object related to the task node we are calling from */
-	UFUNCTION(BlueprintCallable)
-	static const UConversationTaskNode* GetTaskNode(const FConversationContext& Context);
 	
 	/** @brief Checks with teh game feature subsystem if the given plugin has been loaded and activated */
 	UFUNCTION(BlueprintCallable)
 	static bool IsGameFeaturePluginActive(FString PluginName);
-
-	/** @brief Prints the message to screen */
-	UFUNCTION(BlueprintCallable, Category = "Action|Interface", Meta = (ExpandEnumAsExecs="Results"))
-	static int32 ProcessInputKey(const FKey& PressedKey, const TArray<FKey>& ValidKeys, EPDKeyProcessResult& Results);	
-
+	
 	/** @brief Prints the message to screen */
 	UFUNCTION(BlueprintCallable)
-	static void PrintConversationMessageToScreen(UObject* WorldContext, const FClientConversationMessage& Message, FLinearColor MessageColour);
+	static void Debug_PrintConversationMessageToScreen(UObject* WorldContext, const FClientConversationMessage& Message, FLinearColor MessageColour);
 
 	/** @brief Prints the message to screen, alternative input parameters */
 	UFUNCTION(BlueprintCallable)
-	static void PrintConversationTextToScreen(UObject* WorldContext, const FName& Participant, const FText& Text, FLinearColor MessageColour);		
+	static void Debug_PrintConversationTextToScreen(UObject* WorldContext, const FName& Participant, const FText& Text, FLinearColor MessageColour);		
 };
 
 
@@ -93,6 +81,7 @@ public:
 
 	/** @brief Called when the action activates */
 	virtual void Activate() override;
+	
 	/** @brief Called when the action completes */
 	void Completed(const UE::GameFeatures::FResult& Result);
 	
@@ -101,7 +90,7 @@ public:
 	static UPDAsyncAction_ActivateFeature* CreateActionInstance(UObject* WorldContextObject, FString GameFeatureName);
 public:
 	/** @brief Cached name to the game feature data plugin */
-	UPROPERTY()
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Meta = (ExposeOnSpawn))
 	FString GameFeatureDataPluginName;
 	
 	/** @brief Delegate to (possibly) fire at end of the action*/

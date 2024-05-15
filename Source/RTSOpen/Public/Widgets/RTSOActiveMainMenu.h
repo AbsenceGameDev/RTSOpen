@@ -9,8 +9,10 @@
 
 class UCommonTextBlock;
 
+/** @brief */
 DECLARE_DELEGATE_TwoParams(FRTSOSavegameDelegate, const FString&, bool)
 
+/** @brief */
 UENUM()
 enum ERTSOSaveType
 {
@@ -18,35 +20,42 @@ enum ERTSOSaveType
 	LOAD
 };
 
-
+/** @brief */
 UCLASS(Blueprintable)
 class URTSOMenuButton : public UUserWidget
 {
 	GENERATED_BODY()
 
 public:
+	/** @brief */
 	UPROPERTY(BlueprintReadWrite, Meta=(BindWidget))
 	class UOverlay* Overlay = nullptr;
 
+	/** @brief */
 	UPROPERTY(BlueprintReadWrite, Meta=(BindWidget))
 	class UImage* Image_ButtonBackground = nullptr;
 
+	/** @brief */
 	UPROPERTY(BlueprintReadWrite, Meta=(BindWidget))
 	class UBorder* Border = nullptr;
 
+	/** @brief */
 	UPROPERTY(BlueprintReadWrite, Meta=(BindWidget, ExposeOnSpawn))
 	class UTextBlock* TextBlock = nullptr;	
 	
+	/** @brief */
 	UPROPERTY(BlueprintReadWrite, Meta=(BindWidget))
 	class UButton* Hitbox = nullptr;
 
 	/** @brief Target of the button press, add this class to the stack */
 	UPROPERTY(EditAnywhere, BlueprintReadOnly)
 	TSubclassOf<UCommonActivatableWidget> PotentialTargetWidgetClass = nullptr;
+	/** @brief */
 	UPROPERTY()
 	class URTSOMainMenuBase* OwningStack = nullptr;	
 };
 
+/** @brief */
 UCLASS(Blueprintable)
 class URTSOSaveGameDialog : public UUserWidget
 {
@@ -54,114 +63,150 @@ class URTSOSaveGameDialog : public UUserWidget
 
 public:
 
+	/** @brief */
 	UFUNCTION()
 	void DialogReplyContinue();
 
+	/** @brief */
 	UFUNCTION()
 	void SetupDelegates();	
 
+	/** @brief */
 	UFUNCTION()
 	void Reply_Yes();	
 
+	/** @brief */
 	UFUNCTION()
 	void Reply_No();	
 
+	/** @brief */
 	UPROPERTY(BlueprintReadWrite, Meta=(BindWidget))
 	class UTextBlock* DialogContent = nullptr;	
 	
+	/** @brief */
 	UPROPERTY(BlueprintReadWrite, Meta=(BindWidget))
 	class URTSOMenuButton* YesButton = nullptr;
 
+	/** @brief */
 	UPROPERTY(BlueprintReadWrite, Meta=(BindWidget))
 	class URTSOMenuButton* NoButton = nullptr;	
 	
+	/** @brief */
 	UPROPERTY(EditAnywhere)
 	FText DialogMessage{};
+
+	/** @brief */
 	UPROPERTY()
 	TEnumAsByte<ERTSOSaveType> Type = ERTSOSaveType::LOAD;
+
+	/** @brief */
 	UPROPERTY()
 	int32 SlotIdx = INDEX_NONE;
 
+	/** @brief */
 	FRTSOSavegameDelegate SuccessCallback{};
 };
 
+/** @brief */
 UCLASS(Blueprintable)
 class URTSOMenuWidget_SaveGame : public UCommonActivatableWidget
 {
 	GENERATED_BODY()
 
 public:
+	/** @brief */
 	void ClearDelegates() const;
 
+	/** @brief */
 	virtual void NativePreConstruct() override;
 	
+	/** @brief */
 	UPROPERTY(BlueprintReadWrite, Meta=(BindWidget))
 	class UCanvasPanel* BaseCanvas = nullptr;
 
+	/** @brief */
 	UPROPERTY(BlueprintReadWrite, Meta=(BindWidget))
 	class UVerticalBox* MainBox = nullptr;
 
+	/** @brief */
 	UPROPERTY(BlueprintReadWrite, Meta=(BindWidget))
 	class UCanvasPanel* BannerCanvas = nullptr;
 
+	/** @brief */
 	UPROPERTY(BlueprintReadWrite, Meta=(BindWidget))
 	class UTextBlock* BannerText = nullptr;
 
+	/** @brief */
 	UPROPERTY(BlueprintReadWrite, Meta=(BindWidget))
 	class UImage* BannerImage = nullptr;
 
+	/** @brief */
 	UPROPERTY(BlueprintReadWrite, Meta=(BindWidget))
 	class URTSOMenuButton* ExitButton = nullptr;
 
+	/** @brief */
 	UPROPERTY(BlueprintReadWrite, Meta=(BindWidget))
 	class UVerticalBox* InnerBox = nullptr;
 
 	// @todo replace with ulistview of slots
 	UPROPERTY(BlueprintReadWrite, Meta=(BindWidget))
 	class URTSOMenuButton* Slot0 = nullptr;	
+	/** @brief */
 	UPROPERTY(BlueprintReadWrite, Meta=(BindWidget))
 	class URTSOMenuButton* Slot1 = nullptr;	
+	/** @brief */
 	UPROPERTY(BlueprintReadWrite, Meta=(BindWidget))
 	class URTSOMenuButton* Slot2 = nullptr;
+	/** @brief */
 	UPROPERTY(BlueprintReadWrite, Meta=(BindWidget))
 	class URTSOMenuButton* Slot3 = nullptr;
+	/** @brief */
 	UPROPERTY(BlueprintReadWrite, Meta=(BindWidget))
 	class URTSOMenuButton* Slot4 = nullptr;	
 	
+	/** @brief */
 	UPROPERTY()
 	class URTSOMainMenuBase* OwningStack = nullptr;	
 };
 
+/** @brief */
 UCLASS(Blueprintable)
 class URTSOMenuWidget : public UCommonActivatableWidget
 {
 	GENERATED_BODY()
 
 public:
+	/** @brief */
 	void ClearDelegates() const;
 	
+	/** @brief */
 	UPROPERTY(BlueprintReadWrite, Meta=(BindWidget))
 	class URTSOMenuButton* ResumeButton = nullptr;
 
+	/** @brief */
 	UPROPERTY(BlueprintReadWrite, Meta=(BindWidget))
 	class URTSOMenuButton* SettingsButton = nullptr;
 
+	/** @brief */
 	UPROPERTY(BlueprintReadWrite, Meta=(BindWidget))
 	class URTSOMenuButton* SaveButton = nullptr;
 
+	/** @brief */
 	UPROPERTY(BlueprintReadWrite, Meta=(BindWidget))
 	class URTSOMenuButton* LoadButton = nullptr;
 
+	/** @brief */
 	UPROPERTY(BlueprintReadWrite, Meta=(BindWidget))
 	class URTSOMenuButton* QuitButton = nullptr;
 
+	/** @brief */
 	UPROPERTY(BlueprintReadWrite, Meta=(BindWidget))
 	class UVerticalBox* VerticalBoxContainer = nullptr;
 
+	/** @brief */
 	UPROPERTY()
 	class URTSOMainMenuBase* OwningStack = nullptr;	
 };
-
 
 /**
 Business Source License 1.1

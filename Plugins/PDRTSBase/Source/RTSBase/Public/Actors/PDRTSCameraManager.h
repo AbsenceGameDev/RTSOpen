@@ -6,92 +6,121 @@
 #include "GameplayTags.h"
 #include "PDRTSCameraManager.generated.h"
 
+/** @brief */
 USTRUCT(BlueprintType, Blueprintable)
 struct PDRTSBASE_API FPDInterval
 {
     GENERATED_BODY()
 
+	/** @brief */
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = Camera)
     double Min = -89.0;
     
+	/** @brief */
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = Camera)
     double Max = 89.0;
 };
 
+/** @brief */
 USTRUCT(BlueprintType, Blueprintable)
 struct PDRTSBASE_API FPDCameraManagerSettings : public FTableRowBase
 {
     GENERATED_BODY()
 
+	/** @brief */
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = Camera)
     FGameplayTag CameraMode{};
 
+	/** @brief */
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = Camera)
     FPDInterval Pitch{-89.0, 89.0};
 
+	/** @brief */
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = Camera)
     FPDInterval Yaw{0.0, 359.999};    
     
+	/** @brief */
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = Camera)
     double FOV = 90.0;
 
+	/** @brief */
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = Camera)
     double NearClipPlane = 5.0;
     
-
     /** @brief 0 is Interpreted as Ortho view being disabled */
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = Camera)
     double OrthoWidth = 0.0;
     
+	/** @brief */
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = Camera)
     double CameraLagSpeed = 0.0;
 
+	/** @brief */
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = Camera)
     double FadeAmount = -1.0;
-    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = Camera)
+
+	/** @brief */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = Camera)
     FLinearColor FadeColour;
 };
 
+/** @brief */
 UCLASS()
 class PDRTSBASE_API APDCameraManager : public APlayerCameraManager
 {
     GENERATED_BODY()
 
 public:
+	/** @brief */
     APDCameraManager();
     
+	/** @brief */
     virtual void OnConstruction(const FTransform& Transform) override;
+	/** @brief */
     virtual void BeginPlay() override;
 
+	/** @brief */
     UFUNCTION(BlueprintNativeEvent, BlueprintCallable, Category = Camera)
     void SetCustomMode(FGameplayTag Tag);
 
+	/** @brief */
     virtual void UpdateCamera(float DeltaTime) override;
 
 protected:
+	/** @brief */
     virtual void UpdateViewTarget(FTViewTarget& OutVT, float DeltaTime) override;
     
+	/** @brief */
     void ProcessTables();
     
 public:
+	/** @brief */
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Camera", Meta = (RowType = "/Script/PDRTSBase.PDCameraManagerSettings"))
     FDataTableRowHandle CurrentSettingsHandle;
+	/** @brief */
     FPDCameraManagerSettings* SettingPtr = nullptr;
     
+	/** @brief */
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Camera", Meta = (RequiredAssetDataTags = "RowStructure=/Script/PDRTSBase.PDCameraManagerSettings"))
     TArray<UDataTable*> CameraSettingsSources{};
 
+	/** @brief */
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Camera")
     FGameplayTag RequestedCameraState{};
 
+	/** @brief */
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Camera")
     FGameplayTag OldCameraState{};    
 
     // Associative maps
+	/** @brief */
     TMap<FGameplayTag /*Type tag*/, FPDCameraManagerSettings* /*SettingsRow*/> TagToSettings;
+	/** @brief */
     TMap<FGameplayTag /*Type tag*/, const UDataTable* /*Table*/> TagToTable;
+	/** @brief */
     TMap<FGameplayTag /*Type tag*/, FName /*Rowname*/> TagToRowname;
 
+	/** @brief */
     UPROPERTY()
     FVector CurrentLagVelocity{0.0,0.0,0.0};
 };

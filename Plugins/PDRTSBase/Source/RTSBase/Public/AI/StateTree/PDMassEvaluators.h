@@ -11,11 +11,13 @@
 struct FPDMFragment_RTSEntityBase;
 struct FTransformFragment;
 
+/** @brief */
 USTRUCT()
 struct PDRTSBASE_API FPDMData_Action
 {
 	GENERATED_BODY()
 	
+	/** @brief */
 	UPROPERTY(EditAnywhere, Category = Output)
 	FPDMFragment_Action Action;
 };
@@ -30,14 +32,22 @@ struct PDRTSBASE_API FPDMEvaluator_EntityAction : public FMassStateTreeEvaluator
 
 	using FInstanceDataType = FPDMData_Action;
 	
+	/** @brief */
 	virtual bool Link(FStateTreeLinker& Linker) override;
+	/** @brief */
 	virtual const UStruct* GetInstanceDataType() const override { return FPDMData_Action::StaticStruct(); }
+	/** @brief */
 	virtual void TreeStop(FStateTreeExecutionContext& Context) const override;
+	/** @brief */
 	virtual void Tick(FStateTreeExecutionContext& Context, const float DeltaTime) const override;
+	/** @brief */
 	void Reset(FStateTreeExecutionContext& Context) const;
 	
+	/** @brief */
 	TStateTreeExternalDataHandle<UMassSignalSubsystem> MassSignalSubsystemHandle;
+	/** @brief */
 	TStateTreeExternalDataHandle<UMassEntitySubsystem> EntitySubsystemHandle;
+	/** @brief */
 	TStateTreeExternalDataHandle<FPDMFragment_Action> EntityActionHandle;
 };
 

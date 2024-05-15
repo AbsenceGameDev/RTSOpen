@@ -13,13 +13,11 @@ int32 FPDItemCosts::ApplyRecurringCost(int32 InTotal)
 
 void FPDItemDefaultDatum::OnPostDataImport(const UDataTable* InDataTable, const FName InRowName, TArray<FString>& OutCollectedImportProblems)
 {
-	FTableRowBase::OnPostDataImport(InDataTable, InRowName, OutCollectedImportProblems);
 	Refresh(InDataTable, InRowName);
 }
 
 void FPDItemDefaultDatum::OnDataTableChanged(const UDataTable* InDataTable, const FName InRowName)
 {
-	FTableRowBase::OnDataTableChanged(InDataTable, InRowName);
 	Refresh(InDataTable, InRowName);
 }
 
@@ -46,7 +44,7 @@ void FPDItemDefaultDatum::Refresh(const UDataTable* InDataTable, const FName InR
 
 	if (OldType == Type) { return; }
 
-	// needed to update 
+	// @todo make no changes if this comment is outdated: 'needed to update'. Need to write a test to make sure  
 	const_cast<UDataTable*>(InDataTable)->HandleDataTableChanged(InRowName);
 	
 }

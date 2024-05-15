@@ -35,7 +35,6 @@ TTagPrivateMember<Tag,x> TTagPrivateMember<Tag,x>::PrivateInstance;
 template<typename TAccessorType, typename TAccessorValue>
 struct TAccessorTypeHandler { typedef TAccessorValue(TAccessorType::*TType); };
 
-
 /** @brief Octree cell data */
 struct PDRTSBASE_API FPDEntityOctreeCell
 {
@@ -52,22 +51,29 @@ struct PDRTSBASE_API FPDEntityOctreeCell
 /** @brief Boilerplate TOctree2 functional structure */
 struct FPDEntityOctreeSemantics 
 {
+	/** @brief anonymous enum */
 	enum { MaxElementsPerLeaf = 128 };
+	/** @brief */
 	enum { MinInclusiveElementsPerNode = 7 };
+	/** @brief */
 	enum { MaxNodeDepth = 12 };
 
+	/** @brief */
 	typedef TInlineAllocator<MaxElementsPerLeaf> ElementAllocator;
 
+	/** @brief */
 	FORCEINLINE static const FBoxCenterAndExtent& GetBoundingBox(const FPDEntityOctreeCell& Element)
 	{
 		return Element.Bounds;
 	}
 
+	/** @brief */
 	FORCEINLINE static bool AreElementsEqual(const FPDEntityOctreeCell& A, const FPDEntityOctreeCell& B)
 	{
 		return A.EntityHandle == B.EntityHandle;
 	}
 
+	/** @brief */
 	FORCEINLINE static void SetElementId(const FPDEntityOctreeCell& Element, FOctreeElementId2 Id)
 	{
 		*Element.SharedOctreeID = Id;
@@ -79,24 +85,25 @@ namespace PD::Mass::Entity
 {
 	typedef TOctree2<FPDEntityOctreeCell, FPDEntityOctreeSemantics> UnsafeOctree;
 	
+	/** @brief */
 	class FPDSafeOctree : public UnsafeOctree
 	{
 	public:
+		/** @brief */
 		FPDSafeOctree()
-			: UnsafeOctree() {} //, CriticalSectionMutex(new FCriticalSection) {}
+			: UnsafeOctree() {}
+		/** @brief */
 		FPDSafeOctree(const FVector& InOrigin, FVector::FReal InExtent)
-			: UnsafeOctree(InOrigin, InExtent) {} // , CriticalSectionMutex(new FCriticalSection){}
+			: UnsafeOctree(InOrigin, InExtent) {}
 
-		// ~FPDSafeOctree()
-		// {
-		// 	if (CriticalSectionMutex == nullptr) { return; }
-		// 	delete CriticalSectionMutex;
-		// }
-
+		/** @brief */
 		void Lock() { bLockedReadInMainThread = true; };
+		/** @brief */
 		void Unlock() { bLockedReadInMainThread = false; };
+		/** @brief */
 		bool IsLocked() const { return bLockedReadInMainThread; };
 		
+		/** @brief */
 		template<typename IterateBoundsFunc>
 		inline void FindElementsWithBoundsTest(const FBoxCenterAndExtent& BoxBounds, const IterateBoundsFunc& Func, const bool bShouldLock = false)
 		{
@@ -111,6 +118,7 @@ namespace PD::Mass::Entity
 			UnsafeOctree::FindElementsWithBoundsTest(BoxBounds, Func);
 		}
 
+		/** @brief */
 		template<typename IterateBoundsFunc>
 		inline void FindFirstElementWithBoundsTest(const FBoxCenterAndExtent& BoxBounds, const IterateBoundsFunc& Func, const bool bShouldLock = false)
 		{
@@ -143,21 +151,28 @@ class PDRTSBASE_API UPDRTSBaseSubsystem : public UEngineSubsystem
 	GENERATED_BODY()
 public:
 
+	/** @brief */
 	virtual void Initialize(FSubsystemCollectionBase& Collection) override;
 	
+	/** @brief */
 	UFUNCTION()
 	virtual void DispatchOctreeGeneration();
 	
+	/** @brief */
 	UFUNCTION()
 	virtual void SetupOctree();
+	/** @brief */
 	UFUNCTION()
 	virtual void SetupOctreeWithNewWorld(UWorld* NewWorld);
 	
+	/** @brief */
 	void OnDeveloperSettingsChanged(UObject* SettingsToChange, FPropertyChangedEvent& PropertyEvent);
 
+	/** @brief */
 	UFUNCTION()
 	virtual void ProcessTables();
 
+	/** @brief */
 	UFUNCTION()
 	virtual void RequestNavpathGenerationForSelectionGroup(
 		int32 OwnerID,
@@ -165,38 +180,53 @@ public:
 		const FVector& SelectionCenter,
 		const FPDTargetCompound& TargetCompound);
 	
+	/** @brief */
 	const FPDWorkUnitDatum* GetWorkEntry(const FGameplayTag& JobTag);
+	/** @brief */
 	const FPDWorkUnitDatum* GetWorkEntry(const FName& JobRowName);
 	
+	/** @brief */
 	static const TArray<TObjectPtr<UInstancedStaticMeshComponent>>& GetMassISMs(const UWorld* InWorld);
 
 public:	
+	/** @brief */
 	UPROPERTY()
 	TArray<UDataTable*> WorkTables;
 
+	/** @brief */
 	UPROPERTY()
 	TMap<int32 /*OwnerID*/, FPDWrappedSelectionGroupNavData> SelectionGroupNavData{};
 	// bool bGroupPathsDirtied = false;
 	// @todo think on a solution which marks which actual data we want to update for teh group, but this for now works as a solid enough optimization
 	TArray<TTuple<int32 /*OwnerID*/, int32/*Player 'Selection' Index for non-hotkeyed groups*/> > DirtySharedData{};
 	
+	/** @brief */
 	TMap<const FGameplayTag, const FPDWorkUnitDatum*> TagToJobMap{};
+	/** @brief */
 	TMap<const FName, FGameplayTag> NameToTagMap{};
+	/** @brief */
 	TMap<const FGameplayTag, FName> TagToNameMap{};
+	/** @brief */
 	TMap<const FGameplayTag, const UDataTable*> TagToTable{};
 
+	/** @brief */
 	uint8 bHasProcessedTables = false;
+	/** @brief */
 	uint16 ProcessFailCounter = 0;
 
+	/** @brief Reserved for later use */
 	FStreamableManager DataStreamer;
 
+	/** @brief */
 	FMassEntityManager* EntityManager = nullptr;
+	/** @brief */
 	UWorld* TemporaryWorldCache = nullptr;
+	/** @brief */
 	PD::Mass::Entity::FPDSafeOctree WorldOctree;
 
+	/** @brief */
 	TMap<void*, bool> WorldsWithOctrees{};
-
-
+	
 	// This will be useful on a server or shared screen environment
 	UPROPERTY(EditAnywhere)
 	TMap<int32 /*OwnerID*/, AActor* /*OwningActor*/> SharedOwnerIDMappings;

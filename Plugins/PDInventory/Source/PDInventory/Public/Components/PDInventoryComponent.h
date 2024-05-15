@@ -8,8 +8,10 @@
 #include "Components/ActorComponent.h"
 #include "PDInventoryComponent.generated.h"
 
+/** @brief Delegate callback for passing a 'FPDItemNetDatum' reference and possibly operating on it */
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FPDOnItemUpdated, FPDItemNetDatum&, UpdatedDatum);
 
+/** @brief A simple value tracking structure. has no functions and only data that other process on */
 USTRUCT(Blueprintable)
 struct FPDValueTracker
 {
@@ -19,6 +21,7 @@ struct FPDValueTracker
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
 	int32 Current = INDEX_NONE;	
 
+	/** @brief */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
 	int32 Old = INDEX_NONE;	
 	
@@ -38,15 +41,19 @@ class PDINVENTORY_API UPDInventoryComponent : public UActorComponent
 	GENERATED_UCLASS_BODY()
 
 protected:
+	/** @brief */
 	virtual void BeginPlay() override;
 public:
+	/** @brief */
 	UFUNCTION(BlueprintCallable)
 	void RequestUpdateItem(TEnumAsByte<EPDItemNetOperation> RequestedOperation, const FGameplayTag& ItemTag, int32 Count);
+	/** @brief */
 	void RequestTradeItems(UPDInventoryComponent* Caller, const TMap<FGameplayTag, int32>& OfferredItems, const TMap<FGameplayTag, int32>& RequestedItems = {});
 	
+	/** @brief */
 	void OnDatumUpdated(FPDItemNetDatum* ItemNetDatum, EPDItemNetOperation Operation);
-
 	
+	/** @brief */
 	bool IsAtLastAvailableStack() const;
 public:
 
@@ -65,6 +72,7 @@ public:
 	UPROPERTY(BlueprintAssignable)
 	FPDOnItemUpdated OnItemUpdated;
 	
+	/** @brief */
 	UPROPERTY(Replicated)
 	FPDItemList ItemList;
 };

@@ -21,6 +21,7 @@ struct FRTSSavedItems
 {
 	GENERATED_BODY()
 
+	/** @brief */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
 	TArray<FPDItemNetDatum> Items;
 };
@@ -31,18 +32,23 @@ struct FRTSSavedConversationActorData
 {
 	GENERATED_BODY()
 	
+	/** @brief */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
 	TSet<FName /*Missions to load from table*/> Missions{};
 
+	/** @brief */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Data|SaveGame|Unit")
 	FVector Location{}; // Location of conversation progression actor it belongs to
 
+	/** @brief */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Data|SaveGame|Unit")
 	TSoftClassPtr<ARTSOInteractableConversationActor> ActorClassType{};
 
+	/** @brief */
 	UPROPERTY(EditAnywhere, BlueprintReadOnly)
 	TMap<int32/*ActorID*/, int32/*ProgressionLever*/> ProgressionPerPlayer; /**< @brief progression*/
 
+	/** @brief */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Data|SaveGame|Unit")
 	double Health = 1.0; // assume it will always be 1.0 for now		
 };
@@ -53,21 +59,25 @@ struct FRTSSavedWorldUnits
 {
 	GENERATED_BODY()
 
+	/** @brief */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Data|SaveGame|Unit")
 	FPDMFragment_Action CurrentAction{};
 
+	/** @brief */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Data|SaveGame|Unit")
 	FVector Location{};
 
+	/** @brief */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Data|SaveGame|Unit")
 	double Health = 0.0;
 
+	/** @brief */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Data|SaveGame|Unit")
 	int32 OwnerID = INDEX_NONE;
 
+	/** @brief */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Data|SaveGame|Unit")
-	int32 SelectionIndex = INDEX_NONE;	
-	
+	int32 SelectionIndex = INDEX_NONE;
 };
 
 /** @brief Main save data structure */
@@ -76,18 +86,23 @@ class RTSOPEN_API URTSOpenSaveGame : public USaveGame
 {
 	GENERATED_BODY()
 public:
+	/** @brief */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "GameInstance|Widgets")
 	FRandomStream Seeder{0};
 
+	/** @brief */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "GameInstance|Widgets")
 	double GameTime = 0.0;
 
+	/** @brief */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "GameInstance|Widgets")
 	TMap<int32 /*Player Persistent ID*/, FVector> PlayerLocations{}; 
 
+	/** @brief */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "GameInstance|Widgets")
 	TArray<FRTSSavedInteractables> Interactables{};
 
+	/** @brief */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "GameInstance|Widgets")
 	TArray<FRTSSavedWorldUnits> EntityUnits{};
 	
@@ -95,6 +110,7 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "GameInstance|Widgets")
 	TMap<int32, FRTSSavedItems> Inventories{};
 
+	/** @brief */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "GameInstance|Widgets")
 	TMap<int32 /*ConversationActorID*/, FRTSSavedConversationActorData> ConversationActorState{};
 
@@ -110,12 +126,15 @@ class UPDTransitionWidget : public UUserWidget
 	GENERATED_BODY()
 
 public:
+	/** @brief */
 	UFUNCTION(BlueprintNativeEvent, BlueprintCallable)
 	void StartTransition();
+	/** @brief */
 	UFUNCTION(BlueprintNativeEvent, BlueprintCallable)
 	void EndTransition();
 	
 public:
+	/** @brief */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Widget|BaseTransition", Meta = (BindWidget))
 	UWidgetAnimation* TransitionAnimation = nullptr;
 };
@@ -137,6 +156,7 @@ class URTSInteractWidget : public UCommonActivatableWidget
 
 public:
 public:
+	/** @brief */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Widget|Base", Meta = (BindWidget))
 	UCommonButtonBase* InteractButton = nullptr;
 };

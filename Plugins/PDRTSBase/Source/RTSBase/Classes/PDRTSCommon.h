@@ -26,6 +26,7 @@ PDRTSBASE_API UE_DECLARE_GAMEPLAY_TAG_EXTERN(TAG_CTRL_Ctxt_ConversationMode);
 PDRTSBASE_API UE_DECLARE_GAMEPLAY_TAG_EXTERN(TAG_AI_Type_DefaultUnit);
 PDRTSBASE_API UE_DECLARE_GAMEPLAY_TAG_EXTERN(TAG_AI_Type_InvalidUnit);
 
+/** @brief */
 UENUM()
 enum class EPDVertexAnimSelector : uint8
 {
@@ -43,6 +44,7 @@ struct FPDWorkUnitDatum : public FTableRowBase
 {
 	GENERATED_BODY()
 
+	/** @brief */
 	FPDWorkUnitDatum() : bCanShareJob(0) {};
 
 	/** @brief The tag for the actual job this entry defines */

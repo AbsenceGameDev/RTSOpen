@@ -8,48 +8,45 @@
 #include "RTSOConversationInterface.generated.h"
 
 struct FGameplayTag;
-// This class does not need to be modified.
-UINTERFACE()
-class URTSOConversationSpeakerInterface : public UInterface
-{
-	GENERATED_BODY()
-};
+/** @brief BOILERPLATE */ UINTERFACE() class URTSOConversationSpeakerInterface : public UInterface { GENERATED_BODY() };
 
+/** @brief */
 class RTSOPEN_API IRTSOConversationSpeakerInterface
 {
 	GENERATED_BODY()
 
 public:
+	/** @brief */
 	UFUNCTION(BlueprintNativeEvent, BlueprintCallable)
 	void BeginWaitingForChoices(int32 ActorID);
 	// virtual void BeginWaitingForChoices_Implementation(int32 ActorID) = 0;
 
+	/** @brief */
 	UFUNCTION(BlueprintNativeEvent, BlueprintCallable)
 	void ReplyChoice(AActor* Caller, int32 Choice);
 	// virtual void ReplyChoice_Implementation(AActor* Caller, int32 Choice) = 0;
 };
 
-// This class does not need to be modified.
-UINTERFACE()
-class URTSOConversationInterface : public UInterface
-{
-	GENERATED_BODY()
-};
-
+/** @brief BOILERPLATE */ UINTERFACE() class URTSOConversationInterface : public UInterface { GENERATED_BODY() };
+/** @brief */
 class RTSOPEN_API IRTSOConversationInterface
 {
 	GENERATED_BODY()
 
 public:
+	/** @brief */
 	UFUNCTION(BlueprintNativeEvent, BlueprintCallable)
 	void AddUniqueProgressionTag(const FGameplayTag& NewTag);
+	/** @brief */
 	virtual void AddUniqueProgressionTag_Implementation(const FGameplayTag& NewTag)
 	{
 		AcquiredConversationProgressionTags.FindOrAdd(NewTag);
 	}
 
+	/** @brief */
 	UFUNCTION(BlueprintNativeEvent, BlueprintCallable)
 	void RemoveProgressionTag(const FGameplayTag& TagToRemove);
+	/** @brief */
 	virtual void RemoveProgressionTag_Implementation(const FGameplayTag& TagToRemove)
 	{
 		if (AcquiredConversationProgressionTags.Contains(TagToRemove))
@@ -58,15 +55,19 @@ public:
 		}
 	}
 
+	/** @brief */
 	UFUNCTION(BlueprintNativeEvent, BlueprintCallable)
 	void AddUniqueProgressionTagSet(const TSet<FGameplayTag>& NewTags);
+	/** @brief */
 	virtual void AddUniqueProgressionTagSet_Implementation(const TSet<FGameplayTag>& NewTags)
 	{
 		AcquiredConversationProgressionTags.Append(NewTags);
 	}
 
+	/** @brief */
 	UFUNCTION(BlueprintNativeEvent, BlueprintCallable)
 	void RemoveProgressionTagSet(const TSet<FGameplayTag>& TagsToRemove);
+	/** @brief */
 	virtual void RemoveProgressionTagSet_Implementation(const TSet<FGameplayTag>& TagsToRemove)
 	{
 		for (const FGameplayTag& Tag : TagsToRemove)
@@ -75,19 +76,23 @@ public:
 		}
 	}
 	
+	/** @brief */
 	virtual const TSet<FGameplayTag>& GetProgressionTagSet()
 	{
 		return AcquiredConversationProgressionTags;
 	}
 
+	/** @brief */
 	UFUNCTION(BlueprintNativeEvent, BlueprintCallable)
 	bool HasProgressionTag(const FGameplayTag& CompareTag);
+	/** @brief */
 	virtual bool HasProgressionTag_Implementation(const FGameplayTag& CompareTag)
 	{
 		return AcquiredConversationProgressionTags.Contains(CompareTag);
 	}
 	
 public:
+	/** @brief */
 	TSet<FGameplayTag> AcquiredConversationProgressionTags{};
 };
 

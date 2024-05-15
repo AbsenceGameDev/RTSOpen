@@ -13,6 +13,7 @@ class RTSOPEN_API APD_HUD : public AHUD
 {
 	GENERATED_BODY()
 
+	/** @brief */
 	virtual void DrawHUD() override;
 };
 

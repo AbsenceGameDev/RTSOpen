@@ -19,8 +19,10 @@ class PDRTSBASE_API IPDRTSActorInterface
 	GENERATED_BODY()
 
 public:
+	/** @brief */
 	UFUNCTION(BlueprintNativeEvent, CallInEditor, Category = "Actor|Interface")
 	void GetActorActionID() const;
+	/** @brief */
 	virtual int32 GetActorActionID_Implementation() const
 	{
 		// Perform actions

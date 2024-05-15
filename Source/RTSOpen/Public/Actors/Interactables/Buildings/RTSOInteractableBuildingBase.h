@@ -15,14 +15,18 @@ class RTSOPEN_API ARTSOInteractableBuildingBase : public APDInteractActor
 	GENERATED_BODY()
 
 public:
+	/** @brief */
 	ARTSOInteractableBuildingBase();
+	/** @brief */
 	virtual void Tick(float DeltaTime) override;
+	/** @brief */
 	virtual void BeginPlay() override;
 	
-
+	/** @brief */
 	virtual FGameplayTagContainer GetGenericTagContainer_Implementation() const override;
 
 private:
+	/** @brief */
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Meta = (AllowPrivateAccess="true"))
 	FGameplayTag JobTag{};	
 };

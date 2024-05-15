@@ -32,6 +32,7 @@ class RTSOPEN_API AGodHandPawn
 	GENERATED_BODY()
 
 public:
+	/** @brief */
 	AGodHandPawn();
 
 	/** @brief */
@@ -137,87 +138,120 @@ private:
 
 public:
 	/* Gameplay system components */	
+	/** @brief */
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category ="RTS|Pawn|GameplayComponents")
 	class UPDInteractComponent* InteractComponent = nullptr;
+	/** @brief */
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category ="RTS|Pawn|GameplayComponents")
 	class UPDInventoryComponent* InventoryComponent = nullptr;
+	/** @brief */
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category ="RTS|Pawn|GameplayComponents")
 	class UConversationParticipantComponent* ParticipantComponent = nullptr;
 	
 	/* Niagara */
+	/** @brief */
 	UPROPERTY(EditAnywhere, Category = "RTS|Pawn|Effects")
 	class UNiagaraSystem* NS_WorkerPath;
+	/** @brief */
 	UPROPERTY(VisibleInstanceOnly, Category = "RTS|Pawn|Effects")
 	class UNiagaraComponent* NC_WorkerPath;
 	
 	/* Scene/actor components */	
+	/** @brief */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "RTS|Pawn|Base")
 	class USceneComponent* SceneRoot = nullptr;
+	/** @brief */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "RTS|Pawn|Base")
 	class USpringArmComponent* Springarm = nullptr;
+	/** @brief */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "RTS|Pawn|Base")
 	class UCameraComponent* Camera = nullptr;
+	/** @brief */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "RTS|Pawn|Base")
 	class UStaticMeshComponent* CursorMesh = nullptr;
+	/** @brief */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "RTS|Pawn|Base")
 	class USphereComponent* Collision = nullptr;
+	/** @brief */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "RTS|Pawn|Base")
 	class UFloatingPawnMovement* PawnMovement = nullptr;
 
 	/* State(s) - tracked actors/components */	
+	/** @brief */
 	UPROPERTY(VisibleInstanceOnly, BlueprintReadWrite, Category = "RTS|Pawn|State")
 	AActor* HoveredActor = nullptr;
 
+	/** @brief */
 	UPROPERTY(VisibleInstanceOnly, BlueprintReadWrite, Category = "RTS|Pawn|State")
 	UInstancedStaticMeshComponent* ISMAgentComponent = nullptr;	
 
 	/* State(s) - tracked interactables*/
+	/** @brief */
 	UPROPERTY(VisibleInstanceOnly, BlueprintReadWrite, Category = "RTS|Pawn|State")
 	TSubclassOf<AActor> TempSpawnClass;
+	/** @brief */
 	UPROPERTY(VisibleInstanceOnly, BlueprintReadWrite, Category = "RTS|Pawn|State")
 	APDInteractActor* SpawnedInteractable = nullptr;
 	
 	/* State(s) - tracked values */	
+	/** @brief */
 	UPROPERTY(VisibleInstanceOnly, BlueprintReadWrite, Category = "RTS|Pawn|State")
 	TMap<FGameplayTag, FPDItemCosts> CurrentResourceCost;
 	
 	/* Setting(s) - Cursor @todo move into a table row type and source from a datatable */	
+	/** @brief */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "RTS|Pawn|Cursor|Settings")
 	UCurveFloat* MagnificationCurve = nullptr;
+	/** @brief */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "RTS|Pawn|Cursor|Settings")
 	double MagnificationValue = 0.0;
+	/** @brief */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "RTS|Pawn|Cursor|Settings")
 	double MagnificationStrength = 0.01;
+	/** @brief */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "RTS|Pawn|Cursor|Settings")
 	double TargetPadding = 40.0;
+	/** @brief */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "RTS|Pawn|Cursor|Settings")
 	double CursorSelectedScalePhaseSpeed = 4.0;	
+	/** @brief */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "RTS|Pawn|Cursor|Settings")
 	double CursorSelectedSinScaleIntensity = 0.3;
+	/** @brief */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "RTS|Pawn|Cursor|Settings")
 	double SelectionRescaleSpeed = 10.0;
 	
 	/* State(s) - Cursor */	
+	/** @brief */
 	UPROPERTY(VisibleInstanceOnly, BlueprintReadOnly, Category = "RTS|Pawn|Cursor|State")
 	double AccumulatedPlayTime = 0.0;
+	/** @brief */
 	UPROPERTY(VisibleInstanceOnly, BlueprintReadOnly, Category = "RTS|Pawn|Cursor|State")
 	FTransform TargetTransform{};
 	
+	/** @brief */
 	UPROPERTY(VisibleInstanceOnly, BlueprintReadOnly, Category = "RTS|Pawn|Cursor|State")
 	FVector WorkUnitTargetLocation{};
+	/** @brief */
 	UPROPERTY(VisibleInstanceOnly, BlueprintReadOnly, Category = "RTS|Pawn|Cursor|State")
 	AActor* WorkerUnitActionTarget;
+	/** @brief */
 	UPROPERTY()
 	FMassEntityHandle SelectedWorkerUnitHandle{INDEX_NONE, INDEX_NONE};
 	
+	/** @brief */
 	UPROPERTY(VisibleInstanceOnly, BlueprintReadOnly, Category = "RTS|Pawn|Cursor|State")
 	bool bUpdatePathOnTick = false;
+	/** @brief */
 	UPROPERTY(VisibleInstanceOnly, BlueprintReadOnly, Category = "RTS|Pawn|Cursor|State")
 	TArray<FVector> PathPoints;
 	
+	/** @brief */
 	static inline constexpr double  InvalidDistance{UE_MAX_FLT * UE_MAX_FLT};
+	/** @brief */
 	static inline const FVector InvalidVector{InvalidDistance};
 
+	/** @brief */
 	const FMassEntityManager* EntityManager = nullptr; // Active entity manager
 	
 	// Rotation queue
@@ -225,10 +259,14 @@ public:
 	// 2. Add Direction to queue
 	// 3. In tick: rotate +-90 degree in yaw with interpolation
 	// 4. If rotating direction Positive, then pressing positive again then negative, , final two should cancel eachother out
+	/** @brief */
 	TDeque<int8> RotationDeque{};
+	/** @brief */
 	double CurrentRotationLeft = 0.0;
+	/** @brief */
 	bool bIsInRotation = false;
 	
+	/** @brief */
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "RTS|Pawn|Cursor|State")
 	double RotationRateModifier = 10.0;
 };

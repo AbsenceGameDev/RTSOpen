@@ -29,14 +29,15 @@ public:
 	UFUNCTION(BlueprintNativeEvent, BlueprintCallable)
 	void OpenLevel();
 
+	/** @brief */
 	UFUNCTION(BlueprintNativeEvent, BlueprintCallable)
 	void OnLevelLoaded();
-
 
 	/** @brief Calls StartTransition, assigns PendingSoftWorldPtr and dispatches a call to Dispatch_OpenLevel */	
 	UFUNCTION()
 	void Dispatch_OpenLevel(TSoftObjectPtr<UWorld>& SoftWorldPtr);
 
+	/** @brief */
 	UFUNCTION()
 	void OnGMReady();
 	

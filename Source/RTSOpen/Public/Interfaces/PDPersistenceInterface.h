@@ -9,12 +9,14 @@
 // Imagine a static set of all possible server IDs, it would contain 65535 values, * 2 bytes = approx. 130kb
 //
 
+/** @brief */
 UCLASS()
 class UPDPersistentIDSubsystem : public UEngineSubsystem
 {
 	GENERATED_BODY()
 
 public:
+	/** @brief */
 	UPROPERTY()
 	TSet<int32> TrackedPersistentIDs;
 	
@@ -28,12 +30,17 @@ struct FPDPersistentID
 	GENERATED_BODY()
 
 public:
+	/** @brief */
 	FPDPersistentID() : BitSet_ID(INVALID_ID) {}
+	/** @brief */
 	FPDPersistentID(uint32 InID) : BitSet_ID(InID) {}
 	
+	/** @brief */
 	uint32 GetID() const { return BitSet_ID; }
+	/** @brief */
 	bool IsValidID() const { return BitSet_ID != INVALID_ID; }
 	
+	/** @brief */
 	static FPDPersistentID GenerateNewPersistentID()
 	{
 		TSet<int32>& ExistingIDs = GEngine->GetEngineSubsystem<UPDPersistentIDSubsystem>()->TrackedPersistentIDs;
@@ -68,6 +75,7 @@ public:
 	}
 	
 
+	/** @brief */
 	bool operator==(const FPDPersistentID& Other) const { return this->BitSet_ID == Other.BitSet_ID; }
 
 	bool operator!=(const FPDPersistentID& Other) const { return (*this == Other) == false; }
@@ -89,8 +97,10 @@ public:
 	FPDPersistentID& operator++(int){ FPDPersistentID Old = *this; BitSet_ID++; return Old;}
 	
 private:
+	/** @brief */
 	uint32 BitSet_ID; // Wrapped data (Player ID)
 	
+	/** @brief */
 	static bool ReverseSearch(const TSet<int32>& ExistingIDs, const int64 RandomStartingPoint, FPDPersistentID& Value)
 	{
 		if (ExistingIDs.IsEmpty()) { Value = RandomStartingPoint; return true; }
@@ -109,6 +119,8 @@ private:
 		}
 		return false;
 	}
+
+	/** @brief */
 	static bool ForwardSearch(const TSet<int32>& ExistingIDs, const int64 RandomStartingPoint, FPDPersistentID& Value)
 	{
 		if (ExistingIDs.IsEmpty()) { Value = RandomStartingPoint; return true; }
@@ -128,6 +140,7 @@ private:
 	}
 };
 
+/** @brief */
 inline uint32 GetTypeHash(const FPDPersistentID& PersistentID)
 {
 	return FCrc::MemCrc32(&PersistentID,sizeof(FPDPersistentID));
@@ -143,6 +156,7 @@ class RTSOPEN_API IPDPersistenceInterface
 
 public:
 	// default impl returns an invalid ID
+	/** @brief */
 	virtual FPDPersistentID GetPersistentID() { return FPDPersistentID(); };
 };
 

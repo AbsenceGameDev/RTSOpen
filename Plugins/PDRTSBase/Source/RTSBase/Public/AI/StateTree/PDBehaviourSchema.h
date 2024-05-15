@@ -9,10 +9,12 @@
 
 struct FStateTreeExternalDataDesc;
 
+/** @brief */
 namespace UE::BehaviourSchema::Names
 {
 	/** @brief The actor performing the interaction, using short name to be consistent with naming with StateTreeComponentSchema. */
 	const FName ContextActor = TEXT("Actor");
+	/** @brief */
 	const FName AbortContext = TEXT("AbortContext");
 };
 
@@ -37,6 +39,7 @@ struct PDRTSBASE_API FPDTreeAbortContext
 	FPDTreeAbortContext() = default;
 	explicit FPDTreeAbortContext(const EPDTreeAbortReason& InReason) : Reason(InReason) {}
 	
+	/** @brief */
 	UPROPERTY()
 	EPDTreeAbortReason Reason = EPDTreeAbortReason::Unset;
 };
@@ -55,12 +58,17 @@ public:
 	UClass* GetContextActorClass() const { return ContextActorClass; };
 
 protected:
+	/** @brief */
 	virtual bool IsStructAllowed(const UScriptStruct* InScriptStruct) const override;
+	/** @brief */
 	virtual bool IsClassAllowed(const UClass* InScriptStruct) const override;
+	/** @brief */
 	virtual bool IsExternalItemAllowed(const UStruct& InStruct) const override;
 
+	/** @brief */
 	virtual TConstArrayView<FStateTreeExternalDataDesc> GetContextDataDescs() const override { return ContextDataDescs; }
 
+	/** @brief */
 	virtual void PostLoad() override;
 
 #if WITH_EDITOR
@@ -84,6 +92,7 @@ struct PDRTSBASE_API FHandleValidityConditionInstanceData
 {
 	GENERATED_BODY()
 
+	/** @brief */
 	UPROPERTY(EditAnywhere, Category = Input)
 	FPDMFragment_Action ActionTest;
 };
@@ -96,11 +105,15 @@ struct PDRTSBASE_API FHandleValidityTagCondition : public FStateTreeConditionBas
 {
 	GENERATED_BODY()
 
+	/** @brief */
 	using FInstanceDataType = FHandleValidityConditionInstanceData;
 
+	/** @brief */
 	FHandleValidityTagCondition() = default;
 
+	/** @brief */
 	virtual const UStruct* GetInstanceDataType() const override { return FInstanceDataType::StaticStruct(); }
+	/** @brief */
 	virtual bool TestCondition(FStateTreeExecutionContext& Context) const override;
 };
 

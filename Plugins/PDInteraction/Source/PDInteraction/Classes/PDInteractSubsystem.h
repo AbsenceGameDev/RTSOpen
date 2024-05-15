@@ -10,32 +10,39 @@
 #include "Subsystems/EngineSubsystem.h"
 #include "PDInteractSubsystem.generated.h"
 
+/** @brief Wrapper to allow nesting container in a map, sadly TMap<int32,TArray<>> is not viable*/
 USTRUCT(BlueprintType, Blueprintable)
 struct FPDArrayListWrapper
 {
 	GENERATED_BODY()
 
+	/** @brief */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
 	TArray<FRTSSavedInteractables> ActorInfo{};
 };
 
-
+/** @brief Interaction subsystem, tracks all the interactables in the world for fast querying */
 UCLASS(BlueprintType, Blueprintable)
 class PDINTERACTION_API UPDInteractSubsystem : public UEngineSubsystem, public IPDWorldManagementInterface
 {
 	GENERATED_BODY()
 public:	
+	/** @brief Register an interactable in the world. APDInteractableActor does this by default in the base class */
 	virtual void RegisterWorldInteractable_Implementation(UWorld* SelectedWorld, AActor* SelectedInteractable) override;
 
+	/** @brief Transferring world interactable pointers. @todo replace dummy implementation, will not actually work and will leave garbage pointers */
 	virtual void TransferringWorld(UWorld* OldWorld, UWorld* TargetWorld);
 
+	/** @brief Returns a list of all interactables in a given world. */
 	UFUNCTION(BlueprintCallable)
 	const FPDArrayListWrapper& GetAllWorldInteractables(UObject* WorldContextObject);
 
 public:	
+	/** @brief The Map of tracked world interactables, keyed by the actual world pointer */
 	UPROPERTY(VisibleInstanceOnly, BlueprintReadOnly, Category = "Interaction Subsystem")
 	TMap<UWorld* /*SelectedWorld*/, FPDArrayListWrapper /*SelectedInteractables*/> WorldInteractables{};
 
+	/** @brief Dummy wrapper which is returned from 'GetAllWorldInteractables' when it fails to finds a valid info container */
 	inline static const FPDArrayListWrapper DummyWrapper{};
 };
 

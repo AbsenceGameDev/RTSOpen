@@ -18,10 +18,13 @@ class RTSOPEN_API URTSOInputStackSubsystem : public UWorldSubsystem
 	GENERATED_BODY()
 
 public:
+	/** @brief */
 	virtual void OnWorldBeginPlay(UWorld& InWorld) override;
 
+	/** @brief */
 	void DispatchValueStackReset();
 	
+	/** @brief */
 	UFUNCTION()
 	void ResetValueStacks()
 	{
@@ -31,9 +34,12 @@ public:
 		InputStackVectors.Empty();
 	};
 	
-	TDeque<int32> InputStackIntegers;
-	TDeque<double> InputStackDouble;
-	TDeque<FVector> InputStackVectors;
+	/** @brief */
+	TDeque<int32> InputStackIntegers{};
+	/** @brief */
+	TDeque<double> InputStackDouble{};
+	/** @brief */
+	TDeque<FVector> InputStackVectors{};
 };
 
 

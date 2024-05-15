@@ -17,8 +17,10 @@ class UNavigationPath;
 class UAnimToTextureDataAsset;
 
 // MassTags
+/** @brief */
 USTRUCT() struct PDRTSBASE_API FPDMTag_RTSEntity : public FMassTag { GENERATED_BODY(); };
 
+/** @brief */
 USTRUCT()
 struct FPDMFragment_SimpleMovement : public FMassFragment
 {
@@ -29,6 +31,7 @@ struct FPDMFragment_SimpleMovement : public FMassFragment
 	FVector Target;
 };
 
+/** @brief */
 UENUM()
 enum class EPDEntitySelectionState : uint8
 {
@@ -53,18 +56,23 @@ struct PDRTSBASE_API FPDMFragment_RTSEntityBase : public FMassFragment
 	UPROPERTY()
 	bool bAction  = false;
 
+	/** @brief */
 	UPROPERTY()
 	EPDEntitySelectionState SelectionState = EPDEntitySelectionState::ENTITY_UNSET;	
 	
+	/** @brief */
 	UPROPERTY()
 	bool bHasClearedSelection = true;
 
+	/** @brief */
 	UPROPERTY()
 	int32 SelectionGroupIndex = INDEX_NONE;
 
+	/** @brief */
 	UPROPERTY()
 	int32 OwnerID = INDEX_NONE;
 
+	/** @brief */
 	UPROPERTY()
 	TArray<FVector> QueuedUnitPath{};	
 	
@@ -73,6 +81,7 @@ struct PDRTSBASE_API FPDMFragment_RTSEntityBase : public FMassFragment
 	// TArray<FMassEntityHandle> QueuedInteractables;
 };
 
+/** @brief */
 USTRUCT()
 struct PDRTSBASE_API FPDMFragment_EntityAnimation : public FMassFragment
 {
@@ -103,14 +112,18 @@ struct PDRTSBASE_API FPDMFragment_EntityAnimation : public FMassFragment
 	int AnimPosition = 0;
 };
 
+/** @brief */
 static const FMassInt16Vector InvalidLoc = FMassInt16Vector{};
+/** @brief */
 static const FMassEntityHandle InvalidHandle = FMassEntityHandle{INDEX_NONE, INDEX_NONE};
 
+/** @brief */
 USTRUCT(Blueprintable)
 struct PDRTSBASE_API FPDTargetCompound
 {
 	GENERATED_BODY()
 
+	/** @brief Is valid check, does not take into regard if the entity actually exists */
 	bool IsValidCompound() const
 	{
 		return
@@ -118,6 +131,7 @@ struct PDRTSBASE_API FPDTargetCompound
 			|| ActionTargetAsLocation.Get() != InvalidLoc.Get()
 			|| ActionTargetAsEntity != InvalidHandle;
 	};
+	/** @brief Is valid check, takes into regard if the entity actually exists via a given entity manager */
 	bool IsValidCompoundByManager(const FMassEntityManager& Manager) const
 	{
 		return
@@ -125,7 +139,6 @@ struct PDRTSBASE_API FPDTargetCompound
 			|| ActionTargetAsLocation.Get() != InvalidLoc.Get()
 			|| (ActionTargetAsEntity != InvalidHandle && Manager.IsEntityValid(ActionTargetAsEntity));
 	};
-
 	
 	/** @brief Target (if entity) */
 	UPROPERTY(EditAnywhere)
@@ -146,6 +159,7 @@ struct PDRTSBASE_API FPDWrappedSelectionGroupNavData
 {
 	GENERATED_BODY()
 
+	/** @brief */
 	UPROPERTY(EditAnywhere)
 	TMap<int32 /*SelectionGroupIndex*/, const UNavigationPath*> SelectionGroupNavData;
 };
@@ -157,6 +171,7 @@ struct PDRTSBASE_API FPDMFragment_SharedEntity : public FMassSharedFragment
 {
 	GENERATED_BODY()
 
+	/** @brief */
 	UPROPERTY(EditAnywhere)
 	TMap<int32 /* OwnerID */, FPDWrappedSelectionGroupNavData> SharedNavData;
 };

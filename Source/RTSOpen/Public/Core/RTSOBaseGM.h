@@ -78,6 +78,7 @@ public: // Method members
 	UFUNCTION(BlueprintNativeEvent, BlueprintCallable)
 	void SaveEntities();
 
+	/** @brief */
 	virtual void TickActor(float DeltaTime, ELevelTick TickType, FActorTickFunction& ThisTickFunction) override;
 	
 public: // Variable members
@@ -94,6 +95,7 @@ public: // Variable members
 	/** @brief Reserved use, for when inventory items lists grow large we want to avoid costly search operations */
 	const TMap<int32, FRTSSavedItems>* MapPointer = nullptr;
 
+	/** @brief */
 	static const FString ROOTSAVE;
 };
 

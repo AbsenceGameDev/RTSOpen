@@ -9,10 +9,12 @@
 #include "Containers/Deque.h"
 #include "PDInteractCommon.generated.h"
 
+/* Max distances */
 constexpr float DEFAULT_PEROBJECT_MAX_INTERACTION_DISTANCE = 150;
 constexpr float DEFAULT_TRACER_MAX_INTERACTION_DISTANCE = 1500;
 constexpr float DEFAULT_TRACER_MAX_RADIAL_DISTANCE = 500;
 
+/* Interaction (trace) channels */
 constexpr ECollisionChannel DEDICATED_INTERACT_CHANNEL_ALT18 = ECollisionChannel::ECC_GameTraceChannel18;
 constexpr ECollisionChannel DEDICATED_INTERACT_CHANNEL_ALT17 = ECollisionChannel::ECC_GameTraceChannel17;
 constexpr ECollisionChannel DEDICATED_INTERACT_CHANNEL_ALT16 = ECollisionChannel::ECC_GameTraceChannel16;
@@ -20,24 +22,29 @@ constexpr ECollisionChannel DEDICATED_INTERACT_CHANNEL_ALT15 = ECollisionChannel
 constexpr ECollisionChannel DEDICATED_INTERACT_CHANNEL_ALT14 = ECollisionChannel::ECC_GameTraceChannel14;
 
 
+/** @brief Tick trace types, Radial, Rdial-trace, Shape-trace along lines,(more to  etc.  */
 UENUM(Blueprintable, BlueprintType)
 enum class EPDTickTraceType : uint8
 {
-	TRACE_RADIAL     UMETA(DisplayName="Radial trace"),           /**< @brief Interaction attempt succeeded */
-	TRACE_LINESHAPE  UMETA(DisplayName="Shape trace along line"), /**< @brief Interaction attempt failed */ 
-	TRACE_MAX        UMETA(DisplayName="All trace types"),        /**< @brief Interaction attempt delayed. Possibly networked call */
+	TRACE_RADIAL     UMETA(DisplayName="Radial trace"),           /**< @brief Radial-trace */
+	TRACE_LINESHAPE  UMETA(DisplayName="Shape trace along line"), /**< @brief Shape-line-trace */ 
+	TRACE_RESERVED0  UMETA(DisplayName="RESERVED0"),              /**< @brief Reserved type */ 
+	TRACE_RESERVED1  UMETA(DisplayName="RESERVED1"),              /**< @brief Reserved type */ 
+	TRACE_RESERVED2  UMETA(DisplayName="RESERVED2"),              /**< @brief Reserved type */ 
+	TRACE_MAX        UMETA(DisplayName="All trace types"),        /**< @brief All trace types */
 };
 
+/** @brief Interaction results enum: INTERACT_[SUCCESS, FAIL, DELAYED, UNHANDLED] */
 UENUM(Blueprintable, BlueprintType)
 enum class EPDInteractResult : uint8
 {
 	INTERACT_SUCCESS   UMETA(DisplayName="Succeeded"),  /**< @brief Interaction attempt succeeded */
 	INTERACT_FAIL      UMETA(DisplayName="Failed"),     /**< @brief Interaction attempt failed */ 
 	INTERACT_DELAYED   UMETA(DisplayName="Delayed"),    /**< @brief Interaction attempt delayed. Possibly networked call */
-	INTERACT_UNHANDLED UMETA(DisplayName="Unhandled"),    /**< @brief Interaction attempt delayed. Possibly networked call */
+	INTERACT_UNHANDLED UMETA(DisplayName="Unhandled"),  /**< @brief Interaction attempt delayed. Possibly networked call */
 };
 
-
+/** @brief Trace results enum: TRACE_[SUCCESS, FAIL] */
 UENUM(Blueprintable, BlueprintType)
 enum class EPDTraceResult : uint8 
 {
@@ -45,33 +52,36 @@ enum class EPDTraceResult : uint8
 	TRACE_FAIL    UMETA(DisplayName="Failed"),     /**< @brief Trace failed at finding an interactable  */ 
 };
 
-//OutMessage.KeyAction
-
+/** @brief Key actions enum: [KTAP, KHOLD]. Used for interaction messages  */
 UENUM(Blueprintable, BlueprintType)
 enum class EPDKeyAction : uint8 
 {
-	KTAP UMETA(DisplayName="Tap"),  
-	KHOLD UMETA(DisplayName="Hold"),    
+	KTAP UMETA(DisplayName="Tap"),   /**< @brief Tapping key action */    
+	KHOLD UMETA(DisplayName="Hold"), /**< @brief Holding key action */ 
 };
 
+/** @brief Key modifier enum: [KCTRL L/R, KALT L/R, KSHIFT L/R]. Used for interaction messages  */
 UENUM(Blueprintable, BlueprintType)
 enum class EPDKeyModifiers : uint8 
 {
-	KCTRLR UMETA(DisplayName="ControlR"),  
-	KCTRLL UMETA(DisplayName="ControlL"),
+	KCTRLR UMETA(DisplayName="ControlR"),  /**< @brief Modifier key: CTRL R */
+	KCTRLL UMETA(DisplayName="ControlL"),  /**< @brief Modifier key: CTRL L */
 	
-	KALTR UMETA(DisplayName="AltR"),    
-	KALTL UMETA(DisplayName="AltL"),
+	KALTR UMETA(DisplayName="AltR"),   /**< @brief Modifier key: ALT R */
+	KALTL UMETA(DisplayName="AltL"),   /**< @brief Modifier key: ALT L */
 	
-	KSHIFTR UMETA(DisplayName="ShiftR"),
-	KSHIFTL UMETA(DisplayName="ShiftL"),
+	KSHIFTR UMETA(DisplayName="ShiftR"), /**< @brief Modifier key: SHIFT R */
+	KSHIFTL UMETA(DisplayName="ShiftL"), /**< @brief Modifier key: SHIFT L */
 };
 
+/** @brief Key string builder. Used for interaction messages */
 namespace EPDKeys
 {
+	/** @brief Translate Key action enum to string */
 	static inline FString ToString(EPDKeyAction InAction)
 	{
-		switch (InAction) {
+		switch (InAction)
+		{
 		case EPDKeyAction::KTAP:
 			return "Press";
 		case EPDKeyAction::KHOLD:
@@ -80,6 +90,7 @@ namespace EPDKeys
 		return "";
 	}
 
+	/** @brief Translate Key modifier enum to string */
 	static inline FString ToString(EPDKeyModifiers InMod)
 	{
 		switch (InMod) {
@@ -100,40 +111,50 @@ namespace EPDKeys
 	}	
 };
 
+/** @brief Key combination compound. Used for interaction messages */
 USTRUCT(Blueprintable, BlueprintType)
 struct PDINTERACTION_API FPDKeyCombination
 {
 	GENERATED_BODY()
 
+	/** @brief Translate Key combination data to string format */
 	FString ConvertToString();
-
 	
+	/** @brief Main key used for the interaction */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
 	FKey MainKey{};
+	/** @brief Optional key modifier */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
 	TArray<EPDKeyModifiers> OptionalModifiers{};
+	/** @brief Related key action */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
 	EPDKeyAction KeyAction = EPDKeyAction::KTAP;
+	/** @brief String that accumulates the strings of translated modifiers */
 	UPROPERTY(VisibleAnywhere, BlueprintReadWrite)
 	FString AccumulatedString{};
 	
 };
 
+/** @brief Interaction message compound. For use with user interfaces */
 USTRUCT(Blueprintable, BlueprintType)
 struct PDINTERACTION_API FPDInteractMessage
 {
 	GENERATED_BODY()
 
+	/** @brief Interactable actor display name */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
 	FString ActorName;
+	/** @brief Key combination (meta) data */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
 	FPDKeyCombination KeyActionMetadata;
+	/** @brief Game action to describe the interaction itself */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
 	FString GameAction;
 };
 
 /**
- * @brief This structure is constructed by the interaction component and passed into an 'interactable' item at the point of interaction
+ * @brief This is the structure used to dispatch interactions, the parameters passed into an OnInteract.
+ * @note This structure is constructed by the interaction component and passed into an 'interactable' item at the point of interaction
  */
 USTRUCT(Blueprintable, BlueprintType)
 struct PDINTERACTION_API FPDInteractionParams
@@ -156,9 +177,6 @@ struct PDINTERACTION_API FPDInteractionParams
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Interaction|Params")
 	TSubclassOf<UActorComponent> InstigatorComponentClass = nullptr;
 
-	// /** @brief Passing in the instigator fragment */
-	// struct FMassFragment* InstigatorFragment = nullptr;	
-
 	/** @brief Passing in the instigator fragment */
     FMassEntityHandle InstigatorEntity{}; // @todo replace usage of above fragment with this entity
 	
@@ -167,6 +185,9 @@ struct PDINTERACTION_API FPDInteractionParams
 	TSet<FGameplayTag> OptionalInteractionTags{};
 };
 
+/**
+ * @brief A subclass of interaction parameters which adds a custom processing delegate for allowing processing logic to be overriden for any interactables, use with care 
+ */
 DECLARE_DYNAMIC_DELEGATE_TwoParams(FPDCustomProcessInteraction, const FPDInteractionParams&, InteractionParams, EPDInteractResult&, InteractResult);
 USTRUCT(Blueprintable, BlueprintType)
 struct FPDInteractionParamsWithCustomHandling : public FPDInteractionParams
@@ -175,6 +196,7 @@ struct FPDInteractionParamsWithCustomHandling : public FPDInteractionParams
 	
 	// @todo Handle callback on delayed events soon
 	// DECLARE_DYNAMIC_MULTICAST_DELEGATE_ThreeParams(FPDCustomProcessInteractionDelayedCallback, const AActor*, OriginalInteractable, const FPDInteractionParams&, NewInteractionPayload, EPDInteractResult&, CallbackInteractResult);
+	/** @brief Custom processing delegate */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Interaction|Params")
 	FPDCustomProcessInteraction CustomInteractionProcessor;
 };
@@ -190,7 +212,7 @@ struct FPDInteractionSettings
 	FPDInteractionSettings() = default;
 	explicit FPDInteractionSettings(double _InteractionTimeInSeconds) : InteractionTimeInSeconds(_InteractionTimeInSeconds){}
 	
-	/** @brief Represents teh full time, in seconds, it takes to complete the interaction */
+	/** @brief Represents the full time, in seconds, it takes to complete the interaction */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Interaction|Settings")
 	double InteractionTimeInSeconds = 0.0;
 
@@ -265,16 +287,20 @@ public:
 	double LineTraceTickInterval  = 0.0;
 };
 
-
+/**
+ * @brief This structure contains trace results for the interaction system. 
+ */
 USTRUCT(BlueprintType)
 struct FPDTraceResult
 {
 	GENERATED_USTRUCT_BODY()
 
 public:
+	/** @brief Result enum flag  @todo remove and replace usage, really only need the hitresult struct */
 	UPROPERTY(BlueprintReadOnly)
 	EPDTraceResult ResultFlag = EPDTraceResult::TRACE_FAIL;
 
+	/** @brief Result hit result structure */
 	UPROPERTY(BlueprintReadOnly)
 	FHitResult HitResult;
 	
@@ -286,49 +312,72 @@ public:
 	}
 };
 
+/** @brief How many trace frames the interaction component can accumulate it its trace buffer */
 constexpr int32 FRAMERESET_LIMIT = 10;
 
+/**
+ * @brief The Trace buffer structure. Keeps buffers + controls for managing the trace buffer
+ * @details Keeps buffers for both radial and shape traces + controls for managing the trace buffer
+ */
 USTRUCT(BlueprintType)
 struct FPDTraceBuffer
 {
 	GENERATED_USTRUCT_BODY()
 
 public:
+	/** @brief Adds an initial invalid trace frame. Used as a state check downstream */
+	void Setup();
+	/** @brief Get last trace result */
+	const FPDTraceResult& GetLastTraceResult() const;
+	/** @brief Get last trace result with a valid hit result, if any exists in the buffer */
+	const FPDTraceResult& GetLastValidResult() const;
+	/** @brief Check if there are any valid trace results */
+	const bool HasValidResults() const;
+	/** @brief Clear all trace results */
+	void ClearTraceResults();
+	/** @brief Adds a new trace frame to the buffer */
+	void AddTraceFrame(EPDTraceResult TraceResult, const FHitResult& HitResult);
+	
+	/** @brief Radially traced actors */
 	UPROPERTY()
 	TArray<AActor*> RadialTraceActors{};
 
+	/** @brief Tick time interval for the radial trace */
 	double RadialTraceTickTime = 0.0;
+	/** @brief Tick time interval for the shaped-line trace  */
 	double LineTraceTickTime = 0.0;
 
-	TDeque<FPDTraceResult> Frames;
+	/** @brief Frame results */
+	TDeque<FPDTraceResult> Frames{};
+	/** @brief Iteration step, to help keep track when we should wrapping the buffer */
 	int32 ValidFrameResetIt = 1;
-	FPDTraceResult CachedValidFrame;
-
-	void Setup();
-	const FPDTraceResult& GetLastTraceResult() const;
-	const FPDTraceResult& GetLastValidResult() const;
-	const bool HasValidResults() const;
-	void ClearTraceResults();
-	void AddTraceFrame(EPDTraceResult TraceResult, const FHitResult& HitResult);
+	/** @brief Cached valid frame */
+	FPDTraceResult CachedValidFrame{};
 };
 
-
+/**
+ * @brief Structure used by the savegame structure. Holds data regarding world interactables.
+ */
 USTRUCT(BlueprintType, Blueprintable)
 struct PDINTERACTION_API FRTSSavedInteractables
 {
 	GENERATED_BODY()
 
+	/** @brief Actor world representation of this interactable */
 	UPROPERTY(Transient, VisibleInstanceOnly, BlueprintReadWrite)
-	AActor* ActorInWorld = nullptr; // 
+	AActor* ActorInWorld = nullptr; 
 	
+	/** @brief Class of interactable. @todo replace with softclass */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
-	TSubclassOf<AActor> ActorClass; // Tag of related item which inherits from the interact interface
+	TSubclassOf<AActor> ActorClass; 
 	
+	/** @brief Location of the interactable at the moment of saving */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
 	FVector Location;
 
+	/** @brief Reserved Usability 'stat'. @todo consider removing and replacing in gamemodule class, where a progression system could be hooked into here to give an extended stat-list */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "GameInstance|Widgets")
-	double Usability = 0.0; // Could be interpreted as
+	double Usability = 0.0; 
 };
 
 

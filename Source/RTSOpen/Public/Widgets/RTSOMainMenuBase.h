@@ -15,45 +15,69 @@ class RTSOPEN_API URTSOMainMenuBase : public UCommonActivatableWidget
 {
 	GENERATED_BODY()
 	
+	/** @brief */
 	virtual void NativeOnActivated() override;
 
 public:
+	/** @brief */
 	UFUNCTION(BlueprintNativeEvent, BlueprintCallable)
 	void PushToWidgetStack(TSubclassOf<UCommonActivatableWidget> Subclass);
 
+	/** @brief */
 	UFUNCTION()
 	void BindButtonDelegates(AActor* ActorToBindAt);
+	/** @brief */
 	void SetupInnerMenuDelegates(const URTSOMenuWidget* OuterMenu);
 
+	/** @brief */
 	UFUNCTION() void SettingsTargetWidget();	
+	/** @brief */
 	UFUNCTION() void SaveTargetWidget();
+	/** @brief */
 	UFUNCTION() void LoadTargetWidget();
 
 	// Fix this, not scalable at all
+	/** @brief */
 	UFUNCTION() void SaveOrLoadSlot(TEnumAsByte<ERTSOSaveType> Type, int32 SlotIdx);
+	/** @brief */
 	UFUNCTION() void LoadSlot0() { SaveOrLoadSlot(ERTSOSaveType::LOAD, 0); };
+	/** @brief */
 	UFUNCTION() void LoadSlot1() { SaveOrLoadSlot(ERTSOSaveType::LOAD, 1); };
+	/** @brief */
 	UFUNCTION() void LoadSlot2() { SaveOrLoadSlot(ERTSOSaveType::LOAD, 2); };
+	/** @brief */
 	UFUNCTION() void LoadSlot3() { SaveOrLoadSlot(ERTSOSaveType::LOAD, 3); };
+	/** @brief */
 	UFUNCTION() void LoadSlot4() { SaveOrLoadSlot(ERTSOSaveType::LOAD, 4); };
+	/** @brief */
 	UFUNCTION() void CloseLoadSlot();
 
+	/** @brief */
 	UFUNCTION() void SaveSlot0() { SaveOrLoadSlot(ERTSOSaveType::SAVE, 0); };
+	/** @brief */
 	UFUNCTION() void SaveSlot1() { SaveOrLoadSlot(ERTSOSaveType::SAVE, 1); };
+	/** @brief */
 	UFUNCTION() void SaveSlot2() { SaveOrLoadSlot(ERTSOSaveType::SAVE, 2); };
+	/** @brief */
 	UFUNCTION() void SaveSlot3() { SaveOrLoadSlot(ERTSOSaveType::SAVE, 3); };
+	/** @brief */
 	UFUNCTION() void SaveSlot4() { SaveOrLoadSlot(ERTSOSaveType::SAVE, 4); };
+	/** @brief */
 	UFUNCTION() void CloseSaveSlot();
 	
+	/** @brief */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Meta = (BindWidget))
 	class UCommonActivatableWidgetStack* WidgetStack;
 
+	/** @brief */
 	UPROPERTY(EditAnywhere, BlueprintReadOnly)
 	TSubclassOf<URTSOMenuWidget> WidgetClass = nullptr;
 
+	/** @brief */
 	UPROPERTY(EditAnywhere, BlueprintReadOnly)
 	TSubclassOf<URTSOSaveGameDialog> ConfirmDialogClass = nullptr;	
 	
+	/** @brief */
 	UPROPERTY()
 	URTSOMenuWidget* ActiveMenuInstance = nullptr;
 };

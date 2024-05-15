@@ -19,22 +19,28 @@ class UMassSignalSubsystem;
 class UNavigationSystemV1;
 class UMassEntitySubsystem;
 
+/** @brief */
 #define DECLARE_PROCESSOR_BODY \
 virtual void Execute(FMassEntityManager& EntityManager, FMassExecutionContext& Context) override; \
 virtual void ConfigureQueries() override; \
 virtual void Initialize(UObject& Owner) override;
 
+/** @brief */
 #define DEFINE_PROCESSOR_EMPTY_DEFAULTS \
 virtual void Execute(FMassEntityManager& EntityManager, FMassExecutionContext& Context) override {}; \
 virtual void ConfigureQueries() override {}; \
 virtual void Initialize(UObject& Owner) override {};
 
+/** @brief */
 template<typename TFrag>
 using TConstFragment = const TConstArrayView<TFrag>;
+/** @brief */
 template<typename TFrag>
 using TMutFragment = const TArrayView<TFrag>;
+/** @brief */
 template<typename TFrag>
 using TSharedFragment = const TFrag&;
+/** @brief */
 template<typename TFrag>
 using TMutSharedFragment = TFrag&;
 
@@ -49,10 +55,13 @@ class PDRTSBASE_API UPDProcessor_MoveTarget : public UMassProcessor
 public:
 	UPDProcessor_MoveTarget();
 
+	/* Macro helper to declare the required processor functions */
 	DECLARE_PROCESSOR_BODY
 
 private:
+	/** @brief */
 	FMassEntityQuery EntityQuery;
+	/** @brief */
 	TObjectPtr<UMassSignalSubsystem> SignalSubsystem;
 };
 
@@ -67,9 +76,11 @@ class PDRTSBASE_API UPDMProcessor_InitializeEntities : public UMassObserverProce
 public:
 	UPDMProcessor_InitializeEntities();
 	
+	/* Macro helper to declare the required processor functions */
 	DECLARE_PROCESSOR_BODY
 
 protected:
+	/** @brief */
 	FMassEntityQuery EntityQuery;
 };
 
@@ -84,8 +95,10 @@ class UPDMProcessor_EntityCosmetics : public UMassProcessor
 public:
 	UPDMProcessor_EntityCosmetics();
 
+	/* Macro helper to declare the required processor functions */
 	DECLARE_PROCESSOR_BODY
 	
+	/** @brief */
 	static bool ProcessVertexAnimation(
 		int32 EntityIdx,
 		TConstFragment<FMassRepresentationLODFragment>& RepresentationLODFragments,
@@ -96,6 +109,7 @@ public:
 		const FMassInstancedStaticMeshInfoArrayView& MeshInfo,
 		const TArrayView<FMassInstancedStaticMeshInfo>& MeshInfoInnerArray,
 		const UPDMProcessor_EntityCosmetics* Self);
+	/** @brief */
 	static bool ProcessMaterialInstanceData(
 		const FMassEntityHandle& EntityHandle,
 		const FMassRepresentationLODFragment& RepLOD,
@@ -103,11 +117,14 @@ public:
 		FMassInstancedStaticMeshInfo& ISMInfo,
 		FPDMFragment_RTSEntityBase* RTSEntityFragment);
 
+	/** @brief */
 	void UpdateISMVertexAnimation(FMassInstancedStaticMeshInfo& ISMInfo, FPDMFragment_EntityAnimation& AnimationData,
 	                              float LODSignificance, float PrevLODSignificance, int32 NumFloatsToPad) const;
 
 protected:
+	/** @brief */
 	FMassEntityQuery EntityQuery;
+	/** @brief */
 	TObjectPtr<UMassCrowdRepresentationSubsystem> RepresentationSubsystem;
 };
 
@@ -125,6 +142,7 @@ public:
 	UPDMProcessor_LODVisualization();
 
 protected:
+	/* Macro helper to declare the required processor functions */
 	DECLARE_PROCESSOR_BODY
 
 	// void DispatchCollisionOverwrite();
@@ -133,10 +151,12 @@ protected:
 	// virtual void OverrideISMOwnerCollision();
 
 protected:
+	/** @brief */
 	bool bHasUpdatedMassISMSettings = false;
 };
 
 
+/** @brief */
 UCLASS(Meta = (DisplayName = "Crowd LOD Collection"))
 class PDRTSBASE_API UPDMProcessor_LODCollector : public UMassLODCollectorProcessor
 {
@@ -145,13 +165,14 @@ class PDRTSBASE_API UPDMProcessor_LODCollector : public UMassLODCollectorProcess
 	UPDMProcessor_LODCollector() { bAutoRegisterWithProcessingPhases = true; };
 
 protected:
+	/** @brief */
 	virtual void ConfigureQueries() override;
 };
 
 
 //
 // Oct tree entity collision and hash grid processing
-
+/** @brief */
 UCLASS()
 class PDRTSBASE_API UPDOctreeProcessor : public UMassProcessor
 {
@@ -159,21 +180,29 @@ class PDRTSBASE_API UPDOctreeProcessor : public UMassProcessor
 
 public:
 	UPDOctreeProcessor();
+	/** @brief */
 	void DebugDrawCells();
 
 protected:	
+	/* Macro helper to declare the required processor functions */
 	DECLARE_PROCESSOR_BODY
 
 public:	
+	/** @brief */
 	FMassEntityQuery AddToHashGridQuery;
+	/** @brief */
 	FMassEntityQuery UpdateOctreeElementsQuery;
+	/** @brief */
 	FMassEntityQuery RemoveFromGridEntityQuery;
 	
+	/** @brief */
 	UPROPERTY()
 	class UPDRTSBaseSubsystem* RTSSubsystem = nullptr;
 
+	/** @brief */
 	static TAutoConsoleVariable<bool> CVarDrawCells;
 
+	/** @brief */
 	bool bSentChaosCommand = false;
 };
 
@@ -186,14 +215,18 @@ public:
 	UPDOctreeEntityObserver();
 
 protected:	
+	/* Macro helper to declare the required processor functions */
 	DECLARE_PROCESSOR_BODY
 
 public:	
+	/** @brief */
 	FMassEntityQuery EntityQuery;
 
+	/** @brief */
 	UPROPERTY()
 	class UPDRTSBaseSubsystem* RTSSubsystem = nullptr;
 
+	/** @brief */
 	UPROPERTY()
 	float ElementGridSize = 0.0; //assigned to by default settings
 };
@@ -209,11 +242,14 @@ public:
 	UPDGridCellDeinitObserver();
 
 protected:	
+	/* Macro helper to declare the required processor functions */
 	DECLARE_PROCESSOR_BODY
 
 public:	
+	/** @brief */
 	FMassEntityQuery EntityQuery;
 
+	/** @brief */
 	UPROPERTY()
 	class UPDRTSBaseSubsystem* RTSSubsystem = nullptr;
 };
@@ -227,12 +263,14 @@ public:
 	UPDCollisionSignalProcessor();
 
 protected:	
+	/* Macro helper to declare the required processor functions */
 	DECLARE_PROCESSOR_BODY
-
 	
 public:	
+	/** @brief */
 	FMassEntityQuery WorldOctreeEntityQuery{};
 
+	/** @brief */
 	UPROPERTY()
 	class UPDRTSBaseSubsystem* RTSSubsystem = nullptr;
 };

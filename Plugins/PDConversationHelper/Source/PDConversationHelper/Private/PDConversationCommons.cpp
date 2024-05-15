@@ -25,11 +25,6 @@ const FClientConversationMessagePayload& UPDConversationBPFL::GetPreviousMessage
 	return ConversationParticipantComponent->GetLastMessage();
 }
 
-const UConversationTaskNode* UPDConversationBPFL::GetTaskNode(const FConversationContext& Context)
-{
-	return Context.GetTaskBeingConsidered();
-}
-
 bool UPDConversationBPFL::IsGameFeaturePluginActive(FString PluginName)
 {
 	UGameFeaturesSubsystem* GameFeaturesSubsystem = GEngine ? GEngine->GetEngineSubsystem<UGameFeaturesSubsystem>() : nullptr;
@@ -42,22 +37,13 @@ bool UPDConversationBPFL::IsGameFeaturePluginActive(FString PluginName)
 	return false;
 }
 
-int32 UPDConversationBPFL::ProcessInputKey(const FKey& PressedKey, const TArray<FKey>& ValidKeys, EPDKeyProcessResult& Results)
-{
-	Results = ValidKeys.Contains(PressedKey)
-		? EPDKeyProcessResult::KEY_SUCCESS
-		: EPDKeyProcessResult::KEY_FAIL;
-
-	return ValidKeys.Find(PressedKey);
-}
-
-void UPDConversationBPFL::PrintConversationMessageToScreen(UObject* WorldContext, const FClientConversationMessage& Message, FLinearColor MessageColour)
+void UPDConversationBPFL::Debug_PrintConversationMessageToScreen(UObject* WorldContext, const FClientConversationMessage& Message, FLinearColor MessageColour)
 {
 	const FString BuildString = Message.ParticipantDisplayName.ToString() + " : " + Message.Text.ToString();
 	UKismetSystemLibrary::PrintString(WorldContext, BuildString, true, true, MessageColour, 50);
 }
 
-void UPDConversationBPFL::PrintConversationTextToScreen(UObject* WorldContext, const FName& Participant, const FText& Text, FLinearColor MessageColour)
+void UPDConversationBPFL::Debug_PrintConversationTextToScreen(UObject* WorldContext, const FName& Participant, const FText& Text, FLinearColor MessageColour)
 {
 	const FString BuildString = Participant.ToString() + " : " + Text.ToString();
 	UKismetSystemLibrary::PrintString(WorldContext, BuildString, true, true, MessageColour, 50);	

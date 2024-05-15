@@ -15,17 +15,17 @@
 class UPDInventoryComponent;
 struct FPDItemList;
 
-
-
 // Light version for export to AI entities mainly, but anything that requires some lightweight data and does not care about stacks being seperated
 USTRUCT(BlueprintType)
 struct FPDLightItemDatum
 {
 	GENERATED_BODY();
 	
+	/** @brief */
 	UPROPERTY(BlueprintReadWrite)
 	FGameplayTag ItemTag{};
 	
+	/** @brief */
 	UPROPERTY(BlueprintReadWrite)
 	int32 TotalItemCount = INDEX_NONE;
 
@@ -52,59 +52,80 @@ struct FPDItemNetDatum : public FFastArraySerializerItem
 	FPDItemNetDatum(const FGameplayTag& InItemTag, int32 StackIndex, int32 InCount);
 	FPDItemNetDatum(const FGameplayTag& InItemTag, int32 InCount);
 
+	/** @brief */
 	void PreReplicatedRemove(const FPDItemList& OwningList);
+	/** @brief */
 	void PostReplicatedAdd(const FPDItemList& OwningList);
+	/** @brief */
 	void PostReplicatedChange(const FPDItemList& OwningList);
 	
+	/** @brief */
 	UPROPERTY(BlueprintReadWrite)
 	FGameplayTag ItemTag{};
 
+	/** @brief */
 	UPROPERTY(BlueprintReadWrite)
 	int32 LastEditedStackIndex = INDEX_NONE;
 	
+	/** @brief */
 	UPROPERTY(BlueprintReadWrite)
 	int32 TotalItemCount = INDEX_NONE;
 	
+	/** @brief */
 	// @todo Might need to replace this, t-map is too weighty, an array could do with some index caching
 	UPROPERTY(BlueprintReadWrite)
 	TMap<int32 /* StackIndex */, int32 /* ItemCount */> Stacks{};
 
+	/** @brief */
 	FPDLightItemDatum ExportLight() const { return FPDLightItemDatum{ItemTag, TotalItemCount}; }
 };
 
+/** @brief */
 USTRUCT(BlueprintType)
 struct FPDItemList : public FFastArraySerializer 
 {
 	GENERATED_USTRUCT_BODY()
 
+	/** @brief */
 	bool NetSerialize(FNetDeltaSerializeInfo& DeltaParams);
 	
+	/** @brief */
 	bool RemoveAllItemsOfType(FGameplayTag& ItemToRemove);
+	/** @brief */
 	bool RemoveStack(FGameplayTag& ItemToRemove, int32 StackIdx);
 
+	/** @brief */
 	bool UpdateItem(FGameplayTag& ItemToUpdate, int32 AmountToAdd);
+	/** @brief */
 	bool UpdateItemAtStackIdx(FGameplayTag& ItemToUpdate, int32 StackIdx, int32 AmountToAdd);
 
+	/** @brief */
 	FORCEINLINE UPDInventoryComponent* GetOwningInventory() const { return OwningInventory; }
+	/** @brief */
 	FORCEINLINE void SetOwningInventory(UPDInventoryComponent* InInventory) { OwningInventory = InInventory; }
 
 private:
+	/** @brief */
 	bool _Remove(FGameplayTag& ItemToUpdate, int32& AmountToAdd);
+	/** @brief */
 	bool _Add(FGameplayTag& ItemToUpdate, int32 StackIdx, int32& AmountToAdd);
 
 public:
+	/** @brief */
 	UPROPERTY()
 	TArray<FPDItemNetDatum> Items;
 
+	/** @brief */
 	UPROPERTY(NotReplicated)
 	TMap<FGameplayTag, int32> ItemToIndexMapping; // do not replicate, this is local
 	
 protected:
+	/** @brief */
 	UPROPERTY()
 	UPDInventoryComponent* OwningInventory = nullptr;
 };
 
-
+/** @brief */
 template<>
 struct TStructOpsTypeTraits<FPDItemList> : public TStructOpsTypeTraitsBase2<FPDItemList>
 {

@@ -14,6 +14,7 @@ class PDRTSBASE_API UPDWorkerAnimInstance : public UAnimInstance
 	GENERATED_BODY()
 
 public:
+	/** @brief */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Movement")
 	FGameplayTag CurrentMovementTag{};
 };

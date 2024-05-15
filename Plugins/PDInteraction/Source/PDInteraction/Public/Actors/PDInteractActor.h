@@ -8,14 +8,24 @@
 
 #include "PDInteractActor.generated.h"
 
+/** @brief Constant to make some runtime calculations a bit faster */
 constexpr double UNREALUNITS_PERMETRE = 100.0; /* UU == cm, 100 uu == 1m*/
+/** @brief Constant to make some runtime calculations a bit faster */
 constexpr double INVERSE_UU = 1 / UNREALUNITS_PERMETRE; /* UU == cm, 100 uu == 1m*/
 
 class USceneComponent;
 class UStaticMeshComponent;
 class UBoxComponent;
 
-
+/**
+ * @brief Base interactable actor.
+ * Handles default behaviour for an interactable actor out-of-the box.
+ * - Registers with the interactable subssytem upon beginplay
+ * - Binds editor delegates
+ * - If given: Handles processing custom interaction process function delegates and passes result downstream
+ * - Handles building a base-line interaction message filling in necessary data from the actor
+ * - Resizes collision bounds
+ */
 UCLASS()
 class PDINTERACTION_API APDInteractActor : public AActor, public IPDInteractInterface
 {
@@ -24,23 +34,31 @@ class PDINTERACTION_API APDInteractActor : public AActor, public IPDInteractInte
 public:
 	APDInteractActor();
 
+	/** @brief Calls super then bind collision box delegate(s) */
 	virtual void OnConstruction(const FTransform& Transform) override;
+	/** @brief Registers the actor with the interaction subsystem */
 	virtual void BeginPlay() override;
+	/** @brief Default setting Disabled. Only Calls Super. Reserved for later use */
 	virtual void Tick(float DeltaTime) override;
 
+	/** @brief Passes the parameters to the interaction interface which porcesses the custom process function, if any was given. and returns state or if it was unhandled */
 	virtual void OnInteract_Implementation(const FPDInteractionParamsWithCustomHandling& InteractionParams, EPDInteractResult& InteractResult) const override;
+	/** @brief Returns the interaction message. Returns actorname and gameaction from property 'ActorMessage' */
 	virtual const FPDInteractMessage GetInteractionMessage_Implementation() override;
 protected:
+	/** @brief Function that resizes the collision bounds based on the property 'UniformCollisionPadding' */
 	UFUNCTION() 
 	void ResizeCollisionBounds(UStaticMeshComponent* NewMeshDummy = nullptr);
+	/** @brief Binds delegate(s) to Mesh->OnStaticMeshChanged */
 	void BindDelegates();
 
 #if WITH_EDITOR
+	/** @brief Calls 'ResizeCollisionBounds' if the expected property 'UniformCollisionPadding' was modified */
 	void PostEditChangeProperty(FPropertyChangedEvent& PropertyChangedEvent) override;
 #endif // WITH_EDITOR
 
 public:
-	/** @brief Friendlt readable actor name */
+	/** @brief Friendly readable actor name */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Interaction|Actors")
 	FPDInteractMessage ActorMessage;
 

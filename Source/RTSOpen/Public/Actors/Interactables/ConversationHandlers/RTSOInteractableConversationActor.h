@@ -32,6 +32,8 @@ enum ERTSOConversationState
 	Invalid,
 	Valid,
 };
+
+/** @brief */
 USTRUCT(Blueprintable)
 struct FRTSOConversationRules
 {
@@ -46,38 +48,47 @@ struct FRTSOConversationRules
 	UPROPERTY(EditAnywhere)
 	TArray<FGameplayTag> RequiredTags; /**< @brief Tags required for this instance to be loaded */
 
+	/** @brief */
 	UPROPERTY(EditAnywhere)
 	bool bCanRepeatConversation = true;
 };
 
-
+/** @brief */
 USTRUCT(Blueprintable)
 struct FRTSOConversationMetaProgressionDatum : public FTableRowBase
 {
 	GENERATED_BODY()
 	
+	/** @brief */
 	UPROPERTY(EditAnywhere)
 	int32 BaseProgression = 0; /**< @brief Starting progression */
 	
+	/** @brief */
 	UPROPERTY(EditAnywhere)
 	TArray<FRTSOConversationRules> PhaseRequiredTags;
 };
 
+/** @brief */
 USTRUCT(Blueprintable)
 struct FRTSOConversationMetaState
 {
 	GENERATED_BODY()
 
+	/** @brief */
 	void ApplyValuesFromProgressionTable(FRTSOConversationMetaProgressionDatum& ConversationProgressionEntry);
 	
+	/** @brief */
 	UPROPERTY(EditAnywhere, BlueprintReadOnly)
 	TMap<int32/*ActorID*/, int32/*ProgressionLever*/> ProgressionPerPlayer; /**< @brief progression*/
 	
+	/** @brief */
 	UPROPERTY(EditAnywhere, BlueprintReadOnly)
 	TArray<FRTSOConversationRules> PhaseRequiredTags;	
 	
+	/** @brief */
 	TDeque<AActor*> InteractingActors; // Used as storage
 
+	/** @brief */
 	UPROPERTY(BlueprintReadOnly)
 	URTSOConversationInstance* ActiveConversationInstance = nullptr;
 };
@@ -92,8 +103,8 @@ public:
 	/** @brief */
 	virtual void PauseConversationAndSendClientChoices(const FConversationContext& Context, const FClientConversationMessage& ClientMessage) override;
 
+	/** @brief */
 	virtual void OnChoiceNodePickedByUser(const FConversationContext& Context, const UConversationChoiceNode* ChoiceNode, const TArray<FConversationBranchPoint>& ValidDestinations) override;
-	
 };
 
 /** @brief This class holds some helper and possibly debug functions we might want to use */
@@ -111,6 +122,7 @@ public:
 		UConversationParticipantComponent* ConversationParticipantComponent,
 		const FAdvanceConversationRequest& InChoicePicked);
 
+	/** @brief */
 	UFUNCTION()
 	static URTSOConversationInstance* StartConversation(
 		FGameplayTag ConversationEntryTag,
@@ -121,6 +133,7 @@ public:
 		const TSubclassOf<UConversationInstance> ConversationInstanceClass);
 };
 
+/** @brief */
 UCLASS()
 class RTSOPEN_API ARTSOInteractableConversationActor
 	: public APDInteractActor
@@ -129,58 +142,82 @@ class RTSOPEN_API ARTSOInteractableConversationActor
 	GENERATED_BODY()
 
 public:
+	/** @brief */
 	ARTSOInteractableConversationActor();
 
-	
+	/** @brief */
 	void ConversationStarted();
+	/** @brief */
 	void ConversationTaskChoiceDataUpdated(const FConversationNodeHandle& NodeHandle, const FClientConversationOptionEntry& OptionEntry);
+	/** @brief */
 	void ConversationUpdated(const FClientConversationMessagePayload& Payload);
+	/** @brief */
 	void ConversationStatusChanged(bool bDidStatusChange);
+	/** @brief */
 	virtual void BeginPlay() override;
+	/** @brief */
 	virtual void BeginDestroy() override;
 
+	/** @brief */
 	virtual FGameplayTagContainer GetGenericTagContainer_Implementation() const override;
 
+	/** @brief */
 	virtual void OnInteract_Implementation(const FPDInteractionParamsWithCustomHandling& InteractionParams, EPDInteractResult& InteractResult) const override;
 	
+	/** @brief */
 	virtual void BeginWaitingForChoices_Implementation(int32 ActorID) override;
+	/** @brief */
 	virtual void ReplyChoice_Implementation(AActor* Caller, int32 Choice) override;
 	
+	/** @brief */
 	void TryInitializeOwnerProgression(int32 OwnerID) const;
 
+	/** @brief */
 	virtual ERTSOConversationState ValidateRequiredTags(const FGameplayTag& EntryTag, AActor* CallingActor) const;
+	/** @brief */
 	bool CanRepeatConversation(int32 ConversationProgression) const;
+	/** @brief */
 	virtual const FGameplayTag& ResolveTagForProgressionLevel(const int32 ConversationProgression) const;
+	/** @brief */
 	virtual void OnConversationPhaseStateChanged(const FGameplayTag& EntryTag, ERTSOConversationState NewState);
 	
+	/** @brief */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Meta = (RowType = "/Script/RTSOpen.RTSOConversationMetaProgressionDatum"))
 	FDataTableRowHandle ConversationSettingsHandle;	
 
 	/** @note This pointer is just so we can modify the underlying value without restrictions in const functions*/
 	FRTSOConversationMetaState* InstanceDataPtr{};
 	
+	/** @brief */
 	UPROPERTY(VisibleInstanceOnly, BlueprintReadWrite)
 	FRTSOConversationMetaState InstanceData{};
 
+	/** @brief */
 	UPROPERTY(VisibleInstanceOnly)
 	UConversationParticipantComponent* ParticipantComponent;
 
+	/** @brief */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
 	FName ActorName{};
 	
+	/** @brief */
 	UPROPERTY(EditAnywhere)
 	FString GameFeatureName = "ConversationData";
 
+	/** @brief */
 	UPROPERTY(EditAnywhere)
 	FPDPersistentID ConversationActorPersistentID;
 private:
+	/** @brief */
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Meta = (AllowPrivateAccess="true"))
 	FGameplayTag JobTag{};
 
+	/** @brief */
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Meta = (AllowPrivateAccess="true"))
 	UCameraComponent* ConversationCamera = nullptr;	
 };
 
+/** @brief */
 UCLASS()
 class URTSOConversationActorTrackerSubsystem : public UWorldSubsystem
 {
@@ -192,6 +229,7 @@ public:
 	UPROPERTY()
 	TSet<ARTSOInteractableConversationActor*> TrackedConversationActors{};
 
+	/** @brief */
 	UPROPERTY()
 	TSet<ARTSOController*> TrackedPlayerControllers{};	
 };

@@ -15,6 +15,7 @@ class UMassEntitySubsystem;
 UCLASS()
 class RTSOPEN_API URTSOTrait_RTSEntity : public UPDMTrait_RTSEntity
 {
+	/** @brief */
 	GENERATED_BODY()
 	virtual void BuildTemplate(FMassEntityTemplateBuildContext& BuildContext, const UWorld& World) const override;
 };

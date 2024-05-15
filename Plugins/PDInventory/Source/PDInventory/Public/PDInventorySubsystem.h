@@ -8,28 +8,34 @@
 #include "PDInventorySubsystem.generated.h"
 
 struct FPDItemDefaultDatum;
-/**
- * 
- */
+
+/** @brief */
 UCLASS()
 class PDINVENTORY_API UPDInventorySubsystem : public UEngineSubsystem
 {
 	GENERATED_BODY()
 public:	
+	/** @brief */
 	virtual void ProcessTables();
 
+	/** @brief */
 	const FPDItemDefaultDatum* GetDefaultDatum(const FName& RowName);
+	/** @brief */
 	const FPDItemDefaultDatum* GetDefaultDatum(const FGameplayTag& Tag);
 
 public:	
+	/** @brief */
 	UPROPERTY(EditAnywhere, Category = "Inventory Subsystem", Meta = (RequiredAssetDataTags="RowStructure=PDItemDefaultDatum"))
 	TArray<UDataTable*> ItemTables;
 	
+	/** @brief */
 	TMap<const FGameplayTag, const FPDItemDefaultDatum*> TagToItemMap{};
+	/** @brief */
 	TMap<const FName, FGameplayTag> NameToTagMap{};
+	/** @brief */
 	TMap<const FGameplayTag, FName> TagToNameMap{};
+	/** @brief */
 	TMap<const FGameplayTag, const UDataTable*> TagToTable{};
-	
 };
 
 /**

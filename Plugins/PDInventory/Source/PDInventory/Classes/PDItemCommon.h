@@ -6,6 +6,8 @@
 #include "GameplayTagContainer.h"
 #include "PDItemCommon.generated.h"
 
+/** @brief Enum to tell us what type of operation we should expect,
+ * in different contexts related to the item netdatum */
 UENUM()
 enum EPDItemNetOperation
 {
@@ -14,7 +16,8 @@ enum EPDItemNetOperation
 	CHANGE,
 };
 
-
+/** @brief Enum to tell us what type of item group we should expect,
+ * in different contexts related to a given item entry in the item table or player/actor/entity inventories */
 UENUM()
 enum EPDItemGroup
 {
@@ -23,13 +26,20 @@ enum EPDItemGroup
 	OTHER,
 };
 
-
+/** @brief Struct that is used to keep cost information for an item.
+ * Has some helpers to calculate costs based on cost behaviour */
 USTRUCT(BlueprintType, Blueprintable)
 struct PDINVENTORY_API FPDItemCosts 
 {
 	GENERATED_BODY();
 
+	/** @brief Applies the InitialCost to the given total.
+	 * @return The value of the given total subtracted by the value of the InitialCost.
+	 * @note if bApplyRecurringAtFirst is true then it also applies the recurring cost and subtracts that as-well */
 	int32 ApplyInitialCost(int32 InTotal);
+	
+	/** @brief Applies the RecurringCost to the given total.
+	 * @return The value of the given total subtracted by the value of the RecurringCost */
 	int32 ApplyRecurringCost(int32 InTotal);
 
 	/** @brief Costs that will be checked against and deducted only the first usage */
@@ -53,8 +63,16 @@ struct FPDItemDefaultDatum : public FTableRowBase
 {
 	GENERATED_BODY()
 
+	/** @brief Calls 'Refresh()'*/
 	virtual void OnPostDataImport(const UDataTable* InDataTable, const FName InRowName, TArray<FString>& OutCollectedImportProblems) override;
+	/** @brief Calls 'Refresh()'*/
 	virtual void OnDataTableChanged(const UDataTable* InDataTable, const FName InRowName) override;
+	/** @brief This function is what determines the value of the 'EPDItemGroup' enum property named 'Type'.
+	 * - If the item has no crafting costs nor usage costs, then it is a 'EPDItemGroup::RESOURCE'
+	 * - If the item has crafting costs then it is a 'EPDItemGroup::CRAFTABLE'
+	 * - If the item has no crafting costs but has usage costs, then it is a 'EPDItemGroup::OTHER'
+	 * The final group is where weapons with ammo fit in for example, it would in that example have a usage costs of 'bullets'
+	 */
 	void Refresh(const UDataTable* InDataTable, const FName InRowName);
 
 	/** @brief Type of resource, is not editable. Is deduced at row creation/edit.
@@ -101,6 +119,7 @@ struct FPDTierLink
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
 	int32 Tier;
 	
+	/** @brief Link to the actual entry this tier represents */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Meta = (RowType = "/Script/PDInventory.PDItemDefaultDatum"))
 	FDataTableRowHandle Link{};
 };
@@ -129,6 +148,7 @@ struct FPDRecipeList : public FTableRowBase
 	TMap<FGameplayTag, FPDTierWrapper> CraftingCosts;
 };
 
+/** @brief Unused. consider removing or renaming and repurposing */
 USTRUCT()
 struct FPDBuildState 
 {

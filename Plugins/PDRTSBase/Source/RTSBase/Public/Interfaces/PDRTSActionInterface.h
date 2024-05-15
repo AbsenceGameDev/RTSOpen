@@ -8,7 +8,7 @@
 #include "PDRTSActionInterface.generated.h"
 
 
-
+/** @brief */
 UENUM()
 enum class ERTSActionMode : uint8
 {
@@ -28,16 +28,20 @@ class PDRTSBASE_API IPDRTSActionInterface
 	GENERATED_BODY()
 
 public:
+	/** @brief */
 	UFUNCTION(BlueprintNativeEvent, CallInEditor, Category = "Action|Interface")
 	void StartAction(ERTSActionMode ActionMode, int32 ActionID) const;
+	/** @brief */
 	virtual void StartAction_Implementation(ERTSActionMode ActionMode, int32 ActionID) const
 	{
 		// Perform actions
 		return;
 	}
 
+	/** @brief */
 	UFUNCTION(BlueprintNativeEvent, CallInEditor, Category = "Action|Interface")
 	void StopAction(ERTSActionMode ActionMode, int32 ActionID) const;
+	/** @brief */
 	virtual void StopAction_Implementation(ERTSActionMode ActionMode, int32 ActionID) const
 	{
 		// Perform actions

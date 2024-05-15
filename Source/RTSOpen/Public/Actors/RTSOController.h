@@ -20,6 +20,7 @@
 
 class URTSOInputStackSubsystem;
 
+/** @brief */
 UENUM()
 enum class EMarqueeSelectionEvent : uint8
 {
@@ -28,19 +29,22 @@ enum class EMarqueeSelectionEvent : uint8
 	RELEASEMARQUEE,
 };
 
-#pragma once
-
+/** @brief */
 USTRUCT(Blueprintable)
 struct FRTSOMouseEventDelegateWrapper
 {
 	GENERATED_BODY()
 
+	/** @brief */
 	UPROPERTY(EditAnywhere, Category = "Events", Meta = (IsBindableEvent="True"))
 	UWidget::FOnPointerEvent OnMouseMoveEvent;
+	/** @brief */
 	UPROPERTY(EditAnywhere, Category = "Events", Meta = (IsBindableEvent="True"))
 	UWidget::FOnPointerEvent OnMouseButtonDownEvent;
+	/** @brief */
 	UPROPERTY(EditAnywhere, Category = "Events", Meta = (IsBindableEvent="True"))
 	UWidget::FOnPointerEvent OnMouseButtonUpEvent;
+	/** @brief */
 	UPROPERTY(EditAnywhere, Category = "Events", Meta = (IsBindableEvent="True"))
 	UWidget::FOnPointerEvent OnMouseDoubleClickEvent;
 };
@@ -52,6 +56,7 @@ class URTSOStructWrapper : public UObject
 	GENERATED_BODY()
 public:
 	
+	/** @brief */
 	void AssignData(
 		const FText& InSelectionEntry,
 		const int32 InChoiceIndex,
@@ -62,47 +67,60 @@ public:
 		DirectParentReference = InDirectParentReference;
 	}
 
+	/** @brief */
 	UPROPERTY(BlueprintReadWrite, Meta = (ExposeOnSpawn=true))
 	FText SelectionEntry{};
 	
+	/** @brief */
 	UPROPERTY(BlueprintReadWrite, Meta = (ExposeOnSpawn=true))
 	int32 ChoiceIndex = INDEX_NONE;
 
+	/** @brief */
 	UPROPERTY(BlueprintReadWrite, Meta = (ExposeOnSpawn=true))
 	UUserWidget* DirectParentReference = nullptr;
 };
 
+/** @brief */
 UCLASS(Abstract)
 class URTSOModularTile : public UUserWidget
 {
 	GENERATED_BODY()
 
 public:
+	/** @brief */
 	virtual void NativePreConstruct() override;
 
+	/** @brief */
 	UFUNCTION(BlueprintCallable)
 	virtual void Refresh();
 	
-	
+	/** @brief */
 	UPROPERTY(BlueprintReadWrite, Meta=(BindWidget))
 	class USizeBox* SizeBoxContainer = nullptr;
 
+	/** @brief */
 	UPROPERTY(BlueprintReadWrite, Meta=(BindWidget))
 	class UImage* ImageShadow = nullptr;
 
+	/** @brief */
 	UPROPERTY(BlueprintReadWrite, Meta=(BindWidget))
 	class UNamedSlot* NamedSlot = nullptr;
 
+	/** @brief */
 	UPROPERTY(BlueprintReadWrite, Meta=(BindWidget))
 	class UTextBlock* TextName = nullptr;
 
+	/** @brief */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
 	FText TileText{};
+
+	/** @brief */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
 	float Height{0};		
+
+	/** @brief */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
-	float Width{0};		
-	
+	float Width{0};
 };
 
 UCLASS(Abstract)
@@ -112,87 +130,119 @@ class URTSOConversationSelectionEntry : public UUserWidget, public IUserObjectLi
 protected:
 	
 	// IUserObjectListEntry
+	/** @brief */
 	virtual void NativeOnListItemObjectSet(UObject* ListItemObject) override;
 	// IUserObjectListEntry
 
+	/** @brief */
 	UFUNCTION() FEventReply MouseMove(FGeometry MyGeometry, const FPointerEvent& MouseEvent);
+	/** @brief */
 	UFUNCTION() FEventReply MouseButtonDown(FGeometry MyGeometry, const FPointerEvent& MouseEvent);
+	/** @brief */
 	UFUNCTION() FEventReply MouseButtonUp(FGeometry MyGeometry, const FPointerEvent& MouseEvent);
+	/** @brief */
 	UFUNCTION() FEventReply MouseDoubleClick(FGeometry MyGeometry, const FPointerEvent& MouseEvent);	
 
+	/** @brief */
 	UPROPERTY(BlueprintReadWrite, Meta=(BindWidget))
 	class URTSOModularTile* Tile = nullptr;
 
-	// 1. Bind delegates upon widget creation
+	/** @brief */
 	UPROPERTY(BlueprintReadWrite, Meta=(BindWidget))
 	class UBorder* TextContentBorder = nullptr;	
 	
+	/** @brief */
 	UPROPERTY(BlueprintReadWrite, Meta=(BindWidget))
 	class UCommonTextBlock* TextContent = nullptr;
 
+	/** @brief */
 	UPROPERTY(BlueprintReadWrite, Meta = (ExposeOnSpawn=true))
 	int32 ChoiceIndex = INDEX_NONE;
 
+	/** @brief */
 	UPROPERTY(BlueprintReadWrite, Meta = (ExposeOnSpawn=true))
 	UUserWidget* DirectParentReference = nullptr;	
 };
 
+/** @brief */
 UCLASS(BlueprintType, Blueprintable)
 class URTSOConversationMessageWidget : public UUserWidget
 {
 	GENERATED_BODY()
 public:
+	/** @brief */
 	UFUNCTION(BlueprintNativeEvent) FEventReply MouseMove(int32 ChoiceIdx, FGeometry MyGeometry, const FPointerEvent& MouseEvent);
+	/** @brief */
 	UFUNCTION(BlueprintNativeEvent) FEventReply MouseButtonDown(int32 ChoiceIdx, FGeometry MyGeometry, const FPointerEvent& MouseEvent);
+	/** @brief */
 	UFUNCTION(BlueprintNativeEvent) FEventReply MouseButtonUp(int32 ChoiceIdx, FGeometry MyGeometry, const FPointerEvent& MouseEvent);
+	/** @brief */
 	UFUNCTION(BlueprintNativeEvent) FEventReply MouseDoubleClick(int32 ChoiceIdx, FGeometry MyGeometry, const FPointerEvent& MouseEvent);
 	
+	/** @brief */
 	UFUNCTION(BlueprintNativeEvent, BlueprintCallable)
 	void SetPayload(const FClientConversationMessagePayload& Payload, AActor* PotentialCallbackActor);
+	/** @brief */
 	virtual void SetPayload_Implementation(const FClientConversationMessagePayload& Payload, AActor* PotentialCallbackActor);
 
+	/** @brief */
 	UFUNCTION(BlueprintNativeEvent, BlueprintCallable)
 	void SelectChoice(int32 ChoiceSelection);
+	/** @brief */
 	virtual void SelectChoice_Implementation(int32 ChoiceSelection);
 
+	/** @brief */
 	virtual void NativeDestruct() override;
 	
-	
+
+	/** @brief */
 	UPROPERTY(BlueprintReadWrite, Meta = (BindWidget))
 	class UTileView* ConversationSelectors = nullptr;
 
+	/** @brief */
 	UPROPERTY(BlueprintReadOnly)
 	AActor* CurrentPotentialCallbackActor;
 
+	/** @brief */
 	UPROPERTY(BlueprintReadWrite)
 	TArray<URTSOStructWrapper*> InstantiatedEntryObjects{};
 
+	/** @brief */
 	int32 LatestInteractedChoice = INDEX_NONE;
 };
 
+/** @brief */
 UCLASS(BlueprintType, Blueprintable)
 class URTSOConversationWidget : public UUserWidget
 {
 	GENERATED_BODY()
 public:
 
+	/** @brief */
 	UFUNCTION(BlueprintNativeEvent, BlueprintCallable)
 	void SetPayload(const FClientConversationMessagePayload& Payload, AActor* PotentialCallbackActor);
+	/** @brief */
 	virtual void SetPayload_Implementation(const FClientConversationMessagePayload& Payload, AActor* PotentialCallbackActor);
 
+	/** @brief */
 	UFUNCTION(BlueprintNativeEvent, BlueprintCallable)
 	void SelectChoice(int32 ChoiceSelection);
+	/** @brief */
 	virtual void SelectChoice_Implementation(int32 ChoiceSelection);
 	
+	/** @brief */
 	UPROPERTY(BlueprintReadWrite, Meta = (BindWidget))
 	URTSOConversationMessageWidget* ConversationMessageWidget = nullptr;
 
+	/** @brief */
 	UPROPERTY(BlueprintReadWrite, Meta = (BindWidget))
 	URTSOModularTile* Tile = nullptr;
 
+	/** @brief */
 	UPROPERTY(BlueprintReadWrite, Meta = (BindWidget))
 	UCommonTextBlock* TextContent = nullptr;
 
+	/** @brief */
 	UPROPERTY(BlueprintReadWrite, Meta=(BindWidget))
 	class URTSOMenuButton* ExitConversationButton = nullptr;
 };
@@ -209,7 +259,9 @@ class RTSOPEN_API ARTSOController : public APlayerController, public IRTSOInputI
 {
 	GENERATED_UCLASS_BODY()
 
+	/** @brief */
 	virtual void BeginPlay() override;
+	/** @brief */
 	virtual void EndPlay(const EEndPlayReason::Type EndPlayReason) override;
 	
 	/** @brief Sets up bindings for enhanced input */
@@ -266,6 +318,7 @@ class RTSOPEN_API ARTSOController : public APlayerController, public IRTSOInputI
 
 	
 	/* RTSO Mouse projections - Start */
+	/** @brief */
 	void ProjectMouseToGroundPlane(
 		FVector2D& ScreenCoordinates,
 		FVector&   IntersectionPoint,
@@ -293,8 +346,12 @@ class RTSOPEN_API ARTSOController : public APlayerController, public IRTSOInputI
 	/* RTSO Mouse projections - Start */
 
 	/* RTSO Marquee selection - Start */
+
+	/** @brief */
 	UFUNCTION() FORCEINLINE bool IsDrawingMarquee() const { return bIsDrawingMarquee; }
+	/** @brief */
 	UFUNCTION() FORCEINLINE FVector2D GetStartMousePositionMarquee() const {return StartMousePositionMarquee;}
+
 	/** @brief Range loops from 1-10 */
 	UFUNCTION() FORCEINLINE int32 GeneratedGroupID()
 	{
@@ -307,111 +364,162 @@ class RTSOPEN_API ARTSOController : public APlayerController, public IRTSOInputI
 		return CurrentSelectionID;
 	}
 	
+	/** @brief */
 	UFUNCTION() FORCEINLINE int32 GetLatestGroupID() const { return CurrentSelectionID; }
+	/** @brief */
 	UFUNCTION() FORCEINLINE int32 GetCurrentGroupID() const { return CurrentSelectionID; }
+	/** @brief */
 	UFUNCTION() FORCEINLINE FVector2D GetCurrentMousePositionMarquee() const {return CurrentMousePositionMarquee;}
+	/** @brief */
 	UFUNCTION(BlueprintImplementableEvent) void OnMarqueeSelectionUpdated(int32 SelectionGroup, const TArray<int32>& NewSelection) const;
+	/** @brief */
 	UFUNCTION(BlueprintCallable) void MarqueeSelection(EMarqueeSelectionEvent SelectionEvent);
+	/** @brief */
 	UFUNCTION() void OnBeginConversation(const FClientConversationMessagePayload& Payload, AActor* PotentialCallbackActor);
+	/** @brief */
 	UFUNCTION() void OnAdvanceConversation(const FClientConversationMessagePayload& Payload, AActor* PotentialCallbackActor);
+	/** @brief */
 	UFUNCTION() void OnEndConversation(const FClientConversationMessagePayload& Payload, AActor* PotentialCallbackActor);
+	/** @brief */
 	UFUNCTION(BlueprintCallable) int32 GetActorID() { return ActorID.GetID(); };
+	/** @brief */
 	static void DrawBoxAndTextChaos(const FVector& BoundsCenter, const FQuat& Rotation, const FVector& DebugExtent, const FString& DebugBoxTitle, FColor LineColour = FColor::Black);
+	/** @brief */
 	static void AdjustMarqueeHitResultsToMinimumHeight(FHitResult& StartHitResult, FHitResult& CenterHitResult, FHitResult& EndHitResult);
+	/** @brief */
 	UFUNCTION() void GetEntitiesOrActorsInMarqueeSelection();
+	/** @brief */
 	UFUNCTION() void ReorderGroupIndex(const int32 OldID, const int32 NewID);
+	/** @brief */
 	const TMap<int32, TMap<int32, FMassEntityHandle>>& GetMarqueeSelectionMap() { return MarqueeSelectedHandles; }
+	/** @brief */
 	UFUNCTION() FORCEINLINE URTSOConversationWidget* GetConversationWidget() const { return ConversationWidget;};
 
+	/** @brief */
 	UFUNCTION() FORCEINLINE FHitResult GetLatestStartHitResult()  { return LatestStartHitResult;};
+	/** @brief */
 	UFUNCTION() FORCEINLINE FHitResult GetLatestCenterHitResult() { return LatestCenterHitResult;};
+	/** @brief */
 	UFUNCTION() FORCEINLINE FHitResult GetLatestEndHitResult()    { return LatestEndHitResult;};	
 	
 protected:
+	/** @brief */
 	void OnSelectionChange(bool bClearSelection);
 	/* RTSO Marquee selection - End */
 
 private:
+	/** @brief */
 	UFUNCTION()
 	void Internal_ExitConversation();
 public:
 
+	/** @brief */
 	int32 LatestMenuButtonIdx = INDEX_NONE;
 	
+	/** @brief */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "RTS|Cursor|Settings")
 	int32 ScreenEdgeMovementPadding = 0;
 
+	/** @brief */
 	UPROPERTY(VisibleInstanceOnly, BlueprintReadOnly, Category = "RTS|Cursor|State")
 	TEnumAsByte<ECollisionChannel> DedicatedLandscapeTraceChannel = ECollisionChannel::ECC_GameTraceChannel13;	
 	
 	/* Input Actions */
+	/** @brief */
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "RTS|Input")
 	class UInputAction* CtrlActionMove = nullptr;
+	/** @brief */
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "RTS|Input")
 	class UInputAction* CtrlActionMagnify = nullptr;
+	/** @brief */
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "RTS|Input")
 	class UInputAction* CtrlActionRotate = nullptr;
+	/** @brief */
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "RTS|Input")
 	class UInputAction* CtrlActionDragMove = nullptr;
+	/** @brief */
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "RTS|Input")
 	class UInputAction* CtrlActionWorkerUnit = nullptr;
+	/** @brief */
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "RTS|Input")
 	class UInputAction* CtrlActionClearSelection = nullptr;
+	/** @brief */
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "RTS|Input")
 	class UInputAction* CtrlActionMoveSelection = nullptr;
 
+	/** @brief */
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "RTS|Input")
 	class UInputAction* CtrlActionHotkeySelection = nullptr;
+	/** @brief */
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "RTS|Input")
 	class UInputAction* CtrlActionAssignSelectionToHotkey = nullptr;
 	
+	/** @brief */
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "RTS|Input")
 	class UInputAction* CtrlActionChordedBase = nullptr;
 	
+	/** @brief */
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "RTS|Input")
 	class UInputAction* CtrlActionExitConversation = nullptr;	
 
+	/** @brief */
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "RTS|Input")
 	class UInputAction* CtrlActionToggleMainMenu = nullptr;	
 	
 	/* Input Actions - If I have time to implement */
+	/** @brief */
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "RTS|Input")
 	class UInputAction* CtrlActionBuildMode = nullptr;
 	
 	/** @brief Mapping context settings, keyed by FGameplayTags. @todo Set default entries via a developer settings structure */
+	/** @brief */
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "RTS|Input")
 	TMap<FGameplayTag, UInputMappingContext*> MappingContexts{};
 
 protected:
+	/** @brief */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Menu|Startscreen")
 	TSubclassOf<URTSOMainMenuBase> MMWidgetClass{};
+	/** @brief */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Menu|Startscreen")
 	URTSOMainMenuBase* MainMenuWidget = nullptr;
 	
+	/** @brief */
 	UPROPERTY(VisibleInstanceOnly)
 	URTSOConversationWidget* ConversationWidget = nullptr;
+	/** @brief */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
 	TSubclassOf<URTSOConversationWidget> ConversationWidgetClass = nullptr;
 	
+	/** @brief */
 	UPROPERTY(VisibleInstanceOnly)
 	FHitResult LatestStartHitResult{};
+	/** @brief */
 	UPROPERTY(VisibleInstanceOnly)
 	FHitResult LatestCenterHitResult{};
+	/** @brief */
 	UPROPERTY(VisibleInstanceOnly)
 	FHitResult LatestEndHitResult{};
 
+	/** @brief */
 	UPROPERTY(VisibleInstanceOnly)
 	FPDPersistentID ActorID{};
+	/** @brief */
 	UPROPERTY(VisibleInstanceOnly)
-	int32 RollbackSelectionID = INDEX_NONE; /**< @brief */
+	int32 RollbackSelectionID = INDEX_NONE;
+	/** @brief */
 	UPROPERTY(VisibleInstanceOnly)
-	int32 LatestSelectionID = INDEX_NONE;   /**< @brief */
+	int32 LatestSelectionID = INDEX_NONE;
+	/** @brief */
 	UPROPERTY(VisibleInstanceOnly)
-	int32 SelectionBufferIdx = INDEX_NONE;   /**< @brief */	
+	int32 SelectionBufferIdx = INDEX_NONE;	
+	/** @brief */
 	UPROPERTY(VisibleInstanceOnly)
-	int32 SelectionBufferSize = 20;   /**< @brief */	
+	int32 SelectionBufferSize = 20;
+	/** @brief */
 	UPROPERTY(VisibleInstanceOnly)
-	int32 MaxSelectionHotkeyIndex = 9;   /**< @brief */		
+	int32 MaxSelectionHotkeyIndex = 9;
+	/** @brief */
 	UPROPERTY(VisibleInstanceOnly)
 	int32 CurrentSelectionID = INDEX_NONE;  /**< @brief Need function to switch selection group */
 	
@@ -423,15 +531,16 @@ protected:
 	FVector2D CurrentMousePositionMarquee{};
 
 	// @todo add some mapping to selection groups
+	/** @brief */
 	TSet<int32> HotKeyedSelectionGroups{};	
+	/** @brief */
 	TMap<int32, TMap<int32, FMassEntityHandle>> MarqueeSelectedHandles{};
-	
 };
 
 
-/** Scalar
-	*  Scales input by a set factor per axis
-	*/
+/**
+ * @brief Scalar modifier passthrough hack. Scales input by a set factor per axis
+ */
 UCLASS(NotBlueprintable, MinimalAPI, meta = (DisplayName = "IntegerPassthrough"))
 class UInputModifierIntegerPassthrough : public UInputModifier
 {
@@ -440,18 +549,23 @@ class UInputModifierIntegerPassthrough : public UInputModifier
 public:
 
 #if WITH_EDITOR
+	/** @brief */
 	virtual EDataValidationResult IsDataValid(class FDataValidationContext& Context) const override;
 #endif
 protected:
+	/** @brief */
 	virtual FInputActionValue ModifyRaw_Implementation(const UEnhancedPlayerInput* PlayerInput, FInputActionValue CurrentValue, float DeltaTime) override;
 
 public:
+	/** @brief */
 	UPROPERTY(EditInstanceOnly, BlueprintReadWrite, Category=Settings)
 	int32 IntegerPassthrough = INDEX_NONE;
 	
+	/** @brief */
 	UPROPERTY()
 	URTSOInputStackSubsystem* InputStackWorkaround = nullptr;
 
+	/** @brief */
 	FInputActionValue CachedLastValue;
 };
 

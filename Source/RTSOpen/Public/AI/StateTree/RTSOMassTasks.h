@@ -26,9 +26,11 @@ struct FRTSOTaskData_Interact
 {
 	GENERATED_BODY()
 
+	/** @brief */
 	UPROPERTY(VisibleAnywhere, Category = Input)
 	FMassEntityHandle PotentialEntityHandle;
 
+	/** @brief */
 	UPROPERTY(VisibleAnywhere, Category = Input)
 	AActor* PotentialInteractableActor;	
 };
@@ -44,12 +46,18 @@ struct RTSOPEN_API FRTSOTask_Interact : public FMassStateTreeTaskBase
 
 	using FInstanceDataType = FRTSOTaskData_Interact;
 	
+	/** @brief */
 	virtual bool Link(FStateTreeLinker& Linker) override;
+	/** @brief */
 	virtual const UStruct* GetInstanceDataType() const override { return FRTSOTaskData_Interact::StaticStruct(); }
+	/** @brief */
 	virtual EStateTreeRunStatus EnterState(FStateTreeExecutionContext& Context, const FStateTreeTransitionResult& Transition) const override;
 
+	/** @brief */
 	TStateTreeExternalDataHandle<UMassEntitySubsystem> EntitySubsystemHandle;
+	/** @brief */
 	TStateTreeExternalDataHandle<UPDInteractSubsystem> InteractSubsystemHandle;
+	/** @brief */
 	TStateTreeExternalDataHandle<FRTSOLightInventoryFragment> InventoryHandle;
 };
 

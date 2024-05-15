@@ -15,8 +15,11 @@ class RTSOPEN_API ARTSOInteractableResourceBase : public APDInteractActor
 	GENERATED_BODY()
 
 public:
+	/** @brief */
 	ARTSOInteractableResourceBase();
+	/** @brief */
 	virtual void BeginPlay() override;
+	/** @brief */
 	virtual void Tick(float DeltaTime) override;
 
 	/**
@@ -53,6 +56,7 @@ private:
 	 */		
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Meta = (AllowPrivateAccess="true"))
 	double RefreshInterval = 20.0;
+	/** @brief */
 	double RefreshTickAcc = 0.0;
 
 	/**
@@ -63,6 +67,7 @@ private:
 
 	UPROPERTY()
 	UMassEntitySubsystem* EntitySubsystem = nullptr;
+	/** @brief */
 	const FMassEntityManager* EntManager = nullptr;
 };
 

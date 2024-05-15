@@ -8,16 +8,20 @@
 
 class URTSOMainMenuBase;
 
+/** @brief */
 UCLASS()
 class RTSOPEN_API ARTSOMainMenuGM : public AGameModeBase
 {
 	GENERATED_BODY()
 
+	/** @brief */
 	virtual void BeginPlay() override;
 
 public:
+	/** @brief */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Menu|Startscreen")
 	TSubclassOf<URTSOMainMenuBase> MMWidgetClass{};
+	/** @brief */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Menu|Startscreen")
 	URTSOMainMenuBase* MainMenuWidget = nullptr;
 };

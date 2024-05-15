@@ -22,12 +22,17 @@ class RTSOPEN_API URTSOProcessor_InitializeAgents : public UPDMProcessor_Initial
 	GENERATED_BODY()
 
 public:
+	/** @brief */
 	URTSOProcessor_InitializeAgents() : Super() {};
 	
+	/** @brief */
 	virtual void Execute(FMassEntityManager& EntityManager, FMassExecutionContext& Context) override { Super::Execute(EntityManager, Context); }
+	/** @brief */
 	virtual void ConfigureQueries() override { Super::ConfigureQueries(); }
+	/** @brief */
 	virtual void Initialize(UObject& Owner) override { Super::Initialize(Owner); }
 
+	/** @brief */
 	TObjectPtr<UPDInteractSubsystem> InteractionSubsystem;
 };
 
