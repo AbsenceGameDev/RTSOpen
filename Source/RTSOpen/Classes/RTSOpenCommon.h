@@ -10,6 +10,7 @@
 #include "GameFramework/SaveGame.h"
 #include "CommonActivatableWidget.h"
 #include "CommonButtonBase.h"
+#include "AI/Mass/PDMassFragments.h"
 #include "RTSOpenCommon.generated.h"
 
 
@@ -53,13 +54,19 @@ struct FRTSSavedWorldUnits
 	GENERATED_BODY()
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Data|SaveGame|Unit")
-	FGameplayTag UnitType;
+	FPDMFragment_Action CurrentAction{};
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Data|SaveGame|Unit")
-	FVector Location;
+	FVector Location{};
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Data|SaveGame|Unit")
-	double Health = 0.0;	
+	double Health = 0.0;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Data|SaveGame|Unit")
+	int32 OwnerID = INDEX_NONE;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Data|SaveGame|Unit")
+	int32 SelectionIndex = INDEX_NONE;	
 	
 };
 
@@ -79,14 +86,17 @@ public:
 	TMap<int32 /*Player Persistent ID*/, FVector> PlayerLocations{}; 
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "GameInstance|Widgets")
-	TArray<FRTSSavedInteractables> Interactables;
+	TArray<FRTSSavedInteractables> Interactables{};
 
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "GameInstance|Widgets")
+	TArray<FRTSSavedWorldUnits> EntityUnits{};
+	
 	/** @brief userid tied to some account id?, in singleplayer keep only one entry */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "GameInstance|Widgets")
-	TMap<int32, FRTSSavedItems> Inventories;
+	TMap<int32, FRTSSavedItems> Inventories{};
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "GameInstance|Widgets")
-	TMap<int32 /*ConversationActorID*/, FRTSSavedConversationActorData> ConversationActorState;
+	TMap<int32 /*ConversationActorID*/, FRTSSavedConversationActorData> ConversationActorState{};
 
 	/** @brief userid tied to some account id?, in singleplayer keep only one entry */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)

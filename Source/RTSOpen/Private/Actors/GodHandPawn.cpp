@@ -118,36 +118,44 @@ void AGodHandPawn::HoverTick(const float DeltaTime)
 // @todo force it to cardinal directions, move to timer 
 void AGodHandPawn::RotationTick(float& DeltaTime)
 {
+	// Not currently in rotation
 	if (CurrentRotationLeft <= 0.0) { return; }
 
+	// Current queued rotation direction && Modify the delta-time with the turn rate modifier
 	const int32 Direction = RotationDeque.First();
-
 	DeltaTime *= RotationRateModifier;
 
+	// Calculate delta yaw
 	const double DeltaYaw = FMath::Clamp(DeltaTime / (CurrentRotationLeft / 90.0), 0.0, 2.0);
 	CurrentRotationLeft -= DeltaYaw;
-	
+
+	// Handle queued rotation finished
 	if (CurrentRotationLeft < 0)
 	{
-		RotationDeque.PopFirst();
-		
-		FRotator FinalRotation = GetActorRotation();
-		FinalRotation.Yaw = TargetYaw;
-		SetActorRotation(FinalRotation);
-		
-		TargetYaw =
-			RotationDeque.IsEmpty() ? TargetYaw
-				: static_cast<int32>(GetActorRotation().Yaw + 0.5 + (90.0 * RotationDeque.First()));
+		UE_LOG(LogTemp, Warning, TEXT("AGodHandPawn::RotationTick - Rotation in queue finished"))
 
-		CurrentRotationLeft = RotationDeque.IsEmpty() ? 0.0 : 90.0;
+		AddActorLocalRotation(FRotator(0, DeltaYaw + CurrentRotationLeft, 0));
+
+		// @todo revise this, this became convoluted fast and needs to be simplified
+		// Is yaw near west/east/north/south but not quite there due to tick inconsistencies? Adjust here if needed
+		constexpr double RotationStep = 90.0;
+		const double Ratio = GetActorRotation().Yaw / RotationStep;
+		const double RemainderAsDouble = static_cast<double>(static_cast<int32>(Ratio)) - Ratio;
+		if (FMath::IsNearlyZero(RemainderAsDouble) == false)
+		{
+			const float FinalAdjustment = RemainderAsDouble < 0 ? (RemainderAsDouble * RotationStep) : -1 * (RotationStep - (RemainderAsDouble * RotationStep));
+			UE_LOG(LogTemp, Warning, TEXT("AGodHandPawn::RotationTick - Final adjustment: %lf"), FinalAdjustment)
+			AddActorLocalRotation(FRotator(0, FinalAdjustment, 0));
+		}
+		
+		RotationDeque.PopFirst();
+		CurrentRotationLeft = RotationDeque.IsEmpty() ? -1.0 : 90.0;
 		bIsInRotation = false;
 
 		return;
 	}
 	
-	FRotator NewRotation = GetActorRotation();
-	NewRotation.Yaw += DeltaYaw * Direction;
-	SetActorRotation(NewRotation);
+	AddActorLocalRotation(FRotator(0, DeltaYaw * Direction, 0));
 }
 
 void AGodHandPawn::UpdateMagnification()
@@ -266,15 +274,13 @@ void AGodHandPawn::ActionRotate_Implementation(const FInputActionValue& Value)
 	const float ImmutableMoveInput = Value.Get<float>(); // rotate yaw
 	const int8 Direction = ImmutableMoveInput > 0 ? 1 : -1;
 
-
+	// If more than one rotation in queue and the new rotation opposes the latest previous rotation, just pop away the last rotation
 	if (RotationDeque.Num() > 1 && (RotationDeque.Last() + Direction) == 0)
 	{
 		RotationDeque.PopLast();
 	}
-	else
+	else if (RotationDeque.Num() < 2)
 	{
-		// Truncated, should stay at 90 degree increments this way
-		TargetYaw = static_cast<int32>(GetActorRotation().Yaw + 0.5 + (90.0 * Direction));
 		RotationDeque.EmplaceLast(Direction);
 	}
 
@@ -282,7 +288,6 @@ void AGodHandPawn::ActionRotate_Implementation(const FInputActionValue& Value)
 	{
 		CurrentRotationLeft = 90.0;
 	}
-
 
 	bIsInRotation = true;
 }
@@ -537,6 +542,7 @@ FMassEntityHandle AGodHandPawn::OctreeEntityTrace(const FVector& StartLocation, 
 	FOctreeElementId2* ClosestIDSlow{}; 
 	double ClosestDistanceSlow{AGodHandPawn::InvalidDistance};
 
+	if (WorldOctree.IsLocked()) { return FMassEntityHandle(); }
 	WorldOctree.FindElementsWithBoundsTest(QueryBounds, [&](const FPDEntityOctreeCell& Cell)
 	{
 		if (Cell.EntityHandle.Index == INDEX_NONE) { return; } 

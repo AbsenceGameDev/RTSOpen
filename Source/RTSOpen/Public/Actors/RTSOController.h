@@ -51,6 +51,16 @@ class URTSOStructWrapper : public UObject
 {
 	GENERATED_BODY()
 public:
+	
+	void AssignData(
+		const FText& InSelectionEntry,
+		const int32 InChoiceIndex,
+		UUserWidget* InDirectParentReference)
+	{
+		SelectionEntry = InSelectionEntry;
+		ChoiceIndex = InChoiceIndex;
+		DirectParentReference = InDirectParentReference;
+	}
 
 	UPROPERTY(BlueprintReadWrite, Meta = (ExposeOnSpawn=true))
 	FText SelectionEntry{};
@@ -147,6 +157,7 @@ public:
 
 	virtual void NativeDestruct() override;
 	
+	
 	UPROPERTY(BlueprintReadWrite, Meta = (BindWidget))
 	class UTileView* ConversationSelectors = nullptr;
 
@@ -180,7 +191,10 @@ public:
 	URTSOModularTile* Tile = nullptr;
 
 	UPROPERTY(BlueprintReadWrite, Meta = (BindWidget))
-	UCommonTextBlock* TextContent = nullptr;	
+	UCommonTextBlock* TextContent = nullptr;
+
+	UPROPERTY(BlueprintReadWrite, Meta=(BindWidget))
+	class URTSOMenuButton* ExitConversationButton = nullptr;
 };
 
 class UInputMappingContext;
@@ -235,11 +249,11 @@ class RTSOPEN_API ARTSOController : public APlayerController, public IRTSOInputI
 	virtual void ActionAssignSelectionToHotkey_Implementation(const FInputActionValue& Value) override;
 	virtual void ActionHotkeySelection_Implementation(const FInputActionValue& Value) override;
 	virtual void ActionChordedBase_Implementation(const FInputActionValue& Value) override;
-	virtual void ActionExitConversation_Implementation(const FInputActionValue& Value) override;	
+	virtual void ActionExitConversation_Implementation(const FInputActionValue& Value) override;
 	virtual void ActionToggleMainMenu_Implementation(const FInputActionValue& Value) override;	
-
 	void HandleConversationChoiceInput(int32 ChoiceSelection) const;
 	/* RTSO Input Interface - End */
+	
 
 	/* RTSO Menu interface - Start, @todo move to actual interface if we start making more menus*/
 	UFUNCTION() void OnReleased_Resume();
@@ -317,6 +331,9 @@ protected:
 	void OnSelectionChange(bool bClearSelection);
 	/* RTSO Marquee selection - End */
 
+private:
+	UFUNCTION()
+	void Internal_ExitConversation();
 public:
 
 	int32 LatestMenuButtonIdx = INDEX_NONE;

@@ -83,29 +83,55 @@ namespace PD::Mass::Entity
 	{
 	public:
 		FPDSafeOctree()
-			: UnsafeOctree(){}
+			: UnsafeOctree() {} //, CriticalSectionMutex(new FCriticalSection) {}
 		FPDSafeOctree(const FVector& InOrigin, FVector::FReal InExtent)
-			: UnsafeOctree(InOrigin, InExtent){}
+			: UnsafeOctree(InOrigin, InExtent) {} // , CriticalSectionMutex(new FCriticalSection){}
 
+		// ~FPDSafeOctree()
+		// {
+		// 	if (CriticalSectionMutex == nullptr) { return; }
+		// 	delete CriticalSectionMutex;
+		// }
+
+		void Lock() { bLockedReadInMainThread = true; };
+		void Unlock() { bLockedReadInMainThread = false; };
+		bool IsLocked() const { return bLockedReadInMainThread; };
+		
 		template<typename IterateBoundsFunc>
-		inline void FindElementsWithBoundsTest(const FBoxCenterAndExtent& BoxBounds, const IterateBoundsFunc& Func, const bool bIsBeingIterated = false)
+		inline void FindElementsWithBoundsTest(const FBoxCenterAndExtent& BoxBounds, const IterateBoundsFunc& Func, const bool bShouldLock = false)
 		{
-			b_TODO_REPLACEWITHSCOPELOCK_IsInIteration = bIsBeingIterated;
+			if (IsLocked()) { return; }
+			
+			if (bShouldLock)
+			{
+				Lock();
+			}
+			
+			// FScopeLock ReadLock(CriticalSectionMutex);
 			UnsafeOctree::FindElementsWithBoundsTest(BoxBounds, Func);
-			b_TODO_REPLACEWITHSCOPELOCK_IsInIteration = false;
 		}
 
 		template<typename IterateBoundsFunc>
-		inline void FindFirstElementWithBoundsTest(const FBoxCenterAndExtent& BoxBounds, const IterateBoundsFunc& Func, const bool bIsBeingIterated = false)
+		inline void FindFirstElementWithBoundsTest(const FBoxCenterAndExtent& BoxBounds, const IterateBoundsFunc& Func, const bool bShouldLock = false)
 		{
-			b_TODO_REPLACEWITHSCOPELOCK_IsInIteration = bIsBeingIterated;
+			if (IsLocked()) { return; }
+			
+			if (bShouldLock)
+			{
+				Lock();
+			}
+			
+			// FScopeLock ReadLock(CriticalSectionMutex);
 			bool ContinueTraversal = true;
 			UnsafeOctree::FindFirstElementWithBoundsTest(BoxBounds, Func, ContinueTraversal);
-			b_TODO_REPLACEWITHSCOPELOCK_IsInIteration = false;
 		}
+		// FCriticalSection* CriticalSectionMutex = nullptr;
 
-		bool b_TODO_REPLACEWITHSCOPELOCK_IsInIteration = true;
+	private:
+		// @todo possibly keep track of how many threads have requested a lock on octree
+		bool bLockedReadInMainThread = false;
 	};
+
 }
 
 struct FPDWorkUnitDatum;
@@ -164,7 +190,6 @@ public:
 
 	FStreamableManager DataStreamer;
 
-	UMassEntitySubsystem* MassEntity = nullptr;
 	FMassEntityManager* EntityManager = nullptr;
 	UWorld* TemporaryWorldCache = nullptr;
 	PD::Mass::Entity::FPDSafeOctree WorldOctree;

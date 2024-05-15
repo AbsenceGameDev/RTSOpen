@@ -1,8 +1,10 @@
 /* @author: Ario Amin @ Permafrost Development. @copyright: Full BSL(1.1) License included at bottom of the file  */
+#include "MassCommonFragments.h"
 #include "Core/RTSOBaseGM.h"
 #include "Core/RTSOBaseGI.h"
 
 #include "PDInteractSubsystem.h"
+#include "PDRTSBaseSubsystem.h"
 #include "RTSOpenCommon.h"
 #include "Actors/GodHandPawn.h"
 #include "Actors/RTSOController.h"
@@ -124,6 +126,7 @@ void ARTSOBaseGM::ProcessChangesAndSaveGame_Implementation(const FString& Slot, 
 	SaveConversationActorStates();
 	SaveInteractables();
 	SaveAllPlayerStates();
+	SaveEntities();
 
 	// @todo finish SaveResources & SaveUnits and then call them here as-well
 	
@@ -134,6 +137,8 @@ void ARTSOBaseGM::ProcessChangesAndSaveGame_Implementation(const FString& Slot, 
 	SaveGame(Slot, bAllowOverwrite);
 }
 
+// Not needed, data updated directly after each choice injunction,
+// keep here and reserve it for possible use if the data-structure we want to store data from grows larger/more complex
 void ARTSOBaseGM::SaveConversationProgression_Implementation()
 {
 }
@@ -231,11 +236,39 @@ void ARTSOBaseGM::SaveResources_Implementation(const TMap<int32, FRTSSavedItems>
 }
 
 /* Save current units, their locations and actor classes*/
-void ARTSOBaseGM::SaveUnits_Implementation()
+void ARTSOBaseGM::SaveEntities_Implementation()
 {
 	check(GameSave != nullptr)
 
-	// @todo possibly will be part of interactables, think on it a couple of hours
+	UPDRTSBaseSubsystem* RTSSubsystem = GEngine->GetEngineSubsystem<UPDRTSBaseSubsystem>();
+	FMassEntityManager* EntityManager = RTSSubsystem != nullptr ? RTSSubsystem->EntityManager : nullptr; 
+	if (EntityManager == nullptr) { return; }
+
+	// 1. get all our entities
+	RTSSubsystem->WorldOctree.Lock();
+	RTSSubsystem->WorldOctree.FindAllElements
+	(
+		[&](const FPDEntityOctreeCell& Cell)
+		{
+			// 2. Store entities per active player
+			if (EntityManager->IsEntityValid(Cell.EntityHandle)) { return; }
+
+			// @todo (might not be needed) 3. Store entity config type 
+			FRTSSavedWorldUnits UnitDatum{};
+			const FPDMFragment_RTSEntityBase& EntityBaseFragment = EntityManager->GetFragmentDataChecked<FPDMFragment_RTSEntityBase>(Cell.EntityHandle);
+
+			// 4. Store entities active task/job data and stats
+			UnitDatum.CurrentAction = EntityManager->GetFragmentDataChecked<FPDMFragment_Action>(Cell.EntityHandle);
+			UnitDatum.OwnerID = EntityBaseFragment.OwnerID;
+			UnitDatum.SelectionIndex = EntityBaseFragment.SelectionGroupIndex;
+			UnitDatum.Location = EntityManager->GetFragmentDataChecked<FTransformFragment>(Cell.EntityHandle).GetTransform().GetLocation();
+			GameSave->EntityUnits.Emplace(UnitDatum);
+		}
+	);
+
+	
+	RTSSubsystem->WorldOctree.Unlock();
+
 }
 
 /**

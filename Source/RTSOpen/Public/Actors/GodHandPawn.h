@@ -16,6 +16,10 @@
 class APDInteractActor;
 class UPDInventoryComponent;
 
+
+//
+// Godhand functionality
+
 /**
  * @brief The players main means of action. This is the RTS god-hand. This tracks and controls your units.  
  */
@@ -54,7 +58,7 @@ public:
 	void UpdateCursorLocation(float DeltaTime);
 	/** @brief */
 	virtual void PossessedBy(AController* NewController) override;
-
+	
 	/** @brief */
 	UFUNCTION()
 	void OnCollisionBeginOverlap(
@@ -223,7 +227,6 @@ public:
 	// 4. If rotating direction Positive, then pressing positive again then negative, , final two should cancel eachother out
 	TDeque<int8> RotationDeque{};
 	double CurrentRotationLeft = 0.0;
-	double TargetYaw = 0.0;
 	bool bIsInRotation = false;
 	
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "RTS|Pawn|Cursor|State")

@@ -165,7 +165,7 @@ struct PDRTSBASE_API FPDMFragment_SharedEntity : public FMassSharedFragment
 /**
  * @brief Fragment given to entities to grant resources
  */
-USTRUCT()
+USTRUCT(BlueprintType)
 struct PDRTSBASE_API FPDMFragment_Action : public FMassFragment
 {
 	GENERATED_BODY();

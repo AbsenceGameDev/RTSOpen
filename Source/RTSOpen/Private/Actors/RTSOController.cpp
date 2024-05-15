@@ -76,13 +76,14 @@ void URTSOConversationSelectionEntry::NativeOnListItemObjectSet(UObject* ListIte
 	const URTSOStructWrapper* Item = Cast<URTSOStructWrapper>(ListItemObject);
 	if (Item == nullptr) { return; }
 	
+	// 1. Read data
 	TextContent->SetText(Item->SelectionEntry);
 	ChoiceIndex           = Item->ChoiceIndex;
 	DirectParentReference = Item->DirectParentReference;
 	Tile->TileText = FText::FromString("Reply {" + FString::FromInt(ChoiceIndex) + "}");
 	Tile->Refresh();
 	
-	// 1. Bind delegates
+	// 2. Bind delegates
 	TextContentBorder->OnMouseMoveEvent.BindDynamic(this, &URTSOConversationSelectionEntry::MouseMove); 
 	TextContentBorder->OnMouseButtonDownEvent.BindDynamic(this, &URTSOConversationSelectionEntry::MouseButtonDown);
 	TextContentBorder->OnMouseButtonUpEvent.BindDynamic(this, &URTSOConversationSelectionEntry::MouseButtonUp);
@@ -113,6 +114,7 @@ FEventReply URTSOConversationMessageWidget::MouseDoubleClick_Implementation(int3
 	return FEventReply(true);
 }
 
+
 void URTSOConversationMessageWidget::SetPayload_Implementation(const FClientConversationMessagePayload& Payload, AActor* PotentialCallbackActor)
 {
 	UE_LOG(LogTemp, Warning, TEXT("URTSOConversationMessageWidget::SetPayload_Implementation"))
@@ -123,6 +125,12 @@ void URTSOConversationMessageWidget::SetPayload_Implementation(const FClientConv
 	ConversationSelectors->ClearListItems();
 
 	if (Payload.Options.IsEmpty()) { return; }
+
+	// // @todo come back to this, fix data not being overwritten in existing InstantiatedEntryObjects
+	// This is stupid, should not have to clear the objects here but
+	// somehow the data being overwritten is not
+	// really being overwritten for some ungodly reason. Data locked perhaps?
+	// InstantiatedEntryObjects.Empty();
 	
 	const int32 MaxStep = Payload.Options.Num() - 1;
 	int32 Step = INDEX_NONE;
@@ -140,21 +148,27 @@ void URTSOConversationMessageWidget::SetPayload_Implementation(const FClientConv
 			BuildText = FText::FromString("(INVALID:) " + Option.ChoiceText.ToString());
 			break;
 		}
-		
-		URTSOStructWrapper* DataWrapper =
-			InstantiatedEntryObjects.IsValidIndex(Step) ? InstantiatedEntryObjects[Step] 
-			: NewObject<URTSOStructWrapper>(this, URTSOStructWrapper::StaticClass());
-		DataWrapper->SelectionEntry = BuildText;
-		DataWrapper->ChoiceIndex = Step;
-		DataWrapper->DirectParentReference = this;
-		
-		if (InstantiatedEntryObjects.IsValidIndex(Step) == false)
-		{
-			InstantiatedEntryObjects.Emplace(DataWrapper);
-		}
-		ConversationSelectors->AddItem(DataWrapper);
-	}
 
+		// // @todo come back to this, fix data not being overwritten
+		// const bool bExists = InstantiatedEntryObjects.IsValidIndex(Step);
+		// URTSOStructWrapper* DataWrapper = bExists ?
+		// 	InstantiatedEntryObjects[Step] : NewObject<URTSOStructWrapper>(this, URTSOStructWrapper::StaticClass());
+		// DataWrapper->AssignData(BuildText, Step, this);
+		// Data must be locked as it won't change here
+		// if (bExists == false)
+		// {
+		// 	InstantiatedEntryObjects.Emplace(DataWrapper);
+		// }
+
+		URTSOStructWrapper* DataWrapper = NewObject<URTSOStructWrapper>(this, URTSOStructWrapper::StaticClass());		
+		DataWrapper->AssignData(BuildText, Step, this);
+		ConversationSelectors->AddItem(DataWrapper);
+
+		const FString BuildString =
+			FString::Printf(TEXT("URTSOConversationMessageWidget::SetPayload -- Option(%s)"), *Option.ChoiceText.ToString());
+		UE_LOG(LogTemp, Error, TEXT("%s"), *BuildString);	
+		
+	}
 	const FString BuildString =
 		FString::Printf(TEXT("URTSOConversationMessageWidget::SetPayload -- Options Count %i"), Payload.Options.Num());
 	UE_LOG(LogTemp, Error, TEXT("%s"), *BuildString);	
@@ -550,10 +564,12 @@ void ARTSOController::ActionChordedBase_Implementation(const FInputActionValue& 
 
 void ARTSOController::ActionExitConversation_Implementation(const FInputActionValue& Value)
 {
-	UE_LOG(LogTemp, Warning, TEXT("ARTSOController::ActionExitConversation"));
+	Internal_ExitConversation();
+}
 
-	
-	IRTSOInputInterface::ActionExitConversation_Implementation(Value);
+void ARTSOController::Internal_ExitConversation()
+{
+	UE_LOG(LogTemp, Warning, TEXT("ARTSOController::ExitConversation"));
 
 	const FClientConversationMessagePayload DummyPayload;
 	OnEndConversation(DummyPayload, nullptr);	
@@ -822,6 +838,7 @@ void ARTSOController::OnBeginConversation(const FClientConversationMessagePayloa
 	DeactivateMappingContext(TAG_CTRL_Ctxt_BaseInput);
 	
 	ConversationWidget->AddToViewport();
+	ConversationWidget->ExitConversationButton->Hitbox->OnReleased.AddDynamic(this, &ARTSOController::Internal_ExitConversation);
 	ConversationWidget->SetPayload(Payload, PotentialCallbackActor);	
 }
 
@@ -969,6 +986,7 @@ void ARTSOController::GetEntitiesOrActorsInMarqueeSelection()
 	QueryBounds.Center.W = QueryBounds.Extent.W = 0;
 	
 	TMap<int32, FMassEntityHandle> Handles;
+	
 	WorldOctree.FindElementsWithBoundsTest(QueryBounds, [&](const FPDEntityOctreeCell& Cell)
 	{
 		if (Cell.EntityHandle.Index == INDEX_NONE) { return; } 

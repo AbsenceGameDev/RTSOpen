@@ -76,7 +76,7 @@ public: // Method members
 
 	/** @brief Save worker/units */
 	UFUNCTION(BlueprintNativeEvent, BlueprintCallable)
-	void SaveUnits();
+	void SaveEntities();
 
 	virtual void TickActor(float DeltaTime, ELevelTick TickType, FActorTickFunction& ThisTickFunction) override;
 	

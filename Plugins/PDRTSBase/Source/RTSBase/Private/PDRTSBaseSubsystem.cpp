@@ -19,10 +19,6 @@ class AMassVisualizer;
 void UPDRTSBaseSubsystem::Initialize(FSubsystemCollectionBase& Collection)
 {
 	Super::Initialize(Collection);
-	MassEntity = Collection.InitializeDependency<UMassEntitySubsystem>();
-	
-	// FCoreUObjectDelegates::PostLoadMapWithWorld.AddUObject(this, &UPDRTSBaseSubsystem::SetupOctreeWithNewWorld);
-
 	for(const TSoftObjectPtr<UDataTable>& TablePath : GetDefault<UPDRTSSubsystemSettings>()->WorkTables)
 	{
 		WorkTables.Emplace(TablePath.LoadSynchronous());

@@ -574,14 +574,15 @@ void UPDOctreeProcessor::Execute(FMassEntityManager& EntityManager, FMassExecuti
 	{
 		QUICK_SCOPE_CYCLE_COUNTER(STAT_OctreeCellExecution)
 		PD::Mass::Entity::FPDSafeOctree& Octree = RTSSubsystem->WorldOctree;
-
-		if (Octree.b_TODO_REPLACEWITHSCOPELOCK_IsInIteration) { return; } // skip, don't delete or add any nodes if in iteration elsewhere
-
 		const int32 NumEntities = LambdaContext.GetNumEntities();
 
 		TConstFragment<FMassVelocityFragment>& Velocities = CONSTVIEW(LambdaContext, FMassVelocityFragment);
 		TConstFragment<FTransformFragment>& LocationList  = CONSTVIEW(LambdaContext, FTransformFragment);
 		TMutFragment<FPDOctreeFragment>& OctreeFragments  = MUTVIEW(LambdaContext, FPDOctreeFragment);
+
+		if (Octree.IsLocked()) { return; }
+		
+		Octree.Lock();
 		for (int32 EntityListIdx = 0; EntityListIdx < NumEntities; ++EntityListIdx)
 		{
 			const FVector& DistanceTraveled = (Velocities[EntityListIdx].Value * LambdaContext.GetDeltaTimeSeconds());
@@ -606,6 +607,7 @@ void UPDOctreeProcessor::Execute(FMassEntityManager& EntityManager, FMassExecuti
 			CopyCurrentOctreeElement.Bounds.Center = FVector4(CurrentLocation, 0);
 			Octree.AddElement(CopyCurrentOctreeElement);
 		}
+		Octree.Unlock();
 	});
 
 	DebugDrawCells();
@@ -648,8 +650,9 @@ void UPDOctreeEntityObserver::Execute(FMassEntityManager& EntityManager, FMassEx
 		const int32 EntityCount = LambdaContext.GetNumEntities();
 		PD::Mass::Entity::FPDSafeOctree& Octree = RTSSubsystem->WorldOctree;
 
-		if (Octree.b_TODO_REPLACEWITHSCOPELOCK_IsInIteration) { return; } // skip, don't delete or add any nodes if in iteration elsewhere
+		if (Octree.IsLocked()) { return; }
 		
+		Octree.Lock();
 		for (int32 Step = 0; Step < EntityCount; ++Step)
 		{
 			const FTransform& Transform = TransformList[Step].GetTransform();
@@ -668,6 +671,7 @@ void UPDOctreeEntityObserver::Execute(FMassEntityManager& EntityManager, FMassEx
 			OctreeList[Step].OctreeID = NewOctreeElement.SharedOctreeID;
 			LambdaContext.Defer().AddTag<FPDInOctreeGridTag>(LambdaContext.GetEntity(Step));
 		}
+		Octree.Unlock();
 	});
 }
 
@@ -693,15 +697,15 @@ void UPDGridCellDeinitObserver::ConfigureQueries()
 void UPDGridCellDeinitObserver::Execute(FMassEntityManager& EntityManager, FMassExecutionContext& Context)
 {
 	PD::Mass::Entity::FPDSafeOctree& Octree = RTSSubsystem->WorldOctree;
-
 	EntityQuery.ForEachEntityChunk(EntityManager, Context, [&](FMassExecutionContext& LambdaContext)
 	{
 		const TArrayView<FPDOctreeFragment> CellFragments = LambdaContext.GetMutableFragmentView<FPDOctreeFragment>();
 
 		const int32 NumEntities = LambdaContext.GetNumEntities();
 
-		if (Octree.b_TODO_REPLACEWITHSCOPELOCK_IsInIteration) { return; } // skip, don't delete or add any nodes if in iteration elsewhere
+		if (Octree.IsLocked()) { return; }
 		
+		Octree.Lock();
 		for (int32 EntityListIdx = 0; EntityListIdx < NumEntities; ++EntityListIdx)
 		{
 			TSharedPtr<FOctreeElementId2> OctreeID = CellFragments[EntityListIdx].OctreeID;
@@ -709,6 +713,7 @@ void UPDGridCellDeinitObserver::Execute(FMassEntityManager& EntityManager, FMass
 
 			Octree.RemoveElement(*OctreeID);
 		}
+		Octree.Unlock();
 	});
 }
 
