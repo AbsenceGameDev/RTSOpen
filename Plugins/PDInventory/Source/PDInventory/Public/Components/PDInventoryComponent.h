@@ -41,38 +41,38 @@ class PDINVENTORY_API UPDInventoryComponent : public UActorComponent
 	GENERATED_UCLASS_BODY()
 
 protected:
-	/** @brief */
+	/** @brief Calls ItemList.SetOwningInventory() and sets self as owner */
 	virtual void BeginPlay() override;
 public:
-	/** @brief */
+	/** @brief Calls into ItemList and depending on the requested operation it either updates the list or clears it */
 	UFUNCTION(BlueprintCallable)
 	void RequestUpdateItem(TEnumAsByte<EPDItemNetOperation> RequestedOperation, const FGameplayTag& ItemTag, int32 Count);
-	/** @brief */
+	/** @brief Requests an item-trade from the caller. The items they offer and optionally the items they request.
+	 * Will need to revise this with an added parameter which requires the opposing inventories to have eachs requested item on hand, no less */
 	void RequestTradeItems(UPDInventoryComponent* Caller, const TMap<FGameplayTag, int32>& OfferredItems, const TMap<FGameplayTag, int32>& RequestedItems = {});
 	
-	/** @brief */
+	/** @brief Empty. Reserved for future use */
 	void OnDatumUpdated(FPDItemNetDatum* ItemNetDatum, EPDItemNetOperation Operation);
 	
-	/** @brief */
+	/** @brief Checks if we are at the last available stack in the inventory */
 	bool IsAtLastAvailableStack() const;
 public:
 
-	// @todo Move to settings table, keep here for now
-	/** @brief Is in cubic centimetres, if INDEX_NONE (-1) or below, then the volume is unlimited */
+	/** @brief Is in cubic centimetres, if 'Volume.Max' is INDEX_NONE (-1) or below, then the volume is unlimited */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
 	FPDValueTracker Volume{};
-	/** @brief Is in grams, if INDEX_NONE (-1) or below, then the weight is unlimited */
+	/** @brief Is in grams, if 'Weight.Max' is INDEX_NONE (-1) or below, then the weight is unlimited */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
 	FPDValueTracker Weight{};
-	/** @brief Is in total stacks the inventory systems has, if INDEX_NONE (-1) or below, then there can exist an unlimited amount of stacks */
+	/** @brief Is in total stacks the inventory systems has, if 'Stacks.Max' is INDEX_NONE (-1) or below, then there can exist an unlimited amount of stacks */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
 	FPDValueTracker Stacks{};
 	
-	// Called on replicated item count update
+	/** @brief Called on replicated item count update. For other objects to hook callbacks into */
 	UPROPERTY(BlueprintAssignable)
 	FPDOnItemUpdated OnItemUpdated;
 	
-	/** @brief */
+	/** @brief The actual fastarray itemlist */
 	UPROPERTY(Replicated)
 	FPDItemList ItemList;
 };

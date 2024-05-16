@@ -6,44 +6,52 @@
 #include "GameplayTags.h"
 #include "PDRTSCameraManager.generated.h"
 
-/** @brief */
+/** @brief A simple struct which is acting as an intervals boundaries*/
 USTRUCT(BlueprintType, Blueprintable)
 struct PDRTSBASE_API FPDInterval
 {
     GENERATED_BODY()
 
-	/** @brief */
+	/** @brief Minimum value of interval boundary */
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = Camera)
     double Min = -89.0;
     
-	/** @brief */
+	/** @brief Maximum value of interval boundary */
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = Camera)
     double Max = 89.0;
 };
 
-/** @brief */
+/** @brief Settings table row type for the PDCameraManager.
+ * - Contains the Camera Mode tag
+ * - Contains a Pitch interval range
+ * - Contains a Yaw interval range
+ * - Controls the Cameras FOV
+ * - Controls the Cameras near clip plane
+ * - Custom camera lag
+ * 
+ */
 USTRUCT(BlueprintType, Blueprintable)
 struct PDRTSBASE_API FPDCameraManagerSettings : public FTableRowBase
 {
     GENERATED_BODY()
 
-	/** @brief */
+	/** @brief Tag which represents camera mode. Similar to using an enum but more scalable*/
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = Camera)
     FGameplayTag CameraMode{};
 
-	/** @brief */
+	/** @brief The current allowed pitch interval, Use to clamp look rotation */
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = Camera)
     FPDInterval Pitch{-89.0, 89.0};
 
-	/** @brief */
+	/** @brief The current allowed yaw interval, Use to clamp look rotation */
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = Camera)
     FPDInterval Yaw{0.0, 359.999};    
     
-	/** @brief */
+	/** @brief Active/Current FOV */
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = Camera)
     double FOV = 90.0;
 
-	/** @brief */
+	/** @brief Active/Current NearClipPlane */
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = Camera)
     double NearClipPlane = 5.0;
     
@@ -51,76 +59,75 @@ struct PDRTSBASE_API FPDCameraManagerSettings : public FTableRowBase
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = Camera)
     double OrthoWidth = 0.0;
     
-	/** @brief */
+	/** @brief Custom camera lag. Unused. */
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = Camera)
     double CameraLagSpeed = 0.0;
 
-	/** @brief */
+	/** @brief Revise if actually wanted */
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = Camera)
     double FadeAmount = -1.0;
 
-	/** @brief */
+	/** @brief Revise if actually wanted */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = Camera)
     FLinearColor FadeColour;
 };
 
-/** @brief */
+/** @brief The camera manager class. Gets settings from a settings datatable-row handle */
 UCLASS()
 class PDRTSBASE_API APDCameraManager : public APlayerCameraManager
 {
     GENERATED_BODY()
 
 public:
-	/** @brief */
     APDCameraManager();
     
-	/** @brief */
+	/** @brief Reserved for later use. Only calls Super::OnConstruction. */
     virtual void OnConstruction(const FTransform& Transform) override;
-	/** @brief */
+	/** @brief Calls Super::BeginPlay then proceeds to call 'ProcessTables' */
     virtual void BeginPlay() override;
 
-	/** @brief */
+	/** @brief Sets the given mode and loads the settings for that mode */
     UFUNCTION(BlueprintNativeEvent, BlueprintCallable, Category = Camera)
     void SetCustomMode(FGameplayTag Tag);
 
-	/** @brief */
+	/** @brief Updates the RequestedCameraState and calls 'SetCustomMode' if it has changed */
     virtual void UpdateCamera(float DeltaTime) override;
 
 protected:
-	/** @brief */
+	/** @brief Updates the view-target with custom camera lag applied */
     virtual void UpdateViewTarget(FTViewTarget& OutVT, float DeltaTime) override;
     
-	/** @brief */
+	/** @brief Process all camera settings tables */
     void ProcessTables();
     
 public:
-	/** @brief */
+	/** @brief Camera settings handle. Points to the camera settings entry we want to apply to this manager. */
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Camera", Meta = (RowType = "/Script/PDRTSBase.PDCameraManagerSettings"))
     FDataTableRowHandle CurrentSettingsHandle;
-	/** @brief */
+	/** @brief Pointer to the actual settings after it has been resolved by 'CurrentSettingsHandle' */
     FPDCameraManagerSettings* SettingPtr = nullptr;
     
-	/** @brief */
+	/** @brief Potential Sources for camera settings */
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Camera", Meta = (RequiredAssetDataTags = "RowStructure=/Script/PDRTSBase.PDCameraManagerSettings"))
     TArray<UDataTable*> CameraSettingsSources{};
 
-	/** @brief */
+	/** @brief Camera State: Requested*/
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Camera")
     FGameplayTag RequestedCameraState{};
 
-	/** @brief */
+	/** @brief Camera State: Previous */
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Camera")
     FGameplayTag OldCameraState{};    
 
-    // Associative maps
-	/** @brief */
+    /* Associative maps */
+	/** @brief Map to associate a type tag with the manager settings it points to in the table it was sourced from */
     TMap<FGameplayTag /*Type tag*/, FPDCameraManagerSettings* /*SettingsRow*/> TagToSettings;
-	/** @brief */
+	/** @brief Map to associate a type tag with the table it was sourced from */
     TMap<FGameplayTag /*Type tag*/, const UDataTable* /*Table*/> TagToTable;
-	/** @brief */
+	/** @brief Map to associate a type tag with the rowname of the entry it was sourced from */
     TMap<FGameplayTag /*Type tag*/, FName /*Rowname*/> TagToRowname;
 
-	/** @brief */
+	/** @brief Current lag velocity value. Use for the custom camera lag */
     UPROPERTY()
     FVector CurrentLagVelocity{0.0,0.0,0.0};
 };

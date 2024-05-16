@@ -9,32 +9,34 @@
 
 struct FPDItemDefaultDatum;
 
-/** @brief */
+/** @brief The inventory subsystem.
+ * @todo 1. add a developer settings class and use to assign to 'ItemTables' for processing when the world begins play 
+ * @todo 2. Reparent to inherit from UWorldSubsystem and make any needed code changes to support that */ 
 UCLASS()
 class PDINVENTORY_API UPDInventorySubsystem : public UEngineSubsystem
 {
 	GENERATED_BODY()
 public:	
-	/** @brief */
+	/** @brief Processes the tables in 'ItemTables' and fills a number of maps for fast lookups downstream */
 	virtual void ProcessTables();
 
-	/** @brief */
+	/** @brief Returns the default datum for a given rowname, if said row has been mapped */
 	const FPDItemDefaultDatum* GetDefaultDatum(const FName& RowName);
-	/** @brief */
+	/** @brief Returns the default datum for a given item tag, if said entry has been mapped */
 	const FPDItemDefaultDatum* GetDefaultDatum(const FGameplayTag& Tag);
 
 public:	
-	/** @brief */
+	/** @brief The actual item tables. @todo assign via developer settings */
 	UPROPERTY(EditAnywhere, Category = "Inventory Subsystem", Meta = (RequiredAssetDataTags="RowStructure=PDItemDefaultDatum"))
 	TArray<UDataTable*> ItemTables;
 	
-	/** @brief */
+	/** @brief Mapping between the given item tag and it's default datum entry in its table */
 	TMap<const FGameplayTag, const FPDItemDefaultDatum*> TagToItemMap{};
-	/** @brief */
+	/** @brief Mapping from given item name to it's item tag */
 	TMap<const FName, FGameplayTag> NameToTagMap{};
-	/** @brief */
+	/** @brief Mapping from the given item tag to its item name */
 	TMap<const FGameplayTag, FName> TagToNameMap{};
-	/** @brief */
+	/** @brief Mapping from the given item tag to the table the entry was parsed from */
 	TMap<const FGameplayTag, const UDataTable*> TagToTable{};
 };
 

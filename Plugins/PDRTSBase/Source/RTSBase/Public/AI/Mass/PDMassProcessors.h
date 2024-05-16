@@ -19,7 +19,7 @@ class UMassSignalSubsystem;
 class UNavigationSystemV1;
 class UMassEntitySubsystem;
 
-/** @brief */
+/** @brief CONTINUE COMMENTS HERE AFTER COMMITTING AND PUSHING */
 #define DECLARE_PROCESSOR_BODY \
 virtual void Execute(FMassEntityManager& EntityManager, FMassExecutionContext& Context) override; \
 virtual void ConfigureQueries() override; \

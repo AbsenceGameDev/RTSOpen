@@ -15,27 +15,39 @@
 class UPDInventoryComponent;
 struct FPDItemList;
 
-// Light version for export to AI entities mainly, but anything that requires some lightweight data and does not care about stacks being seperated
+/** @brief Light version for export to AI entities mainly, but anything that requires some lightweight data and does not care
+ * about stacks being seperated but instead extrapolated from the total count and the default stack limit for the given item
+ * 
+ * Datum size: 16 bytes
+ * Extreme case, 100.000 Entities, all with with inventory. Owned by 100 total players (1.000 units each)
+ * Average TX-rate: updates inventory once every two seconds
+ * Average Total TX per second; (100.000 * 16 * 0.5) 800.000 bytes per second, or ~800 kilobytes = inventory data per connection
+ * For any given player this will consist of about 16.000 bytes out per second, and incoming packets consist of 98% (1 - (16 / 800)) of the load
+ *
+ * To offset the load we could have some level of detailing for the networked data, lowering update rate at different distances away from the player 
+ */
 USTRUCT(BlueprintType)
 struct FPDLightItemDatum
 {
 	GENERATED_BODY();
 	
-	/** @brief */
+	/** @brief The tag associated with the item */
 	UPROPERTY(BlueprintReadWrite)
 	FGameplayTag ItemTag{};
 	
-	/** @brief */
+	/** @brief The total item count this entity carries*/
 	UPROPERTY(BlueprintReadWrite)
 	int32 TotalItemCount = INDEX_NONE;
 
-	// Stacks can be extrapolated from the subsystem
-	// UPROPERTY(BlueprintReadWrite)
-	// int32 Stacks = INDEX_NONE;
+	// Stack-count need to be extrapolated from the subsystem
 };
 
 
-/*
+/** 
+ * @brief Inventory system network datum struct.
+ * - Contains a Tag ID, Total Item Count, and index for the last edited stack, and a map of all actual stacks.
+ * - Also contains a function to export the 'FPDItemNetDatum' as a 'FPDLightItemDatum'
+ * 
  * Datum size: 112 bytes
  * Extreme case, 1000 players + 1000 NPCs, all with with inventory
  * Average TX-rate: 4 updates per second per inventory
@@ -52,80 +64,84 @@ struct FPDItemNetDatum : public FFastArraySerializerItem
 	FPDItemNetDatum(const FGameplayTag& InItemTag, int32 StackIndex, int32 InCount);
 	FPDItemNetDatum(const FGameplayTag& InItemTag, int32 InCount);
 
-	/** @brief */
+	/** @brief This is called on the client when they receive a replicated update.
+	 * Calls into the owners (receivers) inventory components 'OnDatumUpdate(this, EPDItemNetOperation::REMOVEALL)' */
 	void PreReplicatedRemove(const FPDItemList& OwningList);
-	/** @brief */
+	/** @brief This is called on the client when they receive a replicated update.
+	 * Calls into the owners (receivers) inventory components 'OnDatumUpdate(this, EPDItemNetOperation::ADDNEW)' */
 	void PostReplicatedAdd(const FPDItemList& OwningList);
-	/** @brief */
+	/** @brief This is called on the client when they receive a replicated update.
+	 * Calls into the owners (receivers) inventory components 'OnDatumUpdate(this, EPDItemNetOperation::CHANGE)' */
 	void PostReplicatedChange(const FPDItemList& OwningList);
 	
-	/** @brief */
+	/** @brief The tag associated with the item */
 	UPROPERTY(BlueprintReadWrite)
 	FGameplayTag ItemTag{};
 
-	/** @brief */
+	/** @brief the last edited stack. @todo revise if needed here or if it should just be a local state on the inventory component */
 	UPROPERTY(BlueprintReadWrite)
 	int32 LastEditedStackIndex = INDEX_NONE;
 	
-	/** @brief */
+	/** @brief The total item count this entity carries */
 	UPROPERTY(BlueprintReadWrite)
 	int32 TotalItemCount = INDEX_NONE;
 	
-	/** @brief */
-	// @todo Might need to replace this, t-map is too weighty, an array could do with some index caching
+	/** @brief Map of the players actual stacks
+	 * @todo Might need to replace this, t-map is too weighty, an array could do with some index caching */
 	UPROPERTY(BlueprintReadWrite)
 	TMap<int32 /* StackIndex */, int32 /* ItemCount */> Stacks{};
 
-	/** @brief */
+	/** @brief Export data in the form of a 'FPDLightItemDatum' */
 	FPDLightItemDatum ExportLight() const { return FPDLightItemDatum{ItemTag, TotalItemCount}; }
 };
 
-/** @brief */
+/** @brief The item list fastarray serializer */
 USTRUCT(BlueprintType)
 struct FPDItemList : public FFastArraySerializer 
 {
 	GENERATED_USTRUCT_BODY()
 
-	/** @brief */
+	/** @brief Only calls into 'FFastArraySerializer::NetSerialize' for now, reserved for later use */
 	bool NetSerialize(FNetDeltaSerializeInfo& DeltaParams);
 	
-	/** @brief */
+	/** @brief Clears all items and stacks of the given type from the 'Items' array*/
 	bool RemoveAllItemsOfType(FGameplayTag& ItemToRemove);
-	/** @brief */
+	/** @brief Removes a stack of the given type alongside the stacks given index from the 'Items' array*/
 	bool RemoveStack(FGameplayTag& ItemToRemove, int32 StackIdx);
 
-	/** @brief */
+	/** @brief Adds an item of given type and amount to the 'Items' array*/
 	bool UpdateItem(FGameplayTag& ItemToUpdate, int32 AmountToAdd);
-	/** @brief */
+	/** @brief Adds an item of given type and amount to the 'Items' array at the specified index */
 	bool UpdateItemAtStackIdx(FGameplayTag& ItemToUpdate, int32 StackIdx, int32 AmountToAdd);
 
-	/** @brief */
+	/** @brief Return the inventory that owns this fastarray */
 	FORCEINLINE UPDInventoryComponent* GetOwningInventory() const { return OwningInventory; }
-	/** @brief */
+	/** @brief Assign the inventory that should own this fastarray */
 	FORCEINLINE void SetOwningInventory(UPDInventoryComponent* InInventory) { OwningInventory = InInventory; }
 
 private:
-	/** @brief */
+	/** @brief Internal private function that performs removal of an item */
 	bool _Remove(FGameplayTag& ItemToUpdate, int32& AmountToAdd);
-	/** @brief */
+	/** @brief Internal private function that performs addition of an item */
 	bool _Add(FGameplayTag& ItemToUpdate, int32 StackIdx, int32& AmountToAdd);
 
 public:
-	/** @brief */
+	/** @brief The underlying tarray data which the fastarray class is operating on */
 	UPROPERTY()
 	TArray<FPDItemNetDatum> Items;
 
-	/** @brief */
+	/** @brief A non replicated, local, mapping of an item tag and it's index in the underlying 'Items' array
+	 * @note do not replicate, this is local */
 	UPROPERTY(NotReplicated)
-	TMap<FGameplayTag, int32> ItemToIndexMapping; // do not replicate, this is local
+	TMap<FGameplayTag, int32> ItemToIndexMapping;
 	
 protected:
-	/** @brief */
+	/** @brief The owning inventory component, if it has been assigned. */
 	UPROPERTY()
 	UPDInventoryComponent* OwningInventory = nullptr;
 };
 
-/** @brief */
+/** @brief Defining struct type and marking it a being able to replicate */
 template<>
 struct TStructOpsTypeTraits<FPDItemList> : public TStructOpsTypeTraitsBase2<FPDItemList>
 {

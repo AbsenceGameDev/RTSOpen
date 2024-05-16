@@ -17,10 +17,10 @@ class UNavigationPath;
 class UAnimToTextureDataAsset;
 
 // MassTags
-/** @brief */
+/** @brief MassTag: RTSEntityTag */
 USTRUCT() struct PDRTSBASE_API FPDMTag_RTSEntity : public FMassTag { GENERATED_BODY(); };
 
-/** @brief */
+/** @brief MassFragment: SimpleMovementFragment */
 USTRUCT()
 struct FPDMFragment_SimpleMovement : public FMassFragment
 {
@@ -31,18 +31,16 @@ struct FPDMFragment_SimpleMovement : public FMassFragment
 	FVector Target;
 };
 
-/** @brief */
+/** @brief Entity Selection State :: Enum class : uint8 */
 UENUM()
 enum class EPDEntitySelectionState : uint8
 {
-	ENTITY_SELECTED = 0,
-	ENTITY_NOTSELECTED = 1,
-	ENTITY_UNSET = 2, 
+	ENTITY_SELECTED = 0    UMETA(DisplayName="Entity Selected"),
+	ENTITY_NOTSELECTED = 1 UMETA(DisplayName="Entity Not Selected"),
+	ENTITY_UNSET = 2       UMETA(DisplayName="Entity Unset"), 
 };
 
-/**
- * @brief Base fragment for RTS Agents
- */
+/** @brief Base fragment for RTS Agents */
 USTRUCT(BlueprintType)
 struct PDRTSBASE_API FPDMFragment_RTSEntityBase : public FMassFragment
 {
@@ -56,23 +54,24 @@ struct PDRTSBASE_API FPDMFragment_RTSEntityBase : public FMassFragment
 	UPROPERTY()
 	bool bAction  = false;
 
-	/** @brief */
+	/** @brief Selection state for an entity running this fragment */
 	UPROPERTY()
 	EPDEntitySelectionState SelectionState = EPDEntitySelectionState::ENTITY_UNSET;	
 	
-	/** @brief */
+	/** @brief Selection clearing state for an entity running this fragment */
 	UPROPERTY()
 	bool bHasClearedSelection = true;
 
-	/** @brief */
+	/** @brief Selection Group Index for an entity running this fragment */
 	UPROPERTY()
 	int32 SelectionGroupIndex = INDEX_NONE;
 
-	/** @brief */
+	/** @brief OwnerID(Players) for an entity running this fragment */
 	UPROPERTY()
 	int32 OwnerID = INDEX_NONE;
 
-	/** @brief */
+	/** @brief Queued unit path actually at most contains a single entry and if set it
+	 * runs a navpath calculation out-of-line with it's potential selection group */
 	UPROPERTY()
 	TArray<FVector> QueuedUnitPath{};	
 	
@@ -81,7 +80,7 @@ struct PDRTSBASE_API FPDMFragment_RTSEntityBase : public FMassFragment
 	// TArray<FMassEntityHandle> QueuedInteractables;
 };
 
-/** @brief */
+/** @brief Base fragment for entity ISM vertex animations */
 USTRUCT()
 struct PDRTSBASE_API FPDMFragment_EntityAnimation : public FMassFragment
 {
@@ -112,12 +111,12 @@ struct PDRTSBASE_API FPDMFragment_EntityAnimation : public FMassFragment
 	int AnimPosition = 0;
 };
 
-/** @brief */
+/** @brief Invalid massint16 vector location. Compared against and then returned as a dummy in failed functions */
 static const FMassInt16Vector InvalidLoc = FMassInt16Vector{};
-/** @brief */
+/** @brief Invalid FMassEntityHandle. Compared against and then returned as a dummy in failed functions */
 static const FMassEntityHandle InvalidHandle = FMassEntityHandle{INDEX_NONE, INDEX_NONE};
 
-/** @brief */
+/** @brief Target compound keeps track of the target, either a static location, a given actor and massentities*/
 USTRUCT(Blueprintable)
 struct PDRTSBASE_API FPDTargetCompound
 {
@@ -159,7 +158,7 @@ struct PDRTSBASE_API FPDWrappedSelectionGroupNavData
 {
 	GENERATED_BODY()
 
-	/** @brief */
+	/** @brief Data to be used in shared navpath fragment */
 	UPROPERTY(EditAnywhere)
 	TMap<int32 /*SelectionGroupIndex*/, const UNavigationPath*> SelectionGroupNavData;
 };
@@ -171,7 +170,7 @@ struct PDRTSBASE_API FPDMFragment_SharedEntity : public FMassSharedFragment
 {
 	GENERATED_BODY()
 
-	/** @brief */
+	/** @brief Shared navpath fragment splitting up shared navdata between owner ID and their selection groups */
 	UPROPERTY(EditAnywhere)
 	TMap<int32 /* OwnerID */, FPDWrappedSelectionGroupNavData> SharedNavData;
 };
