@@ -164,7 +164,6 @@ void ARTSOInteractableConversationActor::BeginPlay()
 	URTSOConversationActorTrackerSubsystem& ConversationTrackerSubsystem = *GetWorld()->GetSubsystem<URTSOConversationActorTrackerSubsystem>();
 	ConversationTrackerSubsystem.TrackedConversationActors.Emplace(this);
 	
-	
 	ParticipantComponent =
 		Cast<UConversationParticipantComponent>(AddComponentByClass(UConversationParticipantComponent::StaticClass(), false, FTransform::Identity, false));
 
@@ -173,11 +172,9 @@ void ARTSOInteractableConversationActor::BeginPlay()
 	ParticipantComponent->ConversationUpdated.AddUObject(this, &ARTSOInteractableConversationActor::ConversationUpdated);
 	ParticipantComponent->ConversationStatusChanged.AddUObject(this, &ARTSOInteractableConversationActor::ConversationStatusChanged);
 	
-	
 	UPDAsyncAction_ActivateFeature* ActiveFeature = UPDAsyncAction_ActivateFeature::CreateActionInstance(this, GameFeatureName);
 	ActiveFeature->Activate();
-
-
+	
 	if (ConversationSettingsHandle.IsNull()) { return; }
 	const FString Context = FString::Printf(TEXT("ARTSOInteractableConversationActor(%s)::OnConstruction -- Attempting to access ConversationSettingsHandle.GetRow<FRTSOConversationMetaProgressionDatum>() "), *GetName());
 	InstanceData.ApplyValuesFromProgressionTable(*ConversationSettingsHandle.GetRow<FRTSOConversationMetaProgressionDatum>(Context));

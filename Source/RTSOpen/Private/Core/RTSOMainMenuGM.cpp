@@ -10,7 +10,7 @@ void ARTSOMainMenuGM::BeginPlay()
 {
 	Super::BeginPlay();
 	
-	if (MainMenuWidget == nullptr) { MainMenuWidget = CreateWidget<URTSOMainMenuBase>(GetWorld(), MMWidgetClass); }
+	if (MMWidgetClass != nullptr) { MainMenuWidget = CreateWidget<URTSOMainMenuBase>(GetWorld(), MMWidgetClass); }
 	// if (MainMenuWidget->IsInViewport() == false) { MainMenuWidget->AddToViewport(); }
 	// if (MainMenuWidget->IsActivated() == false) { MainMenuWidget->ActivateWidget(); }
 	

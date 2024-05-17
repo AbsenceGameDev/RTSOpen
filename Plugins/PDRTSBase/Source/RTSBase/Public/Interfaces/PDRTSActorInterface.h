@@ -13,16 +13,18 @@ UINTERFACE(MinimalAPI) class UPDRTSActorInterface : public UInterface { GENERATE
 /**
  * @brief This interface will be placed on actors we want to perform an action in.
  * @note Allows us to return an ID thath will be associated with the actor
+ * 
+ * @note Unused
+ * @todo decide if needed or if I should rethink this
  */
 class PDRTSBASE_API IPDRTSActorInterface
 {
 	GENERATED_BODY()
 
 public:
-	/** @brief */
+	/** @brief Unused, @todo decide if needed or if I should rethink this*/
 	UFUNCTION(BlueprintNativeEvent, CallInEditor, Category = "Actor|Interface")
 	void GetActorActionID() const;
-	/** @brief */
 	virtual int32 GetActorActionID_Implementation() const
 	{
 		// Perform actions

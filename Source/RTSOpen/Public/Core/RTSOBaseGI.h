@@ -29,7 +29,7 @@ public:
 	UFUNCTION(BlueprintNativeEvent, BlueprintCallable)
 	void OpenLevel();
 
-	/** @brief */
+	/** @brief Empty in base-class, Reserved for later use */
 	UFUNCTION(BlueprintNativeEvent, BlueprintCallable)
 	void OnLevelLoaded();
 
@@ -37,7 +37,7 @@ public:
 	UFUNCTION()
 	void Dispatch_OpenLevel(TSoftObjectPtr<UWorld>& SoftWorldPtr);
 
-	/** @brief */
+	/** @brief Calls EndTransition and sets teh StartTimeOffset*/
 	UFUNCTION()
 	void OnGMReady();
 	

@@ -45,38 +45,38 @@ struct PDRTSBASE_API FPDEntityOctreeCell
 	FBoxCenterAndExtent Bounds;
 
 	/** @brief Cell ID */
-	TSharedPtr<FOctreeElementId2> SharedOctreeID;
+	TSharedPtr<FOctreeElementId2> SharedCellID;
 };
 
 /** @brief Boilerplate TOctree2 functional structure */
 struct FPDEntityOctreeSemantics 
 {
-	/** @brief anonymous enum */
+	/** @brief anonymous enum, won't collide. Tells the octree how many elements we can store per leaf node  */
 	enum { MaxElementsPerLeaf = 128 };
-	/** @brief */
+	/** @brief anonymous enum, won't collide. Tells the octree our minimum limit for inclusive elements per node */
 	enum { MinInclusiveElementsPerNode = 7 };
-	/** @brief */
+	/** @brief anonymous enum, won't collide. Tells the octree how deep our nodes can get */
 	enum { MaxNodeDepth = 12 };
 
-	/** @brief */
+	/** @brief Leaf element allocator */
 	typedef TInlineAllocator<MaxElementsPerLeaf> ElementAllocator;
 
-	/** @brief */
+	/** @brief Returns the bounding box of the give cell */
 	FORCEINLINE static const FBoxCenterAndExtent& GetBoundingBox(const FPDEntityOctreeCell& Element)
 	{
 		return Element.Bounds;
 	}
 
-	/** @brief */
+	/** @brief Octree Cell comparison */
 	FORCEINLINE static bool AreElementsEqual(const FPDEntityOctreeCell& A, const FPDEntityOctreeCell& B)
 	{
 		return A.EntityHandle == B.EntityHandle;
 	}
 
-	/** @brief */
+	/** @brief Octree Cell ID assignment */
 	FORCEINLINE static void SetElementId(const FPDEntityOctreeCell& Element, FOctreeElementId2 Id)
 	{
-		*Element.SharedOctreeID = Id;
+		*Element.SharedCellID = Id;
 	};
 };
 
@@ -85,58 +85,57 @@ namespace PD::Mass::Entity
 {
 	typedef TOctree2<FPDEntityOctreeCell, FPDEntityOctreeSemantics> UnsafeOctree;
 	
-	/** @brief */
+	/** @brief Safe octree implementation. Crudely avoids data-race conditions.
+	 * @todo re-add the mutex when I have time to debug why it wasn't reliable last time. I have a hint I was locking the data only on one thread but right now this works fine  */
 	class FPDSafeOctree : public UnsafeOctree
 	{
 	public:
-		/** @brief */
 		FPDSafeOctree()
 			: UnsafeOctree() {}
-		/** @brief */
 		FPDSafeOctree(const FVector& InOrigin, FVector::FReal InExtent)
 			: UnsafeOctree(InOrigin, InExtent) {}
 
-		/** @brief */
+		/** @brief Call this when you expect potential data race conditions and you want to prioritize one codepath over another. */
 		void Lock() { bLockedReadInMainThread = true; };
-		/** @brief */
+		/** @brief Call this when you expect potential data race conditions and you want to prioritize one codepath over another. */
 		void Unlock() { bLockedReadInMainThread = false; };
-		/** @brief */
+		/** @brief Call this when you expect potential data race conditions and you want to prioritize one codepath over another. */
 		bool IsLocked() const { return bLockedReadInMainThread; };
 		
-		/** @brief */
+		/** @brief Calls into the inner, the octree, as long as the read access is not locked */
 		template<typename IterateBoundsFunc>
 		inline void FindElementsWithBoundsTest(const FBoxCenterAndExtent& BoxBounds, const IterateBoundsFunc& Func, const bool bShouldLock = false)
 		{
 			if (IsLocked()) { return; }
 			
-			if (bShouldLock)
-			{
-				Lock();
-			}
+			if (bShouldLock) { Lock();}
 			
 			// FScopeLock ReadLock(CriticalSectionMutex);
 			UnsafeOctree::FindElementsWithBoundsTest(BoxBounds, Func);
+
+			if (bShouldLock) { Unlock(); }						
 		}
 
-		/** @brief */
+		/** @brief Calls into the inner, the octree, as long as the read access is not locked */
 		template<typename IterateBoundsFunc>
 		inline void FindFirstElementWithBoundsTest(const FBoxCenterAndExtent& BoxBounds, const IterateBoundsFunc& Func, const bool bShouldLock = false)
 		{
 			if (IsLocked()) { return; }
 			
-			if (bShouldLock)
-			{
-				Lock();
-			}
+			if (bShouldLock) { Lock(); }
 			
 			// FScopeLock ReadLock(CriticalSectionMutex);
 			bool ContinueTraversal = true;
 			UnsafeOctree::FindFirstElementWithBoundsTest(BoxBounds, Func, ContinueTraversal);
+
+			if (bShouldLock) { Unlock(); }			
 		}
 		// FCriticalSection* CriticalSectionMutex = nullptr;
 
 	private:
 		// @todo possibly keep track of how many threads have requested a lock on octree
+
+		/** @brief Actual flag handled by the functions Lock(), Unlock(), IsLocked() */
 		bool bLockedReadInMainThread = false;
 	};
 
@@ -151,28 +150,35 @@ class PDRTSBASE_API UPDRTSBaseSubsystem : public UEngineSubsystem
 	GENERATED_BODY()
 public:
 
-	/** @brief */
+	/** @brief Loads the worktables when the subsystem initializes during engine startup, far earlier than any world exists.
+	 * It uses developer settings (UPDRTSSubsystemSettings) to read and write selected worktable paths via config, and or project settings window  
+	 */
 	virtual void Initialize(FSubsystemCollectionBase& Collection) override;
 	
-	/** @brief */
+	/** @brief Dispatch the octree generation on a latent action, via the worlds 'LatentActionManager' */
 	UFUNCTION()
 	virtual void DispatchOctreeGeneration();
 	
-	/** @brief */
+	/** @brief Calls SetupOctreeWithNewWorld(TemporaryWorldCache) */
 	UFUNCTION()
 	virtual void SetupOctree();
-	/** @brief */
+	
+	/** @brief
+	 * - Registers world into 'WorldsWithOctrees' if not already registered.
+	 * - Calls 'DispatchOctreeGeneration' is world is not valid or not initialized
+	 * - Generates octree in and adds NewWorld to WorldsWithOctrees to track it
+	 */
 	UFUNCTION()
 	virtual void SetupOctreeWithNewWorld(UWorld* NewWorld);
 	
-	/** @brief */
+	/** @brief Bound to the given developer setting. Resolved the paths into actual WorkTables Array */
 	void OnDeveloperSettingsChanged(UObject* SettingsToChange, FPropertyChangedEvent& PropertyEvent);
 
-	/** @brief */
+	/** @brief Processes the tables in 'WorkTables' and fills a number of maps for fast lookups downstream for entity jobs and such */
 	UFUNCTION()
 	virtual void ProcessTables();
 
-	/** @brief */
+	/** @brief Requests to generate a navpath for the selection group to the given target*/
 	UFUNCTION()
 	virtual void RequestNavpathGenerationForSelectionGroup(
 		int32 OwnerID,
@@ -180,56 +186,59 @@ public:
 		const FVector& SelectionCenter,
 		const FPDTargetCompound& TargetCompound);
 	
-	/** @brief */
+	/** @brief Returns the default work data via it's job-tag*/
 	const FPDWorkUnitDatum* GetWorkEntry(const FGameplayTag& JobTag);
-	/** @brief */
+	/** @brief Returns the default work data via it's rowname in the table it was sourced from*/
 	const FPDWorkUnitDatum* GetWorkEntry(const FName& JobRowName);
 	
-	/** @brief */
+	/** @brief Does some portable iso-approved 'hacks' to fetch the all the mass ISM's */
 	static const TArray<TObjectPtr<UInstancedStaticMeshComponent>>& GetMassISMs(const UWorld* InWorld);
 
 public:	
-	/** @brief */
+	/** @brief Work tables used by subsystem to organize ai-jobs */
 	UPROPERTY()
 	TArray<UDataTable*> WorkTables;
 
-	/** @brief */
+	/** @brief Selection group navpath map, Keyed by owner ID, valued by selection group navdata container*/
 	UPROPERTY()
 	TMap<int32 /*OwnerID*/, FPDWrappedSelectionGroupNavData> SelectionGroupNavData{};
-	// bool bGroupPathsDirtied = false;
-	// @todo think on a solution which marks which actual data we want to update for teh group, but this for now works as a solid enough optimization
+	
+	/** @brief Selection group Dirty data array holding a tuple, each tuple is keyed by the owner ID and has a value of the dirtied selection group index
+	 *  @todo think on a solution which marks which actual data we want to update for the group, but this for now works as a solid enough optimization
+	 */
 	TArray<TTuple<int32 /*OwnerID*/, int32/*Player 'Selection' Index for non-hotkeyed groups*/> > DirtySharedData{};
 	
-	/** @brief */
+	/** @brief Map for fast lookups. Keyed by job-tag, valued by default data entry */
 	TMap<const FGameplayTag, const FPDWorkUnitDatum*> TagToJobMap{};
-	/** @brief */
+	/** @brief Map for fast lookups. Keyed by Rowname, valued by job-tag */
 	TMap<const FName, FGameplayTag> NameToTagMap{};
-	/** @brief */
+	/** @brief Map for fast lookups. Keyed by Job-tag, valued by Rowname */
 	TMap<const FGameplayTag, FName> TagToNameMap{};
-	/** @brief */
+	/** @brief Map for fast lookups. Keyed by Job-tag, valued by source datatable */
 	TMap<const FGameplayTag, const UDataTable*> TagToTable{};
 
-	/** @brief */
+	/** @brief Flag that checks if we have processed the worktables */
 	uint8 bHasProcessedTables = false;
-	/** @brief */
+	/** @brief Counter how many times the ProcessTables() function failed internally  */
 	uint16 ProcessFailCounter = 0;
 
 	/** @brief Reserved for later use */
 	FStreamableManager DataStreamer;
 
-	/** @brief */
+	/** @brief Cached entity manager ptr*/
 	FMassEntityManager* EntityManager = nullptr;
-	/** @brief */
+	/** @brief effectively unused. @todo revise if it still needed. any significant use of it has been removed since prototpying this  */
 	UWorld* TemporaryWorldCache = nullptr;
-	/** @brief */
+	/** @brief The actual octree our worlds and our entities will make use of*/
 	PD::Mass::Entity::FPDSafeOctree WorldOctree;
 
-	/** @brief */
+	/** @brief Tacking worlds that has been setup with this WorldOctree.  */
 	TMap<void*, bool> WorldsWithOctrees{};
 	
-	// This will be useful on a server or shared screen environment
+	/** @brief This will be useful on a server or shared screen environment */
 	UPROPERTY(EditAnywhere)
 	TMap<int32 /*OwnerID*/, AActor* /*OwningActor*/> SharedOwnerIDMappings;
+	/** @brief This will be useful on a server or shared screen environment */
 	UPROPERTY(EditAnywhere)
 	TMap<AActor* /*OwningActor*/, int32 /*OwnerID*/> SharedOwnerIDBackMappings;	
 };
@@ -243,12 +252,15 @@ public:
 
 	UPDRTSSubsystemSettings(){}
 
+	/** @brief Uniform bounds for the requested octree */
 	UPROPERTY(Config, EditAnywhere, Category="Visible")
 	float OctreeUniformBounds = UE_OLD_WORLD_MAX;
 
+	/** @brief */
 	UPROPERTY(Config, EditAnywhere, Category="Visible")
-	float DefaultElementGridSize = 40.0;
+	float DefaultCellSize = 40.0;
 
+	/** @brief Work tables softobjects */
 	UPROPERTY(Config, EditAnywhere, Category = "Worker AI Subsystem", Meta = (RequiredAssetDataTags="RowStructure=/Script/PDRTSBase.PDWorkUnitDatum"))
 	TArray<TSoftObjectPtr<UDataTable>> WorkTables;
 	
@@ -259,7 +271,9 @@ USTRUCT()
 struct PDRTSBASE_API FPDOctreeFragment : public FMassFragment
 {
 	GENERATED_BODY()
-	TSharedPtr<FOctreeElementId2> OctreeID;
+
+	/** @brief CellID of a given octree cell using this fragment*/
+	TSharedPtr<FOctreeElementId2> CellID;
 };
 
 /** @brief Entity octree grid cell tag */
@@ -278,7 +292,9 @@ struct PDRTSBASE_API FPDOctreeQueryTag : public FMassTag
 
 namespace MassSample::Signals
 {
+	/** @brief Signal name for receiving a hit */
 	static const FName OnReceiveHit = FName("OnReceiveHit");
+	/** @brief Signal name for performing a hit */
 	static const FName OnEntityHitOther = FName("OnEntityHitOther");
 }
 

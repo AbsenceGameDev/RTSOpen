@@ -8,63 +8,78 @@
 #include "RTSOConversationInterface.generated.h"
 
 struct FGameplayTag;
-/** @brief BOILERPLATE */ UINTERFACE() class URTSOConversationSpeakerInterface : public UInterface { GENERATED_BODY() };
+/** @brief BOILERPLATE */
+UINTERFACE()
+class URTSOConversationSpeakerInterface : public UInterface
+{
+	GENERATED_BODY()
+};
 
-/** @brief */
+/** @brief Conversation Interface, apply to speaker actors (mission giver for example) */
 class RTSOPEN_API IRTSOConversationSpeakerInterface
 {
 	GENERATED_BODY()
 
 public:
-	/** @brief */
+	/** @brief Speaker interface events - When waiting for a client reply */
 	UFUNCTION(BlueprintNativeEvent, BlueprintCallable)
 	void BeginWaitingForChoices(int32 ActorID);
-	// virtual void BeginWaitingForChoices_Implementation(int32 ActorID) = 0;
 
-	/** @brief */
+	/** @brief Speaker interface events - On a client reply */
 	UFUNCTION(BlueprintNativeEvent, BlueprintCallable)
 	void ReplyChoice(AActor* Caller, int32 Choice);
-	// virtual void ReplyChoice_Implementation(AActor* Caller, int32 Choice) = 0;
 };
 
-/** @brief BOILERPLATE */ UINTERFACE() class URTSOConversationInterface : public UInterface { GENERATED_BODY() };
-/** @brief */
+/** @brief BOILERPLATE */
+UINTERFACE()
+class URTSOConversationInterface : public UInterface
+{
+	GENERATED_BODY()
+};
+
+/** @brief Conversation Interface, apply to listener actors (player for example) */
 class RTSOPEN_API IRTSOConversationInterface
 {
 	GENERATED_BODY()
 
 public:
-	/** @brief */
+	/** @defgroup ConversationInterface_AddProgressTag
+	 * @brief Reserved for later use. Adds the given tag to the list of acquired conversation tags
+	 * @todo source the progression tags from here and make use of these for the savegame data */
 	UFUNCTION(BlueprintNativeEvent, BlueprintCallable)
 	void AddUniqueProgressionTag(const FGameplayTag& NewTag);
-	/** @brief */
 	virtual void AddUniqueProgressionTag_Implementation(const FGameplayTag& NewTag)
 	{
 		AcquiredConversationProgressionTags.FindOrAdd(NewTag);
-	}
+	} /**< @ingroup ConversationInterface_AddProgressTag */
 
-	/** @brief */
+	/** @defgroup ConversationInterface_RemoveProgressTag
+	 * @brief Reserved for later use. Removes the given tag from the list of acquired conversation tags
+	 * @todo source the progression tags from here and make use of these for the savegame data */	
 	UFUNCTION(BlueprintNativeEvent, BlueprintCallable)
 	void RemoveProgressionTag(const FGameplayTag& TagToRemove);
-	/** @brief */
 	virtual void RemoveProgressionTag_Implementation(const FGameplayTag& TagToRemove)
 	{
 		if (AcquiredConversationProgressionTags.Contains(TagToRemove))
 		{
 			AcquiredConversationProgressionTags.Remove(TagToRemove);
 		}
-	}
+	} /**< @ingroup ConversationInterface_RemoveProgressTag */
 
-	/** @brief */
+
+	/** @defgroup ConversationInterface_AddProgressTagSet
+	 * @brief Reserved for later use. Adds the given tag set to the list of acquired conversation tags
+	 * @todo source the progression tags from here and make use of these for the savegame data */
 	UFUNCTION(BlueprintNativeEvent, BlueprintCallable)
 	void AddUniqueProgressionTagSet(const TSet<FGameplayTag>& NewTags);
-	/** @brief */
 	virtual void AddUniqueProgressionTagSet_Implementation(const TSet<FGameplayTag>& NewTags)
 	{
 		AcquiredConversationProgressionTags.Append(NewTags);
 	}
 
-	/** @brief */
+	/** @defgroup ConversationInterface_RemoveProgressTagSet
+	 * @brief Reserved for later use. Removes the given tag set from the list of acquired conversation tags
+	 * @todo source the progression tags from here and make use of these for the savegame data */
 	UFUNCTION(BlueprintNativeEvent, BlueprintCallable)
 	void RemoveProgressionTagSet(const TSet<FGameplayTag>& TagsToRemove);
 	/** @brief */
@@ -76,23 +91,25 @@ public:
 		}
 	}
 	
-	/** @brief */
+	/** @brief Returns the list of acquired conversation progression tags */
 	virtual const TSet<FGameplayTag>& GetProgressionTagSet()
 	{
 		return AcquiredConversationProgressionTags;
 	}
 
-	/** @brief */
+	/** @defgroup ConversationInterface_HasProgressionTag
+	 * @brief Reserved for later use. Checks if the map of acquired conversation tags contains the 'CompareTag'
+	 * @todo source the progression tags from here and make use of these for the savegame data */
 	UFUNCTION(BlueprintNativeEvent, BlueprintCallable)
 	bool HasProgressionTag(const FGameplayTag& CompareTag);
-	/** @brief */
 	virtual bool HasProgressionTag_Implementation(const FGameplayTag& CompareTag)
 	{
 		return AcquiredConversationProgressionTags.Contains(CompareTag);
 	}
 	
 public:
-	/** @brief */
+	/** @brief Data interface, actual data is hidden completely form the engine but accessible in code
+	 * - indirectly accessible in engine via the interface functions base implementation*/
 	TSet<FGameplayTag> AcquiredConversationProgressionTags{};
 };
 

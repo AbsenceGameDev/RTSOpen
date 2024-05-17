@@ -10,13 +10,14 @@
 class UMassEntitySubsystem;
 
 /**
- * @brief extended class is unused for now, will likely remove
+ * @brief extended class is unused for now, will likely remove. Reserved Subclass
  */
 UCLASS()
 class RTSOPEN_API URTSOTrait_RTSEntity : public UPDMTrait_RTSEntity
 {
-	/** @brief */
 	GENERATED_BODY()
+
+	/** @brief Reserved */
 	virtual void BuildTemplate(FMassEntityTemplateBuildContext& BuildContext, const UWorld& World) const override;
 };
 

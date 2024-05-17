@@ -3,6 +3,8 @@
 
 #include "CoreMinimal.h"
 #include "Interfaces/RTSOInputInterface.h"
+#include "Interfaces/PDPersistenceInterface.h"
+#include "Widgets/RTSOMainMenuBase.h"
 
 #include "Blueprint/UserWidget.h"
 #include "Blueprint/IUserObjectListEntry.h"
@@ -12,21 +14,18 @@
 #include "InputModifiers.h"
 #include "MassEntityTypes.h"
 #include "GameFramework/PlayerController.h"
-#include "Interfaces/PDPersistenceInterface.h"
-#include "Widgets/RTSOMainMenuBase.h"
-
-
 #include "RTSOController.generated.h"
 
+// Fwd decl.
 class URTSOInputStackSubsystem;
 
 /** @brief */
 UENUM()
 enum class EMarqueeSelectionEvent : uint8
 {
-	STARTMARQUEE,
-	HOLDMARQUEE,
-	RELEASEMARQUEE,
+	STARTMARQUEE   UMETA(DisplayName = "Start Marquee"),
+	HOLDMARQUEE    UMETA(DisplayName = "Hold Marquee"),
+	RELEASEMARQUEE UMETA(DisplayName = "Release Marquee"),
 };
 
 /** @brief */
@@ -259,9 +258,11 @@ class RTSOPEN_API ARTSOController : public APlayerController, public IRTSOInputI
 {
 	GENERATED_UCLASS_BODY()
 
-	/** @brief */
+	/** @brief Runs some setup, such as applying mapping contexts (TAG_CTRL_Ctxt_BaseInput, TAG_CTRL_Ctxt_WorkerUnitMode)
+	 * and generates or loads a persistent ID from UPDRTSBaseSubsystem and proceeds to register it
+	 * Lastly it instantiates the actual conversation widget in memory */
 	virtual void BeginPlay() override;
-	/** @brief */
+	/** @brief Unregisters the actors persistent ID in UPDRTSBaseSubsystem */
 	virtual void EndPlay(const EEndPlayReason::Type EndPlayReason) override;
 	
 	/** @brief Sets up bindings for enhanced input */
@@ -286,25 +287,30 @@ class RTSOPEN_API ARTSOController : public APlayerController, public IRTSOInputI
 	/** @brief De-activates a mapping context if it exists in the mapping context settings, keyed by a regular GameplayTag*/
 	bool IsMappingContextActive(const FGameplayTag& ContextTag);	
 	
-	/* RTSO Input Interface - Start. Almost all of these only calls into the pawn in case it has the same interface */
-	virtual void ActionMove_Implementation(const FInputActionValue& Value) override;
-	virtual void ActionMagnify_Implementation(const FInputActionValue& Value) override;
-	virtual void ActionRotate_Implementation(const FInputActionValue& Value) override;
-	virtual void ActionDragMove_Implementation(const FInputActionValue& Value) override;
-	virtual void ActionWorkerUnit_Triggered_Implementation(const FInputActionValue& Value) override;
-	virtual void ActionWorkerUnit_Started_Implementation(const FInputActionValue& Value) override;
-	virtual void ActionWorkerUnit_Cancelled_Implementation(const FInputActionValue& Value) override;
-	virtual void ActionWorkerUnit_Completed_Implementation(const FInputActionValue& Value) override;
-	virtual void ActionBuildMode_Implementation(const FInputActionValue& Value) override;
-	virtual void ActionClearSelection_Implementation(const FInputActionValue& Value) override;
-	virtual void ActionMoveSelection_Implementation(const FInputActionValue& Value) override;	
+	/** @defgroup RTSOInputInterface - Start.
+	 * Almost all of these only calls into the pawn in case it has the same interface */
+	virtual void ActionMove_Implementation(const FInputActionValue& Value) override; /**<@ingroup RTSOInputInterface */
+	virtual void ActionMagnify_Implementation(const FInputActionValue& Value) override; /**<@ingroup RTSOInputInterface */
+	virtual void ActionRotate_Implementation(const FInputActionValue& Value) override; /**<@ingroup RTSOInputInterface */
+	virtual void ActionDragMove_Implementation(const FInputActionValue& Value) override; /**<@ingroup RTSOInputInterface */
+	virtual void ActionWorkerUnit_Triggered_Implementation(const FInputActionValue& Value) override; /**<@ingroup RTSOInputInterface */
+	virtual void ActionWorkerUnit_Started_Implementation(const FInputActionValue& Value) override; /**<@ingroup RTSOInputInterface */
+	virtual void ActionWorkerUnit_Cancelled_Implementation(const FInputActionValue& Value) override; /**<@ingroup RTSOInputInterface */
+	virtual void ActionWorkerUnit_Completed_Implementation(const FInputActionValue& Value) override; /**<@ingroup RTSOInputInterface */
+	virtual void ActionBuildMode_Implementation(const FInputActionValue& Value) override; /**<@ingroup RTSOInputInterface */
+	virtual void ActionClearSelection_Implementation(const FInputActionValue& Value) override; /**<@ingroup RTSOInputInterface */
+	virtual void ActionMoveSelection_Implementation(const FInputActionValue& Value) override; /**<@ingroup RTSOInputInterface */
+
+	/** @brief Assigns the currently selected group of entities to a selection-group */
 	virtual void ActionAssignSelectionToHotkey_Implementation(const FInputActionValue& Value) override;
+	/** @brief Switch between hotkeyed selection group. this is also used to read key input for conversation choices */
 	virtual void ActionHotkeySelection_Implementation(const FInputActionValue& Value) override;
+	/** @brief Only used as a modifier key, does not need any logic in the actual function itself but is used to control priority in our mapping contexts */
 	virtual void ActionChordedBase_Implementation(const FInputActionValue& Value) override;
-	virtual void ActionExitConversation_Implementation(const FInputActionValue& Value) override;
-	virtual void ActionToggleMainMenu_Implementation(const FInputActionValue& Value) override;	
-	void HandleConversationChoiceInput(int32 ChoiceSelection) const;
-	/* RTSO Input Interface - End */
+	virtual void ActionExitConversation_Implementation(const FInputActionValue& Value) override; /**<@ingroup RTSOInputInterface */
+	virtual void ActionToggleMainMenu_Implementation(const FInputActionValue& Value) override; /**<@ingroup RTSOInputInterface */
+	void HandleConversationChoiceInput(int32 ChoiceSelection) const; /**<@ingroup RTSOInputInterface */
+	/* RTSOInputInterface - End */
 	
 
 	/* RTSO Menu interface - Start, @todo move to actual interface if we start making more menus*/
@@ -314,11 +320,6 @@ class RTSOPEN_API ARTSOController : public APlayerController, public IRTSOInputI
 	/*Handled via the buttons target widget class*/ // UFUNCTION() void OnReleased_Save();
 	/*Handled via the buttons target widget class*/ // UFUNCTION() void OnReleased_Load();
 	/* RTSO Menu interface - End, @todo move to actual interface if we start making more menus*/
-	
-
-	
-	/* RTSO Mouse projections - Start */
-	/** @brief */
 	void ProjectMouseToGroundPlane(
 		FVector2D& ScreenCoordinates,
 		FVector&   IntersectionPoint,
@@ -346,13 +347,13 @@ class RTSOPEN_API ARTSOController : public APlayerController, public IRTSOInputI
 	/* RTSO Mouse projections - Start */
 
 	/* RTSO Marquee selection - Start */
-
-	/** @brief */
+	/** @brief Checks if the flag 'bIsDrawingMarquee' is true, this will only be the case if 'ActionWorkerUnit_Started' is triggered while not hovering over an interactable actor */
 	UFUNCTION() FORCEINLINE bool IsDrawingMarquee() const { return bIsDrawingMarquee; }
-	/** @brief */
+	/** @brief Returns the starting screen-position for the start of the marquee */
 	UFUNCTION() FORCEINLINE FVector2D GetStartMousePositionMarquee() const {return StartMousePositionMarquee;}
 
-	/** @brief Range loops from 1-10 */
+	/** @brief Generates a group ID outside of the hotkey range. This can be called the 'buffer-space'.
+	 * @note Range loops from 1-10 */
 	UFUNCTION() FORCEINLINE int32 GeneratedGroupID()
 	{
 		RollbackSelectionID = CurrentSelectionID;
@@ -364,164 +365,152 @@ class RTSOPEN_API ARTSOController : public APlayerController, public IRTSOInputI
 		return CurrentSelectionID;
 	}
 	
-	/** @brief */
-	UFUNCTION() FORCEINLINE int32 GetLatestGroupID() const { return CurrentSelectionID; }
-	/** @brief */
+	/** @brief Returns the current selected entity group, i.e. the current selection ID */
 	UFUNCTION() FORCEINLINE int32 GetCurrentGroupID() const { return CurrentSelectionID; }
-	/** @brief */
-	UFUNCTION() FORCEINLINE FVector2D GetCurrentMousePositionMarquee() const {return CurrentMousePositionMarquee;}
-	/** @brief */
-	UFUNCTION(BlueprintImplementableEvent) void OnMarqueeSelectionUpdated(int32 SelectionGroup, const TArray<int32>& NewSelection) const;
-	/** @brief */
-	UFUNCTION(BlueprintCallable) void MarqueeSelection(EMarqueeSelectionEvent SelectionEvent);
-	/** @brief */
-	UFUNCTION() void OnBeginConversation(const FClientConversationMessagePayload& Payload, AActor* PotentialCallbackActor);
-	/** @brief */
-	UFUNCTION() void OnAdvanceConversation(const FClientConversationMessagePayload& Payload, AActor* PotentialCallbackActor);
-	/** @brief */
-	UFUNCTION() void OnEndConversation(const FClientConversationMessagePayload& Payload, AActor* PotentialCallbackActor);
-	/** @brief */
-	UFUNCTION(BlueprintCallable) int32 GetActorID() { return ActorID.GetID(); };
-	/** @brief */
-	static void DrawBoxAndTextChaos(const FVector& BoundsCenter, const FQuat& Rotation, const FVector& DebugExtent, const FString& DebugBoxTitle, FColor LineColour = FColor::Black);
-	/** @brief */
-	static void AdjustMarqueeHitResultsToMinimumHeight(FHitResult& StartHitResult, FHitResult& CenterHitResult, FHitResult& EndHitResult);
-	/** @brief */
-	UFUNCTION() void GetEntitiesOrActorsInMarqueeSelection();
-	/** @brief */
-	UFUNCTION() void ReorderGroupIndex(const int32 OldID, const int32 NewID);
-	/** @brief */
-	const TMap<int32, TMap<int32, FMassEntityHandle>>& GetMarqueeSelectionMap() { return MarqueeSelectedHandles; }
-	/** @brief */
-	UFUNCTION() FORCEINLINE URTSOConversationWidget* GetConversationWidget() const { return ConversationWidget;};
 
-	/** @brief */
-	UFUNCTION() FORCEINLINE FHitResult GetLatestStartHitResult()  { return LatestStartHitResult;};
-	/** @brief */
-	UFUNCTION() FORCEINLINE FHitResult GetLatestCenterHitResult() { return LatestCenterHitResult;};
-	/** @brief */
-	UFUNCTION() FORCEINLINE FHitResult GetLatestEndHitResult()    { return LatestEndHitResult;};	
+	/** @brief Get the current mouse position for the marquee, this never clears after a marquee is finished. so it holds the last value until overwritten by another marquee operation  */
+	UFUNCTION() FORCEINLINE FVector2D GetCurrentMousePositionMarquee() const {return CurrentMousePositionMarquee;}
+
+	/** @brief Event that is called when the marquee is finished and it has queried the world octree for any entities in the projected marquee volume.
+	 * @param  SelectionGroup is the selectionID that was generated for this new group.
+	 * @param  NewSelection is an array of MassEntity indices pointing to the entities queried from the octree */
+	UFUNCTION(BlueprintImplementableEvent) void OnMarqueeSelectionUpdated(int32 SelectionGroup, const TArray<int32>& NewSelection) const;
+
+	/** @brief Marquee drawing/selection logic */
+	UFUNCTION(BlueprintCallable) void MarqueeSelection(EMarqueeSelectionEvent SelectionEvent);
+	
+	/** @brief Sets up a conversation with necessary prerequisites.
+	 * @details 1. Sets camera manager viewtarget.
+	 * 2. Activates the mapping context 'TAG_CTRL_Ctxt_ConversationMode' and deactivates 'TAG_CTRL_Ctxt_WorkerUnitMode' & 'TAG_CTRL_Ctxt_BaseInput'
+	 * 3. Adds the conversation widget to viewport and sets it's initial payload*/
+	UFUNCTION() void OnBeginConversation(const FClientConversationMessagePayload& Payload, AActor* PotentialCallbackActor);
+	/** @brief Sets the conversations widgets new payload. This function is called when a conversation advances (see. 'BeginWaitingForChoices_Implementation' ) */
+	UFUNCTION() void OnAdvanceConversation(const FClientConversationMessagePayload& Payload, AActor* PotentialCallbackActor);
+	/** @brief Ends a conversation, reverts all changes regarding camera target and mapping contexts made in 'OnBeginConversation'*/
+	UFUNCTION() void OnEndConversation(const FClientConversationMessagePayload& Payload, AActor* PotentialCallbackActor);
+	/** @brief Returns the integer value of the FPDPersistentID 'ActorID', */
+	UFUNCTION(BlueprintCallable) int32 GetActorID() { return ActorID.GetID(); };
+	/** @brief Queues a drawcall into chaos' async debug draw queue */
+	static void DrawBoxAndTextChaos(const FVector& BoundsCenter, const FQuat& Rotation, const FVector& DebugExtent, const FString& DebugBoxTitle, FColor LineColour = FColor::Black);
+	/** @brief This function is here to fix a edge-case issue where the marquee volume is affected by large differences in z-height between the start corner and end corner world hitresults*/
+	static void AdjustMarqueeHitResultsToMinimumHeight(FHitResult& StartHitResult, FHitResult& CenterHitResult, FHitResult& EndHitResult);
+	/** @brief Queries the octree with the marquee selection volume and stores found handles in 'MarqueeSelectedHandles' */
+	UFUNCTION() void GetEntitiesOrActorsInMarqueeSelection();
+	/** @brief Reorder a selection group */
+	UFUNCTION() void ReorderGroupIndex(const int32 OldID, const int32 NewID);
+	/** @brief Returns 'MarqueeSelectedHandles'. A map keyed by the owner ID and value by a nested map keyed by selection indices and the nested value being the actual selection group handles*/
+	const TMap<int32, TMap<int32, FMassEntityHandle>>& GetMarqueeSelectionMap() { return MarqueeSelectedHandles; }
+
+	/** @return The conversation widget pointer, it will always be valid after begin-play in case 'ConversationWidgetClass' is pointing to a valid class */
+	UFUNCTION() URTSOConversationWidget* GetConversationWidget() const { return ConversationWidget;};
+
+	/** @brief Marquee related hit results, start corner */
+	UFUNCTION() FHitResult GetLatestStartHitResult()  { return LatestStartHitResult;};
+	/** @brief Marquee related hit results, center-point */
+	UFUNCTION() FHitResult GetLatestCenterHitResult() { return LatestCenterHitResult;};
+	/** @brief Marquee related hit results, end corner */
+	UFUNCTION() FHitResult GetLatestEndHitResult()    { return LatestEndHitResult;};	
 	
 protected:
-	/** @brief */
+	/** @brief Dispatches a sync 'parallellfor' that updates 'FPDMFragment_RTSEntityBase' fragments for all entities in the current selection group 
+	 * @note Called when a new selection group is created or deselected. */
 	void OnSelectionChange(bool bClearSelection);
 	/* RTSO Marquee selection - End */
 
 private:
-	/** @brief */
+	/** @brief Calls 'OnEndConversation' with a dummy payload.
+	 * @note - Is called from 'ActionExitConversation_Implementation'
+	 * @note - Is bound to 'ConversationWidget->ExitConversationButton->Hitbox->OnReleased' */
 	UFUNCTION()
 	void Internal_ExitConversation();
 public:
 
-	/** @brief */
+	/** @brief Currently unused. Was used when initially prototyping. @todo consider removing */
 	int32 LatestMenuButtonIdx = INDEX_NONE;
 	
-	/** @brief */
+	/** @brief Adds some padding to the edge of the screen in certain screen related calculations */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "RTS|Cursor|Settings")
 	int32 ScreenEdgeMovementPadding = 0;
 
-	/** @brief */
+	/** @brief Use for mouse-to-world projection traces */
 	UPROPERTY(VisibleInstanceOnly, BlueprintReadOnly, Category = "RTS|Cursor|State")
 	TEnumAsByte<ECollisionChannel> DedicatedLandscapeTraceChannel = ECollisionChannel::ECC_GameTraceChannel13;	
 	
-	/* Input Actions */
-	/** @brief */
+	/** @defgroup RTSInputActions. Assign these in editor @todo make developersettings struct to assign these from .ini configs also? */
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "RTS|Input")
-	class UInputAction* CtrlActionMove = nullptr;
-	/** @brief */
+	class UInputAction* CtrlActionMove = nullptr; /**< @ingroup RTSInputActions*/
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "RTS|Input")
-	class UInputAction* CtrlActionMagnify = nullptr;
-	/** @brief */
+	class UInputAction* CtrlActionMagnify = nullptr; /**< @ingroup RTSInputActions*/
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "RTS|Input")
-	class UInputAction* CtrlActionRotate = nullptr;
-	/** @brief */
+	class UInputAction* CtrlActionRotate = nullptr; /**< @ingroup RTSInputActions*/
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "RTS|Input")
-	class UInputAction* CtrlActionDragMove = nullptr;
-	/** @brief */
+	class UInputAction* CtrlActionDragMove = nullptr; /**< @ingroup RTSInputActions*/
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "RTS|Input")
-	class UInputAction* CtrlActionWorkerUnit = nullptr;
-	/** @brief */
+	class UInputAction* CtrlActionWorkerUnit = nullptr; /**< @ingroup RTSInputActions*/
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "RTS|Input")
-	class UInputAction* CtrlActionClearSelection = nullptr;
-	/** @brief */
+	class UInputAction* CtrlActionClearSelection = nullptr; /**< @ingroup RTSInputActions*/
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "RTS|Input")
-	class UInputAction* CtrlActionMoveSelection = nullptr;
+	class UInputAction* CtrlActionMoveSelection = nullptr; /**< @ingroup RTSInputActions*/
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "RTS|Input")
+	class UInputAction* CtrlActionHotkeySelection = nullptr; /**< @ingroup RTSInputActions*/
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "RTS|Input")
+	class UInputAction* CtrlActionAssignSelectionToHotkey = nullptr; /**< @ingroup RTSInputActions*/
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "RTS|Input")
+	class UInputAction* CtrlActionChordedBase = nullptr; /**< @ingroup RTSInputActions*/
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "RTS|Input")
+	class UInputAction* CtrlActionExitConversation = nullptr; /**< @ingroup RTSInputActions*/
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "RTS|Input")
+	class UInputAction* CtrlActionToggleMainMenu = nullptr; /**< @ingroup RTSInputActions*/
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "RTS|Input")
+	class UInputAction* CtrlActionBuildMode = nullptr; /**< @ingroup RTSInputActions @todo @backlog need to finish build mode*/
 
-	/** @brief */
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "RTS|Input")
-	class UInputAction* CtrlActionHotkeySelection = nullptr;
-	/** @brief */
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "RTS|Input")
-	class UInputAction* CtrlActionAssignSelectionToHotkey = nullptr;
-	
-	/** @brief */
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "RTS|Input")
-	class UInputAction* CtrlActionChordedBase = nullptr;
-	
-	/** @brief */
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "RTS|Input")
-	class UInputAction* CtrlActionExitConversation = nullptr;	
-
-	/** @brief */
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "RTS|Input")
-	class UInputAction* CtrlActionToggleMainMenu = nullptr;	
-	
-	/* Input Actions - If I have time to implement */
-	/** @brief */
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "RTS|Input")
-	class UInputAction* CtrlActionBuildMode = nullptr;
-	
 	/** @brief Mapping context settings, keyed by FGameplayTags. @todo Set default entries via a developer settings structure */
-	/** @brief */
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "RTS|Input")
 	TMap<FGameplayTag, UInputMappingContext*> MappingContexts{};
 
 protected:
-	/** @brief */
+	/** @brief Main menu widget base class, has a widget stack for supplying different stacked widgets */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Menu|Startscreen")
 	TSubclassOf<URTSOMainMenuBase> MMWidgetClass{};
-	/** @brief */
+	/** @brief Instantiated main menu widget */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Menu|Startscreen")
 	URTSOMainMenuBase* MainMenuWidget = nullptr;
 	
-	/** @brief */
-	UPROPERTY(VisibleInstanceOnly)
-	URTSOConversationWidget* ConversationWidget = nullptr;
-	/** @brief */
+	/** @brief Conversation widget base class */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
 	TSubclassOf<URTSOConversationWidget> ConversationWidgetClass = nullptr;
-	
-	/** @brief */
+	/** @brief Instantiated conversation widget */
+	UPROPERTY(VisibleInstanceOnly)
+	URTSOConversationWidget* ConversationWidget = nullptr;
+
+	/** @brief Marquee related hit results, start corner */
 	UPROPERTY(VisibleInstanceOnly)
 	FHitResult LatestStartHitResult{};
-	/** @brief */
+	/** @brief Marquee related hit results, center-point */
 	UPROPERTY(VisibleInstanceOnly)
 	FHitResult LatestCenterHitResult{};
-	/** @brief */
+	/** @brief Marquee related hit results, end corner */	
 	UPROPERTY(VisibleInstanceOnly)
 	FHitResult LatestEndHitResult{};
 
-	/** @brief */
+	/** @brief Actors persistent ID, is generated upon beginplay if none already exists in the UPDRTSBaseSubsystem */
 	UPROPERTY(VisibleInstanceOnly)
 	FPDPersistentID ActorID{};
-	/** @brief */
+	/** @brief Currently unused. Last selection ID after updating it, if we need it for rollback purposes */
 	UPROPERTY(VisibleInstanceOnly)
 	int32 RollbackSelectionID = INDEX_NONE;
-	/** @brief */
-	UPROPERTY(VisibleInstanceOnly)
-	int32 LatestSelectionID = INDEX_NONE;
-	/** @brief */
+	/** @brief The index we are at in the 'buffer-space' of the selection IDs*/
 	UPROPERTY(VisibleInstanceOnly)
 	int32 SelectionBufferIdx = INDEX_NONE;	
-	/** @brief */
+	/** @brief The size of the 'buffer-space' of the selection IDs*/
 	UPROPERTY(VisibleInstanceOnly)
 	int32 SelectionBufferSize = 20;
-	/** @brief */
+	/** @brief Max hot-keyable index for selection IDs*/
 	UPROPERTY(VisibleInstanceOnly)
 	int32 MaxSelectionHotkeyIndex = 9;
-	/** @brief */
+	/** @brief Current/Latest Selection ID*/
 	UPROPERTY(VisibleInstanceOnly)
-	int32 CurrentSelectionID = INDEX_NONE;  /**< @brief Need function to switch selection group */
+	int32 CurrentSelectionID = INDEX_NONE;
 	
 	/** @brief Marquee - active state */
 	uint8 bIsDrawingMarquee : 1;
@@ -531,9 +520,14 @@ protected:
 	FVector2D CurrentMousePositionMarquee{};
 
 	// @todo add some mapping to selection groups
-	/** @brief */
+	/** @brief Selection groups that have been kotkeyed */
 	TSet<int32> HotKeyedSelectionGroups{};	
-	/** @brief */
+	/** @brief All selection groups.
+	 * - Keyed by selection ID.
+	 * - Value is a nested map keyed by entity ID and it's inner value being the actual entity handle
+	 * - The nested map could be replaced with a set but search complexity will virtually be the same. Or rather might be slower as we a hash of FMassEntityHandle could have collisions where int32 would have 0 collisions 
+	 * Space complexity will however be three times in size but even at a selection group of 10.000 entities this is still less than 120KB working memory 
+	 */
 	TMap<int32, TMap<int32, FMassEntityHandle>> MarqueeSelectedHandles{};
 };
 
@@ -549,23 +543,24 @@ class UInputModifierIntegerPassthrough : public UInputModifier
 public:
 
 #if WITH_EDITOR
-	/** @brief */
+	/** @brief Always returns true */
 	virtual EDataValidationResult IsDataValid(class FDataValidationContext& Context) const override;
 #endif
 protected:
-	/** @brief */
+	/** @bug There is a bug with EI where it discards any output of 'ModifyRaw' if the given 'UInputModifier' has been applied to a input mapping context. THis poses severe limitations of the usability and modularity of mapping contexts so causes a major issue
+	 * @workaround Small subsystem which works as an input stack, stores the output and we query peek and pop the top of the stack when the input event is fired */
 	virtual FInputActionValue ModifyRaw_Implementation(const UEnhancedPlayerInput* PlayerInput, FInputActionValue CurrentValue, float DeltaTime) override;
 
 public:
-	/** @brief */
+	/** @brief Passtrhough value, set in mapping context where it makes sense to have multiple numbered keys on an action */
 	UPROPERTY(EditInstanceOnly, BlueprintReadWrite, Category=Settings)
 	int32 IntegerPassthrough = INDEX_NONE;
 	
-	/** @brief */
+	/** @brief Input stack subsystem pointer, so we don't have to fetch it every time the passthrough input modifier is called */
 	UPROPERTY()
 	URTSOInputStackSubsystem* InputStackWorkaround = nullptr;
 
-	/** @brief */
+	/** @brief unused, leftover from prototyping. Remove by next commit */
 	FInputActionValue CachedLastValue;
 };
 

@@ -9,10 +9,10 @@
 
 class UCommonTextBlock;
 
-/** @brief */
+/** @brief Save/load game delegate, used with the pop-up dialogs defined further down this file */
 DECLARE_DELEGATE_TwoParams(FRTSOSavegameDelegate, const FString&, bool)
 
-/** @brief */
+/** @brief Save type enum*/
 UENUM()
 enum ERTSOSaveType
 {
@@ -27,30 +27,30 @@ class URTSOMenuButton : public UUserWidget
 	GENERATED_BODY()
 
 public:
-	/** @brief */
+	/** @brief Base/Root Overlay */
 	UPROPERTY(BlueprintReadWrite, Meta=(BindWidget))
 	class UOverlay* Overlay = nullptr;
 
-	/** @brief */
+	/** @brief Image (or material instance) for the buttons background*/
 	UPROPERTY(BlueprintReadWrite, Meta=(BindWidget))
 	class UImage* Image_ButtonBackground = nullptr;
 
-	/** @brief */
+	/** @brief Widget border */
 	UPROPERTY(BlueprintReadWrite, Meta=(BindWidget))
 	class UBorder* Border = nullptr;
 
-	/** @brief */
+	/** @brief Button text block widget */
 	UPROPERTY(BlueprintReadWrite, Meta=(BindWidget, ExposeOnSpawn))
 	class UTextBlock* TextBlock = nullptr;	
 	
-	/** @brief */
+	/** @brief Hitbox, what our mouse events actually interacts with */
 	UPROPERTY(BlueprintReadWrite, Meta=(BindWidget))
 	class UButton* Hitbox = nullptr;
 
 	/** @brief Target of the button press, add this class to the stack */
 	UPROPERTY(EditAnywhere, BlueprintReadOnly)
 	TSubclassOf<UCommonActivatableWidget> PotentialTargetWidgetClass = nullptr;
-	/** @brief */
+	/** @brief Unused for now, reserve for later use */
 	UPROPERTY()
 	class URTSOMainMenuBase* OwningStack = nullptr;	
 };
@@ -63,47 +63,47 @@ class URTSOSaveGameDialog : public UUserWidget
 
 public:
 
-	/** @brief */
+	/** @brief Calls SuccessCallback.Execute with the passthrough parameters*/
 	UFUNCTION()
 	void DialogReplyContinue();
 
-	/** @brief */
+	/** @brief Assign the yes/no button events to Reply_Yes & Reply_No */
 	UFUNCTION()
 	void SetupDelegates();	
 
-	/** @brief */
+	/** @brief Calls 'DialogReplyContinue' then calls 'RemoveFromParent' to remove self*/
 	UFUNCTION()
 	void Reply_Yes();	
 
-	/** @brief */
+	/** @brief Only Calls 'RemoveFromParent' to remove self*/
 	UFUNCTION()
 	void Reply_No();	
 
-	/** @brief */
+	/** @brief Tet block widget to contain the actual widget message*/
 	UPROPERTY(BlueprintReadWrite, Meta=(BindWidget))
 	class UTextBlock* DialogContent = nullptr;	
 	
-	/** @brief */
+	/** @brief Button to accept/reply yes*/
 	UPROPERTY(BlueprintReadWrite, Meta=(BindWidget))
 	class URTSOMenuButton* YesButton = nullptr;
 
-	/** @brief */
+	/** @brief Button to refuse/reply no*/
 	UPROPERTY(BlueprintReadWrite, Meta=(BindWidget))
 	class URTSOMenuButton* NoButton = nullptr;	
 	
-	/** @brief */
+	/** @brief Message that the dialog should display */
 	UPROPERTY(EditAnywhere)
 	FText DialogMessage{};
 
-	/** @brief */
+	/** @brief Pass-through for the ERTSOSaveType */
 	UPROPERTY()
 	TEnumAsByte<ERTSOSaveType> Type = ERTSOSaveType::LOAD;
 
-	/** @brief */
+	/** @brief Pass-through for the slotidx */
 	UPROPERTY()
 	int32 SlotIdx = INDEX_NONE;
 
-	/** @brief */
+	/** @brief Callback that we want to fire on success (replying yes to the dialog)*/
 	FRTSOSavegameDelegate SuccessCallback{};
 };
 
@@ -114,57 +114,52 @@ class URTSOMenuWidget_SaveGame : public UCommonActivatableWidget
 	GENERATED_BODY()
 
 public:
-	/** @brief */
-	void ClearDelegates() const;
+	/** @brief Unimplemented. Reserved for later use */
+	void ClearDelegates() const {};
 
-	/** @brief */
+	/** @brief Only Calls super for now. Reserved for later use */
 	virtual void NativePreConstruct() override;
 	
-	/** @brief */
+	/** @brief (root) Base canvas panel */
 	UPROPERTY(BlueprintReadWrite, Meta=(BindWidget))
 	class UCanvasPanel* BaseCanvas = nullptr;
 
-	/** @brief */
+	/** @brief The box in which the banner and the inner box should contain */
 	UPROPERTY(BlueprintReadWrite, Meta=(BindWidget))
 	class UVerticalBox* MainBox = nullptr;
 
-	/** @brief */
+	/** @brief Canvas panel of the widget banner, for orienting elements within the banner */
 	UPROPERTY(BlueprintReadWrite, Meta=(BindWidget))
 	class UCanvasPanel* BannerCanvas = nullptr;
 
-	/** @brief */
+	/** @brief Text of the widget banner */
 	UPROPERTY(BlueprintReadWrite, Meta=(BindWidget))
 	class UTextBlock* BannerText = nullptr;
 
-	/** @brief */
+	/** @brief Image of the widget banner */
 	UPROPERTY(BlueprintReadWrite, Meta=(BindWidget))
 	class UImage* BannerImage = nullptr;
 
-	/** @brief */
+	/** @brief Button that is bound (in URTSOMainMenuBase::SaveTargetWidget & URTSOMainMenuBase::LoadTargetWidget) ot close the open 'URTSOMenuWidget_SaveGame'*/
 	UPROPERTY(BlueprintReadWrite, Meta=(BindWidget))
 	class URTSOMenuButton* ExitButton = nullptr;
 
-	/** @brief */
+	/** @brief Box that should hold all slots of type URTSOMenuButton. @todo replace with ulistview of slots */
 	UPROPERTY(BlueprintReadWrite, Meta=(BindWidget))
 	class UVerticalBox* InnerBox = nullptr;
-
-	// @todo replace with ulistview of slots
-	UPROPERTY(BlueprintReadWrite, Meta=(BindWidget))
-	class URTSOMenuButton* Slot0 = nullptr;	
-	/** @brief */
-	UPROPERTY(BlueprintReadWrite, Meta=(BindWidget))
-	class URTSOMenuButton* Slot1 = nullptr;	
-	/** @brief */
-	UPROPERTY(BlueprintReadWrite, Meta=(BindWidget))
-	class URTSOMenuButton* Slot2 = nullptr;
-	/** @brief */
-	UPROPERTY(BlueprintReadWrite, Meta=(BindWidget))
-	class URTSOMenuButton* Slot3 = nullptr;
-	/** @brief */
-	UPROPERTY(BlueprintReadWrite, Meta=(BindWidget))
-	class URTSOMenuButton* Slot4 = nullptr;	
 	
-	/** @brief */
+	UPROPERTY(BlueprintReadWrite, Meta=(BindWidget))
+	class URTSOMenuButton* Slot0 = nullptr; /**< @brief Self-explanatory. @todo replace with ulistview of slots */
+	UPROPERTY(BlueprintReadWrite, Meta=(BindWidget))
+	class URTSOMenuButton* Slot1 = nullptr; /**< @brief Self-explanatory. @todo replace with ulistview of slots */
+	UPROPERTY(BlueprintReadWrite, Meta=(BindWidget))
+	class URTSOMenuButton* Slot2 = nullptr; /**< @brief Self-explanatory. @todo replace with ulistview of slots */
+	UPROPERTY(BlueprintReadWrite, Meta=(BindWidget))
+	class URTSOMenuButton* Slot3 = nullptr; /**< @brief Self-explanatory. @todo replace with ulistview of slots */
+	UPROPERTY(BlueprintReadWrite, Meta=(BindWidget))
+	class URTSOMenuButton* Slot4 = nullptr; /**< @brief Self-explanatory. @todo replace with ulistview of slots */
+	
+	/** @brief Unused for now, reserve for later use */
 	UPROPERTY()
 	class URTSOMainMenuBase* OwningStack = nullptr;	
 };
@@ -176,36 +171,36 @@ class URTSOMenuWidget : public UCommonActivatableWidget
 	GENERATED_BODY()
 
 public:
-	/** @brief */
+	/** @brief Clears delegates on the buttons hitboxes */
 	void ClearDelegates() const;
 	
-	/** @brief */
+	/** @brief The resume button, is bound by the OwningMenuBaseWidget to to a function which removes the menu and resumes the game */
 	UPROPERTY(BlueprintReadWrite, Meta=(BindWidget))
 	class URTSOMenuButton* ResumeButton = nullptr;
 
-	/** @brief */
+	/** @brief The settings button, will add the settings menu to the widget stack of the owning menu widget base */
 	UPROPERTY(BlueprintReadWrite, Meta=(BindWidget))
 	class URTSOMenuButton* SettingsButton = nullptr;
 
-	/** @brief */
+	/** @brief The save-game button, will add the save menu to the widget stack of the owning menu widget base */
 	UPROPERTY(BlueprintReadWrite, Meta=(BindWidget))
 	class URTSOMenuButton* SaveButton = nullptr;
 
-	/** @brief */
+	/** @brief The load-game button, will add the load menu to the widget stack of the owning menu widget base */
 	UPROPERTY(BlueprintReadWrite, Meta=(BindWidget))
 	class URTSOMenuButton* LoadButton = nullptr;
 
-	/** @brief */
+	/** @brief The quit-game button quits the actual game @todo set up dialog widget to make sure the player wants to quit if they have not saved the game */
 	UPROPERTY(BlueprintReadWrite, Meta=(BindWidget))
 	class URTSOMenuButton* QuitButton = nullptr;
 
-	/** @brief */
+	/** @brief Contains the buttons in a vertical direction */
 	UPROPERTY(BlueprintReadWrite, Meta=(BindWidget))
 	class UVerticalBox* VerticalBoxContainer = nullptr;
 
-	/** @brief */
+	/** @brief Unused for now, reserve for later use */
 	UPROPERTY()
-	class URTSOMainMenuBase* OwningStack = nullptr;	
+	class URTSOMainMenuBase* OwningMenuBaseWidget = nullptr;	
 };
 
 /**

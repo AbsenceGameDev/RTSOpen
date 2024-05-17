@@ -19,42 +19,42 @@ struct FRTSOLightInventoryFragmentHandler
 	FRTSOLightInventoryFragmentHandler(TMap<FGameplayTag, FPDLightItemDatum>& InInner) : Inner(InInner)  {};
 	virtual ~FRTSOLightInventoryFragmentHandler() = default;
 	
-	/** @brief */
+	/** @brief Clear the items this fragment holds */
 	virtual void ClearItems();
-	/** @brief */
+	/** @brief Transfer items from the bound fragment to a target fragment */
 	virtual void TransferItems(FRTSOLightInventoryFragment& OtherFragment);
-	/** @brief */
+	/** @brief Transfer items from the bound fragment to a target inventory component */
 	virtual void TransferItems(UPDInventoryComponent& OtherInventory);
 	
-	/** @brief */
+	/** @brief Add the input list to the bound item list, using a TArray<TTuple<FGameplayTag, FPDLightItemDatum>> container */
 	virtual void AddItems(const TArray<TTuple<FGameplayTag, FPDLightItemDatum>>& AppendList);
-	/** @brief */
+	/** @brief Removes the input list to the bound item list, using a TArray<TTuple<FGameplayTag, FPDLightItemDatum>> container  */
 	virtual void RemoveItems(const TArray<TTuple<FGameplayTag, FPDLightItemDatum>>& RemoveList);
 
-	/** @brief */
+	/** @brief Add the input list to the bound item list, using a TMap<FGameplayTag, FPDLightItemDatum> container */
 	virtual void AddItems(const TMap<FGameplayTag, FPDLightItemDatum>& AppendList);
-	/** @brief */
+	/** @brief Removes the input list to the bound item list, using a TMap<FGameplayTag, FPDLightItemDatum> container  */
 	virtual void RemoveItems(const TMap<FGameplayTag, FPDLightItemDatum>& RemoveList);
 
-	/** @brief */
+	/** @brief Add singular item to the fragments item list, using FPDLightItemDatum */
 	virtual void AddItem(const FPDLightItemDatum& AppendItem);
-	/** @brief */
+	/** @brief Remove singular item to the fragments item list, using FPDLightItemDatum  */
 	virtual void RemoveItem(const FPDLightItemDatum& RemoveItem);
 
-	/** @brief */
+	/** @brief Add singular item to the fragments item list, using item tag and item count */
 	virtual void AddItem(const FGameplayTag& AddTag, const int32 Count);
-	/** @brief */
+	/** @brief Remove singular item to the fragments item list, using item tag and item count */
 	virtual void RemoveItem(const FGameplayTag& RemoveTag, const int32 Count);
 
-	/** @brief */
+	/** @brief Copies the inventory fragment handler. Assigns others inner to our inner */
 	FRTSOLightInventoryFragmentHandler& operator=(const FRTSOLightInventoryFragmentHandler& Other)
 	{
-		Inner = Other.Inner;
+		this->Inner = Other.Inner;
 		return *this;
 	}
 
 private:
-	/** @brief The data this fragment actually holds. It's a list of items */	
+	/** @brief The bound data from the owning fragment. It's a list of items keyed by their itemtag. */	
 	TMap<FGameplayTag, FPDLightItemDatum>& Inner;
 };
 
@@ -66,10 +66,10 @@ USTRUCT(BlueprintType)
 struct FRTSOLightInventoryFragment : public FMassFragment
 {
 	GENERATED_BODY();
-
-	/** @brief */
+	
 	FRTSOLightInventoryFragment() : Handler(Inner) {};
-	/** @brief */
+
+	/** @brief Assigns the other fragments inner to our inner. then overwrite the handler with a new handler bound to the new inner */
 	FRTSOLightInventoryFragment& operator=(const FRTSOLightInventoryFragment& Other)
 	{
 		Inner = TMap<FGameplayTag, FPDLightItemDatum>(Other.Inner);
@@ -77,15 +77,15 @@ struct FRTSOLightInventoryFragment : public FMassFragment
 		return *this;
 	}
 
-	/** @brief */
+	/** @brief Inner/Imte list, keyed by item tag, value by actual item datum */
 	UPROPERTY(BlueprintReadWrite)
 	TMap<FGameplayTag, FPDLightItemDatum> Inner{};
 
-	/** @brief */
+	/** @brief Inventory fragment handler.*/
 	FRTSOLightInventoryFragmentHandler Handler;
 };
 
-/** @brief base and extended classes are unused for now, will likely remove fully */
+/** @brief base and extended classes are unused for now, will likely remove fully. Reserved Subclass */
 USTRUCT()
 struct RTSOPEN_API FRTSOFragment_SimpleMovement : public FPDMFragment_SimpleMovement
 {
@@ -94,7 +94,7 @@ struct RTSOPEN_API FRTSOFragment_SimpleMovement : public FPDMFragment_SimpleMove
 
 
 /**
- * @brief Base fragment for RTS Agents
+ * @brief Base fragment for RTS Agents. Reserved Subclass
  * @note extended class unused for now, will likely remove
  */
 USTRUCT(BlueprintType)
@@ -111,7 +111,7 @@ struct RTSOPEN_API FRTSOFragment_Animation : public FPDMFragment_EntityAnimation
 };
 
 /**
- * @brief Fragment given to entities to perform actions
+ * @brief Fragment given to entities to perform actions. Reserved Subclass
  * @note extended class is unused for now, will likely remove
  */
 USTRUCT()
@@ -121,7 +121,7 @@ struct RTSOPEN_API FRTSOFragment_Action : public FPDMFragment_Action
 };
 
 /**
- * @brief In case all agents share animation data, use this fragment
+ * @brief In case all agents share animation data, use this fragment. Reserved Subclass 
  */
 USTRUCT()
 struct RTSOPEN_API FRTSOFragment_SharedAnimData : public FPDMFragment_SharedAnimData

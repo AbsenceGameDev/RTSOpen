@@ -53,13 +53,13 @@ struct FPDMTaskData_MoveToHandle
 	UPROPERTY(VisibleAnywhere, Category = "Data")
 	int16 CurrentNavPathIndex;
 
-	/** @brief Used to ensure the entity is not stuck */
+	/* Used to ensure the entity is not stuck, @todo might need to move to the movement processor */
 	UPROPERTY(VisibleAnywhere, Category = "Data")
 	float LastDistance = 0.0;		
-	/** @brief */
+	/* Used to ensure the entity is not stuck, @todo might need to move to the movement processor */
 	UPROPERTY(VisibleAnywhere, Category = "Data")
 	float DistanceDeltaAccumulator = 0.0;
-	/** @brief */
+	/* Used to ensure the entity is not stuck, @todo might need to move to the movement processor */
 	UPROPERTY(VisibleAnywhere, Category = "Data")
 	float TimeDeltaAccumulator = 0.0;	
 };
@@ -97,24 +97,27 @@ struct FPDMPathParameters
 			NavPath(InputNavPath)
 	{};
 
-	/** @brief */
+	/** @brief Copy/assignment operator */
 	FPDMPathParameters& operator=(const FPDMPathParameters& Other);
-	/** @brief */
+
+	/** @brief First it tries to resolve the target entity's location via it's transform fragment
+	 * if it was not valid then it tries to resolve the target actor,
+	 * if the target actor was not valid then it lastly resolves to the static location target (hope to god it's set to something sensible haha)*/
 	FVector ResolveLocation() const;
 
-	/** @brief */
+	/** @brief InstanceData for the MoveTo task*/
 	FPDMTaskData_MoveToHandle& InstanceData;
-	/** @brief */
+	/** @brief Move target fragment */
 	FMassMoveTargetFragment& MoveTarget; 
-	/** @brief */
+	/** @brief Transform fragment of the entity this task is being run on */
 	const FTransformFragment& TransformFragment;
-	/** @brief */
+	/** @brief Entity subsystem */
 	UMassEntitySubsystem& EntitySubsystem;
-	/** @brief */
+	/** @brief Is target entity valid */
 	bool bIsEntityValid;
-	/** @brief */
+	/** @brief Target Compound */
 	FPDTargetCompound& Target;
-	/** @brief */
+	/** @brief The navpath for the MoveTo task */
 	const UNavigationPath* NavPath = nullptr;
 };
 
@@ -130,23 +133,17 @@ struct PDRTSBASE_API FPDMTask_MoveToTarget : public FMassStateTreeTaskBase
 	/* Macro helper to declare the required task functions */
 	DECLARE_TASK_BODY(MoveToHandle)
 
-	/** @brief */
+	/** @brief Resolves the navpath at current path index for priority pathing, @bug Navpath generates invalid points, commented out for the moment, will resolve issue within a couple of commits  */
 	void ProcessNewPriorityPath(FPDMPathParameters& Params) const;
-	/** @brief */
+	/** @brief Resolves the navpath at current path index for shared pathing, @bug Navpath generates invalid points, commented out for the moment, will resolve issue within a couple of commits */
 	void ProcessNewSharedPath(FPDMPathParameters& Params) const;
-
 	
-	/** @brief */
+	/* Links/handles */
 	TStateTreeExternalDataHandle<UMassEntitySubsystem> EntitySubsystemHandle;
-	/** @brief */
 	TStateTreeExternalDataHandle<UMassSignalSubsystem> MassSignalSubsystemHandle;
-	/** @brief */
 	TStateTreeExternalDataHandle<FTransformFragment> TransformHandle;
-	/** @brief */
 	TStateTreeExternalDataHandle<FMassMoveTargetFragment> MoveTargetHandle;
-	/** @brief */
 	TStateTreeExternalDataHandle<FMassMovementParameters> MoveParametersHandle;
-	/** @brief */
 	TStateTreeExternalDataHandle<FPDMFragment_RTSEntityBase> RTSDataHandle;
 };
 
@@ -160,11 +157,11 @@ struct FPDMTaskData_RandomWander
 {
 	GENERATED_BODY()
 
-	/** @brief */
+	/** @brief Limit for the random search radius, value can be set from state-tree editor */
 	UPROPERTY(EditAnywhere, Category = Parameter)
 	float StartRadiusRandomLimit = 100.f;
 
-	/** @brief */
+	/** @brief Max remaining distance to goal until it reads as success, value can be set from state-tree editor */
 	UPROPERTY(EditAnywhere, Category = Parameter)
 	float SuccessRadius = 100.f;	
 };
@@ -181,11 +178,9 @@ struct PDRTSBASE_API FPDMTask_RandomWander : public FMassStateTreeTaskBase
 	/* Macro helper to declare the required task functions */
 	DECLARE_TASK_BODY(RandomWander)
 
-	/** @brief */
+	/* Links/handles */
 	TStateTreeExternalDataHandle<FMassMoveTargetFragment> MoveTargetHandle;
-	/** @brief */
 	TStateTreeExternalDataHandle<FTransformFragment> TransformHandle;
-	/** @brief */
 	TStateTreeExternalDataHandle<UMassSignalSubsystem> MassSignalSubsystemHandle;
 };
 
@@ -197,11 +192,11 @@ struct PDRTSBASE_API FPDMTaskData_Wait
 {
 	GENERATED_BODY()
  
-	/** @brief */
+	/** @brief THe wait duration */
 	UPROPERTY(EditAnywhere, Category = Parameter)
 	float Duration = 0.f;
 
-	/** @brief */
+	/** @brief Accumulating passed time */
 	float TimePassed = 0.f;
 };
 
@@ -217,7 +212,7 @@ struct PDRTSBASE_API FPDMTask_Wait : public FMassStateTreeTaskBase
 	DECLARE_TASK_BODY(Wait)
 
 protected:
-	/** @brief */
+	/* Links/handles */
 	TStateTreeExternalDataHandle<UMassSignalSubsystem> MassSignalSubsystemHandle;
 };
 
@@ -239,7 +234,7 @@ struct PDRTSBASE_API FPDMTaskData_PlayAnimation
 	UPROPERTY()
 	float Time = 0.f;
 	
-	/** @brief */
+	/** @brief Selected animation index for the A2T (vertex animation) */
 	UPROPERTY(EditAnywhere, Category = Parameter)
 	EPDVertexAnimSelector AnimationIndex = EPDVertexAnimSelector::VertexIdle;
 };
@@ -258,11 +253,9 @@ struct PDRTSBASE_API FPDMTask_PlayAnimation : public FMassStateTreeTaskBase
 	DECLARE_TASK_BODY(PlayAnimation)
 
 protected:
-	/** @brief */
+	/* Links/handles */
 	TStateTreeExternalDataHandle<FMassMoveTargetFragment> MoveTargetHandle;
-	/** @brief */
 	TStateTreeExternalDataHandle<UMassSignalSubsystem> MassSignalSubsystemHandle;
-	/** @brief */
 	TStateTreeExternalDataHandle<FPDMFragment_EntityAnimation> AnimationHandle;
 };
 

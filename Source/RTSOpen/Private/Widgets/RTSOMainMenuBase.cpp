@@ -28,7 +28,7 @@ void URTSOMainMenuBase::NativeOnActivated()
 
 	UClass* SelectedClass = WidgetClass != nullptr ? WidgetClass.Get() : URTSOMenuWidget::StaticClass();
 	ActiveMenuInstance = WidgetStack->AddWidget<URTSOMenuWidget>(SelectedClass);
-	ActiveMenuInstance->OwningStack = this;
+	ActiveMenuInstance->OwningMenuBaseWidget = this;
 }
 
 void URTSOMainMenuBase::BindButtonDelegates(AActor* ActorToBindAt)

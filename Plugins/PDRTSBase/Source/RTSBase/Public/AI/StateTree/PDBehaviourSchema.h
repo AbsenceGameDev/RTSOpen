@@ -9,28 +9,25 @@
 
 struct FStateTreeExternalDataDesc;
 
-/** @brief */
-namespace UE::BehaviourSchema::Names
+namespace PD::BehaviourSchema::Names
 {
-	/** @brief The actor performing the interaction, using short name to be consistent with naming with StateTreeComponentSchema. */
+	/** @brief Schema name for The actor context performing the interaction, using short name to be consistent with naming with StateTreeComponentSchema. */
 	const FName ContextActor = TEXT("Actor");
-	/** @brief */
+	/** @brief Schema name for Abort context with context reason */
 	const FName AbortContext = TEXT("AbortContext");
 };
 
 
-/** Reason why the interaction is ended prematurely. */
+/** @brief Reason why the interaction is ended prematurely. */
 UENUM(BlueprintType)
 enum class EPDTreeAbortReason : uint8
 {
-	Unset,
-	ExternalAbort,
-	InternalAbort,
+	Unset         UMETA(DisplayName = "AbortReason:Unset"),
+	ExternalAbort UMETA(DisplayName = "AbortReason:ExternalAbort"),
+	InternalAbort UMETA(DisplayName = "AbortReason:InternalAbort"),
 };
 
-/**
- * @brief Context with data related to the tree aborting  
- */
+/** @brief Context with data related to the tree aborting, unused for now need to finish the behaviour schema */
 USTRUCT(BlueprintType)
 struct PDRTSBASE_API FPDTreeAbortContext
 {
@@ -39,7 +36,7 @@ struct PDRTSBASE_API FPDTreeAbortContext
 	FPDTreeAbortContext() = default;
 	explicit FPDTreeAbortContext(const EPDTreeAbortReason& InReason) : Reason(InReason) {}
 	
-	/** @brief */
+	/** @brief Actual abort reason */
 	UPROPERTY()
 	EPDTreeAbortReason Reason = EPDTreeAbortReason::Unset;
 };
@@ -55,20 +52,22 @@ class PDRTSBASE_API UPDBehaviourSchema : public UMassStateTreeSchema
 public:
 	UPDBehaviourSchema();
 
+	/** @return type: UClass* resolved from TSubclassOf<AActor> */
 	UClass* GetContextActorClass() const { return ContextActorClass; };
 
 protected:
-	/** @brief */
+	/** @brief true if InScriptStruct returns true on IsChildOf on any of the below listed classes:
+	 * FMassStateTreeEvaluatorBase, FStateTreeEvaluatorCommonBase, FMassStateTreeTaskBase, FStateTreeConditionBase, FStateTreeConditionCommonBase, FStateTreeEvaluatorCommonBase, FStateTreeTaskCommonBase*/
 	virtual bool IsStructAllowed(const UScriptStruct* InScriptStruct) const override;
-	/** @brief */
+	/** @brief Allowed if IsChildOfBlueprintBase(InScriptStruct) returns true */
 	virtual bool IsClassAllowed(const UClass* InScriptStruct) const override;
-	/** @brief */
+	/** @brief Allowed externals: UWorldSubsystem, FMassFragment, FMassSharedFragment, AActor, UActorComponent */
 	virtual bool IsExternalItemAllowed(const UStruct& InStruct) const override;
 
-	/** @brief */
+	/** @brief Returns a const view over the array property 'ContextDataDescs'*/
 	virtual TConstArrayView<FStateTreeExternalDataDesc> GetContextDataDescs() const override { return ContextDataDescs; }
 
-	/** @brief */
+	/** @brief Assigns the 'Struct' property of the first element of ContextDataDescs to the value of 'ContextActorClass.Get()'*/
 	virtual void PostLoad() override;
 
 #if WITH_EDITOR
@@ -92,7 +91,7 @@ struct PDRTSBASE_API FHandleValidityConditionInstanceData
 {
 	GENERATED_BODY()
 
-	/** @brief */
+	/** @brief Input data for the state tree condition. Is used to pass through data to the condition FHandleValidityTagCondition */
 	UPROPERTY(EditAnywhere, Category = Input)
 	FPDMFragment_Action ActionTest;
 };
@@ -105,15 +104,14 @@ struct PDRTSBASE_API FHandleValidityTagCondition : public FStateTreeConditionBas
 {
 	GENERATED_BODY()
 
-	/** @brief */
-	using FInstanceDataType = FHandleValidityConditionInstanceData;
-
-	/** @brief */
 	FHandleValidityTagCondition() = default;
 
-	/** @brief */
+	/** @brief Instance data shorthand */
+	using FInstanceDataType = FHandleValidityConditionInstanceData;
+	
+	/** @brief Returns the static struct of the instance data shorthand */
 	virtual const UStruct* GetInstanceDataType() const override { return FInstanceDataType::StaticStruct(); }
-	/** @brief */
+	/** @brief Checks that the tag is valid and checks that at-least one of the targets in the target compound is valid*/
 	virtual bool TestCondition(FStateTreeExecutionContext& Context) const override;
 };
 

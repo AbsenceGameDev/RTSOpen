@@ -15,59 +15,48 @@ class RTSOPEN_API ARTSOInteractableResourceBase : public APDInteractActor
 	GENERATED_BODY()
 
 public:
-	/** @brief */
+	/** @brief Sets default job to 'TAG_AI_Job_WalkToTarget' and enables the tickcomponent*/ 
 	ARTSOInteractableResourceBase();
-	/** @brief */
+	/** @brief Caches a pointer to the entity subsystem and it's entity manager*/
 	virtual void BeginPlay() override;
-	/** @brief */
+	/** @brief Ticks usage the cooldown. @todo move into a progression/stat system*/
 	virtual void Tick(float DeltaTime) override;
 
-	/**
-	 * @brief Handles interaction with the calling (mass) entity or calling actor.
-	 * @details Gives the callers inventory component or inventory fragment the items listed in 'LinkedItemResources'
-	 */
+	/** @brief Handles interaction with the calling (mass) entity or calling actor.
+	 * @details Gives the callers inventory component or inventory fragment the items listed in 'LinkedItemResources' */
 	virtual void OnInteract_Implementation(const FPDInteractionParamsWithCustomHandling& InteractionParams, EPDInteractResult& InteractResult) const override;
 
-	/**
-	 * @brief Base class just returns the job-tag. could be extended to return other tags if needed
-	 */
+	/** @brief Base class just returns the job-tag. could be extended to return other tags if needed */
 	virtual FGameplayTagContainer GetGenericTagContainer_Implementation() const override;
 
-	/**
-	 * @brief Base class just returns the harvest-time. could be extended to return modified or different values if needed
-	 */	
+	/** @brief Base class just returns the harvest-time. could be extended to return modified or different values if needed */	
 	virtual double GetInteractionTime_Implementation() const override { return InteractionTime; };
 
 private:
-	/**
-	 * @brief What job is this resource tied to, default value is set to TAG_AI_Job_GatherResource in this classes ctor
-	 */		
+	/** @brief What job is this resource tied to, default value is set to TAG_AI_Job_GatherResource in this classes ctor */
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Meta = (AllowPrivateAccess="true"))
 	FGameplayTag JobTag{};
 
-	/**
-	 * @brief How much time does it take to interact with this resource. defaults to instant interaction
-	 */	
+	/** @brief How much time does it take to interact with this resource. defaults to instant interaction */	
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Meta = (AllowPrivateAccess="true"))
 	double InteractionTime = 0.0;	
 
-	/**
-	 * @brief How much time (in seconds) does this interactable stay non-interactable for after a successful interaction 
-	 */		
+	/** @brief Time (in seconds) the interact cooldown persísts after successfully interacting with the object */		
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Meta = (AllowPrivateAccess="true"))
 	double RefreshInterval = 20.0;
-	/** @brief */
+	/** @brief Tick accumulator */
 	double RefreshTickAcc = 0.0;
 
-	/**
-	 * @brief The items linked with this resource. Base implementation never removes any values from this on interaction. This can be interacted with infinite amount of times
-	 */	
+	/** @brief The items linked with this resource. Base implementation never removes any values from this on interaction.
+	 * This can be interacted with infinite amount of times.
+	 * @todo possibly add a inventory fragment on this actor which allows it to interact with the rest of the inventory system */	
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Meta = (AllowPrivateAccess="true", RowType="/Script/PDInventory.PDItemDefaultDatum"))
 	TMap<FGameplayTag /*resource/item tag*/, int32 /*count*/> LinkedItemResources;
 
+	/** @brief The mass entity subsystem, used to fetch the entity manager*/
 	UPROPERTY()
 	UMassEntitySubsystem* EntitySubsystem = nullptr;
-	/** @brief */
+	/** @brief The mass entity manager, used to read and write to different fragments on requested entities */
 	const FMassEntityManager* EntManager = nullptr;
 };
 

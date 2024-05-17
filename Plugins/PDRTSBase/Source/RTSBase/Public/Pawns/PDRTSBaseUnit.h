@@ -28,7 +28,7 @@ class PDRTSBASE_API UPDRTSBaseUnit : public UInstancedStaticMeshComponent
 	GENERATED_UCLASS_BODY()
 
 public:
-	/** @brief */
+	/** @brief Only calls Super. Reserved for later use */
 	virtual TArray<int32> GetInstancesOverlappingSphere(const FVector& Center, float Radius, bool bSphereInWorldSpace) const override;
 	
 	/** @brief Sets job back to idle */
@@ -66,37 +66,36 @@ public:
 	FORCEINLINE void SetEntityManager(const FMassEntityManager* InEntityManager) { EntityManager = InEntityManager;}
 
 protected:
-	/** @brief */
+	/** @brief Sets collision response channel abd assigns a dummy task. Reserved for later use */
 	virtual void BeginPlay() override;
 
 	/** @brief Sets job to the requested job on the requested entity, only called when approved */
 	void AssignTask(FMassEntityHandle EntityHandle, const FGameplayTag& JobTag, const FPDTargetCompound& OptTarget);
 
-	/** @brief */
+	/** @brief Gets called when a task finished. Does nothing. Reserved for later use. */
 	void OnTaskFinished(FMassEntityHandle WorkerEntity, const FGameplayTag& JobTag);
 
 public:
-	/** @brief */
+	/** @brief Only calls Super. Reserved for later use */
 	virtual void TickComponent(float DeltaTime, ELevelTick TickType, FActorComponentTickFunction* ThisTickFunction) override;
-	
-	/** @brief */
-	UPROPERTY(VisibleInstanceOnly, BlueprintReadOnly)
-	AActor* TargetRef = nullptr;
 
+	// unused since rewriting the class completely a while back, remove next commit
+	// /** @brief */
 	// UPROPERTY(VisibleInstanceOnly, BlueprintReadOnly)
-	// AActor* InstigatorActor = nullptr;
+	// AActor* TargetRef = nullptr;
 	
-	/** @brief */
+	/** @brief Active jobs. Keyed by entity index, valued by job tag */
 	UPROPERTY(VisibleInstanceOnly, BlueprintReadOnly)
 	TMap<int32 /*MassEntity index */, FGameplayTag> ActiveJobMap{};
 
-	/** @brief */
+	/** @brief Active targets. Keyed by entity index, valued by target compound */
 	UPROPERTY(VisibleInstanceOnly, BlueprintReadOnly)
 	TMap<int32 /*MassEntity index */, FPDTargetCompound> ActiveTargetMap{};
 
-	/** @brief */
+	/** @brief Cached ptr to the entity manager. */
 	const FMassEntityManager* EntityManager = nullptr;
-	/** @brief Reserved for later use */
+
+	/** @brief unused since rewriting the class completely a while back, remove next commit */
 	TSharedPtr<FStreamableHandle> LatestJob_AsyncLoadHandle;
 };
 

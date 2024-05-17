@@ -64,8 +64,7 @@ void UPDRTSBaseSubsystem::SetupOctreeWithNewWorld(UWorld* NewWorld)
 			&& NewWorld->bIsTearingDown == false
 			&& NewWorld != TemporaryWorldCache)
 		{
-			WorldsWithOctrees.FindOrAdd(TemporaryWorldCache, false);
-			
+			WorldsWithOctrees.FindOrAdd(NewWorld, false);
 			TemporaryWorldCache = NewWorld;
 		} // Cache as it is being initialized
 		

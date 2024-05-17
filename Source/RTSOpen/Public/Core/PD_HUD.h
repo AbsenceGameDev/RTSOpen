@@ -13,7 +13,8 @@ class RTSOPEN_API APD_HUD : public AHUD
 {
 	GENERATED_BODY()
 
-	/** @brief */
+	/** @brief Reads the start and current marquee positions from the player controller,
+	 * and display draw a rectangle on screen to convey the marquee selection actually happening to the user */
 	virtual void DrawHUD() override;
 };
 

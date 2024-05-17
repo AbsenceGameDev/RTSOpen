@@ -5,7 +5,12 @@
 #include "UObject/Interface.h"
 #include "RTSOInputInterface.generated.h"
 
-/** @brief BOILERPLATE */ UINTERFACE() class URTSOInputInterface : public UInterface { GENERATED_BODY() };
+/** @brief BOILERPLATE */
+UINTERFACE()
+class URTSOInputInterface : public UInterface
+{
+	GENERATED_BODY()
+};
 
 /**
  * @brief RTSO input interface, used for the controller and the godhand pawn
@@ -15,102 +20,72 @@ class RTSOPEN_API IRTSOInputInterface
 	GENERATED_BODY()
 
 public:
-	/* Enhanced Input */
-	/** @brief */
+	/* Enhanced Input Event interface - Start */
 	UFUNCTION(BlueprintNativeEvent, BlueprintCallable)
 	void ActionMove(const FInputActionValue& Value);
-	/** @brief */
 	virtual void ActionMove_Implementation(const FInputActionValue& Value) {};
-	
-	/** @brief */
+
 	UFUNCTION(BlueprintNativeEvent, BlueprintCallable)
 	void ActionMagnify(const FInputActionValue& Value);
-	/** @brief */
 	virtual void ActionMagnify_Implementation(const FInputActionValue& Value) {};
-	
-	/** @brief */
+
 	UFUNCTION(BlueprintNativeEvent, BlueprintCallable)
 	void ActionRotate(const FInputActionValue& Value);
-	/** @brief */
 	virtual void ActionRotate_Implementation(const FInputActionValue& Value) {};
 
-	/** @brief */
 	UFUNCTION(BlueprintNativeEvent, BlueprintCallable)
 	void ActionDragMove(const FInputActionValue& Value);
-	/** @brief */
 	virtual void ActionDragMove_Implementation(const FInputActionValue& Value) {};
 
-	/** @brief */
 	UFUNCTION(BlueprintNativeEvent, BlueprintCallable)
 	void ActionWorkerUnit_Triggered(const FInputActionValue& Value);
-	/** @brief */
 	virtual void ActionWorkerUnit_Triggered_Implementation(const FInputActionValue& Value) {};
 
-	/** @brief */
 	UFUNCTION(BlueprintNativeEvent, BlueprintCallable)
 	void ActionWorkerUnit_Started(const FInputActionValue& Value);
-	/** @brief */
 	virtual void ActionWorkerUnit_Started_Implementation(const FInputActionValue& Value) {};
 
-	/** @brief */
 	UFUNCTION(BlueprintNativeEvent, BlueprintCallable)
 	void ActionWorkerUnit_Cancelled(const FInputActionValue& Value);
-	/** @brief */
 	virtual void ActionWorkerUnit_Cancelled_Implementation(const FInputActionValue& Value) {};
-	
-	/** @brief */
+
 	UFUNCTION(BlueprintNativeEvent, BlueprintCallable)
 	void ActionWorkerUnit_Completed(const FInputActionValue& Value);
-	/** @brief */
 	virtual void ActionWorkerUnit_Completed_Implementation(const FInputActionValue& Value) {};
-	
-	/** @brief */
+
 	UFUNCTION(BlueprintNativeEvent, BlueprintCallable)
 	void ActionBuildMode(const FInputActionValue& Value);
-	/** @brief */
 	virtual void ActionBuildMode_Implementation(const FInputActionValue& Value) {};
 
-	/** @brief */
 	UFUNCTION(BlueprintNativeEvent, BlueprintCallable)
 	void ActionClearSelection(const FInputActionValue& Value);
-	/** @brief */
 	virtual void ActionClearSelection_Implementation(const FInputActionValue& Value) {};
 
-	/** @brief */
 	UFUNCTION(BlueprintNativeEvent, BlueprintCallable)
 	void ActionMoveSelection(const FInputActionValue& Value);
-	/** @brief */
 	virtual void ActionMoveSelection_Implementation(const FInputActionValue& Value) {};
-	
-	/** @brief */
+
 	UFUNCTION(BlueprintNativeEvent, BlueprintCallable)
 	void ActionAssignSelectionToHotkey(const FInputActionValue& Value);
-	/** @brief */
 	virtual void ActionAssignSelectionToHotkey_Implementation(const FInputActionValue& Value) {};
 
-	/** @brief */
 	UFUNCTION(BlueprintNativeEvent, BlueprintCallable)
 	void ActionHotkeySelection(const FInputActionValue& Value);
-	/** @brief */
 	virtual void ActionHotkeySelection_Implementation(const FInputActionValue& Value) {};	
-
-	/** @brief */
+	
 	UFUNCTION(BlueprintNativeEvent, BlueprintCallable)
 	void ActionExitConversation(const FInputActionValue& Value);
-	/** @brief */
 	virtual void ActionExitConversation_Implementation(const FInputActionValue& Value) {};	
 
-	/** @brief */
 	UFUNCTION(BlueprintNativeEvent, BlueprintCallable)
 	void ActionToggleMainMenu(const FInputActionValue& Value);
-	/** @brief */
 	virtual void ActionToggleMainMenu_Implementation(const FInputActionValue& Value) {};	
-	
-	/** @brief */
+
 	UFUNCTION(BlueprintNativeEvent, BlueprintCallable)
 	void ActionChordedBase(const FInputActionValue& Value);
-	/** @brief */
 	virtual void ActionChordedBase_Implementation(const FInputActionValue& Value) {};
+
+	/* Enhanced Input Event interface - End */
 	
 public:
 };

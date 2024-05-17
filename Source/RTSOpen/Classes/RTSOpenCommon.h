@@ -10,10 +10,13 @@
 #include "GameFramework/SaveGame.h"
 #include "CommonActivatableWidget.h"
 #include "CommonButtonBase.h"
+#include "PDItemCommon.h"
 #include "AI/Mass/PDMassFragments.h"
 #include "RTSOpenCommon.generated.h"
 
 
+class APDInteractActor;
+class UPDRTSBaseUnit;
 class ARTSOInteractableConversationActor;
 /** @brief Save data for inventory items */
 USTRUCT(BlueprintType, Blueprintable)
@@ -21,7 +24,7 @@ struct FRTSSavedItems
 {
 	GENERATED_BODY()
 
-	/** @brief */
+	/** @brief Saved items, @todo need to sort this by user/ownerID */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
 	TArray<FPDItemNetDatum> Items;
 };
@@ -32,25 +35,26 @@ struct FRTSSavedConversationActorData
 {
 	GENERATED_BODY()
 	
-	/** @brief */
+	/** @brief Missions to load from table*/
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
-	TSet<FName /*Missions to load from table*/> Missions{};
+	TSet<FName> Missions{};
 
-	/** @brief */
+	/** @brief Location of conversation progression actor it belongs to */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Data|SaveGame|Unit")
-	FVector Location{}; // Location of conversation progression actor it belongs to
+	FVector Location{}; 
 
-	/** @brief */
+	/** @brief Actor class of the interactable conversation actor*/
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Data|SaveGame|Unit")
 	TSoftClassPtr<ARTSOInteractableConversationActor> ActorClassType{};
 
-	/** @brief */
+	/** @brief Progression map, keyed by user (ID) and valued by progression level for the conversation.
+	 * @todo I have made a mistake here as we need to know exactly which conversation the progression level relates to, not only the progression level and the userID */
 	UPROPERTY(EditAnywhere, BlueprintReadOnly)
-	TMap<int32/*ActorID*/, int32/*ProgressionLever*/> ProgressionPerPlayer; /**< @brief progression*/
+	TMap<int32/*ActorID*/, int32/*ProgressionLevel*/> ProgressionPerPlayer; 
 
-	/** @brief */
+	/** @brief Unused. assume it will always be 1.0 for now	*/
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Data|SaveGame|Unit")
-	double Health = 1.0; // assume it will always be 1.0 for now		
+	double Health = 1.0;		
 };
 
 /** @brief Save data for world units/entities*/
@@ -59,23 +63,23 @@ struct FRTSSavedWorldUnits
 {
 	GENERATED_BODY()
 
-	/** @brief */
+	/** @brief Saved current action for the unit this relates to */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Data|SaveGame|Unit")
 	FPDMFragment_Action CurrentAction{};
 
-	/** @brief */
+	/** @brief Saved current location for the unit this relates to */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Data|SaveGame|Unit")
 	FVector Location{};
 
-	/** @brief */
+	/** @brief Saved current health for the unit this relates to */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Data|SaveGame|Unit")
 	double Health = 0.0;
 
-	/** @brief */
+	/** @brief Saved OwnerID for the unit this relates to */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Data|SaveGame|Unit")
 	int32 OwnerID = INDEX_NONE;
 
-	/** @brief */
+	/** @brief Saved selection index the unit this relates to is contained within */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Data|SaveGame|Unit")
 	int32 SelectionIndex = INDEX_NONE;
 };
@@ -86,23 +90,23 @@ class RTSOPEN_API URTSOpenSaveGame : public USaveGame
 {
 	GENERATED_BODY()
 public:
-	/** @brief */
+	/** @brief Random stream */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "GameInstance|Widgets")
 	FRandomStream Seeder{0};
 
-	/** @brief */
+	/** @brief Total elapsed game-time */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "GameInstance|Widgets")
 	double GameTime = 0.0;
 
-	/** @brief */
+	/** @brief Players locations, keyed by players persistent IDs*/
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "GameInstance|Widgets")
 	TMap<int32 /*Player Persistent ID*/, FVector> PlayerLocations{}; 
 
-	/** @brief */
+	/** @brief World interactables and their parameters */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "GameInstance|Widgets")
 	TArray<FRTSSavedInteractables> Interactables{};
 
-	/** @brief */
+	/** @brief World entities and their parameters, such as ownerID */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "GameInstance|Widgets")
 	TArray<FRTSSavedWorldUnits> EntityUnits{};
 	
@@ -126,15 +130,15 @@ class UPDTransitionWidget : public UUserWidget
 	GENERATED_BODY()
 
 public:
-	/** @brief */
+	/** @brief Starts a transition animation */
 	UFUNCTION(BlueprintNativeEvent, BlueprintCallable)
 	void StartTransition();
-	/** @brief */
+	/** @brief Ends the transition animation */
 	UFUNCTION(BlueprintNativeEvent, BlueprintCallable)
 	void EndTransition();
 	
 public:
-	/** @brief */
+	/** @brief The given transition animation */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Widget|BaseTransition", Meta = (BindWidget))
 	UWidgetAnimation* TransitionAnimation = nullptr;
 };
@@ -148,7 +152,7 @@ class URTSHudWidget : public UCommonActivatableWidget
 public:
 };
 
-/** @brief @todo move to new file in UI folder */
+/** @brief @todo remove, redundant as there are already widgets in the interaction plugin afaik */
 UCLASS(BlueprintType, Blueprintable)
 class URTSInteractWidget : public UCommonActivatableWidget
 {
@@ -156,9 +160,137 @@ class URTSInteractWidget : public UCommonActivatableWidget
 
 public:
 public:
-	/** @brief */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Widget|Base", Meta = (BindWidget))
 	UCommonButtonBase* InteractButton = nullptr;
+};
+
+
+/** @brief Dataasset that holds any uasset we want to default to a given godhand settings entry */
+UCLASS(BlueprintType, Blueprintable)
+class URTSGodhandDataAsset : public UDataAsset
+{
+	GENERATED_BODY()
+
+public:
+	/** @brief Curve to source magnification value from. is none exist it reverts to a expression based logarithmic 'curve' */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "RTS|Pawn|Cursor|Settings")
+	UCurveFloat* MagnificationCurve = nullptr;
+};
+
+
+/** @brief Settings table row for the godhand pawn */
+USTRUCT(Blueprintable, BlueprintType)
+struct FRTSGodhandSettings : public FTableRowBase
+{
+	GENERATED_BODY()
+
+	/** @brief Dataasset that holds uassets we want to default to this godhand settings entry */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Godhand|Settings")
+	URTSGodhandDataAsset* AssetData = nullptr;
+	/** @brief Padding to offset a scalar range the is fed to a sine. This is used when the cursor hovers an actor or entity */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Godhand|Settings")
+	double TargetPadding = 40.0;
+	/** @brief Scalar phase speed, how fast does it ride the sine-wave? This is used when the cursor hovers an actor or entity  */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Godhand|Settings")
+	double CursorSelectedScalePhaseSpeed = 4.0;	
+	/** @brief  Sine intensity. This is used when the cursor hovers an actor or entity */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Godhand|Settings")
+	double CursorSelectedSinScaleIntensity = 0.3;
+	/** @brief This controls how fast the cursor rescales when snapping to a hovered actor */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Godhand|Settings")
+	double SelectionRescaleSpeed = 8.0;
+	/** @brief This controls how fast the godhand rotates when using the rotate keys */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Godhand|Settings")
+	double RotationRateModifier = 75.0;	
+	
+};
+
+/** @brief State struct for the godhand pawn */
+USTRUCT(BlueprintType, Blueprintable)
+struct FRTSGodhandState
+{
+	GENERATED_BODY()
+	
+	/** @brief The currently hovered actor, it looks for objects that inherit from FPDInteractInterface */
+	UPROPERTY(VisibleInstanceOnly, BlueprintReadWrite, Category = "Godhand|State")
+	AActor* HoveredActor = nullptr;
+
+	/** @brief The worlds agent handler gets assigned to this. This ISM component has logic to handle spawning mass entities, dispatching jobs and such  */
+	UPROPERTY(VisibleInstanceOnly, BlueprintReadWrite, Category = "Godhand|State")
+	UPDRTSBaseUnit* ISMAgentComponent = nullptr;	
+
+	/** @brief This value is calculated based on the current MagnificationStrength */
+	UPROPERTY(VisibleInstanceOnly, BlueprintReadWrite, Category = "Godhand|State")
+	double MagnificationValue = 0.0;
+
+	/** @brief This value is assigned from the inputvalue of the 'ActionMagnify' input action */
+	UPROPERTY(VisibleInstanceOnly, BlueprintReadWrite, Category = "Godhand|State")
+	double MagnificationStrength = 0.01;	
+	
+	/* State(s) - tracked interactables*/
+	/** @brief This gets set by a call to 'AGodHandPawn::BeginBuild()' . @todo finish impl. */
+	UPROPERTY(VisibleInstanceOnly, BlueprintReadWrite, Category = "Godhand|State")
+	TSubclassOf<AActor> TempSpawnClass;
+	/** @brief If 'AGodHandPawn::BeginBuild()' manages to spawn an interactable it gets cached here. @todo finish impl. */
+	UPROPERTY(VisibleInstanceOnly, BlueprintReadWrite, Category = "Godhand|State")
+	APDInteractActor* SpawnedInteractable = nullptr;
+	
+	/* State(s) - tracked values */	
+	/** @brief Current resource costs @todo replace with a queue of deque, and rename to Pending resource costs? Perhaps we need more information about the job in that case? */
+	UPROPERTY(VisibleInstanceOnly, BlueprintReadWrite, Category = "Godhand|State")
+	TMap<FGameplayTag, FPDItemCosts> CurrentResourceCost;
+
+
+	/* State(s) - Cursor */	
+	/** @brief Accumulates the current time elapsed and feeds a sinewave with it */
+	UPROPERTY(VisibleInstanceOnly, BlueprintReadOnly, Category = "Godhand|State")
+	double AccumulatedPlayTime = 0.0;
+	/** @brief The calculated target transform for the godhand,  be it a hovered entity/actor or the mouse projection location */
+	UPROPERTY(VisibleInstanceOnly, BlueprintReadOnly, Category = "Godhand|State")
+	FTransform TargetTransform{};
+	
+	/* State(s) - Target */	
+	/** @brief Virtually unused @todo Remove within a commit or two, this has lost it's purpose at this point  */
+	UPROPERTY(VisibleInstanceOnly, BlueprintReadOnly, Category = "Godhand|State")
+	FVector WorkUnitTargetLocation{};
+
+	/** @brief Copies the pointer from 'HoveredActor' at the point of triggering the 'ActionWorkerUnit' input action  */
+	UPROPERTY(VisibleInstanceOnly, BlueprintReadOnly, Category = "Godhand|State")
+	AActor* WorkerUnitActionTarget;
+	
+	/** @brief Currently selected, singular, mass entity. In case we have multiple selected this is often set to an invalid handle as that is handled via selection groups instead */
+	UPROPERTY()
+	FMassEntityHandle SelectedWorkerUnitHandle{INDEX_NONE, INDEX_NONE};
+	
+	/* State(s) - Pathing */	
+	/** @brief This flag is set when we start drawing our niagara path, and is unset when we stop. Used to know if it's safe to overwrite certain properties or not */
+	UPROPERTY(VisibleInstanceOnly, BlueprintReadOnly, Category = "Godhand|State")
+	bool bUpdatePathOnTick = false;
+	
+	/** @brief The generated path points for the niagara effect */
+	UPROPERTY(VisibleInstanceOnly, BlueprintReadOnly, Category = "Godhand|State")
+	TArray<FVector> PathPoints;
+	
+	/** @brief Rotation direction deque, it increases the head is the current ratation operation,
+	 * @note rotate ccw if Element == 1
+	 * @note rotate cw  if Element == -1
+	 * 
+	 * @note A. Get if positive or negative,
+	 * @note B. Add Direction to queue
+	 * @note C. In tick: rotate +-90 degree in yaw with interpolation
+	 * @note D. If rotating direction Positive, then pressing positive again then negative, , final two should cancel eachother out
+	 */
+	TDeque<int8> RotationDeque{};
+
+	/** @brief Amount degrees left of rotation,
+	 * @note this has a tendency to 'slide' into an offset when tick is not reliable,
+	 * @note fixed it by snapping it to cardinal directions so it never accumulates this offset */
+	double CurrentRotationLeft = 0.0;
+	
+	/** @brief Flag used to avoid overwriting the rotation states for a active rotation */
+	bool bIsInRotation = false;
+		
+	
 };
 
 /**

@@ -11,13 +11,14 @@
 struct FPDMFragment_RTSEntityBase;
 struct FTransformFragment;
 
-/** @brief */
+/** @brief Instance data for FPDMEvaluator_EntityAction */
 USTRUCT()
 struct PDRTSBASE_API FPDMData_Action
 {
 	GENERATED_BODY()
 	
-	/** @brief */
+	/** @brief Output data for this state tree evaluator.
+	 * Is used to pass through data from FPDMEvaluator_EntityAction */
 	UPROPERTY(EditAnywhere, Category = Output)
 	FPDMFragment_Action Action;
 };
@@ -30,24 +31,23 @@ struct PDRTSBASE_API FPDMEvaluator_EntityAction : public FMassStateTreeEvaluator
 {
 	GENERATED_BODY()
 
+	/** @brief Instance data shorthand */
 	using FInstanceDataType = FPDMData_Action;
 	
-	/** @brief */
+	/** @brief Links: EntitySubsystemHandle, EntityActionHandle, MassSignalSubsystemHandle */
 	virtual bool Link(FStateTreeLinker& Linker) override;
-	/** @brief */
+	/** @return the static struct of the instance data shorthand */
 	virtual const UStruct* GetInstanceDataType() const override { return FPDMData_Action::StaticStruct(); }
-	/** @brief */
+	/** @brief Only calls Super. Reserved for future use */
 	virtual void TreeStop(FStateTreeExecutionContext& Context) const override;
-	/** @brief */
+	/** @brief Copies data into the instance data from the entity manager*/
 	virtual void Tick(FStateTreeExecutionContext& Context, const float DeltaTime) const override;
-	/** @brief */
+	/** @brief Resets the instance data values */
 	void Reset(FStateTreeExecutionContext& Context) const;
 	
-	/** @brief */
+	/* Links/handles */
 	TStateTreeExternalDataHandle<UMassSignalSubsystem> MassSignalSubsystemHandle;
-	/** @brief */
 	TStateTreeExternalDataHandle<UMassEntitySubsystem> EntitySubsystemHandle;
-	/** @brief */
 	TStateTreeExternalDataHandle<FPDMFragment_Action> EntityActionHandle;
 };
 

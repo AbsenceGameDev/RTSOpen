@@ -9,106 +9,105 @@
 
 #include "RTSOConversationNodes.generated.h"
 
-/** @brief */
+/** @brief Conversation Task that can be used in the conversation editor. Speaking task with potential choices */
 UCLASS()
 class URTSOConversationTask_Speak : public UConversationTaskNode
 {
 	GENERATED_BODY()
 
 public:
-	/** @brief */
+	/** @brief ctor Sets bHasDynamicChoices to true */
 	URTSOConversationTask_Speak();
 	
-	/** @brief */
+	/** @brief Advances to conversation if there are no static choices, pauses and sends choices if it can, with a message constructed in the function from the tasks 'Message' property */
 	virtual FConversationTaskResult ExecuteTaskNode_Implementation(const FConversationContext& Context) const override;
 
-	/** @brief */
+	/** @brief The message we want the participant to speak. Ideally source from string-table in the conversation editor */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
 	FText Message{};
 
-	/** @brief */
+	/** @brief The tag of the participant we want to speak */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
 	FGameplayTag ParticipantTag{};	
 };
 
-/** @brief */
+/** @brief Conversation Task that can be used in the conversation editor. Question task with choices */
 UCLASS()
 class URTSOConversationTask_Question : public UConversationTaskNode
 {
 	GENERATED_BODY()
 
 public:
-	/** @brief */
+	/** @brief ctor Sets bHasDynamicChoices to true */
 	URTSOConversationTask_Question();
-	/** @brief */
+	/** @brief Pauses and sends choices, with a message constructed in the function from the tasks 'Message' property */
 	virtual FConversationTaskResult ExecuteTaskNode_Implementation(const FConversationContext& Context) const override;
 
-	/** @brief */
+	/** @brief The message we want the participant to speak. Ideally source from string-table in the conversation editor */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
 	FText Message{};
 };
 
-/** @brief */
+/** @brief Conversation Task that can be used in the conversation editor. Reverts to the previous choice node */
 UCLASS()
 class URTSOConversationTask_RevertLatest : public UConversationTaskNode
 {
 	GENERATED_BODY()
 
 public:
-	/** @brief */
+	/** @brief calls ReturnToCurrentClientChoice. In engine source this pops the node stack after getting the last checkpoint (last checkpoint: ClientBranchPoints[ClientBranchPoints.Num() - 1]) */
 	virtual FConversationTaskResult ExecuteTaskNode_Implementation(const FConversationContext& Context) const override;
 };
 
-/** @brief */
+/** @brief Conversation Task that can be used in the conversation editor. Reserved for later use */
 UCLASS()
 class URTSOConversationTask_RandomChoice : public UConversationTaskNode
 {
 	GENERATED_BODY()
 
 public:
-	/** @brief */
+	/** @brief ctor Sets bHasDynamicChoices to true */
 	URTSOConversationTask_RandomChoice();
-	/** @brief */
+	/** @brief Reserved for later use */
 	virtual FConversationTaskResult ExecuteTaskNode_Implementation(const FConversationContext& Context) const override;
 
-	/** @brief */
+	/** @brief Reserved for later use. Could be used for a randomized message perhaps */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
 	FText Message{};
 
-	/** @brief */
+	/** @brief Reserved for later use. Could be used as the participant that supplies the random choice or message perhaps*/
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
 	FGameplayTag ParticipantTag{};		
 };
 
-/** @brief */
+/** @brief Conversation Side Effect that can be used in the conversation editor. Plays effects. in progress */
 UCLASS()
 class URTSOConversationEffect_PlayEffects : public UConversationSideEffectNode
 {
 	GENERATED_BODY()
 
 public:
-	/** @brief */
+	/** @brief Plays '2D' sound effects @todo also play VFX, might need some VFX Parameter structure here to supply world parameters such as transform */
 	virtual void ServerCauseSideEffect_Implementation(const FConversationContext& Context) const override;
 	
-	/** @brief */
+	/** @brief The actual sound we want to play */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
 	class USoundBase* Sound = nullptr;
 
-	/** @brief */
+	/** @brief Reserved for later use. Actual niagara effects we want to play */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
 	class UNiagaraSystem* VFX = nullptr;
 };
 
-/** @brief */
+/** @brief Conversation Requirement node that can be used in the conversation editor. Always fail conversation nodes this exists on. Reserve for later use (Makes sense if we can dynamically apply this on a conversation, otherwise I might remove it)*/
 UCLASS()
 class URTSOConversationReq_AlwaysFail : public UConversationRequirementNode
 {
 	GENERATED_BODY()
 
 public:
-	/** @brief */
+	/** @brief returns EConversationRequirementResult::FailedButVisible*/
 	virtual EConversationRequirementResult IsRequirementSatisfied_Implementation(const FConversationContext& Context) const override;
-	
 };
 
 

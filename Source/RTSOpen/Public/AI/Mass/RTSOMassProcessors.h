@@ -14,7 +14,7 @@ class UNavigationSystemV1;
 class UMassEntitySubsystem;
 
 /**
- * @brief Initializes RTS entities animation data
+ * @brief Initializes RTS entities animation data. Reserved Subclass
  */
 UCLASS()
 class RTSOPEN_API URTSOProcessor_InitializeAgents : public UPDMProcessor_InitializeEntities
@@ -22,17 +22,16 @@ class RTSOPEN_API URTSOProcessor_InitializeAgents : public UPDMProcessor_Initial
 	GENERATED_BODY()
 
 public:
-	/** @brief */
 	URTSOProcessor_InitializeAgents() : Super() {};
 	
-	/** @brief */
+	/** @brief Reserved */
 	virtual void Execute(FMassEntityManager& EntityManager, FMassExecutionContext& Context) override { Super::Execute(EntityManager, Context); }
-	/** @brief */
+	/** @brief Reserved */
 	virtual void ConfigureQueries() override { Super::ConfigureQueries(); }
-	/** @brief */
+	/** @brief Reserved */
 	virtual void Initialize(UObject& Owner) override { Super::Initialize(Owner); }
 
-	/** @brief */
+	/** @brief Reserved */
 	TObjectPtr<UPDInteractSubsystem> InteractionSubsystem;
 };
 

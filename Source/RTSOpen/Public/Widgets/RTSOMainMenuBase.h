@@ -15,69 +15,59 @@ class RTSOPEN_API URTSOMainMenuBase : public UCommonActivatableWidget
 {
 	GENERATED_BODY()
 	
-	/** @brief */
+	/** @brief Clears tge existing stack and Adds a menu widget to the widget stack */
 	virtual void NativeOnActivated() override;
 
 public:
-	/** @brief */
+	/** @brief Push teh given widget to the stack */
 	UFUNCTION(BlueprintNativeEvent, BlueprintCallable)
 	void PushToWidgetStack(TSubclassOf<UCommonActivatableWidget> Subclass);
 
-	/** @brief */
+	/** @brief Sets up the menu button delegates, calls SetupInnerMenuDelegates after binding the 'resume' and 'quit' buttons */
 	UFUNCTION()
 	void BindButtonDelegates(AActor* ActorToBindAt);
-	/** @brief */
+	/** @brief Sets up the menu button delegates so they adds the correct behaviour for the different buttons, such as opening the save or load screen. */
 	void SetupInnerMenuDelegates(const URTSOMenuWidget* OuterMenu);
 
-	/** @brief */
+	/** @todo Add settings widget to the stack and binds to it's button events */
 	UFUNCTION() void SettingsTargetWidget();	
-	/** @brief */
+	/** @brief Adds Save-game widget to the stack and binds to it's save slot buttons */
 	UFUNCTION() void SaveTargetWidget();
-	/** @brief */
+	/** @brief Adds Load-game widget to the stack and binds to it's load slot buttons */
 	UFUNCTION() void LoadTargetWidget();
 
 	// Fix this, not scalable at all
-	/** @brief */
+	/** @brief Save or load based on value of 'Type' into the given slot as indicated by 'SlotIdx' */
 	UFUNCTION() void SaveOrLoadSlot(TEnumAsByte<ERTSOSaveType> Type, int32 SlotIdx);
-	/** @brief */
-	UFUNCTION() void LoadSlot0() { SaveOrLoadSlot(ERTSOSaveType::LOAD, 0); };
-	/** @brief */
-	UFUNCTION() void LoadSlot1() { SaveOrLoadSlot(ERTSOSaveType::LOAD, 1); };
-	/** @brief */
-	UFUNCTION() void LoadSlot2() { SaveOrLoadSlot(ERTSOSaveType::LOAD, 2); };
-	/** @brief */
-	UFUNCTION() void LoadSlot3() { SaveOrLoadSlot(ERTSOSaveType::LOAD, 3); };
-	/** @brief */
-	UFUNCTION() void LoadSlot4() { SaveOrLoadSlot(ERTSOSaveType::LOAD, 4); };
-	/** @brief */
+	UFUNCTION() void LoadSlot0() { SaveOrLoadSlot(ERTSOSaveType::LOAD, 0); }; /**< @brief Loads into slot 0, calling into SaveOrLoadSlot */
+	UFUNCTION() void LoadSlot1() { SaveOrLoadSlot(ERTSOSaveType::LOAD, 1); }; /**< @brief Loads into slot 1, calling into SaveOrLoadSlot */
+	UFUNCTION() void LoadSlot2() { SaveOrLoadSlot(ERTSOSaveType::LOAD, 2); }; /**< @brief Loads into slot 2, calling into SaveOrLoadSlot */
+	UFUNCTION() void LoadSlot3() { SaveOrLoadSlot(ERTSOSaveType::LOAD, 3); }; /**< @brief Loads into slot 3, calling into SaveOrLoadSlot */
+	UFUNCTION() void LoadSlot4() { SaveOrLoadSlot(ERTSOSaveType::LOAD, 4); }; /**< @brief Loads into slot 4, calling into SaveOrLoadSlot */
+	/** @brief Closes the load game widget */
 	UFUNCTION() void CloseLoadSlot();
 
-	/** @brief */
-	UFUNCTION() void SaveSlot0() { SaveOrLoadSlot(ERTSOSaveType::SAVE, 0); };
-	/** @brief */
-	UFUNCTION() void SaveSlot1() { SaveOrLoadSlot(ERTSOSaveType::SAVE, 1); };
-	/** @brief */
-	UFUNCTION() void SaveSlot2() { SaveOrLoadSlot(ERTSOSaveType::SAVE, 2); };
-	/** @brief */
-	UFUNCTION() void SaveSlot3() { SaveOrLoadSlot(ERTSOSaveType::SAVE, 3); };
-	/** @brief */
-	UFUNCTION() void SaveSlot4() { SaveOrLoadSlot(ERTSOSaveType::SAVE, 4); };
-	/** @brief */
+	UFUNCTION() void SaveSlot0() { SaveOrLoadSlot(ERTSOSaveType::SAVE, 0); }; /**< @brief Saves into slot 0, calling into SaveOrLoadSlot */
+	UFUNCTION() void SaveSlot1() { SaveOrLoadSlot(ERTSOSaveType::SAVE, 1); }; /**< @brief Saves into slot 1, calling into SaveOrLoadSlot */
+	UFUNCTION() void SaveSlot2() { SaveOrLoadSlot(ERTSOSaveType::SAVE, 2); }; /**< @brief Saves into slot 2, calling into SaveOrLoadSlot */
+	UFUNCTION() void SaveSlot3() { SaveOrLoadSlot(ERTSOSaveType::SAVE, 3); }; /**< @brief Saves into slot 3, calling into SaveOrLoadSlot */
+	UFUNCTION() void SaveSlot4() { SaveOrLoadSlot(ERTSOSaveType::SAVE, 4); }; /**< @brief Saves into slot 4, calling into SaveOrLoadSlot */
+	/** @brief Closes the save-game widget */
 	UFUNCTION() void CloseSaveSlot();
 	
-	/** @brief */
+	/** @brief The widget stack which will hold our menus/widgetlayers */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Meta = (BindWidget))
 	class UCommonActivatableWidgetStack* WidgetStack;
 
-	/** @brief */
+	/** @brief The widget class for the Active menu widget */
 	UPROPERTY(EditAnywhere, BlueprintReadOnly)
 	TSubclassOf<URTSOMenuWidget> WidgetClass = nullptr;
 
-	/** @brief */
+	/** @brief The widget class for the save-/load-game dialogs */
 	UPROPERTY(EditAnywhere, BlueprintReadOnly)
 	TSubclassOf<URTSOSaveGameDialog> ConfirmDialogClass = nullptr;	
 	
-	/** @brief */
+	/** @brief Active menu widget instance. Will be the main widget on the widget stack*/
 	UPROPERTY()
 	URTSOMenuWidget* ActiveMenuInstance = nullptr;
 };

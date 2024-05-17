@@ -17,7 +17,7 @@ class PDRTSBASE_API UPDCrowdTrait : public UMassVisualizationTrait
 public:
 	UPDCrowdTrait();
 
-	/** @brief */
+	/** @brief Adds tags and fragments: FMassCrowdTag */
 	virtual void BuildTemplate(FMassEntityTemplateBuildContext& BuildContext, const UWorld& World) const override;
 };
 
@@ -32,14 +32,14 @@ class PDRTSBASE_API UPDMTrait_RTSEntity : public UMassEntityTraitBase
 	GENERATED_BODY()
 
 protected:
-	/** @brief */
+	/** @brief Adds tags and fragments: FPDMTag_RTSEntity, FPDMFragment_RTSEntityBase, FPDMFragment_EntityAnimation, FPDMFragment_SharedAnimData, FPDMFragment_SharedEntity */
 	virtual void BuildTemplate(FMassEntityTemplateBuildContext& BuildContext, const UWorld& World) const override;
 
-	/** @brief */
+	/** @brief Shared animdata within this trait, such as dataasset source */
 	UPROPERTY(EditAnywhere)
 	FPDMFragment_SharedAnimData SharedAnimData;
 
-	/** @brief */
+	/** @brief Shared entity data within this trait, such as selection group navpaths */
 	UPROPERTY(EditAnywhere)
 	FPDMFragment_SharedEntity SharedEntData;	
 };

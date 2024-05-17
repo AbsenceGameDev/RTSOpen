@@ -858,7 +858,6 @@ void ARTSOController::OnEndConversation(const FClientConversationMessagePayload&
 	FViewTargetTransitionParams TransitionParams;
 	TransitionParams.BlendTime = 2.5f;
 	PlayerCameraManager->SetViewTarget(GetPawn(), TransitionParams);
-
 	
 	if (ConversationWidget == nullptr) { return; }
 	ConversationWidget->RemoveFromParent();

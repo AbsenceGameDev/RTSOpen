@@ -7,8 +7,7 @@
 #include "UObject/Interface.h"
 #include "PDRTSActionInterface.generated.h"
 
-
-/** @brief */
+/** @brief Unused, @todo decide if needed or if I should rethink this*/
 UENUM()
 enum class ERTSActionMode : uint8
 {
@@ -22,26 +21,27 @@ UINTERFACE(MinimalAPI) class UPDRTSActionInterface : public UInterface { GENERAT
 /**
  * @brief This interface will be placed on pawns or characters we want to perform an action from.
  * @note It is abstracted in the plugin to allow anything else to hook into it in the game layer
+ *
+ * @note Unused
+ * @todo decide if needed or if I should rethink this
  */
 class PDRTSBASE_API IPDRTSActionInterface
 {
 	GENERATED_BODY()
 
 public:
-	/** @brief */
+	/** @brief Unused, @todo decide if needed or if I should rethink this*/
 	UFUNCTION(BlueprintNativeEvent, CallInEditor, Category = "Action|Interface")
 	void StartAction(ERTSActionMode ActionMode, int32 ActionID) const;
-	/** @brief */
 	virtual void StartAction_Implementation(ERTSActionMode ActionMode, int32 ActionID) const
 	{
 		// Perform actions
 		return;
 	}
 
-	/** @brief */
+	/** @brief Unused, @todo decide if needed or if I should rethink this*/
 	UFUNCTION(BlueprintNativeEvent, CallInEditor, Category = "Action|Interface")
 	void StopAction(ERTSActionMode ActionMode, int32 ActionID) const;
-	/** @brief */
 	virtual void StopAction_Implementation(ERTSActionMode ActionMode, int32 ActionID) const
 	{
 		// Perform actions

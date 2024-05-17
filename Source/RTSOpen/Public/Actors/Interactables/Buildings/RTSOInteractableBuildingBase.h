@@ -15,18 +15,18 @@ class RTSOPEN_API ARTSOInteractableBuildingBase : public APDInteractActor
 	GENERATED_BODY()
 
 public:
-	/** @brief */
+	/** @brief Sets default job to 'TAG_AI_Job_WalkToTarget' and enables the tickcomponent*/ 
 	ARTSOInteractableBuildingBase();
-	/** @brief */
+	/** @brief Only calls Super. Reserved for later use  */
 	virtual void Tick(float DeltaTime) override;
-	/** @brief */
+	/** @brief Only calls Super. Reserved for later use  */
 	virtual void BeginPlay() override;
 	
-	/** @brief */
+	/** @brief adds 'JobTag' to a 'FGameplayTagContainer' and returns it */
 	virtual FGameplayTagContainer GetGenericTagContainer_Implementation() const override;
 
 private:
-	/** @brief */
+	/** @brief JobTag associated with this actor */
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Meta = (AllowPrivateAccess="true"))
 	FGameplayTag JobTag{};	
 };

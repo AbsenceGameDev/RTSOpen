@@ -16,7 +16,7 @@ class UPDPersistentIDSubsystem : public UEngineSubsystem
 	GENERATED_BODY()
 
 public:
-	/** @brief */
+	/** @brief Persistent IDs tracked by the subsystem */
 	UPROPERTY()
 	TSet<int32> TrackedPersistentIDs;
 	
@@ -30,17 +30,18 @@ struct FPDPersistentID
 	GENERATED_BODY()
 
 public:
-	/** @brief */
+	/** @brief Default empty ctor defines an invalid persistent ID*/
 	FPDPersistentID() : BitSet_ID(INVALID_ID) {}
-	/** @brief */
+
+	/** @brief Supplied ID might cause conflicts, only meant to be used internally when iterating comparisons */
 	FPDPersistentID(uint32 InID) : BitSet_ID(InID) {}
 	
-	/** @brief */
+	/** @brief Gets the internal ID integer */
 	uint32 GetID() const { return BitSet_ID; }
-	/** @brief */
+	/** @brief Checks that the internal ID integer is not equals to INVALID_ID. Dos not check with the subsystem it is actually generated and tracked  */
 	bool IsValidID() const { return BitSet_ID != INVALID_ID; }
 	
-	/** @brief */
+	/** @brief Generates a new persistent ID. Compares with the tracked persistent ID list in 'UPDPersistentIDSubsystem' to ensure no collisions */
 	static FPDPersistentID GenerateNewPersistentID()
 	{
 		TSet<int32>& ExistingIDs = GEngine->GetEngineSubsystem<UPDPersistentIDSubsystem>()->TrackedPersistentIDs;
@@ -75,9 +76,8 @@ public:
 	}
 	
 
-	/** @brief */
-	bool operator==(const FPDPersistentID& Other) const { return this->BitSet_ID == Other.BitSet_ID; }
-
+	/* Comparator operators - Start */
+	bool operator==(const FPDPersistentID& Other) const { return this->BitSet_ID == Other.BitSet_ID; } 
 	bool operator!=(const FPDPersistentID& Other) const { return (*this == Other) == false; }
 	bool operator> (const FPDPersistentID& Other) const { return this->BitSet_ID > Other.BitSet_ID; }
 	bool operator< (const FPDPersistentID& Other) const { return this->BitSet_ID < Other.BitSet_ID; }
@@ -95,12 +95,11 @@ public:
 	FPDPersistentID& operator++(){ BitSet_ID++; return *this;}
 	FPDPersistentID& operator--(){ BitSet_ID--; return *this;}
 	FPDPersistentID& operator++(int){ FPDPersistentID Old = *this; BitSet_ID++; return Old;}
+	/* Comparator operators - End */
 	
 private:
-	/** @brief */
-	uint32 BitSet_ID; // Wrapped data (Player ID)
 	
-	/** @brief */
+	/** @brief Searches the list in reverse, from the given starting point, and only returns true if it finds an unused ID*/
 	static bool ReverseSearch(const TSet<int32>& ExistingIDs, const int64 RandomStartingPoint, FPDPersistentID& Value)
 	{
 		if (ExistingIDs.IsEmpty()) { Value = RandomStartingPoint; return true; }
@@ -120,7 +119,7 @@ private:
 		return false;
 	}
 
-	/** @brief */
+	/** @brief Searches the list in forward direction, from the given starting point, and only returns true if it finds an unused ID*/
 	static bool ForwardSearch(const TSet<int32>& ExistingIDs, const int64 RandomStartingPoint, FPDPersistentID& Value)
 	{
 		if (ExistingIDs.IsEmpty()) { Value = RandomStartingPoint; return true; }
@@ -138,9 +137,12 @@ private:
 		}
 		return false;
 	}
+
+	/** @brief Wrapped data (Persistent ID) */
+	uint32 BitSet_ID;	
 };
 
-/** @brief */
+/** @brief Hash the persistent ID*/
 inline uint32 GetTypeHash(const FPDPersistentID& PersistentID)
 {
 	return FCrc::MemCrc32(&PersistentID,sizeof(FPDPersistentID));

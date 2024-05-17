@@ -19,7 +19,7 @@ class UMassSignalSubsystem;
 class UNavigationSystemV1;
 class UMassEntitySubsystem;
 
-/** @brief CONTINUE COMMENTS HERE AFTER COMMITTING AND PUSHING */
+/** @brief CONTINUE COMMENTS HERE */
 #define DECLARE_PROCESSOR_BODY \
 virtual void Execute(FMassEntityManager& EntityManager, FMassExecutionContext& Context) override; \
 virtual void ConfigureQueries() override; \
@@ -31,42 +31,47 @@ virtual void Execute(FMassEntityManager& EntityManager, FMassExecutionContext& C
 virtual void ConfigureQueries() override {}; \
 virtual void Initialize(UObject& Owner) override {};
 
-/** @brief */
+/* @todo remove these, will just be confusing as to what types we are actually handling */
 template<typename TFrag>
 using TConstFragment = const TConstArrayView<TFrag>;
-/** @brief */
 template<typename TFrag>
 using TMutFragment = const TArrayView<TFrag>;
-/** @brief */
 template<typename TFrag>
 using TSharedFragment = const TFrag&;
-/** @brief */
 template<typename TFrag>
 using TMutSharedFragment = TFrag&;
 
 /**
  * @brief Moves the entities around to a given target, tasks have the responsibility to create actual multi-point paths
+ * @note Executes before avoidance
+ * @note Calculates shared navpaths for selection groups which have been marked as dirty
  */
 UCLASS()
 class PDRTSBASE_API UPDProcessor_MoveTarget : public UMassProcessor
 {
 	GENERATED_BODY()
 
-public:
+public:	
+	/** @brief Sets execution order: Before Avoidance */
 	UPDProcessor_MoveTarget();
 
 	/* Macro helper to declare the required processor functions */
 	DECLARE_PROCESSOR_BODY
 
 private:
-	/** @brief */
+	/** @brief Processors entity query,
+	 *  @requires FTransformFragment, FMassMoveTargetFragment, FMassSimulationVariableTickChunkFragment, FPDMFragment_SharedEntity*/
 	FMassEntityQuery EntityQuery;
-	/** @brief */
+	
+	/** @brief Local Signal subsystem pointer
+	 * @note UPDProcessor_MoveTarget::Execute Calls SignalSubsystem->SignalEntities(UE::Mass::Signals::FollowPointPathDone, ..)
+	 * when entities has finished moving to their targets */
 	TObjectPtr<UMassSignalSubsystem> SignalSubsystem;
 };
 
 /**
  * @brief Initializes RTS Entities, currently only sets up possibly shared animation data
+ * - The '::Execute' function refreshes the A2T data for the entities
  */
 UCLASS()
 class PDRTSBASE_API UPDMProcessor_InitializeEntities : public UMassObserverProcessor
@@ -80,7 +85,8 @@ public:
 	DECLARE_PROCESSOR_BODY
 
 protected:
-	/** @brief */
+	/** @brief Processors entity query,
+	 *  @requires FPDMFragment_RTSEntityBase, FPDMFragment_SharedAnimData, FPDMTag_RTSEntity, FMassRepresentationFragment, FPDMFragment_EntityAnimation*/
 	FMassEntityQuery EntityQuery;
 };
 
@@ -98,7 +104,7 @@ public:
 	/* Macro helper to declare the required processor functions */
 	DECLARE_PROCESSOR_BODY
 	
-	/** @brief */
+	/** @brief Processes which vertex animation should be used based on movement and/or action */
 	static bool ProcessVertexAnimation(
 		int32 EntityIdx,
 		TConstFragment<FMassRepresentationLODFragment>& RepresentationLODFragments,
@@ -109,7 +115,7 @@ public:
 		const FMassInstancedStaticMeshInfoArrayView& MeshInfo,
 		const TArrayView<FMassInstancedStaticMeshInfo>& MeshInfoInnerArray,
 		const UPDMProcessor_EntityCosmetics* Self);
-	/** @brief */
+	/** @brief Process material instance data injection */
 	static bool ProcessMaterialInstanceData(
 		const FMassEntityHandle& EntityHandle,
 		const FMassRepresentationLODFragment& RepLOD,
@@ -117,14 +123,19 @@ public:
 		FMassInstancedStaticMeshInfo& ISMInfo,
 		FPDMFragment_RTSEntityBase* RTSEntityFragment);
 
-	/** @brief */
+	/** @brief Dispatch A2T data as batched custom data to the FMassInstancedStaticMeshInfo, passing it along to the ISM */
 	void UpdateISMVertexAnimation(FMassInstancedStaticMeshInfo& ISMInfo, FPDMFragment_EntityAnimation& AnimationData,
 	                              float LODSignificance, float PrevLODSignificance, int32 NumFloatsToPad) const;
 
 protected:
-	/** @brief */
+	/** @brief Processors entity query,
+	*  @requires FPDMTag_RTSEntity, FPDMFragment_RTSEntityBase, FPDMFragment_EntityAnimation, FPDMFragment_SharedAnimData,
+	*  FMassMoveTargetFragment, FMassRepresentationFragment, FMassRepresentationLODFragment,
+	*  FMassVelocityFragment, FTransformFragment, FMassVisualizationChunkFragment */
 	FMassEntityQuery EntityQuery;
-	/** @brief */
+
+	/** @brief representation subsystem pointer
+	 * @note UPDMProcessor_EntityCosmetics::Execute Calls RepresentationSubsystem to get the mutable InstancedStaticMeshInfo */
 	TObjectPtr<UMassCrowdRepresentationSubsystem> RepresentationSubsystem;
 };
 
@@ -132,31 +143,26 @@ UCLASS() class PDRTSBASE_API UPDMProcessor_Visualization : public UMassVisualiza
 { public: GENERATED_BODY() UPDMProcessor_Visualization() { bAutoRegisterWithProcessingPhases = true; } };
 
 /*
- * Created a crowd version for parallelization of the crowd with the traffic
+ * Reserved for future use for possible crowd behaviour LOD Visualization, does nothing much right now. 
+ * - Execution Order: After 'UE::Mass::ProcessorGroupNames::LODCollector'
+ * - Execution Group: 'UE::Mass::ProcessorGroupNames::LOD'
  */
 UCLASS(Meta=(DisplayName="(Permadev) Crowd visualization"))
 class PDRTSBASE_API UPDMProcessor_LODVisualization : public UMassVisualizationLODProcessor
 {
 	GENERATED_BODY()
 public:
+	/** @brief Sets to autoregister the processor, set the execution flags and the execution order, */
 	UPDMProcessor_LODVisualization();
 
 protected:
 	/* Macro helper to declare the required processor functions */
 	DECLARE_PROCESSOR_BODY
-
-	// void DispatchCollisionOverwrite();
-
-	// UFUNCTION()
-	// virtual void OverrideISMOwnerCollision();
-
-protected:
-	/** @brief */
-	bool bHasUpdatedMassISMSettings = false;
 };
 
-
-/** @brief */
+/** @brief Lod collector subclass which override the query configuration function
+ * - Exectution Order: After 'UE::Mass::ProcessorGroupNames::Movement'
+ */
 UCLASS(Meta = (DisplayName = "Crowd LOD Collection"))
 class PDRTSBASE_API UPDMProcessor_LODCollector : public UMassLODCollectorProcessor
 {
@@ -165,22 +171,23 @@ class PDRTSBASE_API UPDMProcessor_LODCollector : public UMassLODCollectorProcess
 	UPDMProcessor_LODCollector() { bAutoRegisterWithProcessingPhases = true; };
 
 protected:
-	/** @brief */
+	/** @brief Adds tag requirement for FMassCrowdTag to the base lod collectors entity-query properties */
 	virtual void ConfigureQueries() override;
 };
 
-
-//
-// Oct tree entity collision and hash grid processing
-/** @brief */
+/** @brief Octree cell processing / entity tracking
+ * - ExecutionOrder: After 'UE::Mass::ProcessorGroupNames::Movement'
+ */
 UCLASS()
 class PDRTSBASE_API UPDOctreeProcessor : public UMassProcessor
 {
 	GENERATED_BODY()
 
 public:
+	/** @brief Sets execution order and execution flags */
 	UPDOctreeProcessor();
-	/** @brief */
+	/** @brief Draws all octree cells using async draw via Chaos.
+	 * Attempts to force enable chaos debugging if it is not enabled already */
 	void DebugDrawCells();
 
 protected:	
@@ -188,24 +195,22 @@ protected:
 	DECLARE_PROCESSOR_BODY
 
 public:	
-	/** @brief */
-	FMassEntityQuery AddToHashGridQuery;
-	/** @brief */
+	/** @brief Processors entity query,
+	*   @requires FMassVelocityFragment, FTransformFragment, FPDOctreeFragment, FPDInOctreeGridTag */
 	FMassEntityQuery UpdateOctreeElementsQuery;
-	/** @brief */
-	FMassEntityQuery RemoveFromGridEntityQuery;
 	
-	/** @brief */
+	/** @brief Local pointer to the RTSSubsystem, to source the octree from */
 	UPROPERTY()
 	class UPDRTSBaseSubsystem* RTSSubsystem = nullptr;
 
-	/** @brief */
+	/** @brief Declaration of console variable for draw cells command */
 	static TAutoConsoleVariable<bool> CVarDrawCells;
 
-	/** @brief */
+	/** @brief Flag to make sure we aren't excessively calling GEngine->HandleDeferCommand */
 	bool bSentChaosCommand = false;
 };
 
+/** @brief Adding of octree cells upon observer add operation (EMassObservedOperation::Add) */
 UCLASS()
 class PDRTSBASE_API UPDOctreeEntityObserver : public UMassObserverProcessor
 {
@@ -219,24 +224,24 @@ protected:
 	DECLARE_PROCESSOR_BODY
 
 public:	
-	/** @brief */
+	/** @brief Processors entity query,
+	 *  @requires FPDOctreeFragment, FTransformFragment, FAgentRadiusFragment */
 	FMassEntityQuery EntityQuery;
 
-	/** @brief */
+	/** @brief Local pointer to the RTSSubsystem, to source the octree from */
 	UPROPERTY()
 	class UPDRTSBaseSubsystem* RTSSubsystem = nullptr;
 
-	/** @brief */
+	/** @brief Element cell size, calculated from agent radius if available, otherwise assigned by default settings */
 	UPROPERTY()
-	float ElementGridSize = 0.0; //assigned to by default settings
+	float ElementCellSize = 0.0;
 };
 
-
+/** @brief Removal of octree cells upon observer remove operation (EMassObservedOperation::Remove) */
 UCLASS()
 class PDRTSBASE_API UPDGridCellDeinitObserver : public UMassObserverProcessor
 {
 	GENERATED_BODY()
-
 public:
 	
 	UPDGridCellDeinitObserver();
@@ -246,14 +251,19 @@ protected:
 	DECLARE_PROCESSOR_BODY
 
 public:	
-	/** @brief */
+	/** @brief Processors entity query,
+	 *  @requires FPDOctreeFragment */	
 	FMassEntityQuery EntityQuery;
 
-	/** @brief */
+	/** @brief Local pointer to the RTSSubsystem, to source the octree from */
 	UPROPERTY()
 	class UPDRTSBaseSubsystem* RTSSubsystem = nullptr;
 };
 
+/** @brief Entity on entity 'collision' processor,
+ *  @todo Finish testing the bounds check
+ *  - Execution Order : After 'UPDOctreeProcessor' & After 'UE::Mass::ProcessorGroupNames::Movement'
+ */
 UCLASS()
 class PDRTSBASE_API UPDCollisionSignalProcessor : public UMassSignalProcessorBase
 {
@@ -267,10 +277,11 @@ protected:
 	DECLARE_PROCESSOR_BODY
 	
 public:	
-	/** @brief */
+	/** @brief Processors entity query,
+	 *  @requires FMassVelocityFragment, FTransformFragment, FPDOctreeQueryTag, UMassSignalSubsystem */
 	FMassEntityQuery WorldOctreeEntityQuery{};
 
-	/** @brief */
+	/** @brief Local pointer to the RTSSubsystem, to source the octree from */
 	UPROPERTY()
 	class UPDRTSBaseSubsystem* RTSSubsystem = nullptr;
 };

@@ -1,7 +1,7 @@
 ﻿/* @author: Ario Amin @ Permafrost Development. @copyright: Full BSL(1.1) License included at bottom of the file  */
 
 #include "DelayAction.h"
-#include "..\..\Public\Core\RTSOInputStackSubsystem.h"
+#include "Core/RTSOInputStackSubsystem.h"
 
 void URTSOInputStackSubsystem::OnWorldBeginPlay(UWorld& InWorld)
 {

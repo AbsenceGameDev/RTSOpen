@@ -88,7 +88,7 @@ struct PDRTSBASE_API FPDMFragment_EntityAnimation : public FMassFragment
 	
 	/** @brief Weak pointer to the A2T data */
 	UPROPERTY(EditAnywhere)
-	TWeakObjectPtr<UAnimToTextureDataAsset> AnimToTextureData;
+	TWeakObjectPtr<UAnimToTextureDataAsset> A2TData;
 
 	/** @brief Override animation set-up via task or other processor than default animation processor */
 	UPROPERTY(EditAnywhere)

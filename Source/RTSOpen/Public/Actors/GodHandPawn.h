@@ -7,6 +7,7 @@
 #include "GameplayTagContainer.h"
 #include "InputActionValue.h"
 #include "MassEntityTypes.h"
+#include "RTSOpenCommon.h"
 #include "Containers/Deque.h"
 #include "GameFramework/Pawn.h"
 #include "Interfaces/RTSOConversationInterface.h"
@@ -32,35 +33,46 @@ class RTSOPEN_API AGodHandPawn
 	GENERATED_BODY()
 
 public:
-	/** @brief */
+	/** @brief Sets up subobjects such as a scene root, the camera, spring arm, the cursor mesh, the collision component,
+	 * the interact component, the inventory component, the movement component and lastly the participant component */
 	AGodHandPawn();
 
-	/** @brief */
+	/** @brief Calls 'TrackMovement(), HoverTick(), RotationTick()'
+	 * and if bUpdatePathOnTick is true then call RefreshPathingEffects()*/
 	virtual void Tick(float DeltaTime) override;
 
-	/** @brief */
+	/** @brief Rotates towards the requested direction, rotates in 90 degree increments, snaps to worlds cardinal directions*/
 	void RotationTick(float& DeltaTime);
 	
-	/** @brief */
+	/** @brief Offset own actor location based on tracked actor, to keep in view */
 	void TrackUnitMovement();
-	/** @brief */
+
+	/** @brief Binds collision delegates, updates zoom/magnify levels, setup ISM component,
+	 * @todo backlog: when the design issues with enhanced input have been resolved by epic then remove the reset value stack of the input subsystem */
 	virtual void BeginPlay() override;
 
-	/** @brief */
+	/** @brief Refreshes the instance settings from the settings table handle */
+	void RefreshSettingsInstance();
+	
+	/** @brief Validates that the instance settings table row handle has been set */
+	virtual EDataValidationResult IsDataValid(FDataValidationContext& Context) const override;
+
+	/** @brief Only calls super. Reserved for later use */
 	virtual void OnConstruction(const FTransform& Transform) override;
 
-	/** @brief */
+	/** @brief Retrieves the ISM Agent component from UPDRTSBaseSubsystem and sets its entity manager*/
 	UFUNCTION()
 	void InitializeISMAgent();
 
-	/** @brief */
+	/** @brief Updates the magnify value based on our scroll input.
+	 * Sources the magnify values from either a an actual float curve asset or if not available a curve defined as a math expression */
 	void UpdateMagnification();
-	/** @brief */
+	/** @brief Updates the cursor location and 'snaps' to the currently hovered target, if any*/
 	void UpdateCursorLocation(float DeltaTime);
-	/** @brief */
+	/** @brief Calls super and clears the input value stack, so any remaining values on teh input stack isn't being applied to the new pawn*/
 	virtual void PossessedBy(AController* NewController) override;
 	
-	/** @brief */
+	/** @brief If the other actor has an interact interface, then it assigns 'OtherActor' parameter to the 'HoveredActor' property */
 	UFUNCTION()
 	void OnCollisionBeginOverlap(
 		UPrimitiveComponent* OverlappedComponent,
@@ -69,206 +81,137 @@ public:
 		int32                OtherBodyIndex,
 		bool                 bFromSweep,
 		const                FHitResult& SweepResult);
-	/** @brief */
+	/** @brief Clears 'HoveredActor' */
 	void ActorEndOverlapValidation();
 
-	/** @brief */
+	/** @brief Calls 'ActorEndOverlapValidation()' */
 	UFUNCTION()
 	void OnCollisionEndOverlap(
 		UPrimitiveComponent* OverlappedComponent,
 		AActor*              OtherActor,
 		UPrimitiveComponent* OtherComp,
 		int32                OtherBodyIndex);
-	/** @brief */
+	/** @brief Sets the ISM agent component. @todo This is likely not needed anymore, will likely be removed in a coming commit */
 	virtual void NotifyActorBeginOverlap(AActor* OtherActor) override;
-	/** @brief */
+	/** @brief Calls 'ActorEndOverlapValidation()' @todo This might not needed anymore. revise if should be removed*/
 	virtual void NotifyActorEndOverlap(AActor* OtherActor) override;
 
-	/** @brief */
+	/** @brief 'Traces' against mass entities via a bounds-query of the octree */
 	virtual FMassEntityHandle OctreeEntityTrace(const FVector& StartLocation, const FVector& EndLocation);
-	/** @brief */
-	FMassEntityHandle FindClosestMeshInstance();
-	/** @brief */
+	/** @brief Projects the mouse to the world and then performs and octree bounds query in a bound starting at camera and ending at trace location */
+	FMassEntityHandle FindClosestMassEntity();
+	/** @brief Does an overlap check and picks the closes actor inheriting from IPDInteractInterface, if any*/
 	AActor* FindClosestInteractableActor() const;
-	/** @brief */
+	/** @brief Helper to return the value of the given entity's transform fragment, if entity is valid. */
 	const FTransform& GetEntityTransform(const FMassEntityHandle& Handle) const;
-	/** @brief */
+	/** @brief Calls 'FindClosestMassEntity()' and 'FindClosestInteractableActor()' */
 	void HoverTick(float DeltaTime);
 
-	/** @brief */
+	/** @brief Spawns an interactable. @todo backlog build system */
 	UFUNCTION(BlueprintNativeEvent, BlueprintCallable)
 	void BeginBuild(TSubclassOf<AActor> TargetClass, TMap<FGameplayTag /*Resource tag*/, FPDItemCosts>& ResourceCost);
 
 	/* RTSO Input Interface - Start */
-	/** @brief */
+	/** @brief Adds movement input to the input vector scaled by 100 */
 	virtual void ActionMove_Implementation(const FInputActionValue& Value) override;
-	/** @brief */
+	/** @brief Sets Magnification strength the the value of the input action, in this case bound to scroll */
 	virtual void ActionMagnify_Implementation(const FInputActionValue& Value) override;
-	/** @brief */
+	/** @brief Adds a rotation direction to the rotation queue. actual rotation updates in RotationTick() where it snaps the target to a cardinal direction*/
 	virtual void ActionRotate_Implementation(const FInputActionValue& Value) override;
-	/** @brief */
+	/** @brief Drags and moves the viewport, currently unused / unset input */
 	virtual void ActionDragMove_Implementation(const FInputActionValue& Value) override;
-	/** @brief */
-	virtual void ActionWorkerUnit_Triggered_Implementation(const FInputActionValue& Value) override;
-	/** @brief */
+
+	/** @brief If a valid mass entity or target actor hovered then update niagara effect, otherwise initiate drawing a marquee.*/
 	virtual void ActionWorkerUnit_Started_Implementation(const FInputActionValue& Value) override;
-	/** @brief */
+	/** @brief Called while the input action is being held down, updates 'WorkerUnitActionTarget' with 'HoveredActor'.
+	 * In case we are drawing a marquee, then it also updates the marquee*/
+	virtual void ActionWorkerUnit_Triggered_Implementation(const FInputActionValue& Value) override;
+	/** @brief Calls into IRTSOInputInterface::Execute_ActionWorkerUnit_Completed. Reserve for later use */
 	virtual void ActionWorkerUnit_Cancelled_Implementation(const FInputActionValue& Value) override;
-	/** @brief */
+	/** @brief If we were NOT drawing a marquee: then dispatch ai job to entity, if we had a valid entity.
+	 * If we were drawing a marquee: call MarqueeSelection(EMarqueeSelectionEvent::RELEASEMARQUEE).*/
 	virtual void ActionWorkerUnit_Completed_Implementation(const FInputActionValue& Value) override;
-	/** @brief */
+
+	/** @brief Empty for now. Reserved for later use*/
 	virtual void ActionBuildMode_Implementation(const FInputActionValue& Value) override;
-	/** @brief */
+	/** @brief Empty for now. Reserved for later use*/
 	virtual void ActionClearSelection_Implementation(const FInputActionValue& Value) override;
-	/** @brief */
+	/** @brief This action dispatches any selected group of entities to do a given job for them, the job depends on the target itself */
 	virtual void ActionMoveSelection_Implementation(const FInputActionValue& Value) override;
-	/** @brief */
+	/** @brief Empty for now. Reserved for later use */
 	virtual void ActionAssignSelectionToHotkey_Implementation(const FInputActionValue& Value) override;
-	/** @brief */
+	/** @brief Empty for now. Reserved for later use */
 	virtual void ActionHotkeySelection_Implementation(const FInputActionValue& Value) override;
-	/** @brief */
+	/** @brief Empty for now. Reserved for later use */
 	virtual void ActionChordedBase_Implementation(const FInputActionValue& Value) override;
 	/* RTSO Input Interface - End */
 
 private:
-	/** @brief */
+	/** @brief Refreshes the niagara effect and updates it's visualized navpath */
 	void RefreshPathingEffects();
-	/** @brief */
+	/** @brief Updates collision and cursor mesh to be where the mouse trace intersects with objects in the level*/
 	void TrackMovement(float DeltaTime);
 
 public:
 	/* Gameplay system components */	
-	/** @brief */
+	/** @brief This component performs our interaction traces and is able to interact with 'IPDInteractInterface's */
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category ="RTS|Pawn|GameplayComponents")
 	class UPDInteractComponent* InteractComponent = nullptr;
-	/** @brief */
+	/** @brief Inventory component to keep track of our items, stacks and such.
+	 * Allows trading between out custom mass entity inventory fragments and actor inventory components*/
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category ="RTS|Pawn|GameplayComponents")
 	class UPDInventoryComponent* InventoryComponent = nullptr;
-	/** @brief */
+	/** @brief Conversation participant component for our listener participant (the players own pawn)*/
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category ="RTS|Pawn|GameplayComponents")
 	class UConversationParticipantComponent* ParticipantComponent = nullptr;
 	
 	/* Niagara */
-	/** @brief */
+	/** @briefThe actual niagara effect we want to apply for the pathing visualization */
 	UPROPERTY(EditAnywhere, Category = "RTS|Pawn|Effects")
 	class UNiagaraSystem* NS_WorkerPath;
-	/** @brief */
+	/** @brief The actual niagara component which will run the effect */
 	UPROPERTY(VisibleInstanceOnly, Category = "RTS|Pawn|Effects")
 	class UNiagaraComponent* NC_WorkerPath;
 	
 	/* Scene/actor components */	
-	/** @brief */
+	/** @brief Actors root component */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "RTS|Pawn|Base")
 	class USceneComponent* SceneRoot = nullptr;
-	/** @brief */
+	/** @brief Spring arm fro the camera, we also modify the camera focal distance based on springarm length */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "RTS|Pawn|Base")
 	class USpringArmComponent* Springarm = nullptr;
-	/** @brief */
+	/** @brief Actual camera component. Do not interfere with directly, is handled by the camera manager */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "RTS|Pawn|Base")
 	class UCameraComponent* Camera = nullptr;
-	/** @brief */
+	/** @brief Actual 'cursor/godhand mesh' we want to display */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "RTS|Pawn|Base")
 	class UStaticMeshComponent* CursorMesh = nullptr;
-	/** @brief */
+	/** @brief Collision component for overlaps and overlap checks with regular actors */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "RTS|Pawn|Base")
 	class USphereComponent* Collision = nullptr;
-	/** @brief */
+	/** @brief Pawn (floating) movement component, to enable som basic movement with acceleration and such */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "RTS|Pawn|Base")
 	class UFloatingPawnMovement* PawnMovement = nullptr;
+	
+	/** @brief  Godhand settings, datatable row handle meant to link to an  'FRTSGodhandSettings' datatable entry */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Meta = (RowType = "/Script/RTSOpen.RTSGodhandSettings"))
+	FDataTableRowHandle GodHandSettingsHandle;
 
-	/* State(s) - tracked actors/components */	
-	/** @brief */
-	UPROPERTY(VisibleInstanceOnly, BlueprintReadWrite, Category = "RTS|Pawn|State")
-	AActor* HoveredActor = nullptr;
+	/** @brief The actual instanced Godhand settings, sourced from 'GodHandSettingsHandle' */
+	UPROPERTY(VisibleInstanceOnly, BlueprintReadOnly, Category = "RTS|Pawn|Cursor|Settings")
+	FRTSGodhandSettings InstanceSettings;
 
-	/** @brief */
-	UPROPERTY(VisibleInstanceOnly, BlueprintReadWrite, Category = "RTS|Pawn|State")
-	UInstancedStaticMeshComponent* ISMAgentComponent = nullptr;	
-
-	/* State(s) - tracked interactables*/
-	/** @brief */
-	UPROPERTY(VisibleInstanceOnly, BlueprintReadWrite, Category = "RTS|Pawn|State")
-	TSubclassOf<AActor> TempSpawnClass;
-	/** @brief */
-	UPROPERTY(VisibleInstanceOnly, BlueprintReadWrite, Category = "RTS|Pawn|State")
-	APDInteractActor* SpawnedInteractable = nullptr;
+	/** @brief Godhand state, keeps stateful runtime data */
+	UPROPERTY(VisibleInstanceOnly, BlueprintReadOnly, Category = "RTS|Pawn|Cursor|Settings")
+	FRTSGodhandState InstanceState;
 	
-	/* State(s) - tracked values */	
-	/** @brief */
-	UPROPERTY(VisibleInstanceOnly, BlueprintReadWrite, Category = "RTS|Pawn|State")
-	TMap<FGameplayTag, FPDItemCosts> CurrentResourceCost;
-	
-	/* Setting(s) - Cursor @todo move into a table row type and source from a datatable */	
-	/** @brief */
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "RTS|Pawn|Cursor|Settings")
-	UCurveFloat* MagnificationCurve = nullptr;
-	/** @brief */
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "RTS|Pawn|Cursor|Settings")
-	double MagnificationValue = 0.0;
-	/** @brief */
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "RTS|Pawn|Cursor|Settings")
-	double MagnificationStrength = 0.01;
-	/** @brief */
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "RTS|Pawn|Cursor|Settings")
-	double TargetPadding = 40.0;
-	/** @brief */
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "RTS|Pawn|Cursor|Settings")
-	double CursorSelectedScalePhaseSpeed = 4.0;	
-	/** @brief */
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "RTS|Pawn|Cursor|Settings")
-	double CursorSelectedSinScaleIntensity = 0.3;
-	/** @brief */
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "RTS|Pawn|Cursor|Settings")
-	double SelectionRescaleSpeed = 10.0;
-	
-	/* State(s) - Cursor */	
-	/** @brief */
-	UPROPERTY(VisibleInstanceOnly, BlueprintReadOnly, Category = "RTS|Pawn|Cursor|State")
-	double AccumulatedPlayTime = 0.0;
-	/** @brief */
-	UPROPERTY(VisibleInstanceOnly, BlueprintReadOnly, Category = "RTS|Pawn|Cursor|State")
-	FTransform TargetTransform{};
-	
-	/** @brief */
-	UPROPERTY(VisibleInstanceOnly, BlueprintReadOnly, Category = "RTS|Pawn|Cursor|State")
-	FVector WorkUnitTargetLocation{};
-	/** @brief */
-	UPROPERTY(VisibleInstanceOnly, BlueprintReadOnly, Category = "RTS|Pawn|Cursor|State")
-	AActor* WorkerUnitActionTarget;
-	/** @brief */
-	UPROPERTY()
-	FMassEntityHandle SelectedWorkerUnitHandle{INDEX_NONE, INDEX_NONE};
-	
-	/** @brief */
-	UPROPERTY(VisibleInstanceOnly, BlueprintReadOnly, Category = "RTS|Pawn|Cursor|State")
-	bool bUpdatePathOnTick = false;
-	/** @brief */
-	UPROPERTY(VisibleInstanceOnly, BlueprintReadOnly, Category = "RTS|Pawn|Cursor|State")
-	TArray<FVector> PathPoints;
-	
-	/** @brief */
+	/** @brief Fallback comparison value for a closest distance search when the vector was not valid */
 	static inline constexpr double  InvalidDistance{UE_MAX_FLT * UE_MAX_FLT};
-	/** @brief */
+	/** @brief Fallback comparison value for a closest distance search when the vector was not valid */
 	static inline const FVector InvalidVector{InvalidDistance};
 
-	/** @brief */
-	const FMassEntityManager* EntityManager = nullptr; // Active entity manager
-	
-	// Rotation queue
-	// 1. Get if positive or negative,
-	// 2. Add Direction to queue
-	// 3. In tick: rotate +-90 degree in yaw with interpolation
-	// 4. If rotating direction Positive, then pressing positive again then negative, , final two should cancel eachother out
-	/** @brief */
-	TDeque<int8> RotationDeque{};
-	/** @brief */
-	double CurrentRotationLeft = 0.0;
-	/** @brief */
-	bool bIsInRotation = false;
-	
-	/** @brief */
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "RTS|Pawn|Cursor|State")
-	double RotationRateModifier = 10.0;
+	/** @brief Active entity manager, exists in the mass entity subsystem */
+	const FMassEntityManager* EntityManager = nullptr; 
 };
 
 

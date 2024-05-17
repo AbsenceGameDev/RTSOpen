@@ -56,7 +56,7 @@ void AGodHandPawn::Tick(float DeltaTime)
 	HoverTick(DeltaTime);
 	RotationTick(DeltaTime);
 
-	if (bUpdatePathOnTick) { RefreshPathingEffects(); }
+	if (InstanceState.bUpdatePathOnTick) { RefreshPathingEffects(); }
 	
 }
 
@@ -90,7 +90,7 @@ void AGodHandPawn::TrackUnitMovement()
 	if (bHasInput == false) { return; }
 	
 	const FVector CameraLagOffsetCompensation = FVector::ZeroVector; /**< @todo camera lag is controlled by the pd camera manager, might write a function there */
-	const FVector FinalMove = WorkUnitTargetLocation - MousePlaneIntersection - CameraLagOffsetCompensation;
+	const FVector FinalMove = InstanceState.WorkUnitTargetLocation - MousePlaneIntersection - CameraLagOffsetCompensation;
 	AddActorWorldOffset(FVector{FinalMove.X, FinalMove.Y, 0.0});
 }
 
@@ -98,43 +98,43 @@ void AGodHandPawn::HoverTick(const float DeltaTime)
 {
 	AActor* ClosestActor = FindClosestInteractableActor();
 	// Overwrite HoveredActor if they are not the same
-	if (ClosestActor != nullptr && ClosestActor != HoveredActor)
+	if (ClosestActor != nullptr && ClosestActor != InstanceState.HoveredActor)
 	{
-		HoveredActor = ClosestActor;
+		InstanceState.HoveredActor = ClosestActor;
 		UE_LOG(LogTemp, Warning, TEXT("HoverTick - Found New Hover Actor"))
 	}
 	
-	const FMassEntityHandle ClosestMeshInstance = FindClosestMeshInstance();
-	if (ClosestMeshInstance.Index != INDEX_NONE && SelectedWorkerUnitHandle.Index != ClosestMeshInstance.Index)
+	const FMassEntityHandle ClosestMeshInstance = FindClosestMassEntity();
+	if (ClosestMeshInstance.Index != INDEX_NONE && InstanceState.SelectedWorkerUnitHandle.Index != ClosestMeshInstance.Index)
 	{
 		// Not functionally relevant, keep here in case we want to put something here
 		UE_LOG(LogTemp, Warning, TEXT("HoverTick - Found New Unit ISM"))
 	}
 
 	// Dont overwrite in case we are dragging a path from this
-	if (bUpdatePathOnTick == false ) { SelectedWorkerUnitHandle = ClosestMeshInstance; }
+	if (InstanceState.bUpdatePathOnTick == false ) { InstanceState.SelectedWorkerUnitHandle = ClosestMeshInstance; }
 }
 
 // @todo force it to cardinal directions, move to timer 
 void AGodHandPawn::RotationTick(float& DeltaTime)
 {
 	// Not currently in rotation
-	if (CurrentRotationLeft <= 0.0) { return; }
+	if (InstanceState.CurrentRotationLeft <= 0.0) { return; }
 
 	// Current queued rotation direction && Modify the delta-time with the turn rate modifier
-	const int32 Direction = RotationDeque.First();
-	DeltaTime *= RotationRateModifier;
+	const int32 Direction = InstanceState.RotationDeque.First();
+	DeltaTime *= InstanceSettings.RotationRateModifier;
 
 	// Calculate delta yaw
-	const double DeltaYaw = FMath::Clamp(DeltaTime / (CurrentRotationLeft / 90.0), 0.0, 2.0);
-	CurrentRotationLeft -= DeltaYaw;
+	const double DeltaYaw = FMath::Clamp(DeltaTime / (InstanceState.CurrentRotationLeft / 90.0), 0.0, 2.0);
+	InstanceState.CurrentRotationLeft -= DeltaYaw;
 
 	// Handle queued rotation finished
-	if (CurrentRotationLeft < 0)
+	if (InstanceState.CurrentRotationLeft < 0)
 	{
 		UE_LOG(LogTemp, Warning, TEXT("AGodHandPawn::RotationTick - Rotation in queue finished"))
 
-		AddActorLocalRotation(FRotator(0, DeltaYaw + CurrentRotationLeft, 0));
+		AddActorLocalRotation(FRotator(0, DeltaYaw + InstanceState.CurrentRotationLeft, 0));
 
 		// @todo revise this, this became convoluted fast and needs to be simplified
 		// Is yaw near west/east/north/south but not quite there due to tick inconsistencies? Adjust here if needed
@@ -148,9 +148,9 @@ void AGodHandPawn::RotationTick(float& DeltaTime)
 			AddActorLocalRotation(FRotator(0, FinalAdjustment, 0));
 		}
 		
-		RotationDeque.PopFirst();
-		CurrentRotationLeft = RotationDeque.IsEmpty() ? -1.0 : 90.0;
-		bIsInRotation = false;
+		InstanceState.RotationDeque.PopFirst();
+		InstanceState.CurrentRotationLeft = InstanceState.RotationDeque.IsEmpty() ? -1.0 : 90.0;
+		InstanceState.bIsInRotation = false;
 
 		return;
 	}
@@ -160,11 +160,11 @@ void AGodHandPawn::RotationTick(float& DeltaTime)
 
 void AGodHandPawn::UpdateMagnification()
 {
-	MagnificationValue = FMath::Clamp((MagnificationStrength * 0.01) + MagnificationValue, 0.01, 1.0);
+	InstanceState.MagnificationValue = FMath::Clamp((InstanceState.MagnificationStrength * 0.01) + InstanceState.MagnificationValue, 0.01, 1.0);
 
-	const float Alpha = MagnificationCurve != nullptr
-		? MagnificationCurve->GetFloatValue(MagnificationValue)
-		: Springarm->TargetArmLength / FMath::Clamp(Springarm->TargetArmLength * MagnificationValue, Springarm->TargetArmLength * 0.5, Springarm->TargetArmLength  * 1.2);
+	const float Alpha = InstanceSettings.AssetData->MagnificationCurve != nullptr
+		? InstanceSettings.AssetData->MagnificationCurve->GetFloatValue(InstanceState.MagnificationValue)
+		: Springarm->TargetArmLength / FMath::Clamp(Springarm->TargetArmLength * InstanceState.MagnificationValue, Springarm->TargetArmLength * 0.5, Springarm->TargetArmLength  * 1.2);
 	
 	Springarm->TargetArmLength = FMath::Lerp(600, 18000, Alpha);
 	Springarm->SetRelativeRotation(FRotator{FMath::Lerp(-35.0,-55.0, Alpha),0,0});
@@ -183,28 +183,28 @@ void AGodHandPawn::UpdateCursorLocation(float DeltaTime)
 {
 	// @todo handle input types+ if so reuse enum typ ECommonInputType and set up some events to register different input from different types
 
-	AccumulatedPlayTime += DeltaTime;
+	InstanceState.AccumulatedPlayTime += DeltaTime;
 
 	FVector Origin;
 	FVector Extent;
 
 	bool bProcessTargetOrigin = false;
-	const bool bInvalidEntityHandle = SelectedWorkerUnitHandle.Index == INDEX_NONE || EntityManager->IsEntityValid(SelectedWorkerUnitHandle) == false;
-	if ((bUpdatePathOnTick && HoveredActor == nullptr) || (HoveredActor == nullptr && bInvalidEntityHandle))
+	const bool bInvalidEntityHandle = InstanceState.SelectedWorkerUnitHandle.Index == INDEX_NONE || EntityManager->IsEntityValid(InstanceState.SelectedWorkerUnitHandle) == false;
+	if ((InstanceState.bUpdatePathOnTick && InstanceState.HoveredActor == nullptr) || (InstanceState.HoveredActor == nullptr && bInvalidEntityHandle))
 	{
-		TargetTransform = Collision->GetComponentTransform();
-		TargetTransform.SetScale3D(FVector{2.0, 2.0,1.0});
+		InstanceState.TargetTransform = Collision->GetComponentTransform();
+		InstanceState.TargetTransform.SetScale3D(FVector{2.0, 2.0,1.0});
 	}
-	else if (HoveredActor != nullptr)
+	else if (InstanceState.HoveredActor != nullptr)
 	{
-		HoveredActor->GetActorBounds(true, Origin, Extent);
+		InstanceState.HoveredActor->GetActorBounds(true, Origin, Extent);
 		bProcessTargetOrigin = true;
 	}
 	else // elif (bInvalidEntityHandle == false) 
 	{
-		const FTransform& InstanceTransform = GetEntityTransform(SelectedWorkerUnitHandle);
+		const FTransform& InstanceTransform = GetEntityTransform(InstanceState.SelectedWorkerUnitHandle);
 		Origin = InstanceTransform.GetLocation();
-		Extent = ISMAgentComponent != nullptr ? ISMAgentComponent->GetStaticMesh()->GetBounds().BoxExtent : FVector{30};
+		Extent = InstanceState.ISMAgentComponent != nullptr ? InstanceState.ISMAgentComponent->GetStaticMesh()->GetBounds().BoxExtent : FVector{30};
 		bProcessTargetOrigin = true;
 	}
 
@@ -212,8 +212,8 @@ void AGodHandPawn::UpdateCursorLocation(float DeltaTime)
 	{
 		Extent.Z = 0;
 		Origin.Z += 20.0;
-		const double CursorTargetScalar = Extent.GetAbsMax() / TargetPadding;
-		const double CursorScalarOffset = FMath::Sin(AccumulatedPlayTime * CursorSelectedScalePhaseSpeed) * CursorSelectedSinScaleIntensity;
+		const double CursorTargetScalar = Extent.GetAbsMax() / InstanceSettings.TargetPadding;
+		const double CursorScalarOffset = FMath::Sin(InstanceState.AccumulatedPlayTime * InstanceSettings.CursorSelectedScalePhaseSpeed) * InstanceSettings.CursorSelectedSinScaleIntensity;
 	
 		const double CursorScalarFinalXY = CursorTargetScalar + CursorScalarOffset;
 		const FVector ScalarXY = FVector{CursorScalarFinalXY, CursorScalarFinalXY, 1.0};
@@ -221,11 +221,11 @@ void AGodHandPawn::UpdateCursorLocation(float DeltaTime)
 		const FTransform WorldSpace = CursorMesh->GetComponentTransform();
 		//CursorMesh->GetInstanceTransform(0, WorldSpace,true);
 		const FQuat OldQuat = WorldSpace.GetRotation();
-		TargetTransform = FTransform{OldQuat, Origin, ScalarXY };
+		InstanceState.TargetTransform = FTransform{OldQuat, Origin, ScalarXY };
 	}
 
 	const FTransform WorldSpace =  CursorMesh->GetComponentTransform();	
-	const FTransform InterpTransform = UKismetMathLibrary::TInterpTo(WorldSpace, TargetTransform, DeltaTime, SelectionRescaleSpeed);
+	const FTransform InterpTransform = UKismetMathLibrary::TInterpTo(WorldSpace, InstanceState.TargetTransform, DeltaTime, InstanceSettings.SelectionRescaleSpeed);
 	CursorMesh->SetWorldTransform(InterpTransform);
 }
 
@@ -235,19 +235,19 @@ void AGodHandPawn::UpdateCursorLocation(float DeltaTime)
 
 void AGodHandPawn::RefreshPathingEffects()
 {
-	if (EntityManager->IsEntityValid(SelectedWorkerUnitHandle) == false || Collision == nullptr ) { return; }
+	if (EntityManager->IsEntityValid(InstanceState.SelectedWorkerUnitHandle) == false || Collision == nullptr ) { return; }
 	
 	const FVector CollisionLocation = Collision->GetComponentLocation();
-	const FTransform& TargetInstanceTransform = GetEntityTransform(SelectedWorkerUnitHandle);
+	const FTransform& TargetInstanceTransform = GetEntityTransform(InstanceState.SelectedWorkerUnitHandle);
 	const FVector EntityLocation = TargetInstanceTransform.GetLocation(); 
 	const FVector TargetLocation = CollisionLocation;
 	const UNavigationPath* Navpath = UNavigationSystemV1::FindPathToLocationSynchronously(this, EntityLocation, TargetLocation);
 	if (Navpath == nullptr || Navpath->PathPoints.IsEmpty()) { return; }
 
-	PathPoints = Navpath->PathPoints;
-	PathPoints[0] = EntityLocation;
-	PathPoints.Last() = TargetLocation;
-	UNiagaraDataInterfaceArrayFunctionLibrary::SetNiagaraArrayVector(NC_WorkerPath, FName("TargetPath"), PathPoints);
+	InstanceState.PathPoints = Navpath->PathPoints;
+	InstanceState.PathPoints[0] = EntityLocation;
+	InstanceState.PathPoints.Last() = TargetLocation;
+	UNiagaraDataInterfaceArrayFunctionLibrary::SetNiagaraArrayVector(NC_WorkerPath, FName("TargetPath"), InstanceState.PathPoints);
 }
 
 
@@ -265,7 +265,7 @@ void AGodHandPawn::ActionMove_Implementation(const FInputActionValue& Value)
 void AGodHandPawn::ActionMagnify_Implementation(const FInputActionValue& Value)
 {
 	const float ImmutableMoveInput = Value.Get<float>();
-	MagnificationStrength = ImmutableMoveInput;
+	InstanceState.MagnificationStrength = ImmutableMoveInput;
 	UpdateMagnification();
 }
 
@@ -275,21 +275,21 @@ void AGodHandPawn::ActionRotate_Implementation(const FInputActionValue& Value)
 	const int8 Direction = ImmutableMoveInput > 0 ? 1 : -1;
 
 	// If more than one rotation in queue and the new rotation opposes the latest previous rotation, just pop away the last rotation
-	if (RotationDeque.Num() > 1 && (RotationDeque.Last() + Direction) == 0)
+	if (InstanceState.RotationDeque.Num() > 1 && (InstanceState.RotationDeque.Last() + Direction) == 0)
 	{
-		RotationDeque.PopLast();
+		InstanceState.RotationDeque.PopLast();
 	}
-	else if (RotationDeque.Num() < 2)
+	else if (InstanceState.RotationDeque.Num() < 2)
 	{
-		RotationDeque.EmplaceLast(Direction);
-	}
-
-	if (bIsInRotation == false)
-	{
-		CurrentRotationLeft = 90.0;
+		InstanceState.RotationDeque.EmplaceLast(Direction);
 	}
 
-	bIsInRotation = true;
+	if (InstanceState.bIsInRotation == false)
+	{
+		InstanceState.CurrentRotationLeft = 90.0;
+	}
+
+	InstanceState.bIsInRotation = true;
 }
 
 void AGodHandPawn::ActionDragMove_Implementation(const FInputActionValue& Value)
@@ -306,19 +306,18 @@ void AGodHandPawn::ActionWorkerUnit_Started_Implementation(const FInputActionVal
 	// const bool ImmutableMoveInput = Value.Get<bool>();
 	UE_LOG(LogTemp, Warning, TEXT("ActionWorkerUnit_Started"))
 	
-	
-	if (SelectedWorkerUnitHandle.Index != INDEX_NONE)
+	if (InstanceState.SelectedWorkerUnitHandle.Index != INDEX_NONE)
 	{
 		if (NS_WorkerPath != nullptr && NC_WorkerPath == nullptr)
 		{
 			NC_WorkerPath = UNiagaraFunctionLibrary::SpawnSystemAttached(NS_WorkerPath, SceneRoot, NAME_None, FVector(0.f), FRotator(0.f), EAttachLocation::SnapToTarget, false);
-			bUpdatePathOnTick = true;
+			InstanceState.bUpdatePathOnTick = true;
 		}
 		else if (NC_WorkerPath != nullptr)
 		{
 			NC_WorkerPath->ReinitializeSystem();
 			NC_WorkerPath->Activate();
-			bUpdatePathOnTick = true;
+			InstanceState.bUpdatePathOnTick = true;
 		}
 		return;
 	}
@@ -347,7 +346,7 @@ void AGodHandPawn::ActionWorkerUnit_Triggered_Implementation(const FInputActionV
 		PC->MarqueeSelection(EMarqueeSelectionEvent::HOLDMARQUEE);
 	}	
 	
-	WorkerUnitActionTarget = HoveredActor; 
+	InstanceState.WorkerUnitActionTarget = InstanceState.HoveredActor; 
 }
 
 void AGodHandPawn::ActionWorkerUnit_Cancelled_Implementation(const FInputActionValue& Value)
@@ -375,18 +374,18 @@ void AGodHandPawn::ActionWorkerUnit_Completed_Implementation(const FInputActionV
 	}
 	PC->DeactivateMappingContext(TAG_CTRL_Ctxt_DragMove);
 	
-	const FGameplayTagContainer AssociatedTags = WorkerUnitActionTarget != nullptr && WorkerUnitActionTarget->Implements<UPDInteractInterface>()
-		? IPDInteractInterface::Execute_GetGenericTagContainer(WorkerUnitActionTarget)
+	const FGameplayTagContainer AssociatedTags = InstanceState.WorkerUnitActionTarget != nullptr && InstanceState.WorkerUnitActionTarget->Implements<UPDInteractInterface>()
+		? IPDInteractInterface::Execute_GetGenericTagContainer(InstanceState.WorkerUnitActionTarget)
 		: FGameplayTagContainer{}; 
 
 	if (NC_WorkerPath != nullptr) { NC_WorkerPath->Deactivate(); }
-	if (AssociatedTags.IsEmpty() || EntityManager->IsEntityValid(SelectedWorkerUnitHandle) == false)
+	if (AssociatedTags.IsEmpty() || EntityManager->IsEntityValid(InstanceState.SelectedWorkerUnitHandle) == false)
 	{
 		UE_LOG(LogTemp, Warning, TEXT("ActionWorkerUnit_Completed -- Unexpected error -- Clearing selected worker unit "))
 
-		bUpdatePathOnTick = false;
-		WorkUnitTargetLocation = FVector::ZeroVector;
-		WorkerUnitActionTarget = nullptr;
+		InstanceState.bUpdatePathOnTick = false;
+		InstanceState.WorkUnitTargetLocation = FVector::ZeroVector;
+		InstanceState.WorkerUnitActionTarget = nullptr;
 		return;
 	}
 
@@ -394,7 +393,7 @@ void AGodHandPawn::ActionWorkerUnit_Completed_Implementation(const FInputActionV
 	bool bFoundInputType;
 
 	FMassInt16Vector FallbackTargetLocation{};
-	if (WorkerUnitActionTarget == nullptr)
+	if (InstanceState.WorkerUnitActionTarget == nullptr)
 	{
 		FHitResult HitResult = PC->ProjectMouseToGroundPlane(PC->DedicatedLandscapeTraceChannel, ScreenCoordinates, bFoundInputType);
 		FallbackTargetLocation = HitResult.bBlockingHit ? FMassInt16Vector{HitResult.Location} : FMassInt16Vector{};
@@ -404,11 +403,11 @@ void AGodHandPawn::ActionWorkerUnit_Completed_Implementation(const FInputActionV
 	const TArray<TObjectPtr<UInstancedStaticMeshComponent>>& ISMs = UPDRTSBaseSubsystem::GetMassISMs(GetWorld());
 	if (ISMs.IsEmpty() == false && Cast<UPDRTSBaseUnit>(ISMs[0]))
 	{
-		FPDTargetCompound OptTarget = {InvalidHandle, FallbackTargetLocation, WorkerUnitActionTarget};
-		Cast<UPDRTSBaseUnit>(ISMs[0])->RequestAction(PC->GetActorID(), OptTarget, AssociatedTags.GetByIndex(0), SelectedWorkerUnitHandle);
+		FPDTargetCompound OptTarget = {InvalidHandle, FallbackTargetLocation, InstanceState.WorkerUnitActionTarget};
+		Cast<UPDRTSBaseUnit>(ISMs[0])->RequestAction(PC->GetActorID(), OptTarget, AssociatedTags.GetByIndex(0), InstanceState.SelectedWorkerUnitHandle);
 	}
 	
-	FPDMFragment_RTSEntityBase* PermadevEntityBase = EntityManager->GetFragmentDataPtr<FPDMFragment_RTSEntityBase>(SelectedWorkerUnitHandle);
+	FPDMFragment_RTSEntityBase* PermadevEntityBase = EntityManager->GetFragmentDataPtr<FPDMFragment_RTSEntityBase>(InstanceState.SelectedWorkerUnitHandle);
 	if (PermadevEntityBase != nullptr)
 	{
 		// The initial call to the walk task will overwrite this in case it has an entry,
@@ -418,8 +417,8 @@ void AGodHandPawn::ActionWorkerUnit_Completed_Implementation(const FInputActionV
 	}
 	
 	if (NC_WorkerPath != nullptr) { NC_WorkerPath->Deactivate(); }
-	bUpdatePathOnTick = false;
-	SelectedWorkerUnitHandle = {INDEX_NONE, INDEX_NONE};
+	InstanceState.bUpdatePathOnTick = false;
+	InstanceState.SelectedWorkerUnitHandle = {INDEX_NONE, INDEX_NONE};
 	UE_LOG(LogTemp, Warning, TEXT("ActionWorkerUnit_Completed -- Clearing selected worker unit "))
 	
 }
@@ -433,9 +432,7 @@ void AGodHandPawn::ActionClearSelection_Implementation(const FInputActionValue& 
 {
 }
 
-// Todo:      I need to write a shared fragment which holds four values,
-// Todo cont: a location or target, a selection group index, and a boolean to tell if that shared fragment is valid for the selection index
-// Todo cont: This also requires some fomr of selection grouping and controls for it
+// DONE: Selection groups and shared navpath fragments
 void AGodHandPawn::ActionMoveSelection_Implementation(const FInputActionValue& Value)
 {
 	FString BuildString = FString::Printf(TEXT("AGodHandPawn(%s)::ActionMoveSelection -- "), *GetName());
@@ -463,13 +460,13 @@ void AGodHandPawn::ActionMoveSelection_Implementation(const FInputActionValue& V
 	}
 	
 	// refresh hovered actor as target
-	WorkerUnitActionTarget = HoveredActor;
+	InstanceState.WorkerUnitActionTarget = InstanceState.HoveredActor;
 
 	// go to mouse location is no valid target
 	FMassInt16Vector SelectedLocation = InvalidLoc;
 
 	FGameplayTagContainer FallbackContainer{TAG_AI_Job_Idle};
-	if (WorkerUnitActionTarget == nullptr)
+	if (InstanceState.WorkerUnitActionTarget == nullptr)
 	{
 		// BuildString += FString::Printf(TEXT("\n ACTOR (todo: OR ENTITY) TARGET INVALID, TRACING TO NEW STATIC LOCATION TARGET"));
 		// UE_LOG(LogTemp, Warning, TEXT("%s"), *BuildString);
@@ -487,9 +484,9 @@ void AGodHandPawn::ActionMoveSelection_Implementation(const FInputActionValue& V
 	
 	//
 	// Params for entity AI
-	const FPDTargetCompound OptTarget = {InvalidHandle, SelectedLocation, WorkerUnitActionTarget};
-	const FGameplayTagContainer AssociatedTags = WorkerUnitActionTarget != nullptr && WorkerUnitActionTarget->Implements<UPDInteractInterface>()
-		? IPDInteractInterface::Execute_GetGenericTagContainer(WorkerUnitActionTarget)
+	const FPDTargetCompound OptTarget = {InvalidHandle, SelectedLocation, InstanceState.WorkerUnitActionTarget};
+	const FGameplayTagContainer AssociatedTags = InstanceState.WorkerUnitActionTarget != nullptr && InstanceState.WorkerUnitActionTarget->Implements<UPDInteractInterface>()
+		? IPDInteractInterface::Execute_GetGenericTagContainer(InstanceState.WorkerUnitActionTarget)
 		: FallbackContainer;
 	
 	const FHitResult& Start = PC->GetLatestStartHitResult();
@@ -548,7 +545,7 @@ FMassEntityHandle AGodHandPawn::OctreeEntityTrace(const FVector& StartLocation, 
 		if (Cell.EntityHandle.Index == INDEX_NONE) { return; } 
 		
 		const double Delta = (EndLocation - Cell.Bounds.GetBox().GetCenter()).Length();
-		ClosestIDSlow = Delta < ClosestDistanceSlow ? Cell.SharedOctreeID.Get() : ClosestIDSlow;
+		ClosestIDSlow = Delta < ClosestDistanceSlow ? Cell.SharedCellID.Get() : ClosestIDSlow;
 		ClosestDistanceSlow = Delta < ClosestDistanceSlow ? Delta : ClosestDistanceSlow;
 	}, true);
 
@@ -609,7 +606,7 @@ const FTransform& AGodHandPawn::GetEntityTransform(const FMassEntityHandle& Hand
 	return EntityManager->IsEntityValid(Handle) ? EntityManager->GetFragmentDataPtr<FTransformFragment>(Handle)->GetTransform() : Collision->GetComponentTransform();
 }
 
-FMassEntityHandle AGodHandPawn::FindClosestMeshInstance()
+FMassEntityHandle AGodHandPawn::FindClosestMassEntity()
 {
 	const ARTSOController* PC = GetController<ARTSOController>();
 	if (PC == nullptr || PC->IsValidLowLevelFast() == false) { return FMassEntityHandle{INDEX_NONE,INDEX_NONE}; }
@@ -668,10 +665,10 @@ void AGodHandPawn::BeginPlay()
 	Collision->OnComponentEndOverlap.AddDynamic(this, &AGodHandPawn::OnCollisionEndOverlap);
 	EntityManager = &GetWorld()->GetSubsystem<UMassEntitySubsystem>()->GetEntityManager();
 
+	RefreshSettingsInstance();
+
 	UpdateMagnification();
 	InitializeISMAgent();
-
-
 
 	// There is a bug causing any modifier I am applying to the IA to be called but the modified value to be discarded,
 	// I have however confirmed that the value in here at-least is correct
@@ -680,13 +677,25 @@ void AGodHandPawn::BeginPlay()
 	InputStackWorkaround->DispatchValueStackReset();
 }
 
+void AGodHandPawn::RefreshSettingsInstance()
+{
+	const FString Context = FString::Printf(TEXT("(%s)::BeginPlay()"), *GetName());
+	InstanceSettings = *GodHandSettingsHandle.GetRow<FRTSGodhandSettings>(Context);
+}
+
+EDataValidationResult AGodHandPawn::IsDataValid(FDataValidationContext& Context) const
+{
+	const FString ContextString = FString::Printf(TEXT("(%s)::IsDataValid()"), *GetName());
+	const FRTSGodhandSettings* FoundData = GodHandSettingsHandle.GetRow<FRTSGodhandSettings>(ContextString);
+
+	UE_LOG(LogTemp, Warning, TEXT("(%s)::IsDataValid() \n FoundData: %i \n FoundData->AssetData: %i"), *GetName(), FoundData != nullptr, FoundData != nullptr ? FoundData->AssetData != nullptr : 0);
+
+	return FoundData != nullptr && FoundData->AssetData != nullptr ? Super::IsDataValid(Context) : EDataValidationResult::Invalid;
+}
+
 void AGodHandPawn::OnConstruction(const FTransform& Transform)
 {
 	Super::OnConstruction(Transform);
-
-	// CursorMesh->AddInstance(Transform);
-	
-	//MarqueeSelectedHandles
 }
 
 void AGodHandPawn::InitializeISMAgent()
@@ -703,17 +712,18 @@ void AGodHandPawn::InitializeISMAgent()
 	// @todo debug why calling this invalidates the whole octree
 	// GEngine->GetEngineSubsystem<UPDRTSBaseSubsystem>()->SetupOctreeWithNewWorld(GetWorld());
 	
-	ISMAgentComponent = UPDRTSBaseSubsystem::GetMassISMs(GetWorld())[0];
-	UPDRTSBaseUnit* AsBaseUnit = Cast<UPDRTSBaseUnit>(ISMAgentComponent);
-	check(AsBaseUnit != nullptr)
+	InstanceState.ISMAgentComponent = Cast<UPDRTSBaseUnit>(UPDRTSBaseSubsystem::GetMassISMs(GetWorld())[0]);
+	check(InstanceState.ISMAgentComponent != nullptr)
 	
-	AsBaseUnit->SetEntityManager(EntityManager);
+	InstanceState.ISMAgentComponent->SetEntityManager(EntityManager);
 }
 
 void AGodHandPawn::PossessedBy(AController* NewController)
 {
 	Super::PossessedBy(NewController);
 
+	RefreshSettingsInstance();
+	
 	if (GetWorld() == nullptr) { return; }
 	
 	// There is a bug causing any modifier I am applying to the IA to be called but the modified value to be discarded,
@@ -731,14 +741,14 @@ void AGodHandPawn::OnCollisionBeginOverlap(UPrimitiveComponent* OverlappedCompon
 	
 	// neither an ai or any interactable
 	if (Cast<IPDInteractInterface>(OtherActor) == nullptr) { return; }
-	HoveredActor = OtherActor;
+	InstanceState.HoveredActor = OtherActor;
 }
 
 void AGodHandPawn::ActorEndOverlapValidation()
 {
 	TArray<AActor*> Overlap;
 	GetOverlappingActors(Overlap, AActor::StaticClass());
-	HoveredActor = Overlap.IsEmpty() ? nullptr : HoveredActor;
+	InstanceState.HoveredActor = Overlap.IsEmpty() ? nullptr : InstanceState.HoveredActor;
 }
 
 void AGodHandPawn::OnCollisionEndOverlap(UPrimitiveComponent* OverlappedComponent, AActor* OtherActor, UPrimitiveComponent* OtherComp, int32 OtherBodyIndex)
@@ -753,11 +763,11 @@ void AGodHandPawn::NotifyActorBeginOverlap(AActor* OtherActor)
 	// not any interactable 
 	if (Cast<IPDInteractInterface>(OtherActor) == nullptr)
 	{
-		HoveredActor = OtherActor;
+		InstanceState.HoveredActor = OtherActor;
 		return;
 	}
 	
-	ISMAgentComponent = OtherActor->GetComponentByClass<UPDRTSBaseUnit>(); 
+	InstanceState.ISMAgentComponent = OtherActor->GetComponentByClass<UPDRTSBaseUnit>(); 
 }
 
 void AGodHandPawn::NotifyActorEndOverlap(AActor* OtherActor)
@@ -769,16 +779,16 @@ void AGodHandPawn::NotifyActorEndOverlap(AActor* OtherActor)
 
 void AGodHandPawn::BeginBuild_Implementation(TSubclassOf<AActor> TargetClass, TMap<FGameplayTag, FPDItemCosts>& ResourceCost)
 {
-	TempSpawnClass = TargetClass;
-	CurrentResourceCost = ResourceCost;
+	InstanceState.TempSpawnClass = TargetClass;
+	InstanceState.CurrentResourceCost = ResourceCost;
 
 	if (GetWorld() == nullptr
-		|| SpawnedInteractable == nullptr
-		|| SpawnedInteractable->IsValidLowLevelFast() == false)
+		|| InstanceState.SpawnedInteractable == nullptr
+		|| InstanceState.SpawnedInteractable->IsValidLowLevelFast() == false)
 	{
 		return;
 	}
-	SpawnedInteractable->Destroy(true);
+	InstanceState.SpawnedInteractable->Destroy(true);
 
 	FActorSpawnParameters SpawnInfo;
 	SpawnInfo.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AlwaysSpawn;
@@ -788,8 +798,8 @@ void AGodHandPawn::BeginBuild_Implementation(TSubclassOf<AActor> TargetClass, TM
 	SpawnInfo.bDeferConstruction = false;
 
 	const FVector ActorLocation = GetActorLocation();
-	SpawnedInteractable = Cast<APDInteractActor>(GetWorld()->SpawnActor(TempSpawnClass, &ActorLocation, &FRotator::ZeroRotator, SpawnInfo));
-	if (SpawnedInteractable == nullptr) { return; }
+	InstanceState.SpawnedInteractable = Cast<APDInteractActor>(GetWorld()->SpawnActor(InstanceState.TempSpawnClass, &ActorLocation, &FRotator::ZeroRotator, SpawnInfo));
+	if (InstanceState.SpawnedInteractable == nullptr) { return; }
 
 	// SpawnedInteractable: Placement Mod e
 	// SpawnedInteractable->CreateOverlay

@@ -95,7 +95,7 @@ public: // Variable members
 	/** @brief Reserved use, for when inventory items lists grow large we want to avoid costly search operations */
 	const TMap<int32, FRTSSavedItems>* MapPointer = nullptr;
 
-	/** @brief */
+	/** @brief Root save slot name, fallback if none is selected */
 	static const FString ROOTSAVE;
 };
 

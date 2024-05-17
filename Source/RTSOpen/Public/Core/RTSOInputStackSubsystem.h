@@ -18,13 +18,13 @@ class RTSOPEN_API URTSOInputStackSubsystem : public UWorldSubsystem
 	GENERATED_BODY()
 
 public:
-	/** @brief */
+	/** @brief Dispatches an initial reset of the value stack. as the inputmodifer that supplies it is always testrun by the engine when instantiating all input modifiers upon startup, causing it to have a bunch of garbage in it's stack upon a worlds begin-play */
 	virtual void OnWorldBeginPlay(UWorld& InWorld) override;
 
-	/** @brief */
+	/** @brief Calls 'ResetValueStacks' on a latent action dispatch */
 	void DispatchValueStackReset();
 	
-	/** @brief */
+	/** @brief flushes the value stacks */
 	UFUNCTION()
 	void ResetValueStacks()
 	{
@@ -34,11 +34,11 @@ public:
 		InputStackVectors.Empty();
 	};
 	
-	/** @brief */
+	/** @brief Deque of integers  */
 	TDeque<int32> InputStackIntegers{};
-	/** @brief */
+	/** @brief Deque of doubles */
 	TDeque<double> InputStackDouble{};
-	/** @brief */
+	/** @brief Deque of vectors */
 	TDeque<FVector> InputStackVectors{};
 };
 

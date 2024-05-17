@@ -74,14 +74,14 @@ void UPDMProcessor_InitializeEntities::Execute(FMassEntityManager& EntityManager
 		TSharedFragment<FPDMFragment_SharedAnimData> RTSEntityParameters = SHAREDVIEW(Context, FPDMFragment_SharedAnimData);
 		TMutFragment<FPDMFragment_EntityAnimation> AnimationFragments = MUTVIEW(Context, FPDMFragment_EntityAnimation);
 
+		// Iterate the entities animation fragments and refresh their vertex anim data-asset
 		for (int32 EntityIndex = 0; EntityIndex < Context.GetNumEntities(); ++EntityIndex)
 		{
-			// Simply refresh the required resources
 			FPDMFragment_EntityAnimation& AnimationFragment = AnimationFragments[EntityIndex];
 			UAnimToTextureDataAsset* Anim = RTSEntityParameters.AnimData.Get();
 			if (Anim != nullptr) { Anim = RTSEntityParameters.AnimData.LoadSynchronous(); }
 			
-			AnimationFragment.AnimToTextureData = Anim;
+			AnimationFragment.A2TData = Anim;
 		}
 	}));
 }
@@ -360,7 +360,7 @@ void UPDMProcessor_EntityCosmetics::UpdateISMVertexAnimation(FMassInstancedStati
 	const float DeltaTimeSinceStart = GetWorld()->GetTimeSeconds() - AnimationData.InWorldStartTime;
 	
 	FAnimToTextureFrameData InstanceData;
-	UAnimToTextureInstancePlaybackLibrary::GetFrameDataFromDataAsset(AnimationData.AnimToTextureData.Get(), static_cast<uint8>(AnimationData.AnimationStateIndex),DeltaTimeSinceStart, InstanceData);
+	UAnimToTextureInstancePlaybackLibrary::GetFrameDataFromDataAsset(AnimationData.A2TData.Get(), static_cast<uint8>(AnimationData.AnimationStateIndex),DeltaTimeSinceStart, InstanceData);
 	ISMInfo.AddBatchedCustomData<FAnimToTextureFrameData>(InstanceData, LODSignificance, PrevLODSignificance, NumFloatsToPad);
 }
 
@@ -554,9 +554,6 @@ void UPDOctreeProcessor::Initialize(UObject& Owner)
 {
 	Super::Initialize(Owner);
 	RTSSubsystem = GEngine->GetEngineSubsystem<UPDRTSBaseSubsystem>();
-// #if CHAOS_DEBUG_DRAW
-// 	Chaos::FDebugDrawQueue::GetInstance().SetConsumerActive(this, true);
-// #endif
 }
 
 void UPDOctreeProcessor::ConfigureQueries()
@@ -592,14 +589,14 @@ void UPDOctreeProcessor::Execute(FMassEntityManager& EntityManager, FMassExecuti
 			FPDOctreeFragment& OctreeFragment = OctreeFragments[EntityListIdx];
 
 			// I expect standing still more than moving around, hence a 'likely' hint here
-			if (LIKELY(OctreeFragment.OctreeID == nullptr
-				|| Octree.IsValidElementId(*OctreeFragment.OctreeID) == false
+			if (LIKELY(OctreeFragment.CellID == nullptr
+				|| Octree.IsValidElementId(*OctreeFragment.CellID) == false
 				|| PrevLocation.Equals(CurrentLocation)))
 			{
 				continue;
 			}
 
-			const FOctreeElementId2* OctreeID = OctreeFragment.OctreeID.Get(); 
+			const FOctreeElementId2* OctreeID = OctreeFragment.CellID.Get(); 
 			FPDEntityOctreeCell CopyCurrentOctreeElement = Octree.GetElementById(*OctreeID);
 
 			Octree.RemoveElement(*OctreeID);
@@ -624,7 +621,7 @@ void UPDOctreeEntityObserver::Initialize(UObject& Owner)
 {
 	Super::Initialize(Owner);
 	RTSSubsystem = GEngine->GetEngineSubsystem<UPDRTSBaseSubsystem>();
-	ElementGridSize = GetDefault<UPDRTSSubsystemSettings>()->DefaultElementGridSize;
+	ElementCellSize = GetDefault<UPDRTSSubsystemSettings>()->DefaultCellSize;
 }
 
 void UPDOctreeEntityObserver::ConfigureQueries()
@@ -661,14 +658,14 @@ void UPDOctreeEntityObserver::Execute(FMassEntityManager& EntityManager, FMassEx
 
 			NewOctreeElement.Bounds =
 				bRadiiValid ? FBoxCenterAndExtent(Transform.GetLocation(), FVector(RadiusFragments[Step].Radius * 2.0f))
-				:             FBoxCenterAndExtent(Transform.GetLocation(), FVector(ElementGridSize));
+				:             FBoxCenterAndExtent(Transform.GetLocation(), FVector(ElementCellSize));
 			
-			NewOctreeElement.SharedOctreeID = MakeShared<FOctreeElementId2, ESPMode::ThreadSafe>();
+			NewOctreeElement.SharedCellID = MakeShared<FOctreeElementId2, ESPMode::ThreadSafe>();
 			NewOctreeElement.EntityHandle = Entity;
 
 			Octree.AddElement(NewOctreeElement);
 
-			OctreeList[Step].OctreeID = NewOctreeElement.SharedOctreeID;
+			OctreeList[Step].CellID = NewOctreeElement.SharedCellID;
 			LambdaContext.Defer().AddTag<FPDInOctreeGridTag>(LambdaContext.GetEntity(Step));
 		}
 		Octree.Unlock();
@@ -708,7 +705,7 @@ void UPDGridCellDeinitObserver::Execute(FMassEntityManager& EntityManager, FMass
 		Octree.Lock();
 		for (int32 EntityListIdx = 0; EntityListIdx < NumEntities; ++EntityListIdx)
 		{
-			TSharedPtr<FOctreeElementId2> OctreeID = CellFragments[EntityListIdx].OctreeID;
+			TSharedPtr<FOctreeElementId2> OctreeID = CellFragments[EntityListIdx].CellID;
 			if (OctreeID.IsValid() == false) { continue; }
 
 			Octree.RemoveElement(*OctreeID);

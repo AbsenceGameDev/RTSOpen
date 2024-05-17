@@ -26,11 +26,11 @@ struct FRTSOTaskData_Interact
 {
 	GENERATED_BODY()
 
-	/** @brief */
+	/** @brief Potential Interaction Target: MassEntity */
 	UPROPERTY(VisibleAnywhere, Category = Input)
 	FMassEntityHandle PotentialEntityHandle;
 
-	/** @brief */
+	/** @brief Potential Interaction Target: Actor */
 	UPROPERTY(VisibleAnywhere, Category = Input)
 	AActor* PotentialInteractableActor;	
 };
@@ -46,19 +46,19 @@ struct RTSOPEN_API FRTSOTask_Interact : public FMassStateTreeTaskBase
 
 	using FInstanceDataType = FRTSOTaskData_Interact;
 	
-	/** @brief */
+	/** @brief Links external data: EntitySubsystemHandle, InventoryHandle*/
 	virtual bool Link(FStateTreeLinker& Linker) override;
-	/** @brief */
-	virtual const UStruct* GetInstanceDataType() const override { return FRTSOTaskData_Interact::StaticStruct(); }
-	/** @brief */
+	/** @brief Returns the static struct of the instance data shorthand */
+	virtual const UStruct* GetInstanceDataType() const override { return FInstanceDataType::StaticStruct(); }
+	/** @brief Triggers OnInteract on the actor, (and/or entity proxy when the function is finished), if it turns out to be a valid interactable
+	 * @todo write actual logic for interaction with other entity. use proxy such as the RTSBaseUnit (ISM subclass)
+	 * @todo @backlog have some notes in there which I've not fully decided on, revise at some point */
 	virtual EStateTreeRunStatus EnterState(FStateTreeExecutionContext& Context, const FStateTreeTransitionResult& Transition) const override;
 
-	/** @brief */
-	TStateTreeExternalDataHandle<UMassEntitySubsystem> EntitySubsystemHandle;
-	/** @brief */
-	TStateTreeExternalDataHandle<UPDInteractSubsystem> InteractSubsystemHandle;
-	/** @brief */
-	TStateTreeExternalDataHandle<FRTSOLightInventoryFragment> InventoryHandle;
+	/** @defgroup ExternalHandles */
+	TStateTreeExternalDataHandle<UMassEntitySubsystem> EntitySubsystemHandle; /**<@ingroup ExternalHandles*/
+	TStateTreeExternalDataHandle<UPDInteractSubsystem> InteractSubsystemHandle; /**<@ingroup ExternalHandles*/
+	TStateTreeExternalDataHandle<FRTSOLightInventoryFragment> InventoryHandle; /**<@ingroup ExternalHandles*/
 };
 
 

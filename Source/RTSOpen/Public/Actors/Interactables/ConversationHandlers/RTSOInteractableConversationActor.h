@@ -39,16 +39,19 @@ struct FRTSOConversationRules
 {
 	GENERATED_BODY()
 	
+	/** @brief Tag for entry data that these rules pertain */
 	UPROPERTY(EditAnywhere)
-	FGameplayTag EntryTag; /**< @brief Tag for entry data that these rules pertain */
+	FGameplayTag EntryTag;
 	
+	/** @brief StartingState and ActiveState for this conversation instance */
 	UPROPERTY(EditAnywhere)
-	TEnumAsByte<ERTSOConversationState> State = ERTSOConversationState::CurrentStateInactive; /**< @brief StartingState and ActiveState for this conversation instance */
+	TEnumAsByte<ERTSOConversationState> State = ERTSOConversationState::CurrentStateInactive;
 
+	/** @brief Tags required for this instance to be loaded */
 	UPROPERTY(EditAnywhere)
-	TArray<FGameplayTag> RequiredTags; /**< @brief Tags required for this instance to be loaded */
+	TArray<FGameplayTag> RequiredTags;
 
-	/** @brief */
+	/** @brief Flag to tell if this conversation is repeatable*/
 	UPROPERTY(EditAnywhere)
 	bool bCanRepeatConversation = true;
 };
@@ -59,11 +62,11 @@ struct FRTSOConversationMetaProgressionDatum : public FTableRowBase
 {
 	GENERATED_BODY()
 	
-	/** @brief */
+	/**< @brief Starting progression */
 	UPROPERTY(EditAnywhere)
-	int32 BaseProgression = 0; /**< @brief Starting progression */
+	int32 BaseProgression = 0;
 	
-	/** @brief */
+	/** @brief Required tags to progress through the mission phases */
 	UPROPERTY(EditAnywhere)
 	TArray<FRTSOConversationRules> PhaseRequiredTags;
 };
@@ -74,21 +77,22 @@ struct FRTSOConversationMetaState
 {
 	GENERATED_BODY()
 
-	/** @brief */
+	/** @brief Sets PhaseRequiredTags state value from ConversationProgressionEntry.PhaseRequiredTags */
 	void ApplyValuesFromProgressionTable(FRTSOConversationMetaProgressionDatum& ConversationProgressionEntry);
 	
-	/** @brief */
+	/** @brief Progression map, keyed by user (ID) and valued by progression level for the conversation.
+	 * @todo I have made a mistake here as we need to know exactly which conversation the progression level relates to, not only the progression level and the userID */
 	UPROPERTY(EditAnywhere, BlueprintReadOnly)
-	TMap<int32/*ActorID*/, int32/*ProgressionLever*/> ProgressionPerPlayer; /**< @brief progression*/
+	TMap<int32/*ActorID*/, int32/*ProgressionLever*/> ProgressionPerPlayer;
 	
-	/** @brief */
+	/** @brief Required tags to progress through the mission phases */
 	UPROPERTY(EditAnywhere, BlueprintReadOnly)
 	TArray<FRTSOConversationRules> PhaseRequiredTags;	
 	
-	/** @brief */
-	TDeque<AActor*> InteractingActors; // Used as storage
+	/** @brief Actors that are interacting with the conversation actor. Used as storage */
+	TDeque<AActor*> InteractingActors;
 
-	/** @brief */
+	/** @brief The currently active conversation instance. note@todo might need to map this, keyed by userID (players persistent ID/actorID, I really need to unify these names haha) */
 	UPROPERTY(BlueprintReadOnly)
 	URTSOConversationInstance* ActiveConversationInstance = nullptr;
 };
@@ -100,10 +104,10 @@ class RTSOPEN_API URTSOConversationInstance : public UPDConversationInstance
 	GENERATED_BODY()
 
 public:
-	/** @brief */
+	/** @brief Sends choices to relevant listeners waiting delegate, logs when it fails. @todo Need to declare custom log categories, all over this project as matter of fact. LogTemp won't do anymore */
 	virtual void PauseConversationAndSendClientChoices(const FConversationContext& Context, const FClientConversationMessage& ClientMessage) override;
 
-	/** @brief */
+	/** @brief Appends tags to the gamesave upon having progressed a choice */
 	virtual void OnChoiceNodePickedByUser(const FConversationContext& Context, const UConversationChoiceNode* ChoiceNode, const TArray<FConversationBranchPoint>& ValidDestinations) override;
 };
 
@@ -122,7 +126,7 @@ public:
 		UConversationParticipantComponent* ConversationParticipantComponent,
 		const FAdvanceConversationRequest& InChoicePicked);
 
-	/** @brief */
+	/** @brief Starts the conversation, makes participants and sets up a conversation callback */
 	UFUNCTION()
 	static URTSOConversationInstance* StartConversation(
 		FGameplayTag ConversationEntryTag,
@@ -142,77 +146,83 @@ class RTSOPEN_API ARTSOInteractableConversationActor
 	GENERATED_BODY()
 
 public:
-	/** @brief */
+	/** @brief Creates the camera subobject */
 	ARTSOInteractableConversationActor();
 
-	/** @brief */
+	/** @brief Empty for now. Reserved for later use */
 	void ConversationStarted();
-	/** @brief */
+	/** @brief Empty for now. Reserved for later use */
 	void ConversationTaskChoiceDataUpdated(const FConversationNodeHandle& NodeHandle, const FClientConversationOptionEntry& OptionEntry);
-	/** @brief */
+	/** @brief Empty for now. Reserved for later use */
 	void ConversationUpdated(const FClientConversationMessagePayload& Payload);
-	/** @brief */
+	/** @brief Empty for now. Reserved for later use */
 	void ConversationStatusChanged(bool bDidStatusChange);
-	/** @brief */
+
+	/** @brief Assigns 'TAG_AI_Job_GenericInteractCreates' to 'JobTag'.
+	 * Sets up instance data, first sourcing the data from 'ConversationSettingsHandle'
+	 * Creates the participant component and binds it's delegates.
+	 * Also creates the async action UPDAsyncAction_ActivateFeature */
 	virtual void BeginPlay() override;
-	/** @brief */
+	/** @brief Removes tracked conversation from URTSOConversationActorTrackerSubsystem */
 	virtual void BeginDestroy() override;
 
-	/** @brief */
+	/** @brief adds 'JobTag' to a 'FGameplayTagContainer' and returns it */
 	virtual FGameplayTagContainer GetGenericTagContainer_Implementation() const override;
 
-	/** @brief */
+	/** @brief Checks conversation mission phase progression for the interacting player, and picks up the conversation from there */
 	virtual void OnInteract_Implementation(const FPDInteractionParamsWithCustomHandling& InteractionParams, EPDInteractResult& InteractResult) const override;
 	
-	/** @brief */
+	/** @brief Begins the conversation if it was not active previously and otherwise it advances it 
+	 *  @todo remove log output and screen prints  
+	 */
 	virtual void BeginWaitingForChoices_Implementation(int32 ActorID) override;
-	/** @brief */
+	/** @brief Requests to advance the conversation with the choice we've replied with */
 	virtual void ReplyChoice_Implementation(AActor* Caller, int32 Choice) override;
 	
-	/** @brief */
+	/** @brief Initializes progression to 0 for calling OnwerID */
 	void TryInitializeOwnerProgression(int32 OwnerID) const;
 
-	/** @brief */
+	/** @brief Validates required tags by fetching the given conversation entry via
+	 * the entrytag and comparing it's elements with those in the calling actor */
 	virtual ERTSOConversationState ValidateRequiredTags(const FGameplayTag& EntryTag, AActor* CallingActor) const;
-	/** @brief */
+	/** @return InstanceDataPtr->PhaseRequiredTags[ConversationProgression].bCanRepeatConversation*/
 	bool CanRepeatConversation(int32 ConversationProgression) const;
-	/** @brief */
+	/** @brief Resolves the entry conversation tag (that points to the new conversation instance), for the given conversation progression level */
 	virtual const FGameplayTag& ResolveTagForProgressionLevel(const int32 ConversationProgression) const;
-	/** @brief */
+	/** @brief Empty for now. Reserved for later use */
 	virtual void OnConversationPhaseStateChanged(const FGameplayTag& EntryTag, ERTSOConversationState NewState);
 	
-	/** @brief */
+	/** @brief The handle to the settings row entry we want to apply to the mission. */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Meta = (RowType = "/Script/RTSOpen.RTSOConversationMetaProgressionDatum"))
 	FDataTableRowHandle ConversationSettingsHandle;	
 
 	/** @note This pointer is just so we can modify the underlying value without restrictions in const functions*/
 	FRTSOConversationMetaState* InstanceDataPtr{};
-	
-	/** @brief */
+	/** @brief The actual instance data */
 	UPROPERTY(VisibleInstanceOnly, BlueprintReadWrite)
 	FRTSOConversationMetaState InstanceData{};
 
-	/** @brief */
+	/** @brief The owned participant component. */
 	UPROPERTY(VisibleInstanceOnly)
 	UConversationParticipantComponent* ParticipantComponent;
 
-	/** @brief */
+	/** @brief Interactable conversation actors name */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
 	FName ActorName{};
 	
-	/** @brief */
+	/** @brief GameFeature name to load the conversation data from */
 	UPROPERTY(EditAnywhere)
 	FString GameFeatureName = "ConversationData";
 
-	/** @brief */
+	/** @brief Persistent IDs for the conversation actor */
 	UPROPERTY(EditAnywhere)
 	FPDPersistentID ConversationActorPersistentID;
 private:
-	/** @brief */
+	/** @brief The JobTag related to this actor.*/
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Meta = (AllowPrivateAccess="true"))
 	FGameplayTag JobTag{};
 
-	/** @brief */
+	/** @brief The Conversation camera, player sets this as viewtarget upon initiating a conversation*/
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Meta = (AllowPrivateAccess="true"))
 	UCameraComponent* ConversationCamera = nullptr;	
 };
@@ -229,7 +239,7 @@ public:
 	UPROPERTY()
 	TSet<ARTSOInteractableConversationActor*> TrackedConversationActors{};
 
-	/** @brief */
+	/** @brief Tracked players controllers. Mainly meant for couch co-op and on the server where more than 10 defined instinct */
 	UPROPERTY()
 	TSet<ARTSOController*> TrackedPlayerControllers{};	
 };

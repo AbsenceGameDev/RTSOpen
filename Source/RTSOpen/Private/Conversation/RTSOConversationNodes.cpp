@@ -26,7 +26,7 @@ FConversationTaskResult URTSOConversationTask_Speak::ExecuteTaskNode_Implementat
 	check(ListenerAsController != nullptr) // Just a sanity check, should never be nullptr
 
 	FClientConversationMessagePayload ConstructedPayLoad;
-	ConstructedPayLoad.Message.SpeakerID = TAG_Conversation_Participant_Speaker;
+	ConstructedPayLoad.Message.SpeakerID = TAG_Conversation_Participant_Speaker; // @todo replace with 'ParticipantTag'
 	ConstructedPayLoad.Message.ParticipantDisplayName = SelectedName;
 	ConstructedPayLoad.Message.Text = Message;
 

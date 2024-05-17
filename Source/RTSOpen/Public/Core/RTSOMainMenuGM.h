@@ -14,14 +14,14 @@ class RTSOPEN_API ARTSOMainMenuGM : public AGameModeBase
 {
 	GENERATED_BODY()
 
-	/** @brief */
+	/** @brief Creates the widget resource for 'MainMenuWidget' in case 'MMWidgetClass' points to a valid class, and calls URTSOBaseGI::StartTransition */
 	virtual void BeginPlay() override;
 
 public:
-	/** @brief */
+	/** @brief The widget class we want to represent our main menu */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Menu|Startscreen")
 	TSubclassOf<URTSOMainMenuBase> MMWidgetClass{};
-	/** @brief */
+	/** @brief The instantiated widget resource */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Menu|Startscreen")
 	URTSOMainMenuBase* MainMenuWidget = nullptr;
 };

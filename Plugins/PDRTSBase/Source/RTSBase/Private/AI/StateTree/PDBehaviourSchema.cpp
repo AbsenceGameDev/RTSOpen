@@ -15,8 +15,8 @@
 UPDBehaviourSchema::UPDBehaviourSchema()
 	: ContextActorClass(AActor::StaticClass())
 	,ContextDataDescs({
-		{UE::BehaviourSchema::Names::ContextActor, AActor::StaticClass(), FGuid(0xDFB93B9F, 0xEDBE4907, 0x851C66B3, 0x7585FA22)},
-		{UE::BehaviourSchema::Names::AbortContext, FPDTreeAbortContext::StaticStruct(), FGuid(0xEED35412, 0x85E844A1, 0x95BE6DB6, 0xB63F51BD)},
+		{PD::BehaviourSchema::Names::ContextActor, AActor::StaticClass(), FGuid(0xDFB93B9F, 0xEDBE4907, 0x851C66B3, 0x7585FA22)},
+		{PD::BehaviourSchema::Names::AbortContext, FPDTreeAbortContext::StaticStruct(), FGuid(0xEED35412, 0x85E844A1, 0x95BE6DB6, 0xB63F51BD)},
 	})
 {
 }
