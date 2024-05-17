@@ -393,7 +393,9 @@ void ARTSOBaseGM::LoadEntities_Implementation()
 	UMassSpawnerSubsystem* SpawnerSystem = UWorld::GetSubsystem<UMassSpawnerSubsystem>(GetWorld());
 	if (EntityManager == nullptr) { return; }
 
-	TMap<const FMassEntityTemplateID, TTuple<int32, TArray<const FRTSSavedWorldUnits& /*EntityData*/>>> EntitiesToSpawn;
+	using FInnerEntityData = TArray<const FRTSSavedWorldUnits*>;
+	using FEntityCompoundTuple = TTuple<int32, FInnerEntityData>;
+	TMap<const FMassEntityTemplateID, FEntityCompoundTuple> EntitiesToSpawn{};
 	
 	for (const FRTSSavedWorldUnits& EntityData : GameSave->EntityUnits)
 	{
@@ -402,21 +404,23 @@ void ARTSOBaseGM::LoadEntities_Implementation()
 
 		if (EntitiesToSpawn.Contains(Template.GetTemplateID()) == false)
 		{
-			EntitiesToSpawn.Add(Template.GetTemplateID(), TTuple<int32, TArray<const FRTSSavedWorldUnits& /*EntityData*/>>
-				{1, TArray<const FRTSSavedWorldUnits&>{EntityData}});
+			FInnerEntityData TempDataArray;
+			TempDataArray.Emplace(&EntityData);
+
+			FEntityCompoundTuple TempData {1, TempDataArray};
+			EntitiesToSpawn.Emplace(Template.GetTemplateID(), TempData);
 		}
 		else
 		{
-			TTuple<int32, TArray<const FRTSSavedWorldUnits& /*EntityData*/>>& FoundEntityCompound =
-				EntitiesToSpawn.FindChecked(Template.GetTemplateID());
+			FEntityCompoundTuple FoundEntityCompound = EntitiesToSpawn.FindChecked(Template.GetTemplateID());
 			FoundEntityCompound.Key += 1;
-			FoundEntityCompound.Value.Emplace(EntityData);
+			FoundEntityCompound.Value.Emplace(&EntityData);
 		}
 		
 		// @todo load other fragment data, there are plenty still not being stored
 	}
 
-	for (const TTuple<const FMassEntityTemplateID, TTuple<int32, TArray<const FRTSSavedWorldUnits& /*EntityData*/>>>&
+	for (const TTuple<const FMassEntityTemplateID, FEntityCompoundTuple>&
 		EntityTypeCompound :  EntitiesToSpawn)
 	{
 		TArray<FMassEntityHandle> OutHandles;
@@ -425,29 +429,29 @@ void ARTSOBaseGM::LoadEntities_Implementation()
 		int32 Step = 0;
 		for (const FMassEntityHandle& NewEntityHandle : OutHandles)
 		{
-			const TArray<const FRTSSavedWorldUnits&>& EntityDataArray = EntityTypeCompound.Value.Value;
-			const FRTSSavedWorldUnits& WorldEntityData = EntityDataArray[Step];
+			const FInnerEntityData& EntityDataArray = EntityTypeCompound.Value.Value;
+			const FRTSSavedWorldUnits* WorldEntityData = EntityDataArray[Step];
 			
 			// Load entities owner data
 			FPDMFragment_RTSEntityBase* EntityBaseFragment = EntityManager->GetFragmentDataPtr<FPDMFragment_RTSEntityBase>(NewEntityHandle);
 			if (EntityBaseFragment != nullptr)
 			{
-				EntityBaseFragment->OwnerID = WorldEntityData.OwnerID;
-				EntityBaseFragment->SelectionGroupIndex = WorldEntityData.SelectionIndex;
+				EntityBaseFragment->OwnerID = WorldEntityData->OwnerID;
+				EntityBaseFragment->SelectionGroupIndex = WorldEntityData->SelectionIndex;
 			}
 			
 			// Load entities active task/job data and stats
 			FPDMFragment_Action* CurrentAction = EntityManager->GetFragmentDataPtr<FPDMFragment_Action>(NewEntityHandle);
 			if (CurrentAction != nullptr)
 			{
-				*CurrentAction = WorldEntityData.CurrentAction;
+				*CurrentAction = WorldEntityData->CurrentAction;
 			}
 			
 			// Update entities transform to the loaded position
 			FTransformFragment* EntityTransform = EntityManager->GetFragmentDataPtr<FTransformFragment>(NewEntityHandle);
 			if (EntityTransform != nullptr)
 			{
-				EntityTransform->SetTransform(FTransform{WorldEntityData.Location});
+				EntityTransform->SetTransform(FTransform{WorldEntityData->Location});
 			}
 			
 			++Step;
