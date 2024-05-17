@@ -11,13 +11,13 @@ void UPDInteractSubsystem::RegisterWorldInteractable_Implementation(UWorld* Sele
 
 	if (SelectedInteractable == nullptr)
 	{
-		UE_LOG(LogTemp, Error, TEXT("Called 'UPDInteractSubsystem::RegisterWorldInteractable' without valid actor"));
+		UE_LOG(PDLog_Interact, Error, TEXT("Called 'UPDInteractSubsystem::RegisterWorldInteractable' without valid actor"));
 		return;
 	}
 
 	if (Cast<IPDInteractInterface>(SelectedInteractable) == nullptr)
 	{
-		UE_LOG(LogTemp, Error, TEXT("Called 'UPDInteractSubsystem::RegisterWorldInteractable' without valid interactable actor"));
+		UE_LOG(PDLog_Interact, Error, TEXT("Called 'UPDInteractSubsystem::RegisterWorldInteractable' without valid interactable actor"));
 		return;
 	}
 	
@@ -36,6 +36,7 @@ void UPDInteractSubsystem::TransferringWorld(UWorld* OldWorld, UWorld* TargetWor
 	check(OldWorld != nullptr)
 	check(TargetWorld != nullptr)
 
+	// Is there an already existing set of functions that allow transferring between worlds, and not just ulevels?
 	WorldInteractables.FindOrAdd(TargetWorld).ActorInfo = WorldInteractables.Find(OldWorld)->ActorInfo;
 	WorldInteractables.Remove(OldWorld);
 }

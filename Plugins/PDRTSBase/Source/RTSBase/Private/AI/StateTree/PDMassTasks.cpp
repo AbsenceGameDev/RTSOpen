@@ -89,7 +89,7 @@ void FPDMTask_MoveToTarget::ProcessNewPriorityPath(FPDMPathParameters& Params) c
 	// UNavigationPath* Navpath = UNavigationSystemV1::FindPathToLocationSynchronously(Params.EntitySubsystem.GetWorld(), StartLocation, TargetLocation);
 	// if (Navpath != nullptr && Navpath->PathPoints.IsEmpty() == false)
 	// {
-	// 	UE_LOG(LogTemp, Warning, TEXT("FPDMTask_MoveToTarget::ProcessNewPriorityPath -- NavPath Generated"))
+	// 	UE_LOG(PDLog_RTSBase, Warning, TEXT("FPDMTask_MoveToTarget::ProcessNewPriorityPath -- NavPath Generated"))
 	//
 	// 	TArray<FVector>& PathPoints = Navpath->PathPoints;
 	// 	PathPoints[0] = StartLocation;
@@ -110,7 +110,7 @@ void FPDMTask_MoveToTarget::ProcessNewPriorityPath(FPDMPathParameters& Params) c
 	// }
 	// else
 	{
-		UE_LOG(LogTemp, Warning, TEXT("FPDMTask_MoveToTarget::ProcessNewPriorityPath -- Failed being generated"))
+		UE_LOG(PDLog_RTSBase, Warning, TEXT("FPDMTask_MoveToTarget::ProcessNewPriorityPath -- Failed being generated"))
 		Params.MoveTarget.Center = TargetLocation;
 	}
 }
@@ -121,7 +121,7 @@ void FPDMTask_MoveToTarget::ProcessNewSharedPath(FPDMPathParameters& Params) con
 
 	if (Params.NavPath->PathPoints.IsEmpty() == false)
 	{
-		UE_LOG(LogTemp, Warning, TEXT("FPDMTask_MoveToTarget::ProcessNewSharedPath -- NavPath Generated"))
+		UE_LOG(PDLog_RTSBase, Warning, TEXT("FPDMTask_MoveToTarget::ProcessNewSharedPath -- NavPath Generated"))
 		
 		TArray<FVector> PathPoints = Params.NavPath->PathPoints;
 		PathPoints[0] = StartLocation;
@@ -132,7 +132,7 @@ void FPDMTask_MoveToTarget::ProcessNewSharedPath(FPDMPathParameters& Params) con
 	}
 	else
 	{
-		UE_LOG(LogTemp, Warning, TEXT("FPDMTask_MoveToTarget::ProcessNewSharedPath -- Failed being generated"))
+		UE_LOG(PDLog_RTSBase, Warning, TEXT("FPDMTask_MoveToTarget::ProcessNewSharedPath -- Failed being generated"))
 		Params.MoveTarget.Center = Params.ResolveLocation();
 	}
 }

@@ -2,6 +2,7 @@
 
 #include "Widgets/RTSOMainMenuBase.h"
 
+#include "RTSOSharedUI.h"
 #include "Actors/RTSOController.h"
 #include "Core/RTSOBaseGM.h"
 #include "Widgets/RTSOActiveMainMenu.h"
@@ -41,7 +42,7 @@ void URTSOMainMenuBase::BindButtonDelegates(AActor* ActorToBindAt)
 		const URTSOMenuWidget* AsMenu = Cast<URTSOMenuWidget>(ItWidget);
 		if (AsMenu == nullptr) { continue; }
 
-		UE_LOG(LogTemp, Warning, TEXT("URTSOMainMenuBase::BindButtonDelegates -- Binding delegates"));
+		UE_LOG(PDLog_RTSOSharedUI, Warning, TEXT("URTSOMainMenuBase::BindButtonDelegates -- Binding delegates"));
 		
 		// All these objects are marked with a metaspecifier BindWidget, thus we can be sure this piece of code never gets run if the stacked URTSOMenuWidget is not valid
 		AsMenu->ClearDelegates();

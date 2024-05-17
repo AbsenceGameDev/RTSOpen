@@ -54,7 +54,7 @@ void UPDRTSBaseSubsystem::SetupOctreeWithNewWorld(UWorld* NewWorld)
 	}
 		
 	static const FString BuildString = "UPDRTSBaseSubsystem::SetupOctreeWithNewWorld";
-	UE_LOG(LogTemp, Log, TEXT("%s"), *BuildString);
+	UE_LOG(PDLog_RTSBase, Log, TEXT("%s"), *BuildString);
 
 	
 	if (NewWorld == nullptr || NewWorld->IsInitialized() == false)
@@ -88,7 +88,7 @@ void UPDRTSBaseSubsystem::ProcessTables()
 	{
 		FString BuildString = "UPDRTSBaseSubsystem::ProcessTables -- "
 		+ FString::Printf(TEXT("\n 'WorkTables' array is empty. Is not able to process data"));
-		UE_LOG(LogTemp, Error, TEXT("%s"), *BuildString);
+		UE_LOG(PDLog_RTSBase, Error, TEXT("%s"), *BuildString);
 		
 		return;
 	}
@@ -118,7 +118,7 @@ void UPDRTSBaseSubsystem::ProcessTables()
 				FString BuildString = "UPDRTSBaseSubsystem::ProcessTables -- "
 				+ FString::Printf(TEXT("Processing table(%s)"), *Table->GetName()) 
 				+ FString::Printf(TEXT("\n Trying to add work/job on row (%s) Which does not have a valid gameplay tag. Skipping processing entry"), *Name.ToString());
-				UE_LOG(LogTemp, Error, TEXT("%s"), *BuildString);
+				UE_LOG(PDLog_RTSBase, Error, TEXT("%s"), *BuildString);
 
 				// @todo Write some test cases and some data validation to handle this properly, the logs will do for now  
 				continue;
@@ -133,7 +133,7 @@ void UPDRTSBaseSubsystem::ProcessTables()
 				+ FString::Printf(TEXT("Processing table(%s)"), *Table->GetName()) 
 				+ FString::Printf(TEXT("\n Trying to add item(%s) which has already been added by previous table(%s)."),
 						*JobTag.GetTagName().ToString(), RetrievedTable != nullptr ? *RetrievedTable->GetName() : *FString("INVALID TABLE"));
-				UE_LOG(LogTemp, Error, TEXT("%s"), *BuildString);
+				UE_LOG(PDLog_RTSBase, Error, TEXT("%s"), *BuildString);
 
 				// @todo Write some test cases and some data validation to handle this properly, the logs will do for now  
 				continue;
@@ -218,14 +218,14 @@ const TArray<TObjectPtr<UInstancedStaticMeshComponent>>& UPDRTSBaseSubsystem::Ge
 	const UMassCrowdRepresentationSubsystem* RepresentationSubsystem = UWorld::GetSubsystem<UMassCrowdRepresentationSubsystem>(InWorld);
 	if (RepresentationSubsystem == nullptr)
 	{
-		UE_LOG(LogTemp, Warning, TEXT("GetMassISMs Fail - No RepSubsystem"))
+		UE_LOG(PDLog_RTSBase, Warning, TEXT("GetMassISMs Fail - No RepSubsystem"))
 		return FailDummy;
 	}
 
 	const AMassVisualizer* MassVisualizer = (*RepresentationSubsystem).*TPrivateAccessor<MassVisRepType>::TypeValue;
 	if (MassVisualizer == nullptr)
 	{
-		UE_LOG(LogTemp, Warning, TEXT("GetMassISMs Fail - No MassVisualizer"))
+		UE_LOG(PDLog_RTSBase, Warning, TEXT("GetMassISMs Fail - No MassVisualizer"))
 		return FailDummy;
 	}
 	

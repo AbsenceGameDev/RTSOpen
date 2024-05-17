@@ -7,6 +7,8 @@
 #include <CollisionQueryParams.h>
 #include <Kismet/KismetSystemLibrary.h>
 
+#include "GameFramework/GameStateBase.h"
+
 FPDTraceResult DummyTrace;
 
 UPDInteractComponent::UPDInteractComponent(const class FObjectInitializer& ObjectInitializer)
@@ -47,14 +49,151 @@ void UPDInteractComponent::TickComponent(float DeltaTime, enum ELevelTick TickTy
 	}
 }
 
+void UPDInteractComponent::FindClosestRadialTraceActor(const FVector& OwnerActorLocation, const AActor*& ClosestInteractable)
+{
+	for (const AActor* TraceActor : TraceBuffer.RadialTraceActors)
+	{
+		if (TraceActor == nullptr)
+		{
+			continue;
+		}
+
+		if (ClosestInteractable == nullptr)
+		{
+			ClosestInteractable = TraceActor;
+			continue;
+		}
+		const double AbsoluteDistanceToNewActor = (TraceActor->GetActorLocation() - OwnerActorLocation).Length(); 
+		const double AbsoluteDistanceToCurrentClosest = (ClosestInteractable->GetActorLocation() - OwnerActorLocation).Length();
+				
+		if (AbsoluteDistanceToNewActor >= AbsoluteDistanceToCurrentClosest) { continue; }
+
+		ClosestInteractable = TraceActor; 
+	}
+}
+
 void UPDInteractComponent::BeginInteraction()
 {
-	// @todo interaction timers?
+	const FPDTraceResult& TraceResult = GetTraceResult(true);
+	switch (TraceResult.ResultFlag)
+	{
+	case EPDTraceResult::TRACE_SUCCESS:
+		break;
+	case EPDTraceResult::TRACE_FAIL:
+		return;
+	}
+
+	// First find the closes interactable
+
+	const FVector& OwnerActorLocation = GetOwner()->GetActorLocation();
+
+	const AActor* ClosestInteractable = nullptr;
+	switch (TraceSettings.TickTraceType)
+	{
+	case EPDTickTraceType::TRACE_RADIAL:
+		{
+			FindClosestRadialTraceActor(OwnerActorLocation, ClosestInteractable);
+		}
+		break;
+	case EPDTickTraceType::TRACE_LINESHAPE:
+		{
+			ClosestInteractable = TraceResult.HitResult.GetActor();
+		}
+		break;
+	case EPDTickTraceType::TRACE_RESERVED0:
+		break;
+	case EPDTickTraceType::TRACE_RESERVED1:
+		break;
+	case EPDTickTraceType::TRACE_RESERVED2:
+		break;
+	case EPDTickTraceType::TRACE_MAX:
+		{
+			const AActor* ClosestRadialInteractable = nullptr;
+			FindClosestRadialTraceActor(OwnerActorLocation, ClosestRadialInteractable);
+
+			const double DistanceToRadialActor = (ClosestInteractable->GetActorLocation() - OwnerActorLocation).Length();
+			const double DistanceToShapeTraceActor = (TraceResult.HitResult.GetActor()->GetActorLocation() - OwnerActorLocation).Length();
+
+			// Fallback to pick Radial actor if shape-traced actor was invalid
+			ClosestInteractable = DistanceToRadialActor < DistanceToShapeTraceActor || TraceResult.HitResult.GetActor() == nullptr
+				? ClosestRadialInteractable : TraceResult.HitResult.GetActor();
+		}		
+		break;
+	}
+
+	ActiveInteractionTarget = ClosestInteractable;
+	StartInteractionTime = GetWorld()->GetGameState()->GetServerWorldTimeSeconds() ;
+
+	// This is ensured further back in the codepath to be true if the ActiveInteractionTarget is not null
+	const IPDInteractInterface* AsInteractInterface = Cast<IPDInteractInterface>(ActiveInteractionTarget);
+	if (AsInteractInterface == nullptr || FMath::IsNearlyZero(AsInteractInterface->GetInteractionTime()))
+	{
+		return;
+	}
+
+	FTimerDelegate InteractionTick;
+	InteractionTick.BindUObject(this, &UPDInteractComponent::TimerInteraction);
+	GetWorld()->GetTimerManager().SetTimer(ActiveInteractionTimer, InteractionTick, 0.1, true);
+}
+
+void UPDInteractComponent::TimerInteraction()
+{
+	CurrentInteractionTime = GetWorld()->GetGameState()->GetServerWorldTimeSeconds();
+
+	// This is ensured further back in the codepath to be true if the ActiveInteractionTarget is not null
+	const IPDInteractInterface* AsInteractInterface = Cast<IPDInteractInterface>(ActiveInteractionTarget);
+
+	if (FMath::IsNearlyZero(AsInteractInterface->GetInteractionTime()))
+	{
+		EndInteraction();
+		return;
+	}
+	
+	double InteractionPercent = (CurrentInteractionTime + SMALL_NUMBER) / AsInteractInterface->GetInteractionTime();
+	if (InteractionPercent + SMALL_NUMBER > 1.0)
+	{
+		EndInteraction();
+		return;
+	}
 }
 
 void UPDInteractComponent::EndInteraction()
 {
-	// @todo interaction timers?
+	CurrentInteractionTime = GetWorld()->GetGameState()->GetServerWorldTimeSeconds() - StartInteractionTime;
+	StartInteractionTime = 0.0;
+	GetWorld()->GetTimerManager().ClearTimer(ActiveInteractionTimer);
+
+	if (ActiveInteractionTarget == nullptr)
+	{
+		CurrentInteractionTime = 0;
+		return;
+	}
+
+	// This is ensured further back in the codepath to be true if the ActiveInteractionTarget is not null
+	const IPDInteractInterface* AsInteractInterface = Cast<IPDInteractInterface>(ActiveInteractionTarget);
+
+	FPDInteractionParamsWithCustomHandling InteractionParams;
+	InteractionParams.InstigatorActor = GetOwner();
+	InteractionParams.InteractionPercent = FMath::IsNearlyZero(AsInteractInterface->GetInteractionTime())
+		? 1.0 : (CurrentInteractionTime + SMALL_NUMBER) / AsInteractInterface->GetInteractionTime() ;
+	InteractionParams.InstigatorComponentClass; // @todo
+	InteractionParams.OptionalInteractionTags;
+	
+	EPDInteractResult InteractResult = EPDInteractResult::INTERACT_UNHANDLED;
+	AsInteractInterface->OnInteract(InteractionParams, InteractResult);
+
+	// @todo Finish the switch 
+	switch (InteractResult)
+	{
+	case EPDInteractResult::INTERACT_SUCCESS:
+		break;
+	case EPDInteractResult::INTERACT_FAIL:
+		break;
+	case EPDInteractResult::INTERACT_DELAYED:
+		break;
+	case EPDInteractResult::INTERACT_UNHANDLED:
+		break;
+	}
 }
 
 const FPDTraceResult& UPDInteractComponent::GetTraceResult(const bool bSearchForValidCachedResults) const

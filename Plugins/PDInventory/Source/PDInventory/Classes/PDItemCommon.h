@@ -6,6 +6,9 @@
 #include "GameplayTagContainer.h"
 #include "PDItemCommon.generated.h"
 
+DECLARE_LOG_CATEGORY_CLASS(PDLog_Inventory, Log, All);
+
+
 /** @brief Enum to tell us what type of operation we should expect,
  * in different contexts related to the item netdatum */
 UENUM()
@@ -106,7 +109,7 @@ struct FPDItemDefaultDatum : public FTableRowBase
 
 	/** @brief The actor class to spawn */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
-	TSubclassOf<AActor> ActorClass;
+	TSoftClassPtr<AActor> ActorClass;
 };
 
 /** @brief @property TierList, Key: Tier (int32). Value: ItemLink (FDataTableRowHandle) */

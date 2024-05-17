@@ -45,6 +45,8 @@ public:
 	virtual void OnInteract_Implementation(const FPDInteractionParamsWithCustomHandling& InteractionParams, EPDInteractResult& InteractResult) const override;
 	/** @brief Returns the interaction message. Returns actorname and gameaction from property 'ActorMessage' */
 	virtual const FPDInteractMessage GetInteractionMessage_Implementation() override;
+
+	virtual double GetInteractionTime_Implementation() const override { return InteractDuration; };
 protected:
 	/** @brief Function that resizes the collision bounds based on the property 'UniformCollisionPadding' */
 	UFUNCTION() 
@@ -77,6 +79,10 @@ public:
 	/** @brief Value that controls how much we want to control ur padding when sizing the collision bounds  */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Interaction|Actors")
 	double UniformCollisionPadding = UNREALUNITS_PERMETRE * 0.4;
+
+	/** @brief Value that controls how much we want to control ur padding when sizing the collision bounds  */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Interaction|Actors")
+	double InteractDuration = 0.0;
 };
 
 /**

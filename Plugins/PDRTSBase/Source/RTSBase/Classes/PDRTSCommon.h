@@ -7,6 +7,9 @@
 #include "NativeGameplayTags.h"
 #include "PDRTSCommon.generated.h"
 
+DECLARE_LOG_CATEGORY_CLASS(PDLog_RTSBase, Log, All);
+
+
 class UBehaviorTree;
 
 /** Declaring the "AI.Job" gameplay tag. to be defined in an object-file */

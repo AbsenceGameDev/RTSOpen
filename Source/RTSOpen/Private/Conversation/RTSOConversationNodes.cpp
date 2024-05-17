@@ -3,6 +3,8 @@
 #include "Conversation/RTSOConversationNodes.h"
 #include "ConversationContext.h"
 #include "PDRTSCommon.h"
+#include "RTSOpenCommon.h"
+#include "RTSOSharedUI.h"
 #include "Actors/RTSOController.h"
 #include "Actors/Interactables/ConversationHandlers/RTSOInteractableConversationActor.h"
 #include "Kismet/GameplayStatics.h"
@@ -36,7 +38,7 @@ FConversationTaskResult URTSOConversationTask_Speak::ExecuteTaskNode_Implementat
 	FConversationBranchPointBuilder StaticBranchBuilder;
 	GatherStaticChoices(StaticBranchBuilder, Context);
 	UE_LOG(
-		LogTemp,
+		PDLog_RTSOConversation,
 		Warning,
 		TEXT("URTSOConversationTask_Speak::ExecuteTaskNode - Num Static Choices: %i"),
 		StaticBranchBuilder.GetBranches().Num());
@@ -48,7 +50,7 @@ FConversationTaskResult URTSOConversationTask_Speak::ExecuteTaskNode_Implementat
 	FConversationBranchPointBuilder DynamicBranchBuilder;
 	GatherDynamicChoices(DynamicBranchBuilder, Context);
 	UE_LOG(
-		LogTemp,
+		PDLog_RTSOConversation,
 		Warning,
 		TEXT("URTSOConversationTask_Speak::ExecuteTaskNode - Num Dynamic Choices: %i"),
 		DynamicBranchBuilder.GetBranches().Num());

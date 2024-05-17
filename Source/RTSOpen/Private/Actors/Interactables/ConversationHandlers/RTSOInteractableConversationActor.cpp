@@ -69,11 +69,11 @@ void URTSOConversationInstance::PauseConversationAndSendClientChoices(
 	const int32 ActorID =  GEngine->GetEngineSubsystem<UPDRTSBaseSubsystem>()->SharedOwnerIDBackMappings.FindRef(ListenerAsController);
 	if (ChoiceWaitingStateMap.Contains(ActorID) == false || OnBegin_WaitChoicesDelegateMap.Contains(ActorID) == false)
 	{
-		UE_LOG(LogTemp, Warning, TEXT("URTSOConversationInstance::PauseConversationAndSendClientChoices -- fail"));
+		UE_LOG(PDLog_RTSOInteract, Warning, TEXT("URTSOConversationInstance::PauseConversationAndSendClientChoices -- fail"));
 		return;
 	}
 	
-	UE_LOG(LogTemp, Warning, TEXT("URTSOConversationInstance::PauseConversationAndSendClientChoices -- Broadcasting"));
+	UE_LOG(PDLog_RTSOInteract, Warning, TEXT("URTSOConversationInstance::PauseConversationAndSendClientChoices -- Broadcasting"));
 	*ChoiceWaitingStateMap.Find(ActorID) = true;
 	OnBegin_WaitChoicesDelegateMap.Find(ActorID)->Broadcast(ActorID);
 }
@@ -239,7 +239,7 @@ void ARTSOInteractableConversationActor::OnInteract_Implementation(
 	TryInitializeOwnerProgression(OwnerID);
 	const int32 CurrentProgression = InstanceDataPtr->ProgressionPerPlayer.FindRef(OwnerID);
 
-	UE_LOG(LogTemp, Warning, TEXT("ARTSOInteractableConversationActor::OnInteract"));
+	UE_LOG(PDLog_RTSOInteract, Warning, TEXT("ARTSOInteractableConversationActor::OnInteract"));
 	const ERTSOConversationState ConversationState =
 		ValidateRequiredTags(ResolveTagForProgressionLevel(CurrentProgression), AsCallingPawn);
 	switch (ConversationState)
@@ -257,7 +257,7 @@ void ARTSOInteractableConversationActor::OnInteract_Implementation(
 	default: return; // ValidateRequiredTags Never returns anything outside of the three above states
 	}
 
-	UE_LOG(LogTemp, Warning, TEXT("ARTSOInteractableConversationActor::OnInteract - 2"));
+	UE_LOG(PDLog_RTSOInteract, Warning, TEXT("ARTSOInteractableConversationActor::OnInteract - 2"));
 
 	// open conversation here with instigator
 	InstanceDataPtr->ActiveConversationInstance =
@@ -280,7 +280,7 @@ void ARTSOInteractableConversationActor::OnInteract_Implementation(
 		ARTSOInteractableConversationActor::Execute_BeginWaitingForChoices(MutableSelf, ActorID);
 	}
 	
-	UE_LOG(LogTemp, Warning, TEXT("ARTSOInteractableConversationActor::OnInteract - 3"));
+	UE_LOG(PDLog_RTSOInteract, Warning, TEXT("ARTSOInteractableConversationActor::OnInteract - 3"));
 }
 
 void ARTSOInteractableConversationActor::BeginWaitingForChoices_Implementation(int32 ActorID) 
@@ -288,7 +288,7 @@ void ARTSOInteractableConversationActor::BeginWaitingForChoices_Implementation(i
 	const FClientConversationMessagePayload& Payload = ParticipantComponent->GetLastMessage();
 	UPDConversationBPFL::Debug_PrintConversationMessageToScreen(this, Payload.Message, FLinearColor::Blue);
 	
-	UE_LOG(LogTemp, Warning, TEXT("ARTSOInteractableConversationActor::BeginWaitingForChoices"));
+	UE_LOG(PDLog_RTSOInteract, Warning, TEXT("ARTSOInteractableConversationActor::BeginWaitingForChoices"));
 	for (const FClientConversationOptionEntry& Opt : Payload.Options)
 	{
 		FName Participant{};
@@ -323,7 +323,7 @@ void ARTSOInteractableConversationActor::BeginWaitingForChoices_Implementation(i
 
 void ARTSOInteractableConversationActor::ReplyChoice_Implementation(AActor* Caller, int32 Choice)
 {
-	UE_LOG(LogTemp, Warning, TEXT("ARTSOInteractableConversationActor::ReplyChoice - Choice: %i"), Choice);
+	UE_LOG(PDLog_RTSOInteract, Warning, TEXT("ARTSOInteractableConversationActor::ReplyChoice - Choice: %i"), Choice);
 	const FClientConversationMessagePayload& Payload = ParticipantComponent->GetLastMessage();
 	if (Payload.Options.IsValidIndex(Choice) == false)
 	{
@@ -347,7 +347,7 @@ void ARTSOInteractableConversationActor::TryInitializeOwnerProgression(const int
 {
 	if (InstanceDataPtr == nullptr)
 	{
-		UE_LOG(LogTemp, Warning, TEXT("ConversationActor(%s)::TryInitializeOwnerProgression -- InstanceData invalid"), *GetName())
+		UE_LOG(PDLog_RTSOInteract, Warning, TEXT("ConversationActor(%s)::TryInitializeOwnerProgression -- InstanceData invalid"), *GetName())
 		return;
 	}
 
@@ -365,13 +365,13 @@ ERTSOConversationState ARTSOInteractableConversationActor::ValidateRequiredTags(
 		AsCallingPawn->GetController<ARTSOController>() : Cast<ARTSOController>(CallingActor);
 	if (AsCallingController == nullptr)
 	{
-		UE_LOG(LogTemp, Warning, TEXT("ConversationActor(%s)::ValidateRequiredTags -- No valid calling controller"), *GetName())
+		UE_LOG(PDLog_RTSOInteract, Warning, TEXT("ConversationActor(%s)::ValidateRequiredTags -- No valid calling controller"), *GetName())
 		return ValidatedTagState; 
 	}
 	
 	if (CallingActor == nullptr || AsCallingPawn->GetClass()->ImplementsInterface(URTSOConversationInterface::StaticClass()) == false)
 	{
-		UE_LOG(LogTemp, Warning, TEXT("ConversationActor(%s)::ValidateRequiredTags -- No valid calling controller"), *GetName())
+		UE_LOG(PDLog_RTSOInteract, Warning, TEXT("ConversationActor(%s)::ValidateRequiredTags -- No valid calling controller"), *GetName())
 		return ValidatedTagState;
 	}
 
@@ -388,7 +388,7 @@ ERTSOConversationState ARTSOInteractableConversationActor::ValidateRequiredTags(
 	{
 		if (ConversationProgressionLevel > InstanceDataPtr->ProgressionPerPlayer.FindOrAdd(OwnerID))
 			{
-				UE_LOG(LogTemp, Warning, TEXT("ConversationActor(%s)::ValidateRequiredTags -- prog step over player prog"), *GetName())
+				UE_LOG(PDLog_RTSOInteract, Warning, TEXT("ConversationActor(%s)::ValidateRequiredTags -- prog step over player prog"), *GetName())
 				break;
 			}
 		
@@ -399,14 +399,14 @@ ERTSOConversationState ARTSOInteractableConversationActor::ValidateRequiredTags(
 		// Invalid entry tag, might be too early in that conversation 'tree'
 		if (RequiredRules.EntryTag != EntryTag)
 		{
-			UE_LOG(LogTemp, Warning, TEXT("ConversationActor(%s)::ValidateRequiredTags -- Fail not equal tags"), *GetName())
+			UE_LOG(PDLog_RTSOInteract, Warning, TEXT("ConversationActor(%s)::ValidateRequiredTags -- Fail not equal tags"), *GetName())
 			continue;
 		}
 
 		// Already completed
 		if(RequiredRules.State == ERTSOConversationState::CurrentStateCompleted)
 		{
-			UE_LOG(LogTemp, Warning, TEXT("ConversationActor(%s)::ValidateRequiredTags -- Already Completed"), *GetName())
+			UE_LOG(PDLog_RTSOInteract, Warning, TEXT("ConversationActor(%s)::ValidateRequiredTags -- Already Completed"), *GetName())
 			return ERTSOConversationState::CurrentStateCompleted;
 		}
 
@@ -422,7 +422,7 @@ ERTSOConversationState ARTSOInteractableConversationActor::ValidateRequiredTags(
 		ValidatedTagState = bFoundAllRequiredTags ?
 			ERTSOConversationState::Valid : ERTSOConversationState::Invalid;
 
-		UE_LOG(LogTemp, Warning, TEXT("ConversationActor(%s)::ValidateRequiredTags -- bFoundAllRequiredTags: %i"), *GetName(), bFoundAllRequiredTags)
+		UE_LOG(PDLog_RTSOInteract, Warning, TEXT("ConversationActor(%s)::ValidateRequiredTags -- bFoundAllRequiredTags: %i"), *GetName(), bFoundAllRequiredTags)
 	}
 
 	return ValidatedTagState;

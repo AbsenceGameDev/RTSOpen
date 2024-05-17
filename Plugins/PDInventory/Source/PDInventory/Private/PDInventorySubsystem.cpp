@@ -31,7 +31,7 @@ void UPDInventorySubsystem::ProcessTables()
 				FString BuildString = "UPDInventorySubsystem::ProcessTables -- "
 				+ FString::Printf(TEXT("Processing table(%s)"), *Table->GetName()) 
 				+ FString::Printf(TEXT("\n Trying to add item on row (%s) Which does not have a valid gameplay tag. Skipping processing entry"), *Name.ToString());
-				UE_LOG(LogTemp, Error, TEXT("%s"), *BuildString);
+				UE_LOG(PDLog_Inventory, Error, TEXT("%s"), *BuildString);
 
 				// @todo Write some test cases and some data validation to handle this properly, the logs will do for now  
 				continue;
@@ -46,7 +46,7 @@ void UPDInventorySubsystem::ProcessTables()
 				+ FString::Printf(TEXT("Processing table(%s)"), *Table->GetName()) 
 				+ FString::Printf(TEXT("\n Trying to add item(%s) which has already been added by previous table(%s)."),
 						*ItemTag.GetTagName().ToString(), RetrievedTable != nullptr ? *RetrievedTable->GetName() : *FString("INVALID TABLE"));
-				UE_LOG(LogTemp, Error, TEXT("%s"), *BuildString);
+				UE_LOG(PDLog_Inventory, Error, TEXT("%s"), *BuildString);
 
 				// @todo Write some test cases and some data validation to handle this properly, the logs will do for now  
 				continue;

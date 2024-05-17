@@ -2,6 +2,8 @@
 
 #include "Actors/PDRTSCameraManager.h"
 
+#include "PDRTSCommon.h"
+
 APDCameraManager::APDCameraManager()
 {
 	RequestedCameraState = OldCameraState = FGameplayTag{};
@@ -39,7 +41,7 @@ void APDCameraManager::SetCustomMode_Implementation(FGameplayTag Tag)
 		const FString BuildString =
 			"APDCameraManager::SetCustomMode -- "
 			"\n Trying to add set camera mode without a valid gameplay tag. Skipping processing entry";
-		UE_LOG(LogTemp, Error, TEXT("%s"), *BuildString);
+		UE_LOG(PDLog_RTSBase, Error, TEXT("%s"), *BuildString);
 		
 		return;
 	}
@@ -114,7 +116,7 @@ void APDCameraManager::ProcessTables()
 				FString BuildString = "APDCameraManager::ProcessTables -- "
 				+ FString::Printf(TEXT("Processing table(%s)"), *Table->GetName()) 
 				+ FString::Printf(TEXT("\n Trying to add settings on row (%s) Which does not have a valid gameplay tag. Skipping processing entry"), *Name.ToString());
-				UE_LOG(LogTemp, Error, TEXT("%s"), *BuildString);
+				UE_LOG(PDLog_RTSBase, Error, TEXT("%s"), *BuildString);
 
 				// @todo Write some test cases and some data validation to handle this properly, the logs will do for now  
 				continue;
@@ -129,7 +131,7 @@ void APDCameraManager::ProcessTables()
 				+ FString::Printf(TEXT("Processing table(%s)"), *Table->GetName()) 
 				+ FString::Printf(TEXT("\n Trying to add setting(%s) which has already been added by previous table(%s)."),
 						*CameraMode.GetTagName().ToString(), RetrievedTable != nullptr ? *RetrievedTable->GetName() : *FString("INVALID TABLE"));
-				UE_LOG(LogTemp, Error, TEXT("%s"), *BuildString);
+				UE_LOG(PDLog_RTSBase, Error, TEXT("%s"), *BuildString);
 
 				// @todo Write some test cases and some data validation to handle this properly, the logs will do for now  
 				continue;

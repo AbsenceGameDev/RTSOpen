@@ -8,6 +8,8 @@
 #include "Blueprint/UserWidget.h"
 #include "RTSOSharedUI.generated.h"
 
+DECLARE_LOG_CATEGORY_CLASS(PDLog_RTSOSharedUI, Log, All);
+
 
 /** @brief */
 USTRUCT(Blueprintable)

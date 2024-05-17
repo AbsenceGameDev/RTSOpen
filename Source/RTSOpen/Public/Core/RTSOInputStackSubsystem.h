@@ -7,6 +7,8 @@
 #include "Subsystems/WorldSubsystem.h"
 #include "RTSOInputStackSubsystem.generated.h"
 
+DECLARE_LOG_CATEGORY_CLASS(PDLog_InputStack, Log, All);
+
 /**
  * There is a bug causing any modifier I am applying to the IA to be called but the modified value to be discarded,
  * I have however confirmed that the value in here at-least is correct
@@ -28,7 +30,7 @@ public:
 	UFUNCTION()
 	void ResetValueStacks()
 	{
-		UE_LOG(LogTemp, Warning, TEXT("URTSOInputStackSubsystem :: ResetValueStacks()"));
+		UE_LOG(PDLog_InputStack, Warning, TEXT("URTSOInputStackSubsystem :: ResetValueStacks()"));
 		InputStackIntegers.Empty();
 		InputStackDouble.Empty();
 		InputStackVectors.Empty();

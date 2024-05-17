@@ -103,7 +103,7 @@ void UPDRTSBaseUnit::AssignTask(FMassEntityHandle EntityHandle, const FGameplayT
 	const FPDWorkUnitDatum* WorkUnitDatum = RTSSubsystem->GetWorkEntry(JobTag);
 	if (WorkUnitDatum == nullptr)
 	{
-		UE_LOG(LogTemp, Verbose, TEXT("UPDRTSBaseUnit::AssignTask(Ent:%i) - NO WORKUNITDATUM"), EntityHandle.SerialNumber);
+		UE_LOG(PDLog_RTSBase, Verbose, TEXT("UPDRTSBaseUnit::AssignTask(Ent:%i) - NO WORKUNITDATUM"), EntityHandle.SerialNumber);
 		return;
 	}
 

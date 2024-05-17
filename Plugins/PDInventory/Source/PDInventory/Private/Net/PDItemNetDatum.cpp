@@ -186,7 +186,7 @@ bool FPDItemList::UpdateItemAtStackIdx(FGameplayTag& ItemToUpdate, int32 StackId
 	{
 		const FString BuildString = "FPDItemList::AddItem -- "
 		+ FString::Printf(TEXT("\n Trying to add item with invalid tag (%s). No given ItemTables have this tag on any given entry "), *ItemToUpdate.GetTagName().ToString());
-		UE_LOG(LogTemp, Warning, TEXT("%s"), *BuildString);
+		UE_LOG(PDLog_Inventory, Warning, TEXT("%s"), *BuildString);
 
 		return false;
 	}

@@ -139,7 +139,7 @@ void ARTSOController::OverwriteMappingContextSettings(const FGameplayTag& Contex
 	{
 		const FString BuildString = FString::Printf(TEXT("ARTSOController(%s)::OverwriteMappingContext -- "), *GetName())
 		+ FString::Printf(TEXT("\n Input tag was invalid. Skipping processing entry "));
-		UE_LOG(LogTemp, Warning, TEXT("%s"), *BuildString);
+		UE_LOG(PDLog_RTSOBase, Warning, TEXT("%s"), *BuildString);
 		return;
 	}
 	
@@ -160,7 +160,7 @@ void ARTSOController::ActivateMappingContext(const FGameplayTag& ContextTag)
 	{
 		const FString BuildString = FString::Printf(TEXT("ARTSOController(%s)::AddMappingContext -- "), *GetName())
 		+ FString::Printf(TEXT("\n Failed to find a valid mapping context mapped to tag (%s). Skipping processing entry "), *ContextTag.GetTagName().ToString());
-		UE_LOG(LogTemp, Error, TEXT("%s"), *BuildString);
+		UE_LOG(PDLog_RTSOBase, Error, TEXT("%s"), *BuildString);
 		return;
 	}
 	
@@ -182,7 +182,7 @@ void ARTSOController::DeactivateMappingContext(const FGameplayTag& ContextTag)
 	{
 		const FString BuildString = FString::Printf(TEXT("ARTSOController(%s)::RemoveMappingContext -- "), *GetName())
 		+ FString::Printf(TEXT("\n Failed to find a valid mapping context mapped to tag (%s). Skipping processing entry "), *ContextTag.GetTagName().ToString());
-		UE_LOG(LogTemp, Error, TEXT("%s"), *BuildString);
+		UE_LOG(PDLog_RTSOBase, Error, TEXT("%s"), *BuildString);
 		return;
 	}
 
@@ -272,7 +272,7 @@ void ARTSOController::ActionMoveSelection_Implementation(const FInputActionValue
 	{
 		const FString BuildString = FString::Printf(TEXT("ARTSOController(%s)::ActionMoveSelection -- "), *GetName())
 		+ FString::Printf(TEXT("\n MarqueeSelectedHandles.Num: %i, GetPawn(): %i"), MarqueeSelectedHandles.Num(), GetPawn() != nullptr);
-		UE_LOG(LogTemp, Warning, TEXT("%s"), *BuildString);
+		UE_LOG(PDLog_RTSOBase, Warning, TEXT("%s"), *BuildString);
 		
 		return;
 	}
@@ -290,11 +290,11 @@ void ARTSOController::ActionAssignSelectionToHotkey_Implementation(const FInputA
 	InputStackWorkaround->InputStackIntegers.Empty(); // temporary system
 	const int32 ImmutableIndex = Tail;
 	
-	UE_LOG(LogTemp, Warning, TEXT("ARTSOController::ActionAssignSelectionToHotkey : Requested ID : %i"), ImmutableIndex);
+	UE_LOG(PDLog_RTSOBase, Warning, TEXT("ARTSOController::ActionAssignSelectionToHotkey : Requested ID : %i"), ImmutableIndex);
 	const bool bShouldSet = MarqueeSelectedHandles.Contains(CurrentSelectionID);
 	if (bShouldSet)
 	{
-		UE_LOG(LogTemp, Warning, TEXT("ARTSOController::ActionAssignSelectionToHotkey : Should assign, OldID: %i, NewID: %i"), CurrentSelectionID, ImmutableIndex);
+		UE_LOG(PDLog_RTSOBase, Warning, TEXT("ARTSOController::ActionAssignSelectionToHotkey : Should assign, OldID: %i, NewID: %i"), CurrentSelectionID, ImmutableIndex);
 		
 		HotKeyedSelectionGroups.FindOrAdd(ImmutableIndex);
 		ReorderGroupIndex(CurrentSelectionID, ImmutableIndex);
@@ -305,14 +305,14 @@ void ARTSOController::ActionAssignSelectionToHotkey_Implementation(const FInputA
 		const TMap<int32, FMassEntityHandle>& FoundHandleMap = MarqueeSelectedHandles.FindRef(ImmutableIndex);
 		if (FoundHandleMap.IsEmpty() == false)
 		{
-			UE_LOG(LogTemp, Warning, TEXT("ARTSOController::ActionAssignSelectionToHotkey - Calling 'OnMarqueeSelectionUpdated' : (Head) Requested ID : %i"), CurrentSelectionID);
+			UE_LOG(PDLog_RTSOBase, Warning, TEXT("ARTSOController::ActionAssignSelectionToHotkey - Calling 'OnMarqueeSelectionUpdated' : (Head) Requested ID : %i"), CurrentSelectionID);
 			FoundHandleMap.GenerateKeyArray(Keys);
 			OnMarqueeSelectionUpdated( ImmutableIndex, Keys);
 		}
 	}
 	else
 	{
-		UE_LOG(LogTemp, Warning, TEXT("ARTSOController::ActionAssignSelectionToHotkey : Should remove assignment"));
+		UE_LOG(PDLog_RTSOBase, Warning, TEXT("ARTSOController::ActionAssignSelectionToHotkey : Should remove assignment"));
 
 		HotKeyedSelectionGroups.Remove(ImmutableIndex);
 		MarqueeSelectedHandles.Remove(ImmutableIndex);
@@ -341,12 +341,12 @@ void ARTSOController::ActionHotkeySelection_Implementation(const FInputActionVal
 	
 	if (IsMappingContextActive(TAG_CTRL_Ctxt_ConversationMode))
 	{
-		UE_LOG(LogTemp, Warning, TEXT("ARTSOController::ActionHotkeySelection : Processing Conversation Input"));
+		UE_LOG(PDLog_RTSOBase, Warning, TEXT("ARTSOController::ActionHotkeySelection : Processing Conversation Input"));
 		HandleConversationChoiceInput(CurrentSelectionID);
 		return;
 	}
 	
-	UE_LOG(LogTemp, Warning, TEXT("ARTSOController::ActionHotkeySelection : (Head) Requested ID : %i"), CurrentSelectionID);
+	UE_LOG(PDLog_RTSOBase, Warning, TEXT("ARTSOController::ActionHotkeySelection : (Head) Requested ID : %i"), CurrentSelectionID);
 	if (MarqueeSelectedHandles.Contains(CurrentSelectionID))
 	{
 		// Dispatch to BP, for visual effects and n();, and as such we only want to know the groupID if it is a explicitly stored hotkey
@@ -355,7 +355,7 @@ void ARTSOController::ActionHotkeySelection_Implementation(const FInputActionVal
 		const TMap<int32, FMassEntityHandle>* FoundHandleMap = MarqueeSelectedHandles.Find(CurrentSelectionID);
 		if (FoundHandleMap != nullptr && FoundHandleMap->IsEmpty() == false)
 		{
-			UE_LOG(LogTemp, Warning, TEXT("ARTSOController::ActionHotkeySelection - Calling 'OnMarqueeSelectionUpdated' : (Head) Requested ID : %i"), CurrentSelectionID);
+			UE_LOG(PDLog_RTSOBase, Warning, TEXT("ARTSOController::ActionHotkeySelection - Calling 'OnMarqueeSelectionUpdated' : (Head) Requested ID : %i"), CurrentSelectionID);
 			FoundHandleMap->GenerateKeyArray(Keys);
 			OnMarqueeSelectionUpdated( SelectedGID, Keys);
 		}
@@ -378,7 +378,7 @@ void ARTSOController::ActionExitConversation_Implementation(const FInputActionVa
 
 void ARTSOController::Internal_ExitConversation()
 {
-	UE_LOG(LogTemp, Warning, TEXT("ARTSOController::ExitConversation"));
+	UE_LOG(PDLog_RTSOBase, Warning, TEXT("ARTSOController::ExitConversation"));
 
 	const FClientConversationMessagePayload DummyPayload;
 	OnEndConversation(DummyPayload, nullptr);	
@@ -386,7 +386,7 @@ void ARTSOController::Internal_ExitConversation()
 
 void ARTSOController::ActionToggleMainMenu_Implementation(const FInputActionValue& Value)
 {
-	UE_LOG(LogTemp, Warning, TEXT("ARTSOController::ActionToggleMainMenu"));
+	UE_LOG(PDLog_RTSOBase, Warning, TEXT("ARTSOController::ActionToggleMainMenu"));
 	
 	if (MainMenuWidget == nullptr)
 	{
@@ -468,7 +468,7 @@ FInputActionValue UInputModifierIntegerPassthrough::ModifyRaw_Implementation(con
 	
 	if (UNLIKELY(bCanStackNewModifier))
 	{
-		UE_LOG(LogTemp, Warning, TEXT("UInputModifierIntegerPassthrough::ModifyRaw - Emplacing to the input stack : Val %i"), IntegerPassthrough);
+		UE_LOG(PDLog_RTSOBase, Warning, TEXT("UInputModifierIntegerPassthrough::ModifyRaw - Emplacing to the input stack : Val %i"), IntegerPassthrough);
 		InputStackWorkaround->InputStackIntegers.EmplaceLast(IntegerPassthrough);
 
 		if (UNLIKELY(InputStackWorkaround->InputStackIntegers.Num() >= 100))
@@ -807,7 +807,7 @@ void ARTSOController::GetEntitiesOrActorsInMarqueeSelection()
 	if (Handles.IsEmpty() == false)
 	{
 		CurrentSelectionID = GeneratedGroupID();
-		UE_LOG(LogTemp, Warning, TEXT("ARTSOController::GetEntitiesOrActorsInMarqueeSelection : (Head) Generated ID : %i"), CurrentSelectionID);
+		UE_LOG(PDLog_RTSOBase, Warning, TEXT("ARTSOController::GetEntitiesOrActorsInMarqueeSelection : (Head) Generated ID : %i"), CurrentSelectionID);
 
 		MarqueeSelectedHandles.FindOrAdd(CurrentSelectionID, std::move(Handles));
 	}

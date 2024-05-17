@@ -21,10 +21,19 @@ public:
 	/** @brief Calls trace functions. Which trace functions depends on which trace type has been assigned to 'TraceSettings.TickTraceType'*/
 	virtual void TickComponent(float DeltaTime, ELevelTick TickType, FActorComponentTickFunction* ThisTickFunction) override;
 
-	/** @brief Empty function. Reserved for later use to: Attempt an interaction with any currently traced interactable */
+	/** @brief Finds the closest interactable of the actors in the radial trace  */
+	void FindClosestRadialTraceActor(const FVector& OwnerActorLocation, const AActor*& ClosestInteractable);
+
+	/** @brief Registers the start interaction time and sets the interaction timer that accumulates the held time */
 	UFUNCTION(BlueprintCallable)
-	virtual void BeginInteraction(); 
-	/** @brief  Empty function. Reserved for later use to: End a currently active interaction */
+	virtual void BeginInteraction();
+	/** @brief Runs on a timer from the start of an interaction until the end of one */
+	UFUNCTION()
+	virtual void TimerInteraction();
+	/** @brief Called when an interaction ends, either by completing the interaction or stopping early 
+	 * - Registers the current interaction time
+	 * - calculates total interaction time
+	 * - clears the interaction timer */
 	UFUNCTION(BlueprintCallable)
 	virtual void EndInteraction();
 	
@@ -136,11 +145,26 @@ protected:
 	/** @brief The actual trace buffer which holds trace frame data*/
 	UPROPERTY(VisibleInstanceOnly, BlueprintReadOnly)
 	FPDTraceBuffer TraceBuffer{};
+
+	UPROPERTY(VisibleInstanceOnly, BlueprintReadOnly)
+	const AActor* ActiveInteractionTarget = nullptr;
+	
+	/** @brief THe tiemr handle for an active interaction, will be cleared after the interaction finishes */
+	UPROPERTY()
+	FTimerHandle ActiveInteractionTimer{};
+
+	/** @brief The current held interaction time, flushes after an interaction has finished */
+	UPROPERTY(VisibleInstanceOnly, BlueprintReadOnly)
+	double CurrentInteractionTime = 0.0;
+	/** @brief The start held interaction time, flushes after an interaction has finished */
+	UPROPERTY(VisibleInstanceOnly, BlueprintReadOnly)
+	double StartInteractionTime = 0.0;		
 	
 	/** @brief Dont access directly and Call 'SetOverrideTracePosition' instead. An override position to start the trace from. */
 	FVector OverridePosition;
 	/** @brief Dont access directly and Call 'SetOverrideTracePosition' instead. An override position to start the trace from. */
 	bool bResetOverrideNextFrame = false;
+
 };
 
 /**

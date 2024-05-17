@@ -101,14 +101,14 @@ void AGodHandPawn::HoverTick(const float DeltaTime)
 	if (ClosestActor != nullptr && ClosestActor != InstanceState.HoveredActor)
 	{
 		InstanceState.HoveredActor = ClosestActor;
-		UE_LOG(LogTemp, Warning, TEXT("HoverTick - Found New Hover Actor"))
+		UE_LOG(PDLog_RTSOBase, Warning, TEXT("HoverTick - Found New Hover Actor"))
 	}
 	
 	const FMassEntityHandle ClosestMeshInstance = FindClosestMassEntity();
 	if (ClosestMeshInstance.Index != INDEX_NONE && InstanceState.SelectedWorkerUnitHandle.Index != ClosestMeshInstance.Index)
 	{
 		// Not functionally relevant, keep here in case we want to put something here
-		UE_LOG(LogTemp, Warning, TEXT("HoverTick - Found New Unit ISM"))
+		UE_LOG(PDLog_RTSOBase, Warning, TEXT("HoverTick - Found New Unit ISM"))
 	}
 
 	// Dont overwrite in case we are dragging a path from this
@@ -132,7 +132,7 @@ void AGodHandPawn::RotationTick(float& DeltaTime)
 	// Handle queued rotation finished
 	if (InstanceState.CurrentRotationLeft < 0)
 	{
-		UE_LOG(LogTemp, Warning, TEXT("AGodHandPawn::RotationTick - Rotation in queue finished"))
+		UE_LOG(PDLog_RTSOBase, Warning, TEXT("AGodHandPawn::RotationTick - Rotation in queue finished"))
 
 		AddActorLocalRotation(FRotator(0, DeltaYaw + InstanceState.CurrentRotationLeft, 0));
 
@@ -144,7 +144,7 @@ void AGodHandPawn::RotationTick(float& DeltaTime)
 		if (FMath::IsNearlyZero(RemainderAsDouble) == false)
 		{
 			const float FinalAdjustment = RemainderAsDouble < 0 ? (RemainderAsDouble * RotationStep) : -1 * (RotationStep - (RemainderAsDouble * RotationStep));
-			UE_LOG(LogTemp, Warning, TEXT("AGodHandPawn::RotationTick - Final adjustment: %lf"), FinalAdjustment)
+			UE_LOG(PDLog_RTSOBase, Warning, TEXT("AGodHandPawn::RotationTick - Final adjustment: %lf"), FinalAdjustment)
 			AddActorLocalRotation(FRotator(0, FinalAdjustment, 0));
 		}
 		
@@ -295,7 +295,7 @@ void AGodHandPawn::ActionRotate_Implementation(const FInputActionValue& Value)
 void AGodHandPawn::ActionDragMove_Implementation(const FInputActionValue& Value)
 {
 	// Handles click&drag, does not handle touch&drag
-	UE_LOG(LogTemp, Warning, TEXT("AGodHandPawn::ActionDragMove"))
+	UE_LOG(PDLog_RTSOBase, Warning, TEXT("AGodHandPawn::ActionDragMove"))
 	
 	
 	TrackUnitMovement();
@@ -304,7 +304,7 @@ void AGodHandPawn::ActionDragMove_Implementation(const FInputActionValue& Value)
 void AGodHandPawn::ActionWorkerUnit_Started_Implementation(const FInputActionValue& Value)
 {
 	// const bool ImmutableMoveInput = Value.Get<bool>();
-	UE_LOG(LogTemp, Warning, TEXT("ActionWorkerUnit_Started"))
+	UE_LOG(PDLog_RTSOBase, Warning, TEXT("ActionWorkerUnit_Started"))
 	
 	if (InstanceState.SelectedWorkerUnitHandle.Index != INDEX_NONE)
 	{
@@ -338,7 +338,7 @@ void AGodHandPawn::ActionWorkerUnit_Triggered_Implementation(const FInputActionV
 	// const bool ImmutableMoveInput = Value.Get<bool>(); 
 
 	// @todo write class to throttle output in functions that run at high rate
-	// UE_LOG(LogTemp, Warning, TEXT("ActionWorkerUnit_Triggered"))
+	// UE_LOG(PDLog_RTSOBase, Warning, TEXT("ActionWorkerUnit_Triggered"))
 
 	ARTSOController* PC = GetController<ARTSOController>();
 	if (PC != nullptr && PC->IsDrawingMarquee())
@@ -351,7 +351,7 @@ void AGodHandPawn::ActionWorkerUnit_Triggered_Implementation(const FInputActionV
 
 void AGodHandPawn::ActionWorkerUnit_Cancelled_Implementation(const FInputActionValue& Value)
 {
-	UE_LOG(LogTemp, Warning, TEXT("ActionWorkerUnit_Cancelled"))
+	UE_LOG(PDLog_RTSOBase, Warning, TEXT("ActionWorkerUnit_Cancelled"))
 	IRTSOInputInterface::Execute_ActionWorkerUnit_Completed(this, Value);
 }
 
@@ -381,7 +381,7 @@ void AGodHandPawn::ActionWorkerUnit_Completed_Implementation(const FInputActionV
 	if (NC_WorkerPath != nullptr) { NC_WorkerPath->Deactivate(); }
 	if (AssociatedTags.IsEmpty() || EntityManager->IsEntityValid(InstanceState.SelectedWorkerUnitHandle) == false)
 	{
-		UE_LOG(LogTemp, Warning, TEXT("ActionWorkerUnit_Completed -- Unexpected error -- Clearing selected worker unit "))
+		UE_LOG(PDLog_RTSOBase, Warning, TEXT("ActionWorkerUnit_Completed -- Unexpected error -- Clearing selected worker unit "))
 
 		InstanceState.bUpdatePathOnTick = false;
 		InstanceState.WorkUnitTargetLocation = FVector::ZeroVector;
@@ -419,7 +419,7 @@ void AGodHandPawn::ActionWorkerUnit_Completed_Implementation(const FInputActionV
 	if (NC_WorkerPath != nullptr) { NC_WorkerPath->Deactivate(); }
 	InstanceState.bUpdatePathOnTick = false;
 	InstanceState.SelectedWorkerUnitHandle = {INDEX_NONE, INDEX_NONE};
-	UE_LOG(LogTemp, Warning, TEXT("ActionWorkerUnit_Completed -- Clearing selected worker unit "))
+	UE_LOG(PDLog_RTSOBase, Warning, TEXT("ActionWorkerUnit_Completed -- Clearing selected worker unit "))
 	
 }
 
@@ -441,7 +441,7 @@ void AGodHandPawn::ActionMoveSelection_Implementation(const FInputActionValue& V
 	if (PC == nullptr || PC->IsValidLowLevelFast() == false)
 	{
 		// BuildString += FString::Printf(TEXT("\n PC INVALID "));
-		// UE_LOG(LogTemp, Warning, TEXT("%s"), *BuildString);
+		// UE_LOG(PDLog_RTSOBase, Warning, TEXT("%s"), *BuildString);
 		return;
 	}
 	
@@ -455,7 +455,7 @@ void AGodHandPawn::ActionMoveSelection_Implementation(const FInputActionValue& V
 	if (ISMs.IsEmpty() || Cast<UPDRTSBaseUnit>(ISMs[0]) == nullptr)
 	{
 		// BuildString += FString::Printf(TEXT("\n ISM INVALID "));
-		// UE_LOG(LogTemp, Warning, TEXT("%s"), *BuildString);
+		// UE_LOG(PDLog_RTSOBase, Warning, TEXT("%s"), *BuildString);
 		return;
 	}
 	
@@ -469,7 +469,7 @@ void AGodHandPawn::ActionMoveSelection_Implementation(const FInputActionValue& V
 	if (InstanceState.WorkerUnitActionTarget == nullptr)
 	{
 		// BuildString += FString::Printf(TEXT("\n ACTOR (todo: OR ENTITY) TARGET INVALID, TRACING TO NEW STATIC LOCATION TARGET"));
-		// UE_LOG(LogTemp, Warning, TEXT("%s"), *BuildString);
+		// UE_LOG(PDLog_RTSOBase, Warning, TEXT("%s"), *BuildString);
 		
 		FVector2D ScreenCoordinates;
 		bool bFoundInputType;
@@ -688,7 +688,7 @@ EDataValidationResult AGodHandPawn::IsDataValid(FDataValidationContext& Context)
 	const FString ContextString = FString::Printf(TEXT("(%s)::IsDataValid()"), *GetName());
 	const FRTSGodhandSettings* FoundData = GodHandSettingsHandle.GetRow<FRTSGodhandSettings>(ContextString);
 
-	UE_LOG(LogTemp, Warning, TEXT("(%s)::IsDataValid() \n FoundData: %i \n FoundData->AssetData: %i"), *GetName(), FoundData != nullptr, FoundData != nullptr ? FoundData->AssetData != nullptr : 0);
+	UE_LOG(PDLog_RTSOBase, Warning, TEXT("(%s)::IsDataValid() \n FoundData: %i \n FoundData->AssetData: %i"), *GetName(), FoundData != nullptr, FoundData != nullptr ? FoundData->AssetData != nullptr : 0);
 
 	return FoundData != nullptr && FoundData->AssetData != nullptr ? Super::IsDataValid(Context) : EDataValidationResult::Invalid;
 }
@@ -703,7 +703,7 @@ void AGodHandPawn::InitializeISMAgent()
 	const FLatentActionInfo DelayInfo{0,0, TEXT("InitializeISMAgent"), this};
 	if (UPDRTSBaseSubsystem::GetMassISMs(GetWorld()).IsEmpty())
 	{
-		UE_LOG(LogTemp, Warning, TEXT("AGodHandPawn::InitializeISMAgent - Dispatching another attempt in 1 second"))
+		UE_LOG(PDLog_RTSOBase, Warning, TEXT("AGodHandPawn::InitializeISMAgent - Dispatching another attempt in 1 second"))
 
 		UKismetSystemLibrary::Delay(GetOwner(), 1.0f, DelayInfo);
 		return;
@@ -737,7 +737,7 @@ void AGodHandPawn::PossessedBy(AController* NewController)
 // Boilerplate - Collisions
 void AGodHandPawn::OnCollisionBeginOverlap(UPrimitiveComponent* OverlappedComponent, AActor* OtherActor, UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bFromSweep, const FHitResult & SweepResult)
 {
-	UE_LOG(LogTemp, Warning, TEXT("AGodHandPawn::OnCollisionBeginOverlap"))
+	UE_LOG(PDLog_RTSOBase, Warning, TEXT("AGodHandPawn::OnCollisionBeginOverlap"))
 	
 	// neither an ai or any interactable
 	if (Cast<IPDInteractInterface>(OtherActor) == nullptr) { return; }

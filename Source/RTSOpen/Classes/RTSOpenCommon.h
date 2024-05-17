@@ -14,6 +14,9 @@
 #include "AI/Mass/PDMassFragments.h"
 #include "RTSOpenCommon.generated.h"
 
+DECLARE_LOG_CATEGORY_CLASS(PDLog_RTSOConversation, Log, All);
+DECLARE_LOG_CATEGORY_CLASS(PDLog_RTSOInteract, Log, All);
+DECLARE_LOG_CATEGORY_CLASS(PDLog_RTSOBase, Log, All);
 
 class APDInteractActor;
 class UPDRTSBaseUnit;

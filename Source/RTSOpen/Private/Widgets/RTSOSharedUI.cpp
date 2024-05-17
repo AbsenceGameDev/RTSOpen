@@ -105,7 +105,7 @@ FEventReply URTSOConversationMessageWidget::MouseDoubleClick_Implementation(int3
 
 void URTSOConversationMessageWidget::SetPayload_Implementation(const FClientConversationMessagePayload& Payload, AActor* PotentialCallbackActor)
 {
-	UE_LOG(LogTemp, Warning, TEXT("URTSOConversationMessageWidget::SetPayload_Implementation"))
+	UE_LOG(PDLog_RTSOSharedUI, Warning, TEXT("URTSOConversationMessageWidget::SetPayload_Implementation"))
 	// reserved for possible implementation
 
 	CurrentPotentialCallbackActor = PotentialCallbackActor;
@@ -154,18 +154,18 @@ void URTSOConversationMessageWidget::SetPayload_Implementation(const FClientConv
 
 		const FString BuildString =
 			FString::Printf(TEXT("URTSOConversationMessageWidget::SetPayload -- Option(%s)"), *Option.ChoiceText.ToString());
-		UE_LOG(LogTemp, Error, TEXT("%s"), *BuildString);	
+		UE_LOG(PDLog_RTSOSharedUI, Error, TEXT("%s"), *BuildString);	
 		
 	}
 	const FString BuildString =
 		FString::Printf(TEXT("URTSOConversationMessageWidget::SetPayload -- Options Count %i"), Payload.Options.Num());
-	UE_LOG(LogTemp, Error, TEXT("%s"), *BuildString);	
+	UE_LOG(PDLog_RTSOSharedUI, Error, TEXT("%s"), *BuildString);	
 	
 }
 
 void URTSOConversationMessageWidget::SelectChoice_Implementation(int32 ChoiceSelection)
 {
-	UE_LOG(LogTemp, Warning, TEXT("URTSOConversationMessageWidget::SelectChoice_Implementation"))
+	UE_LOG(PDLog_RTSOSharedUI, Warning, TEXT("URTSOConversationMessageWidget::SelectChoice_Implementation"))
 	// reserved for possible implementation
 
 	if (CurrentPotentialCallbackActor == nullptr
@@ -185,7 +185,7 @@ void URTSOConversationMessageWidget::NativeDestruct()
 
 void URTSOConversationWidget::SetPayload_Implementation(const FClientConversationMessagePayload& Payload, AActor* PotentialCallbackActor)
 {
-	UE_LOG(LogTemp, Warning, TEXT("URTSOConversationWidget::SetPayload_Implementation"))
+	UE_LOG(PDLog_RTSOSharedUI, Warning, TEXT("URTSOConversationWidget::SetPayload_Implementation"))
 	// reserved for possible implementation
 	
 	TextContent->SetText(Payload.Message.Text);
@@ -200,7 +200,7 @@ void URTSOConversationWidget::SetPayload_Implementation(const FClientConversatio
 
 void URTSOConversationWidget::SelectChoice_Implementation(int32 ChoiceSelection)
 {
-	UE_LOG(LogTemp, Warning, TEXT("URTSOConversationWidget::SelectChoice_Implementation"))
+	UE_LOG(PDLog_RTSOSharedUI, Warning, TEXT("URTSOConversationWidget::SelectChoice_Implementation"))
 	// reserved for possible implementation
 	ConversationMessageWidget->SelectChoice(ChoiceSelection);
 }	

@@ -212,31 +212,16 @@ bool UPDMProcessor_EntityCosmetics::ProcessMaterialInstanceData(
 	FMassInstancedStaticMeshInfo& ISMInfo,
 	FPDMFragment_RTSEntityBase* RTSEntityFragment)
 {
-	// if (FMassLODSignificanceRange* Range = GetLODSignificanceRange(LODSignificance))
-	// {
-	// 	Range->AddBatchedTransform(InstanceId, Transform, PrevTransform, TArray<uint32>());
-	// 	if(PrevLODSignificance >= 0.0f)
-	// 	{
-	// 		FMassLODSignificanceRange* PrevRange = GetLODSignificanceRange(PrevLODSignificance);
-	// 		if (ensureMsgf(PrevRange, TEXT("Couldn't find a valid LODSignificanceRange for PrevLODSignificance %f"), PrevLODSignificance)
-	// 			&& PrevRange != Range)
-	// 		{
-	// 			PrevRange->AddBatchedTransform(InstanceId, Transform, PrevTransform, Range->StaticMeshRefs);
-	// 		}
-	// 	}
-	// }
-
-	
 	const FMassLODSignificanceRange* Range = ISMInfo.GetLODSignificanceRange(Rep.PrevLODSignificance);
 	if (Range == nullptr)
 	{
-		UE_LOG(LogTemp, Warning, TEXT("UPDMProcessor_EntityCosmetics::ProcessMaterialInstanceData - Range INVALID"))
+		UE_LOG(PDLog_RTSBase, Warning, TEXT("UPDMProcessor_EntityCosmetics::ProcessMaterialInstanceData - Range INVALID"))
 		return false;
 	}
 
 	if (Range->ISMCSharedDataPtr == nullptr) 
 	{
-		UE_LOG(LogTemp, Warning, TEXT("UPDMProcessor_EntityCosmetics::ProcessMaterialInstanceData - RangeData INVALID"))
+		UE_LOG(PDLog_RTSBase, Warning, TEXT("UPDMProcessor_EntityCosmetics::ProcessMaterialInstanceData - RangeData INVALID"))
 		return false;
 	}
 
@@ -250,16 +235,6 @@ bool UPDMProcessor_EntityCosmetics::ProcessMaterialInstanceData(
 		{
 			continue;
 		}
-
-		// if (Instance->GetISMComponent()->IsValidInstance(EntityHashID))
-		// {
-		// 	UE_LOG(LogTemp, Warning, TEXT("UPDMProcessor_EntityCosmetics::ProcessMaterialInstanceData - Valid Entity"))
-		// }
-		// else
-		// {
-		// 	// UE_LOG(LogTemp, Warning, TEXT("UPDMProcessor_EntityCosmetics::ProcessMaterialInstanceData - NOT VALID Entity"))
-		// 	continue;
-		// }
 		
 		FirstFoundInstance = Instance;
 		break;
@@ -267,7 +242,6 @@ bool UPDMProcessor_EntityCosmetics::ProcessMaterialInstanceData(
 
 	if (FirstFoundInstance == nullptr)
 	{
-		// UE_LOG(LogTemp, Warning, TEXT("UPDMProcessor_EntityCosmetics::ProcessMaterialInstanceData - Found no valid ISM info"))
 		return false;
 	}
 	
@@ -291,7 +265,7 @@ bool UPDMProcessor_EntityCosmetics::ProcessMaterialInstanceData(
 		}
 		break;
 	case EPDEntitySelectionState::ENTITY_NOTSELECTED:
-		// UE_LOG(LogTemp, Warning, TEXT("UPDMProcessor_EntityCosmetics::ProcessMaterialInstanceData - EPDEntitySelectionState::ENTITY_NOTSELECTED"))
+		// UE_LOG(PDLog_RTSBase, Warning, TEXT("UPDMProcessor_EntityCosmetics::ProcessMaterialInstanceData - EPDEntitySelectionState::ENTITY_NOTSELECTED"))
 		if (RTSEntityFragment->bHasClearedSelection == false)
 		{
 			bLog = true;
@@ -304,18 +278,18 @@ bool UPDMProcessor_EntityCosmetics::ProcessMaterialInstanceData(
 		}
 		break;
 	case EPDEntitySelectionState::ENTITY_UNSET:
-		// UE_LOG(LogTemp, Warning, TEXT("UPDMProcessor_EntityCosmetics::ProcessMaterialInstanceData - EPDEntitySelectionState::ENTITY_UNSET"))
+		// UE_LOG(PDLog_RTSBase, Warning, TEXT("UPDMProcessor_EntityCosmetics::ProcessMaterialInstanceData - EPDEntitySelectionState::ENTITY_UNSET"))
 
 		break;
 	}
 	
 	if (bLog && FirstFoundInstance->GetISMComponent()->IsValidInstance(EntityHashID))
 	{
-		UE_LOG(LogTemp, Warning, TEXT("UPDMProcessor_EntityCosmetics::ProcessMaterialInstanceData - VALID INSTANCE(%i)"), EntityHashID)
+		UE_LOG(PDLog_RTSBase, Warning, TEXT("UPDMProcessor_EntityCosmetics::ProcessMaterialInstanceData - VALID INSTANCE(%i)"), EntityHashID)
 	}
 	else if (bLog)
 	{
-		UE_LOG(LogTemp, Warning, TEXT("UPDMProcessor_EntityCosmetics::ProcessMaterialInstanceData - INVALID INSTANCE(%i)"), EntityHashID)
+		UE_LOG(PDLog_RTSBase, Warning, TEXT("UPDMProcessor_EntityCosmetics::ProcessMaterialInstanceData - INVALID INSTANCE(%i)"), EntityHashID)
 	}
 	
 	return true;	

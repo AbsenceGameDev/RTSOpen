@@ -9,6 +9,8 @@
 #include "Containers/Deque.h"
 #include "PDInteractCommon.generated.h"
 
+DECLARE_LOG_CATEGORY_CLASS(PDLog_Interact, Log, All);
+
 /* Max distances */
 constexpr float DEFAULT_PEROBJECT_MAX_INTERACTION_DISTANCE = 150;
 constexpr float DEFAULT_TRACER_MAX_INTERACTION_DISTANCE = 1500;
@@ -178,7 +180,7 @@ struct PDINTERACTION_API FPDInteractionParams
 	TSubclassOf<UActorComponent> InstigatorComponentClass = nullptr;
 
 	/** @brief Passing in the instigator fragment */
-    FMassEntityHandle InstigatorEntity{}; // @todo replace usage of above fragment with this entity
+    FMassEntityHandle InstigatorEntity{}; 
 	
 	/** @brief A set of optional tags to be handled as seen fit by game module implementations */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Interaction|Params")
@@ -195,7 +197,6 @@ struct FPDInteractionParamsWithCustomHandling : public FPDInteractionParams
 	GENERATED_BODY()
 	
 	// @todo Handle callback on delayed events soon
-	// DECLARE_DYNAMIC_MULTICAST_DELEGATE_ThreeParams(FPDCustomProcessInteractionDelayedCallback, const AActor*, OriginalInteractable, const FPDInteractionParams&, NewInteractionPayload, EPDInteractResult&, CallbackInteractResult);
 	/** @brief Custom processing delegate */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Interaction|Params")
 	FPDCustomProcessInteraction CustomInteractionProcessor;
@@ -296,7 +297,7 @@ struct FPDTraceResult
 	GENERATED_USTRUCT_BODY()
 
 public:
-	/** @brief Result enum flag  @todo remove and replace usage, really only need the hitresult struct */
+	/** @brief Result enum flag  @note Not needed in c++ but for representing code paths in blueprints it is a bit cleaner */
 	UPROPERTY(BlueprintReadOnly)
 	EPDTraceResult ResultFlag = EPDTraceResult::TRACE_FAIL;
 
@@ -367,9 +368,9 @@ struct PDINTERACTION_API FRTSSavedInteractables
 	UPROPERTY(Transient, VisibleInstanceOnly, BlueprintReadWrite)
 	AActor* ActorInWorld = nullptr; 
 	
-	/** @brief Class of interactable. @todo replace with softclass */
+	/** @brief Class of interactable. */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
-	TSubclassOf<AActor> ActorClass; 
+	TSoftClassPtr<AActor> ActorClass; 
 	
 	/** @brief Location of the interactable at the moment of saving */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
