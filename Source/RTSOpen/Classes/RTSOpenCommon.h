@@ -12,11 +12,12 @@
 #include "CommonButtonBase.h"
 #include "PDItemCommon.h"
 #include "AI/Mass/PDMassFragments.h"
+#include "MassEntityConfigAsset.h"
 #include "RTSOpenCommon.generated.h"
 
 DECLARE_LOG_CATEGORY_CLASS(PDLog_RTSOConversation, Log, All);
 DECLARE_LOG_CATEGORY_CLASS(PDLog_RTSOInteract, Log, All);
-DECLARE_LOG_CATEGORY_CLASS(PDLog_RTSOBase, Log, All);
+DECLARE_LOG_CATEGORY_CLASS(PDLog_RTSO, Log, All);
 
 class APDInteractActor;
 class UPDRTSBaseUnit;
@@ -85,9 +86,14 @@ struct FRTSSavedWorldUnits
 	/** @brief Saved selection index the unit this relates to is contained within */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Data|SaveGame|Unit")
 	int32 SelectionIndex = INDEX_NONE;
+
+	/** @brief Stored soft object path for the config asset to spawn this entity */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Data|SaveGame|Unit")
+	TSoftObjectPtr<UMassEntityConfigAsset> MassEntityConfigAssetPath;
+	
 };
 
-/** @brief Main save data structure */
+/** @brief Main save data structure, @todo associate account ID to the persistent ID */
 UCLASS(BlueprintType, Blueprintable)
 class RTSOPEN_API URTSOpenSaveGame : public USaveGame
 {
@@ -96,7 +102,7 @@ public:
 	/** @brief Random stream */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "GameInstance|Widgets")
 	FRandomStream Seeder{0};
-
+	
 	/** @brief Total elapsed game-time */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "GameInstance|Widgets")
 	double GameTime = 0.0;

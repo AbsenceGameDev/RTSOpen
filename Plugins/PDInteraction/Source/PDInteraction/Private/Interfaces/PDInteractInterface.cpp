@@ -23,7 +23,7 @@ double IPDInteractInterface::GetInteractionTime_Implementation() const
 
 double IPDInteractInterface::GetCurrentUsability_Implementation() const
 {
-	return 1.0;
+	return Usability;
 }
 
 FGameplayTagContainer IPDInteractInterface::GetGenericTagContainer_Implementation() const

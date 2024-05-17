@@ -27,10 +27,6 @@ class RTSOPEN_API ARTSOBaseGM : public AGameModeBase
 
 public: // Method members
 	virtual void BeginPlay() override;
-
-	/** @brief If making use of PCG */
-	UFUNCTION(BlueprintNativeEvent, BlueprintCallable)
-	void OnGeneratedLandscapeReady();
 	
 	//
 	// Saving/loading
@@ -38,6 +34,8 @@ public: // Method members
 	UFUNCTION(BlueprintNativeEvent, BlueprintCallable)
 	void ClearSave(const bool bRefreshSeed = false);
 
+	/* Saving functions */
+	
 	/** @brief Dispatches an async save */
 	UFUNCTION(BlueprintNativeEvent, BlueprintCallable)
 	void SaveGame(const FString& Slot, const bool bAllowOverwrite = false);
@@ -45,10 +43,6 @@ public: // Method members
 	/** @brief Dispatches an async save */
 	UFUNCTION(BlueprintNativeEvent, BlueprintCallable)
 	void ProcessChangesAndSaveGame(const FString& Slot, const bool bAllowOverwrite = false);
-	
-	/** @brief Loads save from slot, if a save exists */
-	UFUNCTION(BlueprintNativeEvent, BlueprintCallable)
-	void LoadGame(const FString& Slot, const bool bDummyParam = false);
 
 	/** @brief Save ConversationProgression */
 	UFUNCTION(BlueprintNativeEvent, BlueprintCallable)
@@ -58,11 +52,11 @@ public: // Method members
 	UFUNCTION(BlueprintNativeEvent, BlueprintCallable)
 	void SaveConversationActorStates();		
 
-	/** @brief Save interactables */
+	/** @brief Save all player states */
 	UFUNCTION(BlueprintCallable)
 	void SaveAllPlayerStates();	
 	
-	/** @brief Save interactables */
+	/** @brief Save player state */
 	UFUNCTION(BlueprintNativeEvent, BlueprintCallable)
 	void SavePlayerState(ARTSOController* PlayerController);
 	
@@ -78,7 +72,41 @@ public: // Method members
 	UFUNCTION(BlueprintNativeEvent, BlueprintCallable)
 	void SaveEntities();
 
-	/** @brief */
+	/* Loading functions */
+	
+	/** @brief Loads save from slot, if a save exists */
+	UFUNCTION(BlueprintNativeEvent, BlueprintCallable)
+	void LoadGame(const FString& Slot, const bool bDummyParam = false);
+
+	/** @brief If making use of PCG */
+	UFUNCTION(BlueprintNativeEvent, BlueprintCallable)
+	void OnGeneratedLandscapeReady();
+	
+	/** @brief Instantiate objects, actors and entities upon loading a slot */
+	UFUNCTION()
+	void InstantiateLoadedData(ARTSOController* PC);
+
+	/** @brief Load all player states */
+	UFUNCTION(BlueprintCallable)
+	void LoadAllPlayerStates();
+
+	/** @brief Load Player states from current save data*/
+	UFUNCTION(BlueprintNativeEvent, BlueprintCallable)
+	void LoadPlayerState(ARTSOController* PlayerController);
+	
+	/** @brief Loads interactables from current save data */
+	UFUNCTION(BlueprintNativeEvent, BlueprintCallable)
+	void LoadInteractables();
+
+	/** @brief Load items/resources from current save data*/
+	UFUNCTION(BlueprintNativeEvent, BlueprintCallable)
+	void LoadResources(const TMap<int32, FRTSSavedItems>& DataRef);
+
+	/** @brief Load worker/units from current save data*/
+	UFUNCTION(BlueprintNativeEvent, BlueprintCallable)
+	void LoadEntities();	
+
+	/** @brief Hardcoded autosave every 60 minutes @todo make configurable */
 	virtual void TickActor(float DeltaTime, ELevelTick TickType, FActorTickFunction& ThisTickFunction) override;
 	
 public: // Variable members

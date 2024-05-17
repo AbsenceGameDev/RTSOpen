@@ -11,6 +11,8 @@
 #include "Widgets/RTSOMainMenuBase.h"
 
 #include "MassCommonFragments.h"
+#include "MassSpawnerSubsystem.h"
+#include "Components/PDInventoryComponent.h"
 #include "GameFramework/GameStateBase.h"
 #include "Kismet/GameplayStatics.h"
 #include "Kismet/KismetMathLibrary.h"
@@ -64,26 +66,6 @@ void ARTSOBaseGM::TickActor(float DeltaTime, ELevelTick TickType, FActorTickFunc
 	}
 }
 
-void ARTSOBaseGM::OnGeneratedLandscapeReady_Implementation()
-{
-	// Load file data if it exists
-}
-
-void ARTSOBaseGM::LoadGame_Implementation(const FString& Slot, const bool bDummyParam)
-{
-	const FString SelectedSlot = Slot == FString() ? ARTSOBaseGM::ROOTSAVE : Slot;
-	
-	const bool bDoesExist = UGameplayStatics::DoesSaveGameExist(SelectedSlot,0);
-	if (bDoesExist)
-	{
- 		GameSave = Cast<URTSOpenSaveGame>(UGameplayStatics::LoadGameFromSlot(SelectedSlot,0));
-		return;
-	}
-	
-	GameSave = Cast<URTSOpenSaveGame>(UGameplayStatics::CreateSaveGameObject(URTSOpenSaveGame::StaticClass()));
-}
-
-
 void ARTSOBaseGM::ClearSave_Implementation(const bool bRefreshSeed)
 {
 	check(GameSave != nullptr)
@@ -99,6 +81,9 @@ void ARTSOBaseGM::ClearSave_Implementation(const bool bRefreshSeed)
 	
 	bHasStartedSaveData = false;
 }
+
+//
+// Saving
 
 void ARTSOBaseGM::SaveGame_Implementation(const FString& Slot, const bool bAllowOverwrite)
 {
@@ -230,7 +215,7 @@ void ARTSOBaseGM::SaveInteractables_Implementation()
 void ARTSOBaseGM::SaveResources_Implementation(const TMap<int32, FRTSSavedItems>& DataRef)
 {
 	check(GameSave != nullptr)
-	GameSave->Inventories.Append(DataRef); // overwrite any previous value, this is low so only allow saving resources every 3 seconds
+	GameSave->Inventories.Append(DataRef); // overwrite any previous value, this is slow so only allow saving resources every 4 seconds at max, limited by the latent action below 
 
 	const FLatentActionInfo DelayInfo{0,0, TEXT("SaveGame"), this};
 	UKismetSystemLibrary::Delay(GetOwner(), 4.0f, DelayInfo);
@@ -254,7 +239,6 @@ void ARTSOBaseGM::SaveEntities_Implementation()
 			// 2. Store entities per active player
 			if (EntityManager->IsEntityValid(Cell.EntityHandle)) { return; }
 
-			// @todo (might not be needed) 3. Store entity config type 
 			FRTSSavedWorldUnits UnitDatum{};
 			const FPDMFragment_RTSEntityBase& EntityBaseFragment = EntityManager->GetFragmentDataChecked<FPDMFragment_RTSEntityBase>(Cell.EntityHandle);
 
@@ -263,12 +247,215 @@ void ARTSOBaseGM::SaveEntities_Implementation()
 			UnitDatum.OwnerID = EntityBaseFragment.OwnerID;
 			UnitDatum.SelectionIndex = EntityBaseFragment.SelectionGroupIndex;
 			UnitDatum.Location = EntityManager->GetFragmentDataChecked<FTransformFragment>(Cell.EntityHandle).GetTransform().GetLocation();
+
+			// @todo 3. Store entity config type 
+			UnitDatum.MassEntityConfigAssetPath = {};// @todo finish this: EntityManager->GetArchetypeForEntity(Cell.EntityHandle);
+			
 			GameSave->EntityUnits.Emplace(UnitDatum);
 		}
 	);
 
 	
 	RTSSubsystem->WorldOctree.Unlock();
+
+}
+
+//
+// Loading
+
+void ARTSOBaseGM::LoadGame_Implementation(const FString& Slot, const bool bDummyParam)
+{
+	const FString SelectedSlot = Slot == FString() ? ARTSOBaseGM::ROOTSAVE : Slot;
+	
+	const bool bDoesExist = UGameplayStatics::DoesSaveGameExist(SelectedSlot,0);
+	if (bDoesExist)
+	{
+		GameSave = Cast<URTSOpenSaveGame>(UGameplayStatics::LoadGameFromSlot(SelectedSlot,0));
+		return;
+	}
+	
+	GameSave = Cast<URTSOpenSaveGame>(UGameplayStatics::CreateSaveGameObject(URTSOpenSaveGame::StaticClass()));
+}
+
+void ARTSOBaseGM::OnGeneratedLandscapeReady_Implementation()
+{
+	// Load file data if it exists
+}
+
+void ARTSOBaseGM::InstantiateLoadedData(ARTSOController* PC)
+{
+	LoadPlayerState(PC);
+	LoadInteractables();
+	LoadResources(GameSave->Inventories);
+	LoadEntities();
+}
+
+void ARTSOBaseGM::LoadAllPlayerStates()
+{
+	// URTSOConversationActorTrackerSubsystem* Tracker =GetWorld()->GetSubsystem<URTSOConversationActorTrackerSubsystem>();
+	// check(Tracker != nullptr)
+	//
+	// for (ARTSOController* Controller : Tracker->TrackedPlayerControllers)
+	// {
+	// 	LoadPlayerState(Controller);
+	// }
+}
+
+void ARTSOBaseGM::LoadPlayerState_Implementation(ARTSOController* PlayerController)
+{
+	// Assume player tracker subsystem has loaded in the proper persistent ID for whatever backend service that might be used
+
+	const int32 PersistentID = PlayerController->GetActorID();
+	if (GameSave->PlayerLocations.Contains(PersistentID) == false)
+	{
+		UE_LOG(PDLog_RTSO, Error, TEXT("Save object does not contain saved player location data for ID: %i"), PersistentID);
+		return;
+	}
+
+	// @todo also store player rotation (possibly just save the full transform)
+	PlayerController->ClientSetLocation(GameSave->PlayerLocations.FindChecked(PersistentID), FRotator());
+}
+
+void ARTSOBaseGM::LoadInteractables_Implementation()
+{
+	for (FRTSSavedInteractables& Interactable : GameSave->Interactables)
+	{
+		if (Interactable.ActorClass.IsValid() == false)
+		{
+			UE_LOG(PDLog_RTSO, Error, TEXT("Class could not be loaded: %s"), *Interactable.ActorClass.ToSoftObjectPath().ToString());
+			continue;
+		}
+		UClass* LoadedClass = Interactable.ActorClass.LoadSynchronous();
+		if (LoadedClass->ImplementsInterface(UPDInteractInterface::StaticClass()) == false)
+		{
+			UE_LOG(PDLog_RTSO, Error, TEXT("Class does not implement PDInteractInterface: %s"), *Interactable.ActorClass.ToSoftObjectPath().ToString());
+			continue;			
+		}
+		
+		Interactable.ActorInWorld = GetWorld()->SpawnActor(LoadedClass, &Interactable.Location, nullptr);
+		Cast<IPDInteractInterface>(Interactable.ActorInWorld)->Usability =Interactable.Usability;
+	}
+}
+
+void ARTSOBaseGM::LoadResources_Implementation(const TMap<int32, FRTSSavedItems>& DataRef)
+{
+	URTSOConversationActorTrackerSubsystem* Tracker =GetWorld()->GetSubsystem<URTSOConversationActorTrackerSubsystem>();
+	check(Tracker != nullptr)
+
+	Tracker->TrackedPlayerControllers;
+
+	TMap<AActor*, int32>& ActorToIDMap =  GEngine->GetEngineSubsystem<UPDRTSBaseSubsystem>()->SharedOwnerIDBackMappings;
+	TMap<int32, AActor*>& IDToActorMap =  GEngine->GetEngineSubsystem<UPDRTSBaseSubsystem>()->SharedOwnerIDMappings;
+
+	TArray<TTuple<UPDInventoryComponent*, const FRTSSavedItems& /*SavedItems*/>> InventoriesToUpdate;
+	
+	for (const TTuple<int32 /*PersistentID*/, FRTSSavedItems /*Item data*/>& ItemDataEntry : DataRef)
+	{
+		int32 ID = ItemDataEntry.Key;
+		const FRTSSavedItems& SavedItems = ItemDataEntry.Value;
+
+		if (IDToActorMap.Contains(ID) == false)
+		{
+			UE_LOG(PDLog_RTSO, Error, TEXT("IDToActorMap does not contain mapping for PersistentID: %i"), ID);
+			continue;	
+		}
+
+		AController* AsController = Cast<AController>(IDToActorMap.FindChecked(ID));
+		if (AsController == nullptr)
+		{
+			UE_LOG(PDLog_RTSO, Error, TEXT("IDToActorMap.FindChecked(ID) does not point into a valid controller"));
+			continue;	
+		}
+
+		AGodHandPawn* CurrentGodHandPawn = AsController->GetPawn<AGodHandPawn>();
+		if (CurrentGodHandPawn == nullptr)
+		{
+			UE_LOG(PDLog_RTSO, Error, TEXT("AsController does not own a valid godhand pawn"));
+			continue;	
+		}
+
+		InventoriesToUpdate.Emplace(CurrentGodHandPawn->InventoryComponent, SavedItems);
+	}
+
+	for (const TTuple<UPDInventoryComponent*, const FRTSSavedItems&>& InventoryCompound : InventoriesToUpdate)
+	{
+		MARK_PROPERTY_DIRTY_FROM_NAME(UPDInventoryComponent, ItemList, InventoryCompound.Key)
+		InventoryCompound.Key->ItemList.Items = InventoryCompound.Value.Items;
+	}
+}
+
+void ARTSOBaseGM::LoadEntities_Implementation()
+{
+	check(GameSave != nullptr)
+
+	UPDRTSBaseSubsystem* RTSSubsystem = GEngine->GetEngineSubsystem<UPDRTSBaseSubsystem>();
+	FMassEntityManager* EntityManager = RTSSubsystem != nullptr ? RTSSubsystem->EntityManager : nullptr;
+	UMassSpawnerSubsystem* SpawnerSystem = UWorld::GetSubsystem<UMassSpawnerSubsystem>(GetWorld());
+	if (EntityManager == nullptr) { return; }
+
+	TMap<const FMassEntityTemplateID, TTuple<int32, TArray<const FRTSSavedWorldUnits& /*EntityData*/>>> EntitiesToSpawn;
+	
+	for (const FRTSSavedWorldUnits& EntityData : GameSave->EntityUnits)
+	{
+		UMassEntityConfigAsset* LoadedConfig = EntityData.MassEntityConfigAssetPath.LoadSynchronous();
+		const FMassEntityTemplate& Template = LoadedConfig->GetOrCreateEntityTemplate(*GetWorld());
+
+		if (EntitiesToSpawn.Contains(Template.GetTemplateID()) == false)
+		{
+			EntitiesToSpawn.Add(Template.GetTemplateID(), TTuple<int32, TArray<const FRTSSavedWorldUnits& /*EntityData*/>>
+				{1, TArray<const FRTSSavedWorldUnits&>{EntityData}});
+		}
+		else
+		{
+			TTuple<int32, TArray<const FRTSSavedWorldUnits& /*EntityData*/>>& FoundEntityCompound =
+				EntitiesToSpawn.FindChecked(Template.GetTemplateID());
+			FoundEntityCompound.Key += 1;
+			FoundEntityCompound.Value.Emplace(EntityData);
+		}
+		
+		// @todo load other fragment data, there are plenty still not being stored
+	}
+
+	for (const TTuple<const FMassEntityTemplateID, TTuple<int32, TArray<const FRTSSavedWorldUnits& /*EntityData*/>>>&
+		EntityTypeCompound :  EntitiesToSpawn)
+	{
+		TArray<FMassEntityHandle> OutHandles;
+		SpawnerSystem->SpawnEntities(*SpawnerSystem->GetMassEntityTemplate(EntityTypeCompound.Key), EntityTypeCompound.Value.Key, OutHandles);
+
+		int32 Step = 0;
+		for (const FMassEntityHandle& NewEntityHandle : OutHandles)
+		{
+			const TArray<const FRTSSavedWorldUnits&>& EntityDataArray = EntityTypeCompound.Value.Value;
+			const FRTSSavedWorldUnits& WorldEntityData = EntityDataArray[Step];
+			
+			// Load entities owner data
+			FPDMFragment_RTSEntityBase* EntityBaseFragment = EntityManager->GetFragmentDataPtr<FPDMFragment_RTSEntityBase>(NewEntityHandle);
+			if (EntityBaseFragment != nullptr)
+			{
+				EntityBaseFragment->OwnerID = WorldEntityData.OwnerID;
+				EntityBaseFragment->SelectionGroupIndex = WorldEntityData.SelectionIndex;
+			}
+			
+			// Load entities active task/job data and stats
+			FPDMFragment_Action* CurrentAction = EntityManager->GetFragmentDataPtr<FPDMFragment_Action>(NewEntityHandle);
+			if (CurrentAction != nullptr)
+			{
+				*CurrentAction = WorldEntityData.CurrentAction;
+			}
+			
+			// Update entities transform to the loaded position
+			FTransformFragment* EntityTransform = EntityManager->GetFragmentDataPtr<FTransformFragment>(NewEntityHandle);
+			if (EntityTransform != nullptr)
+			{
+				EntityTransform->SetTransform(FTransform{WorldEntityData.Location});
+			}
+			
+			++Step;
+			
+			// // @todo make use of or remove
+			// WorldEntityData.Health;
+		}
+	}
 
 }
 

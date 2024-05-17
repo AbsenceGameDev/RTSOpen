@@ -23,7 +23,7 @@ public:
 };
 
 
-constexpr uint32 INVALID_ID = 0; // is our INVALID_ID
+constexpr int32 INVALID_ID = 0; // is our INVALID_ID
 USTRUCT()
 struct FPDPersistentID
 {
@@ -34,10 +34,10 @@ public:
 	FPDPersistentID() : BitSet_ID(INVALID_ID) {}
 
 	/** @brief Supplied ID might cause conflicts, only meant to be used internally when iterating comparisons */
-	FPDPersistentID(uint32 InID) : BitSet_ID(InID) {}
+	FPDPersistentID(int32 InID) : BitSet_ID(InID) {}
 	
 	/** @brief Gets the internal ID integer */
-	uint32 GetID() const { return BitSet_ID; }
+	int32 GetID() const { return BitSet_ID; }
 	/** @brief Checks that the internal ID integer is not equals to INVALID_ID. Dos not check with the subsystem it is actually generated and tracked  */
 	bool IsValidID() const { return BitSet_ID != INVALID_ID; }
 	
@@ -84,12 +84,12 @@ public:
 	bool operator>=(const FPDPersistentID& Other) const { return this->BitSet_ID >= Other.BitSet_ID; }
 	bool operator<=(const FPDPersistentID& Other) const { return this->BitSet_ID <= Other.BitSet_ID; }
 
-	bool operator==(const uint32& OtherID) const { return this->BitSet_ID == OtherID; }
-	bool operator!=(const uint32& OtherID) const { return (*this == OtherID) == false; }
-	bool operator> (const uint32 OtherID) const { return this->BitSet_ID > OtherID; }
-	bool operator< (const uint32 OtherID) const { return this->BitSet_ID < OtherID; }	
-	bool operator>=(const uint32 OtherID) const { return this->BitSet_ID >= OtherID; }
-	bool operator<=(const uint32 OtherID) const { return this->BitSet_ID <= OtherID; }	
+	bool operator==(const int32& OtherID) const { return this->BitSet_ID == OtherID; }
+	bool operator!=(const int32& OtherID) const { return (*this == OtherID) == false; }
+	bool operator> (const int32 OtherID) const { return this->BitSet_ID > OtherID; }
+	bool operator< (const int32 OtherID) const { return this->BitSet_ID < OtherID; }	
+	bool operator>=(const int32 OtherID) const { return this->BitSet_ID >= OtherID; }
+	bool operator<=(const int32 OtherID) const { return this->BitSet_ID <= OtherID; }	
 	FPDPersistentID operator+(const FPDPersistentID& Other) const { return this->BitSet_ID + Other.BitSet_ID;}
 	FPDPersistentID operator+=(const FPDPersistentID& Other){ return this->BitSet_ID = this->BitSet_ID + Other.BitSet_ID;}
 	FPDPersistentID& operator++(){ BitSet_ID++; return *this;}
@@ -139,7 +139,7 @@ private:
 	}
 
 	/** @brief Wrapped data (Persistent ID) */
-	uint32 BitSet_ID;	
+	int32 BitSet_ID;	
 };
 
 /** @brief Hash the persistent ID*/

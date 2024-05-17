@@ -62,6 +62,8 @@ public:
 
 	/** @brief The cached return message given from 'GetInteractionMessage()' */
 	FPDInteractMessage OutMessage;
+
+	double Usability = 1.0;
 };
 
 /**
