@@ -61,15 +61,15 @@ public:
 
 private:
 	/** @brief Assigned by 'AssignData', retrieved by 'GetSelectionEntry'  */
-	UPROPERTY(BlueprintReadWrite, Meta = (ExposeOnSpawn=true))
+	UPROPERTY(BlueprintReadWrite, Meta = (ExposeOnSpawn=true, AllowPrivateAccess="true"))
 	FText SelectionEntry{};
 	
 	/** @brief Assigned by 'AssignData', retrieved by 'GetChoiceIndex'  */
-	UPROPERTY(BlueprintReadWrite, Meta = (ExposeOnSpawn=true))
+	UPROPERTY(BlueprintReadWrite, Meta = (ExposeOnSpawn=true, AllowPrivateAccess="true"))
 	int32 ChoiceIndex = INDEX_NONE;
 
 	/** @brief Assigned by 'AssignData', retrieved by 'DirectParentReference'  */
-	UPROPERTY(BlueprintReadWrite, Meta = (ExposeOnSpawn=true))
+	UPROPERTY(BlueprintReadWrite, Meta = (ExposeOnSpawn=true, AllowPrivateAccess="true"))
 	UUserWidget* DirectParentReference = nullptr;
 };
 
