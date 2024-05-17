@@ -1,198 +1,29 @@
 ﻿/* @author: Ario Amin @ Permafrost Development. @copyright: Full BSL(1.1) License included at bottom of the file  */
 #include "Actors/RTSOController.h"
 
-#include "EnhancedInputComponent.h"
-#include "EnhancedInputSubsystems.h"
-#include "NativeGameplayTags.h"
+// PDRTS
 #include "PDRTSBaseSubsystem.h"
 #include "PDRTSCommon.h"
-#include "Actors/GodHandPawn.h"
+
+// PDRTS -- MassAI
 #include "AI/Mass/PDMassFragments.h"
 #include "AI/Mass/PDMassProcessors.h"
-#include "Chaos/DebugDrawQueue.h"
+
+// RTSO
+#include "Actors/GodHandPawn.h"
 #include "Core/RTSOInputStackSubsystem.h"
+#include "Actors/Interactables/ConversationHandlers/RTSOInteractableConversationActor.h"
+#include "RTSOSharedUI.h"
+
+// EI
+#include "EnhancedInputComponent.h"
+#include "EnhancedInputSubsystems.h"
+
+#include "NativeGameplayTags.h"
+#include "Chaos/DebugDrawQueue.h"
 #include "Kismet/KismetMathLibrary.h"
-#include "Misc/DataValidation.h"
 #include "Misc/CString.h"
 
-#include "CommonTextBlock.h"
-#include "Actors/Interactables/ConversationHandlers/RTSOInteractableConversationActor.h"
-#include "Components/Image.h"
-#include "Components/Border.h"
-#include "Components/SizeBox.h"
-#include "Components/TextBlock.h"
-#include "Components/TileView.h"
-
-void URTSOModularTile::NativePreConstruct()
-{
-	Super::NativePreConstruct();
-
-	Refresh();	
-}
-
-void URTSOModularTile::Refresh()
-{
-	TextName->SetText(TileText);
-
-	SizeBoxContainer->SetHeightOverride(Height);	
-	SizeBoxContainer->SetWidthOverride(Width);		
-}
-
-
-FEventReply URTSOConversationSelectionEntry::MouseMove(FGeometry MyGeometry, const FPointerEvent& MouseEvent)
-{
-	URTSOConversationMessageWidget* ParentAsMessageWidget = Cast<URTSOConversationMessageWidget>(DirectParentReference);
-	if (ParentAsMessageWidget == nullptr) { return FEventReply(); }
-	
-	return ParentAsMessageWidget->MouseMove(ChoiceIndex, MyGeometry, MouseEvent);
-}
-
-FEventReply URTSOConversationSelectionEntry::MouseButtonDown(FGeometry MyGeometry, const FPointerEvent& MouseEvent)
-{
-	URTSOConversationMessageWidget* ParentAsMessageWidget = Cast<URTSOConversationMessageWidget>(DirectParentReference);
-	if (ParentAsMessageWidget == nullptr) { return FEventReply(); }
-	
-	return ParentAsMessageWidget->MouseButtonDown(ChoiceIndex, MyGeometry, MouseEvent);
-}
-
-FEventReply URTSOConversationSelectionEntry::MouseButtonUp(FGeometry MyGeometry, const FPointerEvent& MouseEvent)
-{
-	URTSOConversationMessageWidget* ParentAsMessageWidget = Cast<URTSOConversationMessageWidget>(DirectParentReference);
-	if (ParentAsMessageWidget == nullptr) { return FEventReply(); }
-	
-	return ParentAsMessageWidget->MouseButtonUp(ChoiceIndex, MyGeometry, MouseEvent);
-}
-
-FEventReply URTSOConversationSelectionEntry::MouseDoubleClick(FGeometry MyGeometry, const FPointerEvent& MouseEvent)
-{
-	URTSOConversationMessageWidget* ParentAsMessageWidget = Cast<URTSOConversationMessageWidget>(DirectParentReference);
-	if (ParentAsMessageWidget == nullptr) { return FEventReply(); }
-	
-	return ParentAsMessageWidget->MouseDoubleClick(ChoiceIndex, MyGeometry, MouseEvent);
-}
-
-void URTSOConversationSelectionEntry::NativeOnListItemObjectSet(UObject* ListItemObject)
-{
-	const URTSOStructWrapper* Item = Cast<URTSOStructWrapper>(ListItemObject);
-	if (Item == nullptr) { return; }
-	
-	// 1. Read data
-	TextContent->SetText(Item->SelectionEntry);
-	ChoiceIndex           = Item->ChoiceIndex;
-	DirectParentReference = Item->DirectParentReference;
-	Tile->TileText = FText::FromString("Reply {" + FString::FromInt(ChoiceIndex) + "}");
-	Tile->Refresh();
-	
-	// 2. Bind delegates
-	TextContentBorder->OnMouseMoveEvent.BindDynamic(this, &URTSOConversationSelectionEntry::MouseMove); 
-	TextContentBorder->OnMouseButtonDownEvent.BindDynamic(this, &URTSOConversationSelectionEntry::MouseButtonDown);
-	TextContentBorder->OnMouseButtonUpEvent.BindDynamic(this, &URTSOConversationSelectionEntry::MouseButtonUp);
-	TextContentBorder->OnMouseDoubleClickEvent.BindDynamic(this, &URTSOConversationSelectionEntry::MouseDoubleClick);
-}
-
-FEventReply URTSOConversationMessageWidget::MouseMove_Implementation(int32 ChoiceIdx, FGeometry MyGeometry, const FPointerEvent& MouseEvent)
-{
-	return FEventReply(true);
-}
-
-FEventReply URTSOConversationMessageWidget::MouseButtonDown_Implementation(int32 ChoiceIdx, FGeometry MyGeometry, const FPointerEvent& MouseEvent)
-{
-	LatestInteractedChoice = ChoiceIdx;
-	return FEventReply(true);
-}
-
-FEventReply URTSOConversationMessageWidget::MouseButtonUp_Implementation(int32 ChoiceIdx, FGeometry MyGeometry, const FPointerEvent& MouseEvent)
-{
-	if (LatestInteractedChoice != ChoiceIdx) { return FEventReply();}
-	SelectChoice(ChoiceIdx);
-	
-	return FEventReply(true);
-}
-
-FEventReply URTSOConversationMessageWidget::MouseDoubleClick_Implementation(int32 ChoiceIdx, FGeometry MyGeometry, const FPointerEvent& MouseEvent)
-{
-	return FEventReply(true);
-}
-
-
-void URTSOConversationMessageWidget::SetPayload_Implementation(const FClientConversationMessagePayload& Payload, AActor* PotentialCallbackActor)
-{
-	UE_LOG(LogTemp, Warning, TEXT("URTSOConversationMessageWidget::SetPayload_Implementation"))
-	// reserved for possible implementation
-
-	CurrentPotentialCallbackActor = PotentialCallbackActor;
-
-	ConversationSelectors->ClearListItems();
-
-	if (Payload.Options.IsEmpty()) { return; }
-
-	// // @todo come back to this, fix data not being overwritten in existing InstantiatedEntryObjects
-	// This is stupid, should not have to clear the objects here but
-	// somehow the data being overwritten is not
-	// really being overwritten for some ungodly reason. Data locked perhaps?
-	// InstantiatedEntryObjects.Empty();
-	
-	const int32 MaxStep = Payload.Options.Num() - 1;
-	int32 Step = INDEX_NONE;
-	for (;Step < MaxStep;)
-	{
-		const FClientConversationOptionEntry& Option = Payload.Options[++Step];
-		FText BuildText = Option.ChoiceText;
-		switch (Option.ChoiceType)
-		{
-		case EConversationChoiceType::ServerOnly:
-			break;
-		case EConversationChoiceType::UserChoiceAvailable:
-			break;
-		case EConversationChoiceType::UserChoiceUnavailable:
-			BuildText = FText::FromString("(INVALID:) " + Option.ChoiceText.ToString());
-			break;
-		}
-
-		// // @todo come back to this, fix data not being overwritten
-		// const bool bExists = InstantiatedEntryObjects.IsValidIndex(Step);
-		// URTSOStructWrapper* DataWrapper = bExists ?
-		// 	InstantiatedEntryObjects[Step] : NewObject<URTSOStructWrapper>(this, URTSOStructWrapper::StaticClass());
-		// DataWrapper->AssignData(BuildText, Step, this);
-		// Data must be locked as it won't change here
-		// if (bExists == false)
-		// {
-		// 	InstantiatedEntryObjects.Emplace(DataWrapper);
-		// }
-
-		URTSOStructWrapper* DataWrapper = NewObject<URTSOStructWrapper>(this, URTSOStructWrapper::StaticClass());		
-		DataWrapper->AssignData(BuildText, Step, this);
-		ConversationSelectors->AddItem(DataWrapper);
-
-		const FString BuildString =
-			FString::Printf(TEXT("URTSOConversationMessageWidget::SetPayload -- Option(%s)"), *Option.ChoiceText.ToString());
-		UE_LOG(LogTemp, Error, TEXT("%s"), *BuildString);	
-		
-	}
-	const FString BuildString =
-		FString::Printf(TEXT("URTSOConversationMessageWidget::SetPayload -- Options Count %i"), Payload.Options.Num());
-	UE_LOG(LogTemp, Error, TEXT("%s"), *BuildString);	
-	
-}
-
-void URTSOConversationMessageWidget::SelectChoice_Implementation(int32 ChoiceSelection)
-{
-	UE_LOG(LogTemp, Warning, TEXT("URTSOConversationMessageWidget::SelectChoice_Implementation"))
-	// reserved for possible implementation
-
-	if (CurrentPotentialCallbackActor == nullptr || CurrentPotentialCallbackActor->GetClass()->ImplementsInterface(URTSOConversationSpeakerInterface::StaticClass()) == false)
-	{
-		return;
-	}
-	IRTSOConversationSpeakerInterface::Execute_ReplyChoice(CurrentPotentialCallbackActor, nullptr, ChoiceSelection);
-	
-}
-
-void URTSOConversationMessageWidget::NativeDestruct()
-{
-	CurrentPotentialCallbackActor = nullptr; 
-	Super::NativeDestruct();
-}
 
 ARTSOController::ARTSOController(const FObjectInitializer& ObjectInitializer)
 	: Super(ObjectInitializer), bIsDrawingMarquee(0)
@@ -209,28 +40,6 @@ ARTSOController::ARTSOController(const FObjectInitializer& ObjectInitializer)
 
 	HitResultTraceDistance = 10000000.0;
 }
-
-void URTSOConversationWidget::SetPayload_Implementation(const FClientConversationMessagePayload& Payload, AActor* PotentialCallbackActor)
-{
-	UE_LOG(LogTemp, Warning, TEXT("URTSOConversationWidget::SetPayload_Implementation"))
-	// reserved for possible implementation
-	
-	TextContent->SetText(Payload.Message.Text);
-	Tile->TileText = Payload.Message.ParticipantDisplayName;
-	ConversationMessageWidget->SetPayload(Payload, PotentialCallbackActor);
-	
-	Tile->Refresh();
-	Tile->InvalidateLayoutAndVolatility();
-	ConversationMessageWidget->InvalidateLayoutAndVolatility();
-	InvalidateLayoutAndVolatility();
-}
-
-void URTSOConversationWidget::SelectChoice_Implementation(int32 ChoiceSelection)
-{
-	UE_LOG(LogTemp, Warning, TEXT("URTSOConversationWidget::SelectChoice_Implementation"))
-	// reserved for possible implementation
-	ConversationMessageWidget->SelectChoice(ChoiceSelection);
-}	
 
 void ARTSOController::BeginPlay()
 {
