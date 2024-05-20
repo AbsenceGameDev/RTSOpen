@@ -123,13 +123,16 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "GameInstance|Widgets")
 	TMap<int32, FRTSSavedItems> Inventories{};
 
-	/** @brief */
+	/** @brief Save data for the existing conversation actors */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "GameInstance|Widgets")
 	TMap<int32 /*ConversationActorID*/, FRTSSavedConversationActorData> ConversationActorState{};
 
 	/** @brief userid tied to some account id?, in singleplayer keep only one entry */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
 	TMap<int32 /*PlayerID*/, FGameplayTagContainer> PlayersAndConversationTags{};
+
+	/** @brief Timer Handle, save is dispatched on a timer to throttle any saves */
+	FTimerHandle SaveThrottleHandle;
 };
 
 /** @brief @todo move to new file in UI folder */

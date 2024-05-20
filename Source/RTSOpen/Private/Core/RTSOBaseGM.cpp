@@ -8,7 +8,6 @@
 #include "Actors/GodHandPawn.h"
 #include "Actors/RTSOController.h"
 #include "Actors/Interactables/ConversationHandlers/RTSOInteractableConversationActor.h"
-#include "Widgets/RTSOMainMenuBase.h"
 
 #include "MassCommonFragments.h"
 #include "MassSpawnerSubsystem.h"
@@ -16,7 +15,7 @@
 #include "GameFramework/GameStateBase.h"
 #include "Kismet/GameplayStatics.h"
 #include "Kismet/KismetMathLibrary.h"
-#include "Kismet/KismetSystemLibrary.h"
+
 
 const FString ARTSOBaseGM::ROOTSAVE = "ROOTSAVE" ; 
 
@@ -46,23 +45,21 @@ void ARTSOBaseGM::BeginPlay()
 	GI->bGMReady = true;
 }
 
-// @todo expand this into a real autosave function, remove any dependency on tickrate
-constexpr int32 INT32_HALFMAX = INT32_MAX / 2; 
-constexpr int32 StepTickLimit = 60 /*~tickspersecond*/ * 60 /*secondsperminute*/ * 60 /*approx. minutes*/;
-
 void ARTSOBaseGM::TickActor(float DeltaTime, ELevelTick TickType, FActorTickFunction& ThisTickFunction)
 {
 	Super::TickActor(DeltaTime, TickType, ThisTickFunction);
-
-	static int32 CheapMansDelay = 0;
-	++CheapMansDelay %= INT32_HALFMAX;
-
-	if ((CheapMansDelay % StepTickLimit) == 0)
+	
+	AutoSave.ElapsedTimeSinceSave += DeltaTime;
+	if (AutoSave.ElapsedTimeSinceSave > AutoSave.TimeLimitAsSeconds)
 	{
 		SaveConversationActorStates();
 		SaveInteractables();
+		SaveEntities();
+		SaveAllItems();
+		AutoSave.ElapsedTimeSinceSave = 0.0;
 
-		// @todo finish SaveResources & SaveUnits and then call them here as-well
+		const FTimerDelegate SaveGameCallback = FTimerDelegate::CreateUObject(this, &ARTSOBaseGM::SaveGame, AutoSave.GetNextAutoSlot(), true);
+		GetWorld()->GetTimerManager().SetTimer(AutoSave.SaveTimerHandle, SaveGameCallback, 4, false);		
 	}
 }
 
@@ -85,42 +82,41 @@ void ARTSOBaseGM::ClearSave_Implementation(const bool bRefreshSeed)
 //
 // Saving
 
-void ARTSOBaseGM::SaveGame_Implementation(const FString& Slot, const bool bAllowOverwrite)
+void ARTSOBaseGM::SaveGame(FString SlotNameCopy, const bool bAllowOverwrite)
 {
 	check(GameSave != nullptr)
 
-	const FString SelectedSlot = Slot == FString() ? ARTSOBaseGM::ROOTSAVE : Slot;
+	const FString SelectedSlot = SlotNameCopy == FString() ? ARTSOBaseGM::ROOTSAVE : SlotNameCopy;
 	
 	const bool bDoesExist = UGameplayStatics::DoesSaveGameExist(SelectedSlot,0);
 	if (bDoesExist && bAllowOverwrite == false) { return; }
 	
 	bHasSavedDataAsync = false;
 	FAsyncSaveGameToSlotDelegate Dlgt = FAsyncSaveGameToSlotDelegate::CreateLambda(
-		[This = this](const FString&, int, bool bResult)
+		[This = this, SlotNameCopy, bAllowOverwrite](const FString&, int, bool bResult)
 		{
 			if (This == nullptr) { return; }
-			This->bHasSavedDataAsync = bResult; 
+			This->bHasSavedDataAsync = bResult;
+			This->OnSaveGame(SlotNameCopy, bAllowOverwrite);
 		});
 	
 	UGameplayStatics::AsyncSaveGameToSlot(GameSave, SelectedSlot, 0, Dlgt);
-	bHasStartedSaveData = true;
+	bHasStartedSaveData = true;	
 }
 
 void ARTSOBaseGM::ProcessChangesAndSaveGame_Implementation(const FString& Slot, const bool bAllowOverwrite)
 {
+	check(GameSave != nullptr)
+
 	// Async call might be needed here and then after it has finished call SaveGame()
 	SaveConversationActorStates();
 	SaveInteractables();
 	SaveAllPlayerStates();
 	SaveEntities();
-
-	// @todo finish SaveResources & SaveUnits and then call them here as-well
+	SaveAllItems();
 	
-	// @todo @note SaveConversationProgression(); is not needed as we update it directly anytime a player makes conversation progress on the server
-
-
-	// Final step, call to write this data to disk
-	SaveGame(Slot, bAllowOverwrite);
+	const FTimerDelegate SaveGameCallback = FTimerDelegate::CreateUObject(this, &ARTSOBaseGM::SaveGame, Slot, bAllowOverwrite);
+	GetWorld()->GetTimerManager().SetTimer(GameSave->SaveThrottleHandle, SaveGameCallback, 4, false);
 }
 
 // Not needed, data updated directly after each choice injunction,
@@ -156,9 +152,6 @@ void ARTSOBaseGM::SaveConversationActorStates_Implementation()
 			State.ProgressionPerPlayer.FindOrAdd(PlayerInstanceData.Key) = PlayerInstanceData.Value;
 		}
 	}
-
-	// @todo: store current active savegame slot index and use here, remove placeholder of 'INDEX_NONE'
-	SaveGame(FString::FromInt(INDEX_NONE));	
 }
 
 void ARTSOBaseGM::SaveAllPlayerStates()
@@ -207,18 +200,34 @@ void ARTSOBaseGM::SaveInteractables_Implementation()
 	}
 	
 	GameSave->Interactables.Append(SaveInfo.ActorInfo);
-
-	// @todo: store current active savegame slot index and use here, remove placeholder of 'INDEX_NONE'
-	SaveGame(FString::FromInt(INDEX_NONE));
 }
 
-void ARTSOBaseGM::SaveResources_Implementation(const TMap<int32, FRTSSavedItems>& DataRef)
+void ARTSOBaseGM::SaveAllItems_Implementation()
 {
 	check(GameSave != nullptr)
-	GameSave->Inventories.Append(DataRef); // overwrite any previous value, this is slow so only allow saving resources every 4 seconds at max, limited by the latent action below 
+	
+	TMap<int32, AActor*>& IDToActorMap =  GEngine->GetEngineSubsystem<UPDRTSBaseSubsystem>()->SharedOwnerIDMappings;
+	TMap<int32 /*ID*/, FRTSSavedItems> AccumulatedItems{};
+	for (const TTuple<int32 /*PersistentID*/, AActor* >& ItemDataEntry : IDToActorMap)
+	{
+		int32 ID = ItemDataEntry.Key;
+		AController* AsController = Cast<AController>(ItemDataEntry.Value);
+		if (AsController == nullptr)
+		{
+			UE_LOG(PDLog_RTSO, Error, TEXT("IDToActorMap.FindChecked(ID) does not point into a valid controller"));
+			continue;	
+		}
 
-	const FLatentActionInfo DelayInfo{0,0, TEXT("SaveGame"), this};
-	UKismetSystemLibrary::Delay(GetOwner(), 4.0f, DelayInfo);
+		AGodHandPawn* CurrentGodHandPawn = AsController->GetPawn<AGodHandPawn>();
+		if (CurrentGodHandPawn == nullptr)
+		{
+			UE_LOG(PDLog_RTSO, Error, TEXT("AsController does not own a valid godhand pawn"));
+			continue;	
+		}
+		AccumulatedItems.Emplace(ID, FRTSSavedItems{CurrentGodHandPawn->InventoryComponent->ItemList.Items});
+	}
+	
+	GameSave->Inventories.Append(AccumulatedItems); // overwrite any previous value, this is slow so only allow saving resources every 4 seconds at max, limited by the latent action below 
 }
 
 /* Save current units, their locations and actor classes*/
@@ -339,11 +348,6 @@ void ARTSOBaseGM::LoadInteractables_Implementation()
 
 void ARTSOBaseGM::LoadResources_Implementation(const TMap<int32, FRTSSavedItems>& DataRef)
 {
-	URTSOConversationActorTrackerSubsystem* Tracker =GetWorld()->GetSubsystem<URTSOConversationActorTrackerSubsystem>();
-	check(Tracker != nullptr)
-
-	Tracker->TrackedPlayerControllers;
-
 	TMap<AActor*, int32>& ActorToIDMap =  GEngine->GetEngineSubsystem<UPDRTSBaseSubsystem>()->SharedOwnerIDBackMappings;
 	TMap<int32, AActor*>& IDToActorMap =  GEngine->GetEngineSubsystem<UPDRTSBaseSubsystem>()->SharedOwnerIDMappings;
 

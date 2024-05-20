@@ -31,7 +31,7 @@ struct FRTSOMouseEventDelegateWrapper
 	UWidget::FOnPointerEvent OnMouseDoubleClickEvent;
 };
 
-/** @brief Tile view object type for loading data */
+/** @brief Tile view object type for loading conversation/choice data */
 UCLASS(Blueprintable)
 class URTSOStructWrapper : public UObject
 {

@@ -4,6 +4,7 @@
 #include "CoreMinimal.h"
 #include "RTSOpenCommon.h"
 #include "GameFramework/GameModeBase.h"
+#include "GameFramework/GameUserSettings.h"
 #include "RTSOBaseGM.generated.h"
 
 class ARTSOController;
@@ -15,6 +16,65 @@ enum ERTSLoadscreenState
 {
 	LOADING_IN,
 	LOADING_OUT,
+};
+
+
+/**
+ * @brief RTSO user auto-save settings.
+ * @note on a server authorative game this will only exist for the server,
+ * and will control how often the server saves the worlds state  
+ */
+USTRUCT(Blueprintable, BlueprintType)
+struct FRTSOAutoSaveSettings
+{
+	GENERATED_BODY()
+
+	FRTSOAutoSaveSettings() : TimeLimitAsSeconds(AutoSaveInterval * 60.0) {};
+
+	/** @brief Increments the current slot and returns the result */
+	FString GetNextAutoSlot()
+	{
+		LatestAutoSaveSlot = (++LatestAutoSaveSlot % AutoSaveSlots); // Force range [1-10], makes sure we don't hit anything twice, regualr modul
+		return AutoSlotBase + FString::FromInt(LatestAutoSaveSlot);
+	}
+
+	/** @brief Amount of time between each auto-save (in minutes) */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	int32 AutoSaveInterval = 60;
+
+	/** @brief Amount of auto save slots before it starts overwriting itself.
+	 * @note 0 disables the auto-save functionality */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	int32 AutoSaveSlots = 10;
+	
+
+	/** @brief Active time, accumulates ticks deltatime and resets upon an auto-save */
+	UPROPERTY(VisibleInstanceOnly, BlueprintReadOnly)
+	double ElapsedTimeSinceSave = 0.0;
+
+	/** @brief Calculated time limit as seconds */
+	UPROPERTY(VisibleInstanceOnly, BlueprintReadOnly)
+	double TimeLimitAsSeconds = AutoSaveInterval * 60;
+
+	
+	/** @brief Timer delay handle, to ensure we don't call SaveGame multiple times in a row */
+	FTimerHandle SaveTimerHandle{};
+
+private:
+	/** @brief Cached latest slot, starting at INDEX_NONE but in reality this gets  */
+	UPROPERTY(VisibleInstanceOnly, BlueprintReadOnly, Meta = (AllowPrivateAccess="true"))
+	int32 LatestAutoSaveSlot = INDEX_NONE;
+	static inline const FString AutoSlotBase = "AUTOSLOT_";
+};
+
+
+UCLASS(Blueprintable, BlueprintType)
+class URTSOAutoSaveSettingObject : public UGameUserSettings
+{
+	GENERATED_BODY()
+
+	UPROPERTY(VisibleInstanceOnly, BlueprintReadOnly, Meta = (AllowPrivateAccess="true"))
+	FRTSOAutoSaveSettings Inner;
 };
 
 /**
@@ -37,8 +97,10 @@ public: // Method members
 	/* Saving functions */
 	
 	/** @brief Dispatches an async save */
-	UFUNCTION(BlueprintNativeEvent, BlueprintCallable)
-	void SaveGame(const FString& Slot, const bool bAllowOverwrite = false);
+	UFUNCTION(BlueprintCallable)
+	void SaveGame(FString SlotNameCopy, const bool bAllowOverwrite = false);
+	UFUNCTION(BlueprintImplementableEvent)
+	void OnSaveGame(const FString& SlotName, const bool bAllowOverwrite = false);
 
 	/** @brief Dispatches an async save */
 	UFUNCTION(BlueprintNativeEvent, BlueprintCallable)
@@ -66,7 +128,7 @@ public: // Method members
 
 	/** @brief Save items/resources */
 	UFUNCTION(BlueprintNativeEvent, BlueprintCallable)
-	void SaveResources(const TMap<int32, FRTSSavedItems>& DataRef);
+	void SaveAllItems();
 
 	/** @brief Save worker/units */
 	UFUNCTION(BlueprintNativeEvent, BlueprintCallable)
@@ -114,6 +176,10 @@ public: // Variable members
 	/** @brief Actual game save-data */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
 	URTSOpenSaveGame* GameSave = nullptr;
+
+	/** @brief Auto Save Settings, @todo load from GameUser Settings */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	FRTSOAutoSaveSettings AutoSave{};
 	
 	/** @brief Flag, has started async */
 	bool bHasStartedSaveData = false;
