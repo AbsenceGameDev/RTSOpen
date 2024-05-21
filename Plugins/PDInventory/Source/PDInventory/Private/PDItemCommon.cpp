@@ -1,12 +1,12 @@
 ﻿/* @author: Ario Amin @ Permafrost Development. @copyright: Full BSL(1.1) License included at bottom of the file  */
 #include "PDItemCommon.h"
 
-int32 FPDItemCosts::ApplyInitialCost(int32 InTotal)
+int32 FPDItemCosts::ApplyInitialCost(int32 InTotal) const
 {
 	return InTotal - (bApplyRecurringAtFirst ? InitialCost + RecurringCost : InitialCost);
 }
 
-int32 FPDItemCosts::ApplyRecurringCost(int32 InTotal)
+int32 FPDItemCosts::ApplyRecurringCost(int32 InTotal) const
 {
 	return InTotal - RecurringCost;
 }

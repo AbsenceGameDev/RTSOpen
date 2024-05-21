@@ -11,7 +11,6 @@
 #include "MassStateTreeExecutionContext.h"
 #include "StateTreeExecutionContext.h"
 #include "NavigationPath.h"
-#include "NavigationSystem.h"
 #include "StateTreeLinker.h"
 #include "Chaos/DebugDrawQueue.h"
 
@@ -80,7 +79,7 @@ void DrawBoxAndTextChaos(const FVector& BoundsCenter, const FQuat& Rotation, con
 #endif // CHAOS_DEBUG_DRAW
 }
 
-void FPDMTask_MoveToTarget::ProcessNewPriorityPath(FPDMPathParameters& Params) const
+void FPDMTask_MoveToTarget::ProcessNewPriorityPath(const FPDMPathParameters& Params)
 {
 	const FVector& StartLocation = Params.TransformFragment.GetTransform().GetLocation();
 	const FVector& TargetLocation = Params.ResolveLocation();
@@ -115,7 +114,7 @@ void FPDMTask_MoveToTarget::ProcessNewPriorityPath(FPDMPathParameters& Params) c
 	}
 }
 
-void FPDMTask_MoveToTarget::ProcessNewSharedPath(FPDMPathParameters& Params) const
+void FPDMTask_MoveToTarget::ProcessNewSharedPath(const FPDMPathParameters& Params)
 {
 	const FVector& StartLocation = Params.TransformFragment.GetTransform().GetLocation();
 
@@ -170,8 +169,8 @@ EStateTreeRunStatus FPDMTask_MoveToTarget::EnterState(FStateTreeExecutionContext
 
 	const bool bShouldOverwriteQueuedPath = NavPath == nullptr && RTSData.QueuedUnitPath.IsEmpty() == false ?
 		RTSData.QueuedUnitPath.Last() == FVector::ZeroVector : false;
-	
-	FPDMPathParameters
+
+	const FPDMPathParameters
 		PathParams(InstanceData,MoveTarget, TransformFragment, EntitySubsystem, bIsEntityValid, InstanceData.OptTargets, NavPath);
 
 	NavPath == nullptr ?
@@ -246,7 +245,7 @@ EStateTreeRunStatus FPDMTask_RandomWander::EnterState(FStateTreeExecutionContext
 {
 	FMassMoveTargetFragment& MoveTargetFragment = Context.GetExternalData(MoveTargetHandle);
 	const FTransform& Transform = Context.GetExternalData(TransformHandle).GetTransform();
-	FInstanceDataType& InstanceData = Context.GetInstanceData(*this);
+	const FInstanceDataType& InstanceData = Context.GetInstanceData(*this);
 	
 	const float& Radius = InstanceData.StartRadiusRandomLimit;
 	FVector RandomLocation = FVector(FMath::RandRange(-Radius, Radius), FMath::RandRange(-Radius, Radius), 0.f);
@@ -264,7 +263,7 @@ EStateTreeRunStatus FPDMTask_RandomWander::EnterState(FStateTreeExecutionContext
 EStateTreeRunStatus FPDMTask_RandomWander::Tick(FStateTreeExecutionContext& Context, const float DeltaTime) const
 {
 	FMassMoveTargetFragment& MoveTarget = Context.GetExternalData(MoveTargetHandle);
-	FInstanceDataType& InstanceData = Context.GetInstanceData(*this);
+	const FInstanceDataType& InstanceData = Context.GetInstanceData(*this);
 
 	if (MoveTarget.DistanceToGoal <= InstanceData.SuccessRadius)
 	{
@@ -292,7 +291,7 @@ bool FPDMTask_Wait::Link(FStateTreeLinker& Linker)
 
 EStateTreeRunStatus FPDMTask_Wait::EnterState(FStateTreeExecutionContext& Context, const FStateTreeTransitionResult& Transition) const
 {
-	FInstanceDataType& InstanceData = Context.GetInstanceData(*this);
+	const FInstanceDataType& InstanceData = Context.GetInstanceData(*this);
 	const FMassStateTreeExecutionContext& MassContext = static_cast<FMassStateTreeExecutionContext&>(Context);
 	auto& MassSignalSubsystem = Context.GetExternalData(MassSignalSubsystemHandle);
 	MassSignalSubsystem.DelaySignalEntity(UE::Mass::Signals::StateTreeActivate, MassContext.GetEntity(), InstanceData.Duration);

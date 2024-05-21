@@ -82,7 +82,7 @@ struct FPDEntityOctreeSemantics
 	};
 };
 
-/** @brief Boilerplate Entity namespace, defines an octree childclass. @todo write some code to scope lock the tree when doing certain function calls. Added come booleans as placeholders in code to remind me */
+/** @brief Boilerplate Entity namespace, defines an octree sub-class. @todo write some code to scope lock the tree when doing certain function calls. Added come booleans as placeholders in code to remind me */
 namespace PD::Mass::Entity
 {
 	typedef TOctree2<FPDEntityOctreeCell, FPDEntityOctreeSemantics> UnsafeOctree;
@@ -194,7 +194,7 @@ public:
 	const FPDWorkUnitDatum* GetWorkEntry(const FName& JobRowName);
 	
 	/** @brief Associates and FMassArchetypeHandle with a config asset, so we can retrieve this info back to our save system fast when needed */
-	void AssociateArchetypeWithConfigAsset(const FMassArchetypeHandle& Archetype, TSoftObjectPtr<UMassEntityConfigAsset> EntityConfig);
+	void AssociateArchetypeWithConfigAsset(const FMassArchetypeHandle& Archetype, const TSoftObjectPtr<UMassEntityConfigAsset>& EntityConfig);
 
 	/** @brief Retrieves the config asset */
 	TSoftObjectPtr<UMassEntityConfigAsset> GetConfigAssetForArchetype(const FMassArchetypeHandle& Archetype);	
@@ -214,7 +214,7 @@ public:
 	/** @brief Selection group Dirty data array holding a tuple, each tuple is keyed by the owner ID and has a value of the dirtied selection group index
 	 *  @todo think on a solution which marks which actual data we want to update for the group, but this for now works as a solid enough optimization
 	 */
-	TArray<TTuple<int32 /*OwnerID*/, int32/*Player 'Selection' Index for non-hotkeyed groups*/> > DirtySharedData{};
+	TArray<TTuple<int32 /*OwnerID*/, int32/*Player 'Selection-group' Index */> > DirtySharedData{};
 	
 	/** @brief Map for fast lookups. Keyed by job-tag, valued by default data entry */
 	TMap<const FGameplayTag, const FPDWorkUnitDatum*> TagToJobMap{};
@@ -235,7 +235,7 @@ public:
 
 	/** @brief Cached entity manager ptr*/
 	FMassEntityManager* EntityManager = nullptr;
-	/** @brief effectively unused. @todo revise if it still needed. any significant use of it has been removed since prototpying this  */
+	/** @brief effectively unused. @todo revise if it still needed. any significant use of it has been removed since prototyping this  */
 	UWorld* TemporaryWorldCache = nullptr;
 	/** @brief The actual octree our worlds and our entities will make use of*/
 	PD::Mass::Entity::FPDSafeOctree WorldOctree;
@@ -270,7 +270,7 @@ public:
 	UPROPERTY(Config, EditAnywhere, Category="Visible")
 	float DefaultCellSize = 40.0;
 
-	/** @brief Work tables softobjects */
+	/** @brief Work tables soft objects */
 	UPROPERTY(Config, EditAnywhere, Category = "Worker AI Subsystem", Meta = (RequiredAssetDataTags="RowStructure=/Script/PDRTSBase.PDWorkUnitDatum"))
 	TArray<TSoftObjectPtr<UDataTable>> WorkTables;
 	
@@ -293,7 +293,7 @@ struct PDRTSBASE_API FPDInOctreeGridTag : public FMassTag
 	GENERATED_BODY()
 };
 
-/** @brief Entity  query ('linetrace') tag. Used for entities we want to be processed with line intersection octree searches */
+/** @brief Entity  query ('line-trace') tag. Used for entities we want to be processed with line intersection octree searches */
 USTRUCT(BlueprintType)
 struct PDRTSBASE_API FPDOctreeQueryTag : public FMassTag
 {

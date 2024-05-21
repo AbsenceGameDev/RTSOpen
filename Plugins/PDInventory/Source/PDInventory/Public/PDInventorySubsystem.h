@@ -11,7 +11,7 @@ struct FPDItemDefaultDatum;
 
 /** @brief The inventory subsystem.
  * @todo 1. add a developer settings class and use to assign to 'ItemTables' for processing when the world begins play 
- * @todo 2. Reparent to inherit from UWorldSubsystem and make any needed code changes to support that */ 
+ * @todo 2. Re-parent to inherit from UWorldSubsystem and make any needed code changes to support that */ 
 UCLASS()
 class PDINVENTORY_API UPDInventorySubsystem : public UEngineSubsystem
 {

@@ -92,7 +92,7 @@ void ARTSOBaseGM::SaveGame(FString SlotNameCopy, const bool bAllowOverwrite)
 	if (bDoesExist && bAllowOverwrite == false) { return; }
 	
 	bHasSavedDataAsync = false;
-	FAsyncSaveGameToSlotDelegate Dlgt = FAsyncSaveGameToSlotDelegate::CreateLambda(
+	const FAsyncSaveGameToSlotDelegate Dlgt = FAsyncSaveGameToSlotDelegate::CreateLambda(
 		[This = this, SlotNameCopy, bAllowOverwrite](const FString&, int, bool bResult)
 		{
 			if (This == nullptr) { return; }
@@ -211,14 +211,14 @@ void ARTSOBaseGM::SaveAllItems_Implementation()
 	for (const TTuple<int32 /*PersistentID*/, AActor* >& ItemDataEntry : IDToActorMap)
 	{
 		int32 ID = ItemDataEntry.Key;
-		AController* AsController = Cast<AController>(ItemDataEntry.Value);
+		const AController* AsController = Cast<AController>(ItemDataEntry.Value);
 		if (AsController == nullptr)
 		{
 			UE_LOG(PDLog_RTSO, Error, TEXT("IDToActorMap.FindChecked(ID) does not point into a valid controller"));
 			continue;	
 		}
 
-		AGodHandPawn* CurrentGodHandPawn = AsController->GetPawn<AGodHandPawn>();
+		const AGodHandPawn* CurrentGodHandPawn = AsController->GetPawn<AGodHandPawn>();
 		if (CurrentGodHandPawn == nullptr)
 		{
 			UE_LOG(PDLog_RTSO, Error, TEXT("AsController does not own a valid godhand pawn"));
@@ -236,7 +236,7 @@ void ARTSOBaseGM::SaveEntities_Implementation()
 	check(GameSave != nullptr)
 
 	UPDRTSBaseSubsystem* RTSSubsystem = GEngine->GetEngineSubsystem<UPDRTSBaseSubsystem>();
-	FMassEntityManager* EntityManager = RTSSubsystem != nullptr ? RTSSubsystem->EntityManager : nullptr; 
+	const FMassEntityManager* EntityManager = RTSSubsystem != nullptr ? RTSSubsystem->EntityManager : nullptr; 
 	if (EntityManager == nullptr) { return; }
 
 	// 1. get all our entities
@@ -348,14 +348,14 @@ void ARTSOBaseGM::LoadInteractables_Implementation()
 
 void ARTSOBaseGM::LoadResources_Implementation(const TMap<int32, FRTSSavedItems>& DataRef)
 {
-	TMap<AActor*, int32>& ActorToIDMap =  GEngine->GetEngineSubsystem<UPDRTSBaseSubsystem>()->SharedOwnerIDBackMappings;
+	// TMap<AActor*, int32>& ActorToIDMap =  GEngine->GetEngineSubsystem<UPDRTSBaseSubsystem>()->SharedOwnerIDBackMappings;
 	TMap<int32, AActor*>& IDToActorMap =  GEngine->GetEngineSubsystem<UPDRTSBaseSubsystem>()->SharedOwnerIDMappings;
 
 	TArray<TTuple<UPDInventoryComponent*, const FRTSSavedItems& /*SavedItems*/>> InventoriesToUpdate;
 	
 	for (const TTuple<int32 /*PersistentID*/, FRTSSavedItems /*Item data*/>& ItemDataEntry : DataRef)
 	{
-		int32 ID = ItemDataEntry.Key;
+		const int32 ID = ItemDataEntry.Key;
 		const FRTSSavedItems& SavedItems = ItemDataEntry.Value;
 
 		if (IDToActorMap.Contains(ID) == false)
@@ -364,7 +364,7 @@ void ARTSOBaseGM::LoadResources_Implementation(const TMap<int32, FRTSSavedItems>
 			continue;	
 		}
 
-		AController* AsController = Cast<AController>(IDToActorMap.FindChecked(ID));
+		const AController* AsController = Cast<AController>(IDToActorMap.FindChecked(ID));
 		if (AsController == nullptr)
 		{
 			UE_LOG(PDLog_RTSO, Error, TEXT("IDToActorMap.FindChecked(ID) does not point into a valid controller"));
@@ -393,7 +393,7 @@ void ARTSOBaseGM::LoadEntities_Implementation()
 	check(GameSave != nullptr)
 
 	UPDRTSBaseSubsystem* RTSSubsystem = GEngine->GetEngineSubsystem<UPDRTSBaseSubsystem>();
-	FMassEntityManager* EntityManager = RTSSubsystem != nullptr ? RTSSubsystem->EntityManager : nullptr;
+	const FMassEntityManager* EntityManager = RTSSubsystem != nullptr ? RTSSubsystem->EntityManager : nullptr;
 	UMassSpawnerSubsystem* SpawnerSystem = UWorld::GetSubsystem<UMassSpawnerSubsystem>(GetWorld());
 	if (EntityManager == nullptr) { return; }
 
@@ -403,7 +403,7 @@ void ARTSOBaseGM::LoadEntities_Implementation()
 	
 	for (const FRTSSavedWorldUnits& EntityData : GameSave->EntityUnits)
 	{
-		UMassEntityConfigAsset* LoadedConfig = EntityData.MassEntityConfigAssetPath.LoadSynchronous();
+		const UMassEntityConfigAsset* LoadedConfig = EntityData.MassEntityConfigAssetPath.LoadSynchronous();
 		const FMassEntityTemplate& Template = LoadedConfig->GetOrCreateEntityTemplate(*GetWorld());
 
 		// Make sure the subsystem associates the archetypes and configs in-case we

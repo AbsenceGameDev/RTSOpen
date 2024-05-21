@@ -35,7 +35,7 @@ protected:
 	/** @brief Adds tags and fragments: FPDMTag_RTSEntity, FPDMFragment_RTSEntityBase, FPDMFragment_EntityAnimation, FPDMFragment_SharedAnimData, FPDMFragment_SharedEntity */
 	virtual void BuildTemplate(FMassEntityTemplateBuildContext& BuildContext, const UWorld& World) const override;
 
-	/** @brief Shared animdata within this trait, such as dataasset source */
+	/** @brief Shared anim-data within this trait, such as data-asset source */
 	UPROPERTY(EditAnywhere)
 	FPDMFragment_SharedAnimData SharedAnimData;
 

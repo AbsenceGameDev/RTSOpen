@@ -286,7 +286,7 @@ void ARTSOInteractableConversationActor::OnInteract_Implementation(
 void ARTSOInteractableConversationActor::BeginWaitingForChoices_Implementation(int32 ActorID) 
 {
 	const FClientConversationMessagePayload& Payload = ParticipantComponent->GetLastMessage();
-	UPDConversationBPFL::Debug_PrintConversationMessageToScreen(this, Payload.Message, FLinearColor::Blue);
+	UPDConversationLibrary::Debug_PrintConversationMessageToScreen(this, Payload.Message, FLinearColor::Blue);
 	
 	UE_LOG(PDLog_RTSOInteract, Warning, TEXT("ARTSOInteractableConversationActor::BeginWaitingForChoices"));
 	for (const FClientConversationOptionEntry& Opt : Payload.Options)
@@ -303,7 +303,7 @@ void ARTSOInteractableConversationActor::BeginWaitingForChoices_Implementation(i
 			break;
 		}
 
-		UPDConversationBPFL::Debug_PrintConversationTextToScreen(this, Participant, Opt.ChoiceText,FLinearColor::Blue);
+		UPDConversationLibrary::Debug_PrintConversationTextToScreen(this, Participant, Opt.ChoiceText,FLinearColor::Blue);
 	}
 
 	// bug: some engine bug causing participant component to always fail returning TAG_Conversation_Participant_Listener even though it was set in the same frame

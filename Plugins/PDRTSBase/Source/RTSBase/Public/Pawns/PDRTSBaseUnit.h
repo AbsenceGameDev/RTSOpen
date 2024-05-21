@@ -41,7 +41,7 @@ public:
 		FGameplayTag RequestedJob,
 		FMassEntityHandle RequestedEntityHandle);
 
-	/** @brief Incomplete, this is emant to be called when dispatching a batch of tasks which arent' sharing navpath */
+	/** @brief Incomplete, this is meant to be called when dispatching a batch of tasks which arent' sharing navpath */
 	void RequestActionMulti(
 		int32 CallingOwnerID,
 		const TArray<TTuple<

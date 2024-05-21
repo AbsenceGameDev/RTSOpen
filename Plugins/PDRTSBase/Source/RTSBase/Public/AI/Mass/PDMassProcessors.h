@@ -152,7 +152,7 @@ class PDRTSBASE_API UPDMProcessor_LODVisualization : public UMassVisualizationLO
 {
 	GENERATED_BODY()
 public:
-	/** @brief Sets to autoregister the processor, set the execution flags and the execution order, */
+	/** @brief Sets to auto-register the processor, set the execution flags and the execution order, */
 	UPDMProcessor_LODVisualization();
 
 protected:
@@ -161,7 +161,7 @@ protected:
 };
 
 /** @brief Lod collector subclass which override the query configuration function
- * - Exectution Order: After 'UE::Mass::ProcessorGroupNames::Movement'
+ * - Execution Order: After 'UE::Mass::ProcessorGroupNames::Movement'
  */
 UCLASS(Meta = (DisplayName = "Crowd LOD Collection"))
 class PDRTSBASE_API UPDMProcessor_LODCollector : public UMassLODCollectorProcessor

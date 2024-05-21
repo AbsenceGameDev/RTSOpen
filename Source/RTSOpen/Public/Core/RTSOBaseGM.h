@@ -21,7 +21,7 @@ enum ERTSLoadscreenState
 
 /**
  * @brief RTSO user auto-save settings.
- * @note on a server authorative game this will only exist for the server,
+ * @note on a server authoritative game this will only exist for the server,
  * and will control how often the server saves the worlds state  
  */
 USTRUCT(Blueprintable, BlueprintType)
@@ -34,7 +34,7 @@ struct FRTSOAutoSaveSettings
 	/** @brief Increments the current slot and returns the result */
 	FString GetNextAutoSlot()
 	{
-		LatestAutoSaveSlot = (++LatestAutoSaveSlot % AutoSaveSlots); // Force range [1-10], makes sure we don't hit anything twice, regualr modul
+		LatestAutoSaveSlot = (++LatestAutoSaveSlot % AutoSaveSlots); // Force range [1-10], makes sure we don't hit anything twice
 		return AutoSlotBase + FString::FromInt(LatestAutoSaveSlot);
 	}
 
@@ -48,7 +48,7 @@ struct FRTSOAutoSaveSettings
 	int32 AutoSaveSlots = 10;
 	
 
-	/** @brief Active time, accumulates ticks deltatime and resets upon an auto-save */
+	/** @brief Active time, accumulates ticks delta-time and resets upon an auto-save */
 	UPROPERTY(VisibleInstanceOnly, BlueprintReadOnly)
 	double ElapsedTimeSinceSave = 0.0;
 
@@ -168,7 +168,7 @@ public: // Method members
 	UFUNCTION(BlueprintNativeEvent, BlueprintCallable)
 	void LoadEntities();	
 
-	/** @brief Hardcoded autosave every 60 minutes @todo make configurable */
+	/** @brief Hardcoded auto-save every 60 minutes @todo make configurable */
 	virtual void TickActor(float DeltaTime, ELevelTick TickType, FActorTickFunction& ThisTickFunction) override;
 	
 public: // Variable members

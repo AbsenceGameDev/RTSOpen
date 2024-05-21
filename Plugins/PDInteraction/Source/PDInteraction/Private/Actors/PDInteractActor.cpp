@@ -66,9 +66,9 @@ void APDInteractActor::OnInteract_Implementation(const FPDInteractionParamsWithC
 	
 }
 
-const FPDInteractMessage APDInteractActor::GetInteractionMessage_Implementation()
+const FPDInteractMessage& APDInteractActor::GetInteractionMessage()
 {
-	IPDInteractInterface::GetInteractionMessage_Implementation();
+	IPDInteractInterface::GetInteractionMessage();
 	// IPDInteractInterface::GetInteractionMessage_Implementation();
 	// OutMessage.KeyAction;
 	// OutMessage.KeyIndicatorText;

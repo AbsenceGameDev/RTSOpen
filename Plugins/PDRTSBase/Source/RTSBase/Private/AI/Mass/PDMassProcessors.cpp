@@ -9,7 +9,6 @@
 #include "Engine/World.h"
 
 // Mass (Shared)
-#include "MassEntityTemplateRegistry.h"
 #include "MassExecutionContext.h"
 #include "MassCommonTypes.h"
 #include "MassCommonUtils.h"
@@ -29,11 +28,13 @@
 #include "AnimToTextureDataAsset.h"
 #include "AnimToTextureInstancePlaybackHelpers.h"
 
+// Nav1
+#include "NavigationSystem.h"
+
 // Chaos debug
 #include "Chaos/DebugDrawQueue.h"
 #include "ChaosLog.h"
 #include "MassCrowdRepresentationSubsystem.h"
-#include "NavigationSystem.h"
 
 TAutoConsoleVariable<bool> UPDOctreeProcessor::CVarDrawCells(
 	TEXT("Octree.DebugCells"), false,
@@ -245,8 +246,8 @@ bool UPDMProcessor_EntityCosmetics::ProcessMaterialInstanceData(
 		return false;
 	}
 	
-	double OpacityModifier = 0;
-	double DilationModifier = 0;
+	double OpacityModifier;
+	double DilationModifier;
 	bool bLog = false;
 	switch (RTSEntityFragment->SelectionState)
 	{
@@ -260,8 +261,6 @@ bool UPDMProcessor_EntityCosmetics::ProcessMaterialInstanceData(
 			DilationModifier = 1.0;
 			FirstFoundInstance->GetISMComponent()->SetCustomDataValue(EntityHashID,2, OpacityModifier);
 			FirstFoundInstance->GetISMComponent()->SetCustomDataValue(EntityHashID,3, DilationModifier);
-
-			return true;
 		}
 		break;
 	case EPDEntitySelectionState::ENTITY_NOTSELECTED:
@@ -292,7 +291,7 @@ bool UPDMProcessor_EntityCosmetics::ProcessMaterialInstanceData(
 		UE_LOG(PDLog_RTSBase, Warning, TEXT("UPDMProcessor_EntityCosmetics::ProcessMaterialInstanceData - INVALID INSTANCE(%i)"), EntityHashID)
 	}
 	
-	return true;	
+	return bLog;
 }
 
 // Tag private member for safe access, usually avoid this
@@ -717,7 +716,7 @@ void UPDCollisionSignalProcessor::ConfigureQueries()
 
 void UPDCollisionSignalProcessor::Execute(FMassEntityManager& EntityManager, FMassExecutionContext& Context)
 {
-	PD::Mass::Entity::FPDSafeOctree& WorldOctree = RTSSubsystem->WorldOctree;
+	// PD::Mass::Entity::FPDSafeOctree& WorldOctree = RTSSubsystem->WorldOctree;
 
 	// Other entities we hit
 	TQueue<FMassEntityHandle, EQueueMode::Mpsc> EntityCollisionQueue;
@@ -743,7 +742,7 @@ void UPDCollisionSignalProcessor::Execute(FMassEntityManager& EntityManager, FMa
 			FBoxCenterAndExtent QueryBounds = FBoxCenterAndExtent(CurrentLocation - (DistanceTraveled / 2), (DistanceTraveled.GetAbs() / 2));
 
 			// @todo in progress:  replace with WorldOctree.FindNodesWithPredicate() or do a manual search from root, instead of running it over all cells
-			// @todo backlog rewrite funcions to use parameter sig.: ParentNodeIndex, CurrentNodeIndex, NodeContext.Bounds
+			// @todo backlog rewrite functions to use parameter sig.: ParentNodeIndex, CurrentNodeIndex, NodeContext.Bounds
 			// WorldOctree.FindNodesWithPredicate(
 			// [&](const FPDEntityOctreeCell& GridElement)->bool
 			// {

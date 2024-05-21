@@ -24,7 +24,7 @@ constexpr ECollisionChannel DEDICATED_INTERACT_CHANNEL_ALT15 = ECollisionChannel
 constexpr ECollisionChannel DEDICATED_INTERACT_CHANNEL_ALT14 = ECollisionChannel::ECC_GameTraceChannel14;
 
 
-/** @brief Tick trace types, Radial, Rdial-trace, Shape-trace along lines,(more to  etc.  */
+/** @brief Tick trace types, Radial, Radial-trace, Shape-trace along lines,(more to  etc.  */
 UENUM(Blueprintable, BlueprintType)
 enum class EPDTickTraceType : uint8
 {
@@ -203,7 +203,7 @@ struct FPDInteractionParamsWithCustomHandling : public FPDInteractionParams
 };
 
 /**
- * @brief This structure is meant to be placed in a interactable datatable or in an interactable baseactor
+ * @brief This structure is meant to be placed in a interactable datatable or in an interactable base-actor
  */
 USTRUCT(Blueprintable, BlueprintType) 
 struct FPDInteractionSettings
@@ -333,7 +333,7 @@ public:
 	/** @brief Get last trace result with a valid hit result, if any exists in the buffer */
 	const FPDTraceResult& GetLastValidResult() const;
 	/** @brief Check if there are any valid trace results */
-	const bool HasValidResults() const;
+	bool HasValidResults() const;
 	/** @brief Clear all trace results */
 	void ClearTraceResults();
 	/** @brief Adds a new trace frame to the buffer */
@@ -357,7 +357,7 @@ public:
 };
 
 /**
- * @brief Structure used by the savegame structure. Holds data regarding world interactables.
+ * @brief Structure used by the save-game structure. Holds data regarding world interactables.
  */
 USTRUCT(BlueprintType, Blueprintable)
 struct PDINTERACTION_API FRTSSavedInteractables

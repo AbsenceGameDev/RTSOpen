@@ -4,7 +4,6 @@
 #include "CoreMinimal.h"
 #include "AI/PDMassCommon.h"
 
-#include "HierarchicalHashGrid2D.h"
 #include "MassCommonTypes.h"
 #include "MassEntityManager.h"
 #include "MassEntityTypes.h"
@@ -98,25 +97,25 @@ struct PDRTSBASE_API FPDMFragment_EntityAnimation : public FMassFragment
 	UPROPERTY(EditAnywhere)
 	float InWorldStartTime = 0.0f;
 
-	/** @brief Playrate for the animation */
+	/** @brief Play-rate for the animation */
 	UPROPERTY(EditAnywhere)
 	float PlayRate = 1.0f;
 
-	/** @brief Vertextexture animation selector */
+	/** @brief Vertex-texture animation selector */
 	UPROPERTY(EditAnywhere)
 	EPDVertexAnimSelector AnimationStateIndex = EPDVertexAnimSelector::VertexAction;
 
-	/** @brief Vertextexture animation (start) position */
+	/** @brief Vertex-texture animation (start) position */
 	UPROPERTY(EditAnywhere)
 	int AnimPosition = 0;
 };
 
-/** @brief Invalid massint16 vector location. Compared against and then returned as a dummy in failed functions */
-static const FMassInt16Vector InvalidLoc = FMassInt16Vector{};
+/** @brief Invalid MassInt16 vector location. Compared against and then returned as a dummy in failed functions */
+static constexpr FMassInt16Vector InvalidLoc = FMassInt16Vector{};
 /** @brief Invalid FMassEntityHandle. Compared against and then returned as a dummy in failed functions */
 static const FMassEntityHandle InvalidHandle = FMassEntityHandle{INDEX_NONE, INDEX_NONE};
 
-/** @brief Target compound keeps track of the target, either a static location, a given actor and massentities*/
+/** @brief Target compound keeps track of the target, either a static location, a given actor and mass-entities*/
 USTRUCT(Blueprintable)
 struct PDRTSBASE_API FPDTargetCompound
 {

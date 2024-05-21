@@ -39,11 +39,11 @@ struct PDINVENTORY_API FPDItemCosts
 	/** @brief Applies the InitialCost to the given total.
 	 * @return The value of the given total subtracted by the value of the InitialCost.
 	 * @note if bApplyRecurringAtFirst is true then it also applies the recurring cost and subtracts that as-well */
-	int32 ApplyInitialCost(int32 InTotal);
+	int32 ApplyInitialCost(int32 InTotal) const;
 	
 	/** @brief Applies the RecurringCost to the given total.
 	 * @return The value of the given total subtracted by the value of the RecurringCost */
-	int32 ApplyRecurringCost(int32 InTotal);
+	int32 ApplyRecurringCost(int32 InTotal) const;
 
 	/** @brief Costs that will be checked against and deducted only the first usage */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
@@ -91,7 +91,7 @@ struct FPDItemDefaultDatum : public FTableRowBase
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
 	int32 StackLimit = 5;	
 
-	/** @brief In grams. Weight per 1 item in a stack, a stack weighs stackcount * weightperitem  */
+	/** @brief In grams. Weight per 1 item in a stack, a stack weighs 'StackCount * WeightPerItem'  */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
 	int32 WeightPerItem = 1000;
 

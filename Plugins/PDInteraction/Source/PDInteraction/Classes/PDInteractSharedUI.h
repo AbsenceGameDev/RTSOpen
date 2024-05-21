@@ -46,7 +46,7 @@ public:
 	/** @brief Gets the current tracked actor */
 	AActor* GetTrackedActor() const { return TrackedActor;}
 	/** @brief Event call when an interact widget pop-up is spawned */
-	void OnSpawnWidgetPopup(class UPDWRadialInteract_HUD* UpdwRadialInteract_HUD);
+	void OnSpawnWidgetPopup(class UPDWRadialInteract_HUD* RadialInteract_HUD);
 	
 protected:
 	/** @brief The currently represented interaction message */
@@ -104,7 +104,7 @@ public:
 	void SpawnNewInteractableWidget(const FPDInteractMessage& Message, AActor* ActorToTrack);
 	
 	/** @brief Map to keep track of the onscreen interactables.
-	 * Map is keyed by the actor pointer and value is the actual base widget that is being diaplayed for it */
+	 * Map is keyed by the actor pointer and value is the actual base widget that is being displayed for it */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
 	TMap<AActor*, UPDWInteractable_Base*> OnScreenInteractables;
 

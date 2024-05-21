@@ -2,9 +2,9 @@
 #include "AI/Mass/RTSOMassSpawner.h"
 
 #include "MassEntityConfigAsset.h"
-// #include "MassSimulationSubsystem.h"
 #include "MassSpawnerSubsystem.h"
 #include "PDRTSBaseSubsystem.h"
+#include "RTSOpenCommon.h"
 
 class UPDRTSBaseSubsystem;
 
@@ -14,38 +14,18 @@ void ARTSOMassSpawner::BeginPlay()
 	OnSpawningFinishedEvent.AddDynamic(this, &ARTSOMassSpawner::ProcessEntityTypes);
 	Super::BeginPlay();
 
-	
-	// // @todo remove below, 'OnSpawningFinishedEvent.AddDynamic' above supersedes this
-	// const ENetMode NetMode = GEngine->GetNetMode(GetWorld());
-	// if (bAutoSpawnOnBeginPlay == false || NetMode == NM_Client) { return; }
-	// 	
-	// const UMassSimulationSubsystem* MassSimulationSubsystem = UWorld::GetSubsystem<UMassSimulationSubsystem>(GetWorld());
-	// if (MassSimulationSubsystem == nullptr || MassSimulationSubsystem->IsSimulationStarted())
-	// {
-	// 	// iterate entity types and register their config softpaths in a fragment
-	// 	ProcessEntityTypes();
-	// 	return;
-	// }
-	//
-	// // Assign delegate
-	// SimulationStartedHandle = UMassSimulationSubsystem::GetOnSimulationStarted().AddLambda(
-	// [this](UWorld* InWorld)
-	// {
-	// 	if (GetWorld() != InWorld) { return; }
-	// 	
-	// 	ProcessEntityTypes();
-	// });
+	ProcessEntityTypes();
 }
 
 void ARTSOMassSpawner::ProcessEntityTypes()
 {
 	if (GetWorld() == nullptr) { return; }
+	UE_LOG(PDLog_RTSO, Warning, TEXT("ARTSOMassSpawner::ProcessEntityTypes"))
 
 	UPDRTSBaseSubsystem* RTSSubsystem = GEngine->GetEngineSubsystem<UPDRTSBaseSubsystem>();
-	FMassEntityManager* EntityManager = RTSSubsystem != nullptr ? RTSSubsystem->EntityManager : nullptr; 
-	UMassSpawnerSubsystem* SpawnerSystem = UWorld::GetSubsystem<UMassSpawnerSubsystem>(GetWorld());
+	const FMassEntityManager* EntityManager = RTSSubsystem != nullptr ? RTSSubsystem->EntityManager : nullptr;
+	const UMassSpawnerSubsystem* SpawnerSystem = UWorld::GetSubsystem<UMassSpawnerSubsystem>(GetWorld());
 	if (EntityManager == nullptr) { return; }
-	
 	
 	// iterate entity types and register their config softpaths in a fragment
 	for (const FMassSpawnedEntityType& EntityType : EntityTypes)

@@ -53,9 +53,9 @@ public:
 	virtual void RegisterWorldInteractable_Implementation(UWorld* SelectedWorld, AActor* SelectedInteractable);
 
 	/** @brief Base-implementation contains an example interaction message function. */
-	UFUNCTION(BlueprintNativeEvent, BlueprintCallable)
-	const FPDInteractMessage GetInteractionMessage();
-	virtual const FPDInteractMessage GetInteractionMessage_Implementation();	
+	virtual const FPDInteractMessage& GetInteractionMessage(); 
+	// { return GetInteractionMessage_Implementation(); };
+	// virtual const FPDInteractMessage& GetInteractionMessage_Implementation();	
 	
 	/** @brief Flag to tell us if we've been registered with the subsystem */
 	bool bHasBeenRegisteredWithCurrentWorld = false;

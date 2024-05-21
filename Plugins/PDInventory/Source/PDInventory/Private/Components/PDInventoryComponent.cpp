@@ -38,11 +38,11 @@ void UPDInventoryComponent::RequestUpdateItem(TEnumAsByte<EPDItemNetOperation> R
 	// Relevant authoritative code
 	switch(RequestedOperation) {
 	case REMOVEALL:
-		ItemList.RemoveAllItemsOfType((FGameplayTag&)ItemTag); // Actually removing is expensive
+		ItemList.RemoveAllItemsOfType(const_cast<FGameplayTag&>(ItemTag)); // Actually removing is expensive
 		break;
 	case ADDNEW:
 	case CHANGE:
-		ItemList.UpdateItem((FGameplayTag&)ItemTag, Count); // update, applies either addition or subtraction
+		ItemList.UpdateItem(const_cast<FGameplayTag&>(ItemTag), Count); // update, applies either addition or subtraction
 		break;
 		default: return; // @todo return error message
 	}
@@ -50,13 +50,13 @@ void UPDInventoryComponent::RequestUpdateItem(TEnumAsByte<EPDItemNetOperation> R
 	GetOwner()->ForceNetUpdate();
 }
 
-void UPDInventoryComponent::RequestTradeItems(UPDInventoryComponent* Caller, const TMap<FGameplayTag, int32>& OfferredItems,
+void UPDInventoryComponent::RequestTradeItems(UPDInventoryComponent* Caller, const TMap<FGameplayTag, int32>& OfferedItems,
 	const TMap<FGameplayTag, int32>& RequestedItems)
 {
 	if (Caller == nullptr || Caller->IsValidLowLevelFast() == false) { return; }
 
 	// Offer from caller to called
-	for (const TPair<FGameplayTag, int32> Item : OfferredItems)
+	for (const TPair<FGameplayTag, int32> Item : OfferedItems)
 	{
 		if (Caller->ItemList.ItemToIndexMapping.Contains(Item.Key) == false) { continue; }
 		

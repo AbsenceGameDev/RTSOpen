@@ -36,7 +36,7 @@ void UPDInteractSubsystem::TransferringWorld(UWorld* OldWorld, UWorld* TargetWor
 	check(OldWorld != nullptr)
 	check(TargetWorld != nullptr)
 
-	// Is there an already existing set of functions that allow transferring between worlds, and not just ulevels?
+	// Is there an already existing set of functions that allow transferring between worlds, and not just u-levels?
 	WorldInteractables.FindOrAdd(TargetWorld).ActorInfo = WorldInteractables.Find(OldWorld)->ActorInfo;
 	WorldInteractables.Remove(OldWorld);
 }

@@ -22,7 +22,7 @@ enum class EPDKeyProcessResult : uint8
 
 /**
  * @brief This instance adds some flags we want to use alongside with an overridden function,
- * so the system works as intended in singleplayer and in co-op/multiplayer alongside with a map of owner/actor IDs
+ * so the system works as intended in single-player and in co-op/multiplayer alongside with a map of owner/actor IDs
  * and their waiting-state
  */
 UCLASS(BlueprintType)
@@ -46,7 +46,7 @@ public:
 
 /** @brief This class holds some helper and possibly debug functions we might want to use */
 UCLASS()
-class PDCONVERSATIONHELPER_API UPDConversationBPFL : public UBlueprintFunctionLibrary
+class PDCONVERSATIONHELPER_API UPDConversationLibrary : public UBlueprintFunctionLibrary
 {
 	GENERATED_BODY()
 

@@ -148,8 +148,8 @@ void UPDInteractComponent::TimerInteraction()
 		EndInteraction();
 		return;
 	}
-	
-	double InteractionPercent = (CurrentInteractionTime + SMALL_NUMBER) / AsInteractInterface->GetInteractionTime();
+
+	const double InteractionPercent = (CurrentInteractionTime + SMALL_NUMBER) / AsInteractInterface->GetInteractionTime();
 	if (InteractionPercent + SMALL_NUMBER > 1.0)
 	{
 		EndInteraction();
@@ -177,7 +177,7 @@ void UPDInteractComponent::EndInteraction()
 	InteractionParams.InteractionPercent = FMath::IsNearlyZero(AsInteractInterface->GetInteractionTime())
 		? 1.0 : (CurrentInteractionTime + SMALL_NUMBER) / AsInteractInterface->GetInteractionTime() ;
 	InteractionParams.InstigatorComponentClass; // @todo
-	InteractionParams.OptionalInteractionTags;
+	InteractionParams.OptionalInteractionTags;  // @todo
 	
 	EPDInteractResult InteractResult = EPDInteractResult::INTERACT_UNHANDLED;
 	AsInteractInterface->OnInteract(InteractionParams, InteractResult);

@@ -134,9 +134,9 @@ struct PDRTSBASE_API FPDMTask_MoveToTarget : public FMassStateTreeTaskBase
 	DECLARE_TASK_BODY(MoveToHandle)
 
 	/** @brief Resolves the navpath at current path index for priority pathing, @bug Navpath generates invalid points, commented out for the moment, will resolve issue within a couple of commits  */
-	void ProcessNewPriorityPath(FPDMPathParameters& Params) const;
+	static void ProcessNewPriorityPath(const FPDMPathParameters& Params);
 	/** @brief Resolves the navpath at current path index for shared pathing, @bug Navpath generates invalid points, commented out for the moment, will resolve issue within a couple of commits */
-	void ProcessNewSharedPath(FPDMPathParameters& Params) const;
+	static void ProcessNewSharedPath(const FPDMPathParameters& Params);
 	
 	/* Links/handles */
 	TStateTreeExternalDataHandle<UMassEntitySubsystem> EntitySubsystemHandle;

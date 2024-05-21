@@ -6,7 +6,7 @@
 DECLARE_LOG_CATEGORY_CLASS(PDLog_InteractPreLoader, Log, All);
 
 
-constexpr const char* GSectionheader = "/Script/Engine.CollisionProfile"; 
+constexpr const char* GSectionHeader = "/Script/Engine.CollisionProfile"; 
 constexpr FFileHelper::EHashOptions GDontHash = FFileHelper::EHashOptions::None;
 
 #define ContainsEntry(SectionArray, Channel) \
@@ -35,7 +35,7 @@ void FPDInteractPreloaderModule::StartupModule()
 	const bool bFoundFile = FFileHelper::LoadFileToString(FileContent,*ProjectFilePath,GDontHash);
 	if(bFoundFile == false) { return; }
 	
-	FConfigSection* CollisionSection = DefaultEngineConfig.Find(GSectionheader);
+	FConfigSection* CollisionSection = DefaultEngineConfig.Find(GSectionHeader);
 	if (CollisionSection != nullptr)
 	{
 		AttemptToWriteChannelResponses(CollisionSection);		

@@ -20,7 +20,7 @@ class UBoxComponent;
 /**
  * @brief Base interactable actor.
  * Handles default behaviour for an interactable actor out-of-the box.
- * - Registers with the interactable subssytem upon beginplay
+ * - Registers with the interactable subsystem upon begin-play
  * - Binds editor delegates
  * - If given: Handles processing custom interaction process function delegates and passes result downstream
  * - Handles building a base-line interaction message filling in necessary data from the actor
@@ -41,10 +41,11 @@ public:
 	/** @brief Default setting Disabled. Only Calls Super. Reserved for later use */
 	virtual void Tick(float DeltaTime) override;
 
-	/** @brief Passes the parameters to the interaction interface which porcesses the custom process function, if any was given. and returns state or if it was unhandled */
+	/** @brief Passes the parameters to the interaction interface which processes the custom process function, if any was given. and returns state or if it was unhandled */
 	virtual void OnInteract_Implementation(const FPDInteractionParamsWithCustomHandling& InteractionParams, EPDInteractResult& InteractResult) const override;
-	/** @brief Returns the interaction message. Returns actorname and gameaction from property 'ActorMessage' */
-	virtual const FPDInteractMessage GetInteractionMessage_Implementation() override;
+	/** @brief Returns the interaction message. Returns actor-name and game-action from property 'ActorMessage' */
+	UFUNCTION(BlueprintCallable)
+	virtual const FPDInteractMessage& GetInteractionMessage() override;
 
 	virtual double GetInteractionTime_Implementation() const override { return InteractDuration; };
 protected:
@@ -56,7 +57,7 @@ protected:
 
 #if WITH_EDITOR
 	/** @brief Calls 'ResizeCollisionBounds' if the expected property 'UniformCollisionPadding' was modified */
-	void PostEditChangeProperty(FPropertyChangedEvent& PropertyChangedEvent) override;
+	virtual void PostEditChangeProperty(FPropertyChangedEvent& PropertyChangedEvent) override;
 #endif // WITH_EDITOR
 
 public:

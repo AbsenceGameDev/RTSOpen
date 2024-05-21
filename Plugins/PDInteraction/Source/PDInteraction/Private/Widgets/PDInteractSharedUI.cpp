@@ -1,9 +1,7 @@
-﻿#include "PDInteractSharedUI.h"
+﻿/* @author: Ario Amin @ Permafrost Development. @copyright: Full BSL(1.1) License included at bottom of the file  */
+
+#include "PDInteractSharedUI.h"
 #include "Components/TextBlock.h"
-
-/* @author: Ario Amin @ Permafrost Development. @copyright: Full BSL(1.1) License included at bottom of the file  */
-
-#include "PDInteractSubsystem.h"
 
 #include "PDInteractCommon.h"
 #include "Components/PDInteractComponent.h"
@@ -30,7 +28,7 @@ void UPDWInteractable_Base::ApplyMessageChanges()
 	GameMessage_Action->SetText(FText::FromString(CurrentMessage.GameAction));
 }
 
-void UPDWInteractable_Base::OnSpawnWidgetPopup(UPDWRadialInteract_HUD* UpdwRadialInteract_HUD)
+void UPDWInteractable_Base::OnSpawnWidgetPopup(UPDWRadialInteract_HUD* RadialInteract_HUD)
 {
 }
 
@@ -75,7 +73,7 @@ void UPDWRadialInteract_HUD::NativeTick(const FGeometry& MyGeometry, float InDel
 		UGameplayStatics::ProjectWorldToScreen(GetOwningPlayer(), Widget->GetTrackedActor()->GetActorLocation(),Transform.Translation);
 		Widget->SetRenderTransform(Transform);	
 	}
-	for (AActor* Actor : KeysToRemove)
+	for (const AActor* Actor : KeysToRemove)
 	{
 		OnScreenInteractables.Remove(Actor);
 	}
@@ -86,7 +84,7 @@ void UPDWRadialInteract_HUD::NativeTick(const FGeometry& MyGeometry, float InDel
 	{
 		if (InteractActor != nullptr && InteractActor->Implements<UPDInteractInterface>())
 		{
-			SpawnNewInteractableWidget(IPDInteractInterface::Execute_GetInteractionMessage(InteractActor), InteractActor);
+			SpawnNewInteractableWidget(Cast<IPDInteractInterface>(InteractActor)->GetInteractionMessage(), InteractActor);
 		}
 
 		if (OnScreenInteractables.Num() >= 50) { break; }
@@ -121,7 +119,7 @@ void UPDWRadialInteract_HUD::TickInteractables()
 		Widget->SetRenderTransform(Transform);	
 	}
 
-	for (AActor* Actor : KeysToRemove)
+	for (const AActor* Actor : KeysToRemove)
 	{
 		OnScreenInteractables.Remove(Actor);
 	}

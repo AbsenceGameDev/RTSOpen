@@ -37,7 +37,7 @@ const FPDTraceResult& FPDTraceBuffer::GetLastValidResult() const
 	return CachedValidFrame;
 }
 
-const bool FPDTraceBuffer::HasValidResults() const
+bool FPDTraceBuffer::HasValidResults() const
 {
 	const bool bValidCachedFrameStillRelevant = ValidFrameResetIt <= (FRAMERESET_LIMIT / 2) ;
 	return bValidCachedFrameStillRelevant && CachedValidFrame.ResultFlag == EPDTraceResult::TRACE_SUCCESS && CachedValidFrame.HitResult.GetActor() != nullptr;

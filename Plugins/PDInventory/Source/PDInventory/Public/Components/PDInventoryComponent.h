@@ -48,8 +48,8 @@ public:
 	UFUNCTION(BlueprintCallable)
 	void RequestUpdateItem(TEnumAsByte<EPDItemNetOperation> RequestedOperation, const FGameplayTag& ItemTag, int32 Count);
 	/** @brief Requests an item-trade from the caller. The items they offer and optionally the items they request.
-	 * Will need to revise this with an added parameter which requires the opposing inventories to have eachs requested item on hand, no less */
-	void RequestTradeItems(UPDInventoryComponent* Caller, const TMap<FGameplayTag, int32>& OfferredItems, const TMap<FGameplayTag, int32>& RequestedItems = {});
+	 * Will need to revise this with an added parameter which requires the opposing inventories to have each requested item on hand, no less */
+	void RequestTradeItems(UPDInventoryComponent* Caller, const TMap<FGameplayTag, int32>& OfferedItems, const TMap<FGameplayTag, int32>& RequestedItems = {});
 	
 	/** @brief Empty. Reserved for future use */
 	void OnDatumUpdated(FPDItemNetDatum* ItemNetDatum, EPDItemNetOperation Operation);

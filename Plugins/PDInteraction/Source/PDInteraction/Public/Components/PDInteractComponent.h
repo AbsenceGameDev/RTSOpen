@@ -37,10 +37,10 @@ public:
 	UFUNCTION(BlueprintCallable)
 	virtual void EndInteraction();
 	
-	/** @brief Returns latest traceresult, or enforcing the latest valid in the buffer if one exists */
+	/** @brief Returns latest trace-result, or enforcing the latest valid in the buffer if one exists */
 	UFUNCTION(BlueprintCallable)
 	const FPDTraceResult& GetTraceResult(bool bSearchForValidCachedResults) const;
-	/** @brief Returns the active trace settings for this component. This contains the ticktype, tick behaviours etc. */
+	/** @brief Returns the active trace settings for this component. This contains the tick-type, tick behaviours etc. */
 	UFUNCTION(BlueprintCallable)
 	const FPDTraceSettings& GetTraceSettings() const;
 	/** @brief Overwrites the current trace settings */
@@ -149,7 +149,7 @@ protected:
 	UPROPERTY(VisibleInstanceOnly, BlueprintReadOnly)
 	const AActor* ActiveInteractionTarget = nullptr;
 	
-	/** @brief THe tiemr handle for an active interaction, will be cleared after the interaction finishes */
+	/** @brief THe timer handle for an active interaction, will be cleared after the interaction finishes */
 	UPROPERTY()
 	FTimerHandle ActiveInteractionTimer{};
 

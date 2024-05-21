@@ -113,7 +113,7 @@ public:
 
 /** @brief This class holds some helper and possibly debug functions we might want to use */
 UCLASS()
-class RTSOPEN_API URTSOConversationBPFL : public UPDConversationBPFL
+class RTSOPEN_API URTSOConversationBPFL : public UPDConversationLibrary
 {
 	GENERATED_BODY()
 

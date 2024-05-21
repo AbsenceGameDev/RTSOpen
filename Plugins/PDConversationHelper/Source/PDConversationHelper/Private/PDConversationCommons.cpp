@@ -19,13 +19,13 @@ void UPDConversationInstance::PauseConversationAndSendClientChoices(
 
 //
 // Conversation function library
-const FClientConversationMessagePayload& UPDConversationBPFL::GetPreviousMessage(UConversationParticipantComponent* ConversationParticipantComponent)
+const FClientConversationMessagePayload& UPDConversationLibrary::GetPreviousMessage(UConversationParticipantComponent* ConversationParticipantComponent)
 {
 	check(ConversationParticipantComponent)
 	return ConversationParticipantComponent->GetLastMessage();
 }
 
-bool UPDConversationBPFL::IsGameFeaturePluginActive(FString PluginName)
+bool UPDConversationLibrary::IsGameFeaturePluginActive(FString PluginName)
 {
 	UGameFeaturesSubsystem* GameFeaturesSubsystem = GEngine ? GEngine->GetEngineSubsystem<UGameFeaturesSubsystem>() : nullptr;
 	if (GameFeaturesSubsystem == nullptr) { return false; }
@@ -37,13 +37,13 @@ bool UPDConversationBPFL::IsGameFeaturePluginActive(FString PluginName)
 	return false;
 }
 
-void UPDConversationBPFL::Debug_PrintConversationMessageToScreen(UObject* WorldContext, const FClientConversationMessage& Message, FLinearColor MessageColour)
+void UPDConversationLibrary::Debug_PrintConversationMessageToScreen(UObject* WorldContext, const FClientConversationMessage& Message, FLinearColor MessageColour)
 {
 	const FString BuildString = Message.ParticipantDisplayName.ToString() + " : " + Message.Text.ToString();
 	UKismetSystemLibrary::PrintString(WorldContext, BuildString, true, true, MessageColour, 50);
 }
 
-void UPDConversationBPFL::Debug_PrintConversationTextToScreen(UObject* WorldContext, const FName& Participant, const FText& Text, FLinearColor MessageColour)
+void UPDConversationLibrary::Debug_PrintConversationTextToScreen(UObject* WorldContext, const FName& Participant, const FText& Text, FLinearColor MessageColour)
 {
 	const FString BuildString = Participant.ToString() + " : " + Text.ToString();
 	UKismetSystemLibrary::PrintString(WorldContext, BuildString, true, true, MessageColour, 50);	

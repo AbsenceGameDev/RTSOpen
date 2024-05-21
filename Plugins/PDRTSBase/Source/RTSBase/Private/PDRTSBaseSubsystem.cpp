@@ -86,7 +86,7 @@ void UPDRTSBaseSubsystem::ProcessTables()
 	ProcessFailCounter++;
 	if (WorkTables.IsEmpty())
 	{
-		FString BuildString = "UPDRTSBaseSubsystem::ProcessTables -- "
+		const FString BuildString = "UPDRTSBaseSubsystem::ProcessTables -- "
 		+ FString::Printf(TEXT("\n 'WorkTables' array is empty. Is not able to process data"));
 		UE_LOG(PDLog_RTSBase, Error, TEXT("%s"), *BuildString);
 		
@@ -115,7 +115,7 @@ void UPDRTSBaseSubsystem::ProcessTables()
 
 			if (JobTag.IsValid() == false)
 			{
-				FString BuildString = "UPDRTSBaseSubsystem::ProcessTables -- "
+				const FString BuildString = "UPDRTSBaseSubsystem::ProcessTables -- "
 				+ FString::Printf(TEXT("Processing table(%s)"), *Table->GetName()) 
 				+ FString::Printf(TEXT("\n Trying to add work/job on row (%s) Which does not have a valid gameplay tag. Skipping processing entry"), *Name.ToString());
 				UE_LOG(PDLog_RTSBase, Error, TEXT("%s"), *BuildString);
@@ -129,7 +129,7 @@ void UPDRTSBaseSubsystem::ProcessTables()
 			{
 				const UDataTable* RetrievedTable = TagToTable.FindRef(JobTag);
 				
-				FString BuildString = "UPDInventorySubsystem::ProcessTables -- "
+				const FString BuildString = "UPDInventorySubsystem::ProcessTables -- "
 				+ FString::Printf(TEXT("Processing table(%s)"), *Table->GetName()) 
 				+ FString::Printf(TEXT("\n Trying to add item(%s) which has already been added by previous table(%s)."),
 						*JobTag.GetTagName().ToString(), RetrievedTable != nullptr ? *RetrievedTable->GetName() : *FString("INVALID TABLE"));
@@ -184,7 +184,7 @@ const FPDWorkUnitDatum* UPDRTSBaseSubsystem::GetWorkEntry(const FName& JobRowNam
 	return GetWorkEntry(JobTag);
 }
 
-void UPDRTSBaseSubsystem::AssociateArchetypeWithConfigAsset(const FMassArchetypeHandle& Archetype, TSoftObjectPtr<UMassEntityConfigAsset> EntityConfig)
+void UPDRTSBaseSubsystem::AssociateArchetypeWithConfigAsset(const FMassArchetypeHandle& Archetype, const TSoftObjectPtr<UMassEntityConfigAsset>& EntityConfig)
 {
 	ConfigAssociations.FindOrAdd(Archetype) = EntityConfig;
 }

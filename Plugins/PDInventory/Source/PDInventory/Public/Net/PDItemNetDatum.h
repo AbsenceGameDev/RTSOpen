@@ -126,7 +126,7 @@ private:
 	bool _Add(FGameplayTag& ItemToUpdate, int32 StackIdx, int32& AmountToAdd);
 
 public:
-	/** @brief The underlying tarray data which the fastarray class is operating on */
+	/** @brief The underlying TArray data which the fastarray class is operating on */
 	UPROPERTY()
 	TArray<FPDItemNetDatum> Items;
 
