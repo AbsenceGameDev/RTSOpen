@@ -257,8 +257,9 @@ void ARTSOBaseGM::SaveEntities_Implementation()
 			UnitDatum.SelectionIndex = EntityBaseFragment.SelectionGroupIndex;
 			UnitDatum.Location = EntityManager->GetFragmentDataChecked<FTransformFragment>(Cell.EntityHandle).GetTransform().GetLocation();
 
-			// @todo 3. Store entity config type 
-			UnitDatum.MassEntityConfigAssetPath = {};// @todo finish this: EntityManager->GetArchetypeForEntity(Cell.EntityHandle);
+			// Get mass entity soft object pointer, RTSSubsystem will only have done tha actual association if we've spawned entities using our ARTSOMassSpawner class 
+			const FMassArchetypeHandle ArchetypeHandle = EntityManager->GetArchetypeForEntity(Cell.EntityHandle);
+			UnitDatum.MassEntityConfigAssetPath = RTSSubsystem->GetConfigAssetForArchetype(ArchetypeHandle);
 			
 			GameSave->EntityUnits.Emplace(UnitDatum);
 		}
@@ -266,7 +267,6 @@ void ARTSOBaseGM::SaveEntities_Implementation()
 
 	
 	RTSSubsystem->WorldOctree.Unlock();
-
 }
 
 //
@@ -406,6 +406,11 @@ void ARTSOBaseGM::LoadEntities_Implementation()
 		UMassEntityConfigAsset* LoadedConfig = EntityData.MassEntityConfigAssetPath.LoadSynchronous();
 		const FMassEntityTemplate& Template = LoadedConfig->GetOrCreateEntityTemplate(*GetWorld());
 
+		// Make sure the subsystem associates the archetypes and configs in-case we
+		// load entities from a save file and not via an ARTSOMassSpawner
+		const FMassArchetypeHandle& Archetype = SpawnerSystem->GetMassEntityTemplate(Template.GetTemplateID())->GetArchetype();
+		RTSSubsystem->AssociateArchetypeWithConfigAsset(Archetype, EntityData.MassEntityConfigAssetPath);
+		
 		if (EntitiesToSpawn.Contains(Template.GetTemplateID()) == false)
 		{
 			FInnerEntityData TempDataArray;

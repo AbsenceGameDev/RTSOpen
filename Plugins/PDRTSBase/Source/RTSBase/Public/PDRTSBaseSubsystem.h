@@ -4,7 +4,9 @@
 
 #include "CoreMinimal.h"
 #include "GameplayTagContainer.h"
+#include "MassEntityConfigAsset.h"
 #include "MassEntityTypes.h"
+#include "MassArchetypeTypes.h"
 #include "AI/Mass/PDMassFragments.h"
 #include "Engine/StreamableManager.h"
 #include "Subsystems/EngineSubsystem.h"
@@ -191,6 +193,12 @@ public:
 	/** @brief Returns the default work data via it's rowname in the table it was sourced from*/
 	const FPDWorkUnitDatum* GetWorkEntry(const FName& JobRowName);
 	
+	/** @brief Associates and FMassArchetypeHandle with a config asset, so we can retrieve this info back to our save system fast when needed */
+	void AssociateArchetypeWithConfigAsset(const FMassArchetypeHandle& Archetype, TSoftObjectPtr<UMassEntityConfigAsset> EntityConfig);
+
+	/** @brief Retrieves the config asset */
+	TSoftObjectPtr<UMassEntityConfigAsset> GetConfigAssetForArchetype(const FMassArchetypeHandle& Archetype);	
+	
 	/** @brief Does some portable iso-approved 'hacks' to fetch the all the mass ISM's */
 	static const TArray<TObjectPtr<UInstancedStaticMeshComponent>>& GetMassISMs(const UWorld* InWorld);
 
@@ -232,8 +240,10 @@ public:
 	/** @brief The actual octree our worlds and our entities will make use of*/
 	PD::Mass::Entity::FPDSafeOctree WorldOctree;
 
-	/** @brief Tacking worlds that has been setup with this WorldOctree.  */
+	/** @brief Tracking worlds that has been setup with this WorldOctree.  */
 	TMap<void*, bool> WorldsWithOctrees{};
+	
+	TMap<FMassArchetypeHandle /*Archetype*/, TSoftObjectPtr<UMassEntityConfigAsset> /* EntityConfig */> ConfigAssociations{};
 	
 	/** @brief This will be useful on a server or shared screen environment */
 	UPROPERTY(EditAnywhere)

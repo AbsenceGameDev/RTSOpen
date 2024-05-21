@@ -184,6 +184,16 @@ const FPDWorkUnitDatum* UPDRTSBaseSubsystem::GetWorkEntry(const FName& JobRowNam
 	return GetWorkEntry(JobTag);
 }
 
+void UPDRTSBaseSubsystem::AssociateArchetypeWithConfigAsset(const FMassArchetypeHandle& Archetype, TSoftObjectPtr<UMassEntityConfigAsset> EntityConfig)
+{
+	ConfigAssociations.FindOrAdd(Archetype) = EntityConfig;
+}
+
+TSoftObjectPtr<UMassEntityConfigAsset> UPDRTSBaseSubsystem::GetConfigAssetForArchetype(const FMassArchetypeHandle& Archetype)
+{
+	return ConfigAssociations.Contains(Archetype) ? *ConfigAssociations.Find(Archetype) : TSoftObjectPtr<UMassEntityConfigAsset>{nullptr};
+}
+
 void UPDRTSBaseSubsystem::OnDeveloperSettingsChanged(UObject* SettingsToChange, FPropertyChangedEvent& PropertyEvent)
 {
 	const FArrayProperty* ArrayProperty = CastField<FArrayProperty>(PropertyEvent.Property);
