@@ -27,6 +27,49 @@ class UMassSignalSubsystem;
 	virtual EStateTreeRunStatus Tick(FStateTreeExecutionContext& Context, const float DeltaTime) const override; \
 	virtual void ExitState(FStateTreeExecutionContext& Context, const FStateTreeTransitionResult& Transition) const override;
 
+
+/** @brief Instance data for entity running FPDMTask_MoveToTarget */
+USTRUCT(Blueprintable)
+struct FPDMStuckMovementConditions
+{
+	GENERATED_BODY()
+	
+	EStateTreeRunStatus ShouldContinueMovement(float DeltaTime)
+	{
+		TimeDeltaAccumulator += DeltaTime;
+		if (TimeDeltaAccumulator >= ConsiderationInterval)
+		{
+			if (MinimumAverageSpeedPerConsiderationInterval > (DistanceDeltaAccumulator / TimeDeltaAccumulator))
+			{
+				return EStateTreeRunStatus::Failed;
+			}
+		
+			TimeDeltaAccumulator = 0;
+		}		
+		return EStateTreeRunStatus::Running;
+	}
+	
+	
+	/** @brief Minimum Average speed, polled every 10 seconds to make sure the entity is not stuck */
+	UPROPERTY(EditAnywhere, Category = "Data")
+	float MinimumAverageSpeedPerConsiderationInterval = 20.0f;
+
+	/** @brief How large interval between each consideration to check if we are stuck or not */
+	UPROPERTY(EditAnywhere, Category = "Data")
+	float ConsiderationInterval = 10.f;
+
+	/* Used to ensure the entity is not stuck, @todo might need to move to the movement processor */
+	UPROPERTY(VisibleAnywhere, Category = "Data")
+	float LastDistance = 0.0;		
+	/* Used to ensure the entity is not stuck, @todo might need to move to the movement processor */
+	UPROPERTY(VisibleAnywhere, Category = "Data")
+	float DistanceDeltaAccumulator = 0.0;
+	/* Used to ensure the entity is not stuck, @todo might need to move to the movement processor */
+	UPROPERTY(VisibleAnywhere, Category = "Data")
+	float TimeDeltaAccumulator = 0.0;	
+};
+
+
 //
 /// MOVETOHANDLE
 
@@ -45,23 +88,13 @@ struct FPDMTaskData_MoveToHandle
 	UPROPERTY(VisibleAnywhere, Category = "Parameter")
 	TArray<FVector> NavPath;
 	
-	/** @brief Minimum Average speed, polled every 10 seconds to make sure the entity is not stuck */
-	UPROPERTY(VisibleAnywhere, Category = "Data")
-	float MinimumAverageSpeedPer5SecondInterval = 20.0f;
-
 	/** @brief Result of the candidates search request (Input) */
 	UPROPERTY(VisibleAnywhere, Category = "Data")
 	int16 CurrentNavPathIndex;
-
-	/* Used to ensure the entity is not stuck, @todo might need to move to the movement processor */
-	UPROPERTY(VisibleAnywhere, Category = "Data")
-	float LastDistance = 0.0;		
-	/* Used to ensure the entity is not stuck, @todo might need to move to the movement processor */
-	UPROPERTY(VisibleAnywhere, Category = "Data")
-	float DistanceDeltaAccumulator = 0.0;
-	/* Used to ensure the entity is not stuck, @todo might need to move to the movement processor */
-	UPROPERTY(VisibleAnywhere, Category = "Data")
-	float TimeDeltaAccumulator = 0.0;	
+	
+	/** @brief Settings to control our parameters when we should abort a movement */
+	UPROPERTY(EditAnywhere, Category = "Data")
+	FPDMStuckMovementConditions StuckMovementRules{};
 };
 
 /** @brief Reference-bound parameter structure related to an entities navpath */
@@ -163,7 +196,11 @@ struct FPDMTaskData_RandomWander
 
 	/** @brief Max remaining distance to goal until it reads as success, value can be set from state-tree editor */
 	UPROPERTY(EditAnywhere, Category = Parameter)
-	float SuccessRadius = 100.f;	
+	float SuccessRadius = 100.f;
+
+	/** @brief Settings to control our parameters when we should abort a movement */
+	UPROPERTY(EditAnywhere, Category = "Data")
+	FPDMStuckMovementConditions StuckMovementRules{};	
 };
 
 /**

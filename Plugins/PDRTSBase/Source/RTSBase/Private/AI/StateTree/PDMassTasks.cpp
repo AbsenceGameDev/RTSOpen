@@ -195,18 +195,12 @@ EStateTreeRunStatus FPDMTask_MoveToTarget::Tick(FStateTreeExecutionContext& Cont
 	FMassMoveTargetFragment& MoveTarget = Context.GetExternalData(MoveTargetHandle);
 	FPDMFragment_RTSEntityBase& RTSData = Context.GetExternalData(RTSDataHandle);
 
-	// Abort if moving far too slow.
-	InstanceData.TimeDeltaAccumulator += DeltaTime;
-	InstanceData.DistanceDeltaAccumulator += FMath::Abs(MoveTarget.DistanceToGoal - InstanceData.LastDistance);
-	InstanceData.LastDistance = MoveTarget.DistanceToGoal;
-	if (InstanceData.TimeDeltaAccumulator >= 10.0f)
+	// Abort if moving slower than our conditions/task parameters allow
+	switch (InstanceData.StuckMovementRules.ShouldContinueMovement(DeltaTime))
 	{
-		if (InstanceData.MinimumAverageSpeedPer5SecondInterval > (InstanceData.DistanceDeltaAccumulator / InstanceData.TimeDeltaAccumulator))
-		{
-			return EStateTreeRunStatus::Failed;
-		}
-		
-		InstanceData.TimeDeltaAccumulator = 0;
+	case EStateTreeRunStatus::Failed:
+		return EStateTreeRunStatus::Failed;
+		default: break;
 	}
 
 	if (MoveTarget.DistanceToGoal <= MoveTarget.SlackRadius)
@@ -263,8 +257,16 @@ EStateTreeRunStatus FPDMTask_RandomWander::EnterState(FStateTreeExecutionContext
 EStateTreeRunStatus FPDMTask_RandomWander::Tick(FStateTreeExecutionContext& Context, const float DeltaTime) const
 {
 	FMassMoveTargetFragment& MoveTarget = Context.GetExternalData(MoveTargetHandle);
-	const FInstanceDataType& InstanceData = Context.GetInstanceData(*this);
+	FInstanceDataType& InstanceData = Context.GetInstanceData(*this);
 
+	// Abort if moving slower than our conditions/task parameters allow
+	switch (InstanceData.StuckMovementRules.ShouldContinueMovement(DeltaTime))
+	{
+	case EStateTreeRunStatus::Failed:
+		return EStateTreeRunStatus::Failed;
+	default: break;
+	}
+	
 	if (MoveTarget.DistanceToGoal <= InstanceData.SuccessRadius)
 	{
 		MoveTarget.CreateNewAction(EMassMovementAction::Stand, *Context.GetWorld());
