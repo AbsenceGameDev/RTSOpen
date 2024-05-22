@@ -647,6 +647,7 @@ void ARTSOController::OnBeginConversation(const FClientConversationMessagePayloa
 	DeactivateMappingContext(TAG_CTRL_Ctxt_BaseInput);
 	
 	ConversationWidget->AddToViewport();
+	ConversationWidget->ExitConversationButton->Hitbox->OnReleased.RemoveAll(this);
 	ConversationWidget->ExitConversationButton->Hitbox->OnReleased.AddDynamic(this, &ARTSOController::Internal_ExitConversation);
 	ConversationWidget->SetPayload(Payload, PotentialCallbackActor);	
 }
