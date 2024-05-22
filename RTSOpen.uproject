@@ -211,6 +211,19 @@
 		{
 			"Name": "OpenImageDenoise",
 			"Enabled": false
+		},
+		{
+			"Name": "IconBaker",
+			"Enabled": false
+		},
+		{
+			"Name": "IslandGenerator",
+			"Enabled": false
+		},
+		{
+			"Name": "SubsystemBrowserPlugin",
+			"Enabled": false,
+			"MarketplaceURL": "com.epicgames.launcher://ue/marketplace/product/f1ba87b348774d338e75d25ddbc46b98"
 		}
 	],
 	"TargetPlatforms": [
