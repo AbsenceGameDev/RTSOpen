@@ -12,20 +12,28 @@ public class RTSOpen : ModuleRules
 		PublicIncludePaths.Add(Path.Combine(ModuleDirectory, "Classes"));
 		
 		PublicDependencyModuleNames.AddRange(new string[] 
-			{ "Core", "CoreUObject", "Engine", 
-			"InputCore", "GameplayTags", "NetCore", "PDRTSBase", "PDInventory", "EnhancedInput", "CommonConversationRuntime", "PDConversationHelper"
-			});
+		{ 
+			"Core", "CoreUObject", "Engine", "InputCore", "NetCore", "DeveloperSettings",
+			"GameplayTags", "EnhancedInput", "CommonConversationRuntime", 
+			"PDRTSBase", "PDInventory", "PDConversationHelper"
+		});
 
 		PublicDependencyModuleNames.AddRange(new string[]
 		{
-			"MassEntity", "MassCommon", "MassNavigation", "StructUtils", "MassMovement", "NavigationSystem",
-			"AIModule", "MassAIBehavior", "StateTreeModule", "SmartObjectsModule", "MassSmartObjects", "MassSignals",
-			"MassRepresentation", "MassLOD", "AnimToTexture", "MassSpawner", "Chaos"
+			"MassEntity", "MassCommon", "MassNavigation", "MassMovement", "MassAIBehavior", "MassSmartObjects", "MassSignals", "MassRepresentation", "MassLOD", "MassSpawner", 
+			"AIModule", "StateTreeModule", "SmartObjectsModule", "NavigationSystem", 
+			"StructUtils", 
+			"AnimToTexture", 
+			"Chaos"
 		});
 		
 		PrivateDependencyModuleNames.AddRange(new string[] 
-			{ "SlateCore","PDInteraction", "PDInventory", "PDRTSBase", "GameplayTags", "EnhancedInput", "CommonUI", "UMG", "Niagara", "MassCrowd", "CommonConversationRuntime", "PDConversationHelper"
-			});
+		{ 
+			"GameplayTags", "EnhancedInput", 
+			"SlateCore", "CommonUI", "UMG", 
+			"Niagara", "MassCrowd", "CommonConversationRuntime", 
+			"PDInteraction", "PDInventory", "PDRTSBase", "PDConversationHelper",
+		});
 	}
 }
 

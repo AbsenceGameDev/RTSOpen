@@ -171,7 +171,7 @@ class RTSOPEN_API ARTSOController : public APlayerController, public IRTSOInputI
 	/** @brief Ends a conversation, reverts all changes regarding camera target and mapping contexts made in 'OnBeginConversation'*/
 	UFUNCTION() void OnEndConversation(const FClientConversationMessagePayload& Payload, AActor* PotentialCallbackActor);
 	/** @brief Returns the integer value of the FPDPersistentID 'ActorID', */
-	UFUNCTION(BlueprintCallable) int32 GetActorID() { return ActorID.GetID(); };
+	UFUNCTION(BlueprintCallable) int32 GetActorID() const { return ActorID.GetID(); };
 	/** @brief Queues a drawcall into chaos' async debug draw queue */
 	static void DrawBoxAndTextChaos(const FVector& BoundsCenter, const FQuat& Rotation, const FVector& DebugExtent, const FString& DebugBoxTitle, FColor LineColour = FColor::Black);
 	/** @brief This function is here to fix a edge-case issue where the marquee volume is affected by large differences in z-height between the start corner and end corner world hitresults*/

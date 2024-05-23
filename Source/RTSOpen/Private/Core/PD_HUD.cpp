@@ -1,15 +1,56 @@
 /* @author: Ario Amin @ Permafrost Development. @copyright: Full BSL(1.1) License included at bottom of the file  */
 
 #include "Core/PD_HUD.h"
+
+#include "MassEntitySubsystem.h"
+#include "PDRTSBaseSubsystem.h"
+#include "RTSOpenCommon.h"
+#include "Actors/GodHandPawn.h"
 #include "Engine/Canvas.h"
 #include "Actors/RTSOController.h"
+#include "AI/Mass/RTSOMassFragments.h"
+#include "Chaos/DebugDrawQueue.h"
+#include "Kismet/KismetSystemLibrary.h"
 
-void APD_HUD::DrawHUD()
+APD_HUD::APD_HUD()
+	: Super()
 {
-	Super::DrawHUD();
+	const TSoftObjectPtr<URTSOMinimapData> SofMinimapDataPtr = GetDefault<URTSOMinimapDeveloperSettings>()->DefaultMinimapData;
+	if (SofMinimapDataPtr.IsValid() == false)
+	{
+		UE_LOG(PDLog_RTSO, Warning, TEXT("APD_HUD::BeginPlay -- URTSOMinimapDeveloperSettings has no valid default value set for 'DefaultMinimapData'"))
+		return;
+	}
+	MiniMapData = SofMinimapDataPtr.LoadSynchronous();
+}
 
-	//
-	// Draw marquee
+void APD_HUD::BeginPlay()
+{
+	Super::BeginPlay();
+
+	// Already have a valid arrow texture, skip
+	if (MiniMapData != nullptr) { return; }
+
+	const TSoftObjectPtr<URTSOMinimapData> SofMinimapDataPtr = GetDefault<URTSOMinimapDeveloperSettings>()->DefaultMinimapData;
+	if (SofMinimapDataPtr.IsValid() == false)
+	{
+		UE_LOG(PDLog_RTSO, Error, TEXT("APD_HUD::BeginPlay -- URTSOMinimapDeveloperSettings has no valid default value set for 'DefaultMinimapData'"))
+		return;
+	}
+	
+	MiniMapData = SofMinimapDataPtr.LoadSynchronous();
+}
+
+void APD_HUD::DrawRadarMinimap()
+{
+	DrawRadar(FLinearColor::Gray);
+	DrawOwnerOnMiniMap();
+	DrawActorsOnMiniMap();
+	DrawEntitiesOnMiniMap();
+}
+
+void APD_HUD::DrawSelectionMarquee()
+{
 	const ARTSOController* RTSOController = Cast<ARTSOController>(GetOwningPlayerController());
 	if (RTSOController == nullptr || RTSOController->IsDrawingMarquee() == false) { return; }
 	
@@ -18,10 +59,218 @@ void APD_HUD::DrawHUD()
 	const float Height = DeltaMarquee.Y;
 	
 	DrawRect(FLinearColor(.4, .4, .4, .42), RTSOController->GetStartMousePositionMarquee().X, RTSOController->GetStartMousePositionMarquee().Y, Width, Height);
+}
+
+void APD_HUD::DrawHUD()
+{
+	Super::DrawHUD();
+
+	//
+	// Draw Minimap
+	DrawRadarMinimap();
 	
 	//
-	// Debug
-	// DrawRect(FLinearColor::Black, RTSOController->GetStartMousePositionMarquee().X, RTSOController->GetStartMousePositionMarquee().Y, Width, Height);
+	// Draw Marquee for entity selection
+	DrawSelectionMarquee();
+}
+
+void APD_HUD::DrawActorsOnMiniMap()
+{
+	APawn* OwnerPawn = GetWorld()->GetFirstPlayerController()->GetPawn();
+	if (OwnerPawn == nullptr) { return; }
+	
+	OnWorldActors.Empty();
+	UKismetSystemLibrary::SphereOverlapActors(
+		OwnerPawn,
+		OwnerPawn->GetActorLocation(),
+		RadarTraceSphereRadius,
+		{UEngineTypes::ConvertToObjectType(ECollisionChannel::ECC_WorldStatic)},
+		nullptr, 
+		{OwnerPawn},
+		OnWorldActors);
+	
+	const FVector2D RadarCenter = GetRadarCenter();
+	const FLinearColor EnemyLinearColour = FLinearColor(EnemyColour.R, EnemyColour.G, EnemyColour.B, 0.0);
+	const FLinearColor GenericActorLinearColour = FColor::Silver.ReinterpretAsLinear();
+	FLinearColor OffsetAlpha(0,0,0, 0);
+	
+	for (const AActor* It : OnWorldActors)
+	{
+		const FVector2D Location2D = WorldToScreen2D(It);
+
+		//Clamp positions in between the minimap size so they are not out of bounds
+		const float NewX = FMath::Clamp<float>(Location2D.X, -RadarSize / 2, RadarSize / 2 - GenericMinimapIconRectSize);
+		const float NewY = FMath::Clamp<float>(Location2D.Y, -RadarSize / 2, RadarSize / 2 - GenericMinimapIconRectSize);
+
+		FVector MyLocation = GetCurrentActorLocation();
+		FVector EnemyLocation = It->GetActorLocation();
+
+		const float Distance = FVector::Distance(MyLocation, EnemyLocation);
+		
+		// // @todo Decide what type of actors this is, if enemy use 'EnemyColour' and so forth
+		// Contexts to consider:: Mission / Interactable :  {MissionColour; InteractableColour}
+		// Relation to consider:: Enemy / OwnedUnits / Friend : {EnemyColour; OwnedUnitsColour; FriendColour;}
+
+		const FLinearColor EntityColour = Cast<APawn>(It) != nullptr ? EnemyLinearColour: GenericActorLinearColour; 
+		OffsetAlpha.A = Alpha / Distance * 4;
+		DrawRect(EntityColour + OffsetAlpha, RadarCenter.X + NewX, RadarCenter.Y + NewY, GenericMinimapIconRectSize, GenericMinimapIconRectSize);
+	}
+}
+
+// @todo move calculations out of the hud, keep cached data the HUD can quickly access during the draw call wittout having to run the octree iteration themselves
+void APD_HUD::DrawEntitiesOnMiniMap()
+{
+	using FLEntityCompound = struct{FMassEntityHandle EntityHandle; FVector Location; int32 OwnerID;  };
+	
+	// @todo consider caching
+	ARTSOController* RTSOController = Cast<ARTSOController>(GetOwningPlayerController());
+	if (RTSOController == nullptr || RTSOController->GetPawn() == nullptr) { return; }
+	
+	// Viewport halfsize
+	PD::Mass::Entity::FPDSafeOctree& WorldOctree =  GEngine->GetEngineSubsystem<UPDRTSBaseSubsystem>()->WorldOctree;
+	
+	static const FVector OffsetCorner_FwdLeft {1,  -1,  0.0};
+	static const FVector OffsetCorner_FwdRight {1,   1,  0.0};
+	static const FVector OffsetCorner_BwdLeft {-1,  1,  0.0};
+	static const FVector OffsetCorner_BwdRight {-1, -1,  0.0};
+	
+	const FVector OffsetZVector = FVector{0,0, SphereHeight};
+	// // assumes we are rotated along one of four cardinal directions
+	FVector BoundsCenter = RTSOController->GetPawn<AGodHandPawn>()->CursorMesh->GetComponentLocation();
+	const FBox MarqueeWorldBox{
+		{
+			// Bottom points, below player
+			BoundsCenter - OffsetZVector + (OffsetCorner_FwdLeft  * RadarTraceSphereRadius),
+			BoundsCenter - OffsetZVector + (OffsetCorner_FwdRight * RadarTraceSphereRadius),  
+			BoundsCenter - OffsetZVector + (OffsetCorner_BwdLeft  * RadarTraceSphereRadius),             
+			BoundsCenter - OffsetZVector + (OffsetCorner_BwdRight * RadarTraceSphereRadius),  
+			
+			// Upper Points, above player
+			BoundsCenter + OffsetZVector + (OffsetCorner_FwdLeft  * RadarTraceSphereRadius),
+			BoundsCenter + OffsetZVector + (OffsetCorner_FwdRight * RadarTraceSphereRadius),
+			BoundsCenter + OffsetZVector + (OffsetCorner_BwdLeft  * RadarTraceSphereRadius),
+			BoundsCenter + OffsetZVector + (OffsetCorner_BwdRight * RadarTraceSphereRadius)
+		}};
+	FVector Extent;
+	MarqueeWorldBox.GetCenterAndExtents(BoundsCenter, Extent);
+	
+	FBoxCenterAndExtent QueryBounds = FBoxCenterAndExtent(BoundsCenter, Extent);
+	QueryBounds.Center.W = QueryBounds.Extent.W = 0;
+
+	const FMassEntityManager& EntityManager = GetWorld()->GetSubsystem<UMassEntitySubsystem>()->GetEntityManager();
+	
+	TArray<FLEntityCompound> OverlappingHandles;
+	TArray<FVector> EntityLocations;
+	WorldOctree.FindElementsWithBoundsTest(QueryBounds, [&](const FPDEntityOctreeCell& Cell)
+	{
+		if (Cell.EntityHandle.Index == INDEX_NONE) { return; }
+		const int32 OwnerID = EntityManager.GetFragmentDataPtr<FRTSOFragment_Agent>(Cell.EntityHandle)->OwnerID;
+
+		OverlappingHandles.Emplace(FLEntityCompound{Cell.EntityHandle, Cell.Bounds.Center, OwnerID});
+	}, true);
+
+	
+#if CHAOS_DEBUG_DRAW
+	{
+		Chaos::FDebugDrawQueue::GetInstance().DrawDebugBox(BoundsCenter, Extent, FQuat::Identity, FColor::Silver, false, 0, 0, 10.0f);
+		const FVector& TextLocation = BoundsCenter + FVector(0, 0, Extent.Z * 2);
+		Chaos::FDebugDrawQueue::GetInstance().DrawDebugString(TextLocation,FString("Radar Octree Trace"), nullptr, FColor::Yellow, 0, true, 2);
+	}
+#endif
+
+	const FLinearColor EnemyLinearColour = FLinearColor(EnemyColour.R, EnemyColour.G, EnemyColour.B, 0.0);
+	const FLinearColor OwnerLinearColour = FLinearColor(OwnedUnitsColour.R, OwnedUnitsColour.G, OwnedUnitsColour.B, 0.0);
+	FLinearColor OffsetAlpha(0,0,0, 0);
+
+	// Copy some values we'll keep calling for the following loop
+	const FVector PlayerLocation = GetCurrentActorLocation();
+	const FVector2D RadarCenter  = GetRadarCenter();
+	const int32 CallerID         = RTSOController->GetActorID();
+	
+	// Iterate all found entities and draw boxes on screen to display them
+	for (FLEntityCompound& EntityCompound : OverlappingHandles)
+	{
+		FVector EntityLocation = EntityCompound.Location;
+		const FVector2D Location2D = WorldToScreen2D(EntityLocation);
+
+		//Clamp positions in between the minimap size so they are not out of bounds
+		const float NewX = FMath::Clamp<float>(Location2D.X, -RadarSize / 2, RadarSize / 2 - GenericMinimapIconRectSize);
+		const float NewY = FMath::Clamp<float>(Location2D.Y, -RadarSize / 2, RadarSize / 2 - GenericMinimapIconRectSize);
+
+		const float Distance = FVector::Distance(PlayerLocation, EntityLocation);
+		
+		//// @todo colour based on selection ID and/or owner ID, currently only colours green if owning and red otherwise, with no further disctions being made
+		// Contexts to consider:: Mission / Interactable :  {MissionColour; InteractableColour}
+		// Relation to consider:: Enemy / OwnedUnits / Friend : {EnemyColour; OwnedUnitsColour; FriendColour;}
+		
+		const FLinearColor EntityColour = CallerID != EntityCompound.OwnerID ? EnemyLinearColour: OwnerLinearColour; 
+		OffsetAlpha.A = Alpha / Distance * 4;
+
+		DrawRect(EntityColour + OffsetAlpha, RadarCenter.X + NewX, RadarCenter.Y + NewY, GenericMinimapIconRectSize, GenericMinimapIconRectSize);
+	}
+}
+
+void APD_HUD::DrawOwnerOnMiniMap()
+{
+	//Clamp positions in between the minimap size so they are not out of bounds
+	if (MiniMapData == nullptr || MiniMapData->ArrowTexture == nullptr)
+	{
+		DrawRect(FLinearColor::White, GetRadarCenter().X, GetRadarCenter().Y, GenericMinimapIconRectSize, GenericMinimapIconRectSize);
+		return;
+	}
+
+	const float TextureWidth = MiniMapData->ArrowTexture->GetSurfaceWidth();
+	const float TextureHeight = MiniMapData->ArrowTexture->GetSurfaceHeight();
+
+	DrawTextureSimple(MiniMapData->ArrowTexture, GetRadarCenter().X - TextureWidth * FixedTextureScale / 2, GetRadarCenter().Y - TextureHeight * FixedTextureScale / 2, FixedTextureScale);
+}
+
+void APD_HUD::DrawRadar(FLinearColor Color)
+{
+	const float PosX = RadarStartLocation.X;
+	const float PosY = RadarStartLocation.Y;
+	const float Size = RadarSize;
+
+	// Draw Outer Box
+	DrawRect(Color, PosX, PosY, 1, Size);
+	DrawRect(Color, PosX, PosY, Size, 1);
+	DrawRect(Color, PosX, PosY + Size, Size, 1);
+	DrawRect(Color, PosX + Size, PosY, 1, Size + 1);
+	
+	// Draw Horizontal Radar Line
+	DrawRect(Color, PosX + Size / 2, PosY, 1, Size + 1);
+
+	// Draw Vertical Radar Line
+	DrawRect(Color, PosX, PosY + Size / 2, Size, 1);
+
+	// Draw Background Colour @todo replace with background material 
+	DrawRect(FLinearColor(0, 0, 0, 0.3f), PosX, PosY, Size, Size);
+}
+
+FVector2D APD_HUD::GetRadarCenter() const
+{
+	return Canvas != nullptr ? FVector2D(RadarStartLocation.X + RadarSize / 2, RadarStartLocation.Y + RadarSize / 2) : FVector2D(0, 0);
+}
+
+FVector APD_HUD::GetCurrentActorLocation() const
+{
+	return GetWorld()->GetFirstPlayerController()->GetPawn()->GetActorLocation();
+}
+
+FVector2D APD_HUD::WorldToScreen2D(const AActor * Actor) const
+{
+	const APawn* Player = GetWorld()->GetFirstPlayerController()->GetPawn();
+	if (Player == nullptr || Actor == nullptr) { return FVector2D(0, 0); }
+	
+	FVector ActorPosition3D = Player->GetTransform().InverseTransformPosition(Actor->GetActorLocation());
+	return WorldToScreen2D(ActorPosition3D);
+}
+
+FVector2D APD_HUD::WorldToScreen2D(FVector& WorldLocation) const
+{
+	WorldLocation = FRotator(0.f, -90.f, 0.f).RotateVector(WorldLocation);
+	WorldLocation /= RadarDistanceScale;
+	return FVector2D(WorldLocation);	
 }
 
 
