@@ -1,135 +1,23 @@
-/* @author: Ario Amin @ Permafrost Development. @copyright: Full BSL(1.1) License included at bottom of the file  */
-#pragma once
+﻿/* @author: Ario Amin @ Permafrost Development. @copyright: Full BSL(1.1) License included at bottom of the file  */
+#include "Widgets/RTSOMiniMap.h"
 
-#include "CoreMinimal.h"
-#include "MassEntityTypes.h"
-#include "PDRTSBaseSubsystem.h"
-#include "GameFramework/HUD.h"
-#include "Engine/DeveloperSettings.h"
-#include "PD_HUD.generated.h"
+#include "Widgets/Slate/SRTSOMiniMap.h"
 
-
-/**
- * @brief Handles drawing things on the HUD mainly, is ued to draw the marquee rectangle on screen
- */
-UCLASS()
-class RTSOPEN_API APD_HUD : public AHUD
+void URTSOMiniMap::OnWidgetRebuilt()
 {
-	GENERATED_BODY()
-
-	/** @brief Reads the start and current marquee positions from the player controller,
-	 * and display draw a rectangle on screen to convey the marquee selection actually happening to the user */
-	virtual void DrawHUD() override;
+	if (SlateMiniMap != nullptr)
+	{
+		Super::OnWidgetRebuilt();
+		return;
+	}
 	
-	/** @brief Draws the selection marquee directly on the hud, gets called in APD_HUD::DrawHUD. */
-	void DrawRadarMinimap();
-
-	/** @brief Draws the selection marquee directly on the hud, gets called in APD_HUD::DrawHUD. Reads selection/marquee data from the player controller*/
-	void DrawSelectionMarquee();
+	SlateMiniMap = MakeShared<SRTSOMiniMap>().ToSharedPtr();
+	Super::OnWidgetRebuilt();
+}
 
 
-private:
-	APD_HUD();
-
-	virtual void BeginPlay() override;
-
-	/** @brief Draw all nearby actors on the minimap */
-	void DrawActorsOnMiniMap();
-
-	/** @brief Draw nearby entities on the minimap */
-	void DrawEntitiesOnMiniMap();	
-	
-	/** @brief Draw self/local player on minimap */
-	void DrawOwnerOnMiniMap();
-	
-	/** @brief Draws the actual radar, defines the visuals of it */
-	void DrawRadar(FLinearColor Color = FLinearColor::Yellow);
-
-	/** @brief Returns center screen location where the radar will be displayed */
-	FVector2D GetRadarCenter() const;
-
-	/** @brief Owning/local actors current world location */
-	FVector GetCurrentActorLocation() const;
-
-	/** @brief Player world to screen transformation */
-	FVector2D WorldToScreen2D(FLEntityCompound& EntityCompound) const;
-	/** @brief Player world to screen transformation */
-	FVector2D WorldToScreen2D(const AActor* ActorToPlace) const;
-	/** @brief Player world to screen transformation */
-	FVector2D WorldToScreen2D(FVector& WorldLocation) const;
-public:
-	/** @brief On screen location where the unscaled radar will be placed */
-	UPROPERTY(EditAnywhere)
-	FVector2D RadarStartLocation = FVector2D(10.f, 10.f);
-
-	/** @brief On screen location where the unscaled radar will be placed */
-	UPROPERTY(EditAnywhere)
-	double RadarSize = 200.0;
-
-	UPROPERTY(EditAnywhere, Category = MiniMap2D)
-	double RadarDistanceScale = 25.0;
-
-	UPROPERTY(EditAnywhere, Category = MiniMap2D)
-	double SphereHeight = 300.0;
-
-	UPROPERTY(EditAnywhere, Category = MiniMap2D)
-	double RadarTraceSphereRadius = 4000.0;
-
-	UPROPERTY(EditAnywhere, Category = MiniMap2D)
-	double GenericMinimapIconRectSize = 3.0;
-
-	UPROPERTY(EditAnywhere, Category = MiniMap2D, DisplayName = "Mission Color")
-	FColor MissionColour {1,1,0};
-	
-	UPROPERTY(EditAnywhere, Category = MiniMap2D, DisplayName = "Interactable Color")
-	FColor InteractableColour {0,1,1};
-	
-	UPROPERTY(EditAnywhere, Category = MiniMap2D, DisplayName = "Enemy Color")
-	FColor EnemyColour {1,0,0};
-
-	UPROPERTY(EditAnywhere, Category = MiniMap2D, DisplayName = "Owned Units Color")
-	FColor OwnedUnitsColour {0,1,0};		
-	
-	UPROPERTY(EditAnywhere, Category = MiniMap2D, DisplayName = "Friend Color")
-	FColor FriendColour {0,0,1};
-
-private:
-	UPROPERTY()
-	URTSOMinimapData_Deprecated* MiniMapData = nullptr;
-	const float FixedTextureScale = 0.02f;
-	
-	UPROPERTY()
-	TArray<AActor*> OnWorldActors;
-	TArray<FHitResult*> Results;
-	const float Alpha = 1.f;
-};
 
 
-// Move the below classes into the shared UI under 'Classes' when moving his into it's own slate widget 
-
-UCLASS()
-class RTSOPEN_API URTSOMinimapData_Deprecated : public UDataAsset
-{
-	GENERATED_BODY()
-
-public:
-	UPROPERTY(EditAnywhere, Category = "Minimap")
-	UTexture2D* ArrowTexture = nullptr;
-};
-
-UCLASS(Config = "Game", DefaultConfig)
-class RTSOPEN_API URTSOMinimapDeveloperSettings_Deprecated : public UDeveloperSettings
-{
-	GENERATED_BODY()
-	
-public:
-	URTSOMinimapDeveloperSettings_Deprecated(){}
-	
-	/** @brief Default Minimap data */
-	UPROPERTY(Config, EditAnywhere, Category = "Minimap")
-	TSoftObjectPtr<URTSOMinimapData_Deprecated> DefaultMinimapData;
-	
-};
 
 
 /**

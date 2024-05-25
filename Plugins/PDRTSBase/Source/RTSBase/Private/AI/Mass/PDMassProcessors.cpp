@@ -534,21 +534,29 @@ void UPDOctreeProcessor::ConfigureQueries()
 	UpdateOctreeElementsQuery.AddRequirement<FMassVelocityFragment>(EMassFragmentAccess::ReadOnly);
 	UpdateOctreeElementsQuery.AddRequirement<FTransformFragment>(EMassFragmentAccess::ReadOnly);
 	UpdateOctreeElementsQuery.AddRequirement<FPDOctreeFragment>(EMassFragmentAccess::ReadWrite);
+	UpdateOctreeElementsQuery.AddRequirement<FPDMFragment_RTSEntityBase>(EMassFragmentAccess::ReadOnly);
 	UpdateOctreeElementsQuery.AddTagRequirement<FPDInOctreeGridTag>(EMassFragmentPresence::All);
 	UpdateOctreeElementsQuery.RegisterWithProcessor(*this);
 }
 
 void UPDOctreeProcessor::Execute(FMassEntityManager& EntityManager, FMassExecutionContext& Context)
 {
-	UpdateOctreeElementsQuery.ForEachEntityChunk(EntityManager, Context, [this](FMassExecutionContext& LambdaContext)
+	// Clear previous buffer
+	UPDRTSBaseSubsystem* RTSSubSystem = GEngine->GetEngineSubsystem<UPDRTSBaseSubsystem>();
+	RTSSubSystem->OctreeUserQuery.ClearQueryBuffer(UPDRTSBaseSubsystem::EPDQueryGroups::QUERY_GROUP_MINIMAP);
+	RTSSubSystem->OctreeUserQuery.ClearQueryBuffer(UPDRTSBaseSubsystem::EPDQueryGroups::QUERY_GROUP_HOVERSELECTION); // Hover Selection Group
+	
+	UpdateOctreeElementsQuery.ForEachEntityChunk(EntityManager, Context,
+		[this, RTSSubSystem](FMassExecutionContext& LambdaContext)
 	{
 		QUICK_SCOPE_CYCLE_COUNTER(STAT_OctreeCellExecution)
 		PD::Mass::Entity::FPDSafeOctree& Octree = RTSSubsystem->WorldOctree;
 		const int32 NumEntities = LambdaContext.GetNumEntities();
 
-		TConstFragment<FMassVelocityFragment>& Velocities = CONSTVIEW(LambdaContext, FMassVelocityFragment);
-		TConstFragment<FTransformFragment>& LocationList  = CONSTVIEW(LambdaContext, FTransformFragment);
-		TMutFragment<FPDOctreeFragment>& OctreeFragments  = MUTVIEW(LambdaContext, FPDOctreeFragment);
+		TConstFragment<FMassVelocityFragment>& Velocities         = CONSTVIEW(LambdaContext, FMassVelocityFragment);
+		TConstFragment<FTransformFragment>& LocationList          = CONSTVIEW(LambdaContext, FTransformFragment);
+		TConstFragment<FPDMFragment_RTSEntityBase>& RTSEntityList = CONSTVIEW(LambdaContext, FPDMFragment_RTSEntityBase);
+		TMutFragment<FPDOctreeFragment>& OctreeFragments          = MUTVIEW(LambdaContext, FPDOctreeFragment);
 
 		if (Octree.IsLocked()) { return; }
 		
@@ -560,7 +568,16 @@ void UPDOctreeProcessor::Execute(FMassEntityManager& EntityManager, FMassExecuti
 			const FVector& PrevLocation = CurrentLocation - DistanceTraveled;
 
 			FPDOctreeFragment& OctreeFragment = OctreeFragments[EntityListIdx];
+			
+			const FMassEntityHandle Entity = LambdaContext.GetEntity(EntityListIdx);			
+			RTSSubSystem->OctreeUserQuery.UpdateQueryOverlapBuffer(
+				UPDRTSBaseSubsystem::EPDQueryGroups::QUERY_GROUP_MINIMAP,
+				CurrentLocation, Entity, RTSEntityList[EntityListIdx].OwnerID);
+			RTSSubSystem->OctreeUserQuery.UpdateQueryOverlapBuffer(
+				UPDRTSBaseSubsystem::EPDQueryGroups::QUERY_GROUP_HOVERSELECTION,
+				CurrentLocation, Entity, RTSEntityList[EntityListIdx].OwnerID);
 
+			
 			// I expect standing still more than moving around, hence a 'likely' hint here
 			if (LIKELY(OctreeFragment.CellID == nullptr
 				|| Octree.IsValidElementId(*OctreeFragment.CellID) == false
@@ -569,10 +586,10 @@ void UPDOctreeProcessor::Execute(FMassEntityManager& EntityManager, FMassExecuti
 				continue;
 			}
 
-			const FOctreeElementId2* OctreeID = OctreeFragment.CellID.Get(); 
-			FPDEntityOctreeCell CopyCurrentOctreeElement = Octree.GetElementById(*OctreeID);
+			const FOctreeElementId2* CellID = OctreeFragment.CellID.Get(); 
+			FPDEntityOctreeCell CopyCurrentOctreeElement = Octree.GetElementById(*CellID);
 
-			Octree.RemoveElement(*OctreeID);
+			Octree.RemoveElement(*CellID);
 			
 			CopyCurrentOctreeElement.Bounds.Center = FVector4(CurrentLocation, 0);
 			Octree.AddElement(CopyCurrentOctreeElement);
@@ -678,10 +695,10 @@ void UPDGridCellDeinitObserver::Execute(FMassEntityManager& EntityManager, FMass
 		Octree.Lock();
 		for (int32 EntityListIdx = 0; EntityListIdx < NumEntities; ++EntityListIdx)
 		{
-			TSharedPtr<FOctreeElementId2> OctreeID = CellFragments[EntityListIdx].CellID;
-			if (OctreeID.IsValid() == false) { continue; }
+			TSharedPtr<FOctreeElementId2> CellID = CellFragments[EntityListIdx].CellID;
+			if (CellID.IsValid() == false) { continue; }
 
-			Octree.RemoveElement(*OctreeID);
+			Octree.RemoveElement(*CellID);
 		}
 		Octree.Unlock();
 	});

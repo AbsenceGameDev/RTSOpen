@@ -145,6 +145,19 @@ namespace PD::Mass::Entity
 
 struct FPDWorkUnitDatum;
 
+USTRUCT()
+struct FLEntityCompound
+{
+	GENERATED_BODY()
+
+	UPROPERTY()
+	FMassEntityHandle EntityHandle;
+	UPROPERTY()
+	FVector Location;
+	UPROPERTY()
+	int32 OwnerID;
+};
+
 /** @brief Subsystem to handle octree size changes and to act as a manager for the entity workers */
 UCLASS()
 class PDRTSBASE_API UPDRTSBaseSubsystem : public UEngineSubsystem
@@ -250,7 +263,115 @@ public:
 	TMap<int32 /*OwnerID*/, AActor* /*OwningActor*/> SharedOwnerIDMappings;
 	/** @brief This will be useful on a server or shared screen environment */
 	UPROPERTY(EditAnywhere)
-	TMap<AActor* /*OwningActor*/, int32 /*OwnerID*/> SharedOwnerIDBackMappings;	
+	TMap<AActor* /*OwningActor*/, int32 /*OwnerID*/> SharedOwnerIDBackMappings;
+
+
+	enum EPDQueryGroups : int32
+	{
+		INVALID_QUERY_GROUP = INDEX_NONE,
+		QUERY_GROUP_MINIMAP = 1,
+		QUERY_GROUP_HOVERSELECTION = 2,
+		QUERY_GROUP_3 = 3,
+		QUERY_GROUP_4 = 4,
+		QUERY_GROUP_X = 20,
+	};
+	
+	template<typename TDataType>
+	struct TPDQueryBase 
+	{
+		UE::Math::TVector<TDataType> Location = UE::Math::TVector<TDataType>::ZeroVector;
+	};	
+	
+	using FPDOctreeUserQuery = struct QPDUserQuery_t
+	{
+		QPDUserQuery_t() = default;
+		explicit QPDUserQuery_t(AActor* CallingActor) : CallingUser(CallingActor) { }
+		
+		struct QBox : public TPDQueryBase<double> { UE::Math::TVector<double> QuerySizes = UE::Math::TVector<double>::ZeroVector; };
+		struct QSphere : public TPDQueryBase<double> { double QueryRadius = 0.0; };
+
+		static QBox MakeUserQuery(const FVector& Location = UE::Math::TVector<double>::ZeroVector, const FVector& QuerySizes = UE::Math::TVector<double>::OneVector)
+		{
+			return FPDOctreeUserQuery::QBox{Location, QuerySizes};
+		}
+
+		static QSphere MakeUserQuery(const UE::Math::TVector<double>& Location = UE::Math::TVector<double>::ZeroVector, const double Radius = 0.0)
+		{
+			return FPDOctreeUserQuery::QSphere{Location, Radius};
+		}
+
+		static bool IsPointWithinQuery(const UE::Math::TVector<double>& Point, const QBox& Box)
+		{
+			const UE::Math::TBox<double> InnerBox{{Point - Box.QuerySizes},{Point + Box.QuerySizes}};
+
+			// UE_LOG(PDLog_RTSBase, Warning, TEXT("IsPointWithinQuery -- Query Min: [%f,%f,%f]"), InnerBox.Min.X, InnerBox.Min.Y, InnerBox.Min.Z)
+			// UE_LOG(PDLog_RTSBase, Warning, TEXT("IsPointWithinQuery -- Query Max: [%f,%f,%f]"), InnerBox.Max.X, InnerBox.Max.Y, InnerBox.Max.Z)
+			
+			return IsPointWithinQuery(Point, InnerBox);
+		}
+		static bool IsPointWithinQuery(const UE::Math::TVector<double>& Point, const QSphere& Sphere)
+		{
+			const UE::Math::TSphere<double> InnerSphere{Sphere.Location, Sphere.QueryRadius};
+			return IsPointWithinQuery(Point, InnerSphere);
+		}			
+		
+		static bool IsPointWithinQuery(const UE::Math::TVector<double>& Point, const UE::Math::TBox<double>& Box)
+		{
+			return Box.IsInsideOrOn(Point);
+		}
+		static bool IsPointWithinQuery(const UE::Math::TVector<double>& Point, const UE::Math::TSphere<double>& Sphere)
+		{
+			return Sphere.IsInside(Point);
+		}
+
+		/** Assigns box data */
+		void CreateNewQueryEntry(const int32 Key, const QBox& BoxData)
+		{
+			QueryArchetypes.FindOrAdd(Key, BoxData);
+			CurrentBuffer.FindOrAdd(Key);
+		}
+
+		void UpdateQueryPosition(const int32 Key, const FVector& NewPos)
+		{
+			QueryArchetypes.FindOrAdd(Key).Location = NewPos;
+		}
+		
+		void UpdateQueryOverlapBuffer(const int32 Key, const FVector& ComparePos, const FMassEntityHandle OptionalEntityHandle, const int32 OptionalID)
+		{
+			if (IsPointWithinQuery(ComparePos, QueryArchetypes.FindOrAdd(Key)))
+			{
+				FLEntityCompound EntityCompound{OptionalEntityHandle, ComparePos, OptionalID};
+				CurrentBuffer.FindOrAdd(Key).Emplace(EntityCompound);
+			}		
+		}
+		
+		void RemoveQueryData(const int32 Key)
+		{
+			QueryArchetypes.Remove(Key);
+			CurrentBuffer.Remove(Key);
+		}
+
+		void ClearQueryDataAndSettings(int32 Key)
+		{
+			QBox& QueryEntry = QueryArchetypes.FindOrAdd(Key);
+			QueryEntry.Location  = FVector::ZeroVector;
+			QueryEntry.QuerySizes = FVector::OneVector;
+
+			ClearQueryBuffer(Key);
+		}
+
+		void ClearQueryBuffer(int32 Key)
+		{
+			CurrentBuffer.FindOrAdd(Key).Empty();
+		}		
+		
+		TMap<int32, QBox> QueryArchetypes;
+		TMap<int32, TArray<FLEntityCompound>> CurrentBuffer;
+
+		AActor* CallingUser = nullptr;
+	};
+
+	FPDOctreeUserQuery OctreeUserQuery{};
 };
 
 /** @brief Subsystem (developer) settings, set the uniform bounds, the default grid cell size and the work tables for the entities to use */

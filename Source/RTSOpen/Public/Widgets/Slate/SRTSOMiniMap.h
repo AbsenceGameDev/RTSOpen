@@ -1,114 +1,16 @@
-/* @author: Ario Amin @ Permafrost Development. @copyright: Full BSL(1.1) License included at bottom of the file  */
+﻿/* @author: Ario Amin @ Permafrost Development. @copyright: Full BSL(1.1) License included at bottom of the file  */
+
 #pragma once
 
 #include "CoreMinimal.h"
-#include "MassEntityTypes.h"
 #include "PDRTSBaseSubsystem.h"
-#include "GameFramework/HUD.h"
-#include "Engine/DeveloperSettings.h"
-#include "PD_HUD.generated.h"
-
-
-/**
- * @brief Handles drawing things on the HUD mainly, is ued to draw the marquee rectangle on screen
- */
-UCLASS()
-class RTSOPEN_API APD_HUD : public AHUD
-{
-	GENERATED_BODY()
-
-	/** @brief Reads the start and current marquee positions from the player controller,
-	 * and display draw a rectangle on screen to convey the marquee selection actually happening to the user */
-	virtual void DrawHUD() override;
-	
-	/** @brief Draws the selection marquee directly on the hud, gets called in APD_HUD::DrawHUD. */
-	void DrawRadarMinimap();
-
-	/** @brief Draws the selection marquee directly on the hud, gets called in APD_HUD::DrawHUD. Reads selection/marquee data from the player controller*/
-	void DrawSelectionMarquee();
-
-
-private:
-	APD_HUD();
-
-	virtual void BeginPlay() override;
-
-	/** @brief Draw all nearby actors on the minimap */
-	void DrawActorsOnMiniMap();
-
-	/** @brief Draw nearby entities on the minimap */
-	void DrawEntitiesOnMiniMap();	
-	
-	/** @brief Draw self/local player on minimap */
-	void DrawOwnerOnMiniMap();
-	
-	/** @brief Draws the actual radar, defines the visuals of it */
-	void DrawRadar(FLinearColor Color = FLinearColor::Yellow);
-
-	/** @brief Returns center screen location where the radar will be displayed */
-	FVector2D GetRadarCenter() const;
-
-	/** @brief Owning/local actors current world location */
-	FVector GetCurrentActorLocation() const;
-
-	/** @brief Player world to screen transformation */
-	FVector2D WorldToScreen2D(FLEntityCompound& EntityCompound) const;
-	/** @brief Player world to screen transformation */
-	FVector2D WorldToScreen2D(const AActor* ActorToPlace) const;
-	/** @brief Player world to screen transformation */
-	FVector2D WorldToScreen2D(FVector& WorldLocation) const;
-public:
-	/** @brief On screen location where the unscaled radar will be placed */
-	UPROPERTY(EditAnywhere)
-	FVector2D RadarStartLocation = FVector2D(10.f, 10.f);
-
-	/** @brief On screen location where the unscaled radar will be placed */
-	UPROPERTY(EditAnywhere)
-	double RadarSize = 200.0;
-
-	UPROPERTY(EditAnywhere, Category = MiniMap2D)
-	double RadarDistanceScale = 25.0;
-
-	UPROPERTY(EditAnywhere, Category = MiniMap2D)
-	double SphereHeight = 300.0;
-
-	UPROPERTY(EditAnywhere, Category = MiniMap2D)
-	double RadarTraceSphereRadius = 4000.0;
-
-	UPROPERTY(EditAnywhere, Category = MiniMap2D)
-	double GenericMinimapIconRectSize = 3.0;
-
-	UPROPERTY(EditAnywhere, Category = MiniMap2D, DisplayName = "Mission Color")
-	FColor MissionColour {1,1,0};
-	
-	UPROPERTY(EditAnywhere, Category = MiniMap2D, DisplayName = "Interactable Color")
-	FColor InteractableColour {0,1,1};
-	
-	UPROPERTY(EditAnywhere, Category = MiniMap2D, DisplayName = "Enemy Color")
-	FColor EnemyColour {1,0,0};
-
-	UPROPERTY(EditAnywhere, Category = MiniMap2D, DisplayName = "Owned Units Color")
-	FColor OwnedUnitsColour {0,1,0};		
-	
-	UPROPERTY(EditAnywhere, Category = MiniMap2D, DisplayName = "Friend Color")
-	FColor FriendColour {0,0,1};
-
-private:
-	UPROPERTY()
-	URTSOMinimapData_Deprecated* MiniMapData = nullptr;
-	const float FixedTextureScale = 0.02f;
-	
-	UPROPERTY()
-	TArray<AActor*> OnWorldActors;
-	TArray<FHitResult*> Results;
-	const float Alpha = 1.f;
-};
+#include "SRTSOMiniMap.generated.h"
 
 
 // Move the below classes into the shared UI under 'Classes' when moving his into it's own slate widget 
 
 UCLASS()
-class RTSOPEN_API URTSOMinimapData_Deprecated : public UDataAsset
+class RTSOPEN_API URTSOMinimapData : public UDataAsset
 {
 	GENERATED_BODY()
 
@@ -118,17 +20,99 @@ public:
 };
 
 UCLASS(Config = "Game", DefaultConfig)
-class RTSOPEN_API URTSOMinimapDeveloperSettings_Deprecated : public UDeveloperSettings
+class RTSOPEN_API URTSOMinimapDeveloperSettings : public UDeveloperSettings
 {
 	GENERATED_BODY()
 	
 public:
-	URTSOMinimapDeveloperSettings_Deprecated(){}
+	URTSOMinimapDeveloperSettings(){}
 	
 	/** @brief Default Minimap data */
 	UPROPERTY(Config, EditAnywhere, Category = "Minimap")
-	TSoftObjectPtr<URTSOMinimapData_Deprecated> DefaultMinimapData;
+	TSoftObjectPtr<URTSOMinimapData> DefaultMinimapData;
 	
+};
+
+
+class SRTSOMiniMap : public SCompoundWidget
+{
+public:
+
+	SLATE_BEGIN_ARGS(SRTSOMiniMap) {}
+		SLATE_ARGUMENT(double, RadarSize)
+		SLATE_ARGUMENT(double, RadarDistanceScale)
+		SLATE_ARGUMENT(double, GenericMinimapIconRectSize)
+		SLATE_ARGUMENT(double, FixedTextureScale)
+		SLATE_ARGUMENT(FVector2D, RadarStartLocation)
+		SLATE_ARGUMENT(FColor, EnemyColour)
+		SLATE_ARGUMENT(FColor, FriendColour)
+		SLATE_ARGUMENT(FColor, OwnedUnitsColour)
+		SLATE_ARGUMENT(FColor, InteractableColour)
+		SLATE_ARGUMENT(FColor, MissionColour)
+		SLATE_ARGUMENT(URTSOMinimapData*, MiniMapData)
+	SLATE_END_ARGS()
+
+	void Construct(const FArguments& InArgs);
+	
+	virtual void Tick(const FGeometry& AllottedGeometry, const double InCurrentTime, const float InDeltaTime) override;
+	virtual int32 OnPaint(const FPaintArgs& Args, const FGeometry& AllottedGeometry, const FSlateRect& MyCullingRect, FSlateWindowElementList& OutDrawElements, int32 LayerId, const FWidgetStyle& InWidgetStyle, bool bParentEnabled) const override;
+
+	//Draw all nearby actors on the minimap
+	void PaintRadarMiniMap(FSlateWindowElementList& OutDrawElements, const FGeometry& AllottedGeometry, int32 LayerId) const;
+	
+	//Draw all nearby actors on the minimap
+	void PaintActorsOnMiniMap(FSlateWindowElementList& OutDrawElements, const FGeometry& AllottedGeometry, int32 LayerId) const;
+
+	//Draw nearby entities on the minimap
+	void PaintEntitiesOnMiniMap(FSlateWindowElementList& OutDrawElements, const FGeometry& AllottedGeometry, int32 LayerId) const;	
+	
+	// Draw self/local player on minimap
+	void PaintOwnerOnMiniMap(FSlateWindowElementList& OutDrawElements, const FGeometry& AllottedGeometry, int32 LayerId) const;
+	
+	// Draws the actual radar, defines the visuals of it
+	void PaintRadar(FSlateWindowElementList& OutDrawElements, const FGeometry& AllottedGeometry, int32 LayerId, FLinearColor Color = FLinearColor::Yellow) const;
+
+	// Returns center screen location where the radar will be displayed
+	FVector2D GetRadarCenter() const;
+
+	// Player world to screen transformation,
+	FVector2D WorldToScreen2D(FLEntityCompound& EntityCompound, APawn* OwnerPawn) const;
+	FVector2D WorldToScreen2D(const AActor* ActorToPlace, APawn* OwnerPawn) const;
+	FVector2D WorldToScreen2D(FVector& WorldLocation) const;
+
+	const TSharedPtr<FSlateBrush> MakeRadarBGBrush(double UniformBoxSize) const;
+
+
+public:
+	UPDRTSBaseSubsystem* RTSSubSystem = nullptr;
+	FVector2D RadarStartLocation = FVector2D(10.f, 10.f);
+	double RadarSize                  = 200.0;
+	double RadarDistanceScale         = 25.0;
+	double SphereHeight               = 300.0;
+	double RadarTraceSphereRadius     = 4000.0;
+	double GenericMinimapIconRectSize = 3.0;
+	FColor MissionColour      {1,1,0};
+	FColor InteractableColour {0,1,1};
+	FColor EnemyColour        {1,0,0};
+	FColor OwnedUnitsColour   {0,1,0};		
+	FColor FriendColour       {0,0,1};
+
+	URTSOMinimapData* MiniMapData = nullptr;
+	const double FixedTextureScale = 0.02;
+	
+	TArray<AActor*> OnWorldActors;
+	TArray<FHitResult*> Results;
+	const double Alpha = 1.0;
+
+	struct SlateInstanceData
+	{
+		const TSharedPtr<FSlateBrush> ConstructedBackgroundBrush = nullptr;
+		const TSharedPtr<FSlateBrush> OwnerIconBrush = nullptr;
+		const TSharedPtr<FSlateBrush> GenericIconBrush = nullptr;
+	};
+
+	SlateInstanceData InstanceData;
+
 };
 
 

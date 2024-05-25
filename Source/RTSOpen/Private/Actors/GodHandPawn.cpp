@@ -96,6 +96,13 @@ void AGodHandPawn::TrackUnitMovement()
 
 void AGodHandPawn::HoverTick(const float DeltaTime)
 {
+	// Update Octree query position for 'QUERY_GROUP_1'
+	UPDRTSBaseSubsystem* RTSSubSystem = GEngine->GetEngineSubsystem<UPDRTSBaseSubsystem>();
+	const FVector& QueryLocation = CursorMesh->GetComponentLocation();
+	RTSSubSystem->OctreeUserQuery.UpdateQueryPosition(UPDRTSBaseSubsystem::EPDQueryGroups::QUERY_GROUP_MINIMAP, QueryLocation);
+	RTSSubSystem->OctreeUserQuery.UpdateQueryPosition(UPDRTSBaseSubsystem::EPDQueryGroups::QUERY_GROUP_HOVERSELECTION, QueryLocation);
+
+	
 	AActor* ClosestActor = FindClosestInteractableActor();
 	// Overwrite HoveredActor if they are not the same
 	if (ClosestActor != nullptr && ClosestActor != InstanceState.HoveredActor)
@@ -103,6 +110,7 @@ void AGodHandPawn::HoverTick(const float DeltaTime)
 		InstanceState.HoveredActor = ClosestActor;
 		UE_LOG(PDLog_RTSO, Warning, TEXT("HoverTick - Found New Hover Actor"))
 	}
+
 	
 	const FMassEntityHandle ClosestMeshInstance = FindClosestMassEntity();
 	if (ClosestMeshInstance.Index != INDEX_NONE && InstanceState.SelectedWorkerUnitHandle.Index != ClosestMeshInstance.Index)
@@ -509,17 +517,14 @@ void AGodHandPawn::ActionMoveSelection_Implementation(const FInputActionValue& V
 
 void AGodHandPawn::ActionAssignSelectionToHotkey_Implementation(const FInputActionValue& Value)
 {
-
 }
 
 void AGodHandPawn::ActionHotkeySelection_Implementation(const FInputActionValue& Value)
 {
-	
 }
 
 void AGodHandPawn::ActionChordedBase_Implementation(const FInputActionValue& Value)
 {
-
 }
 
 //
@@ -529,7 +534,7 @@ FMassEntityHandle AGodHandPawn::OctreeEntityTrace(const FVector& StartLocation, 
 {
 	UPDRTSBaseSubsystem* RTSBaseSubsystem = GEngine->GetEngineSubsystem<UPDRTSBaseSubsystem>();
 	PD::Mass::Entity::FPDSafeOctree& WorldOctree = RTSBaseSubsystem->WorldOctree;
-	if (WorldOctree.GetNumNodes() == 0) { return FMassEntityHandle(); } // @todo possibly just replace with an ensure
+	if (WorldOctree.GetNumNodes() == 0) { return FMassEntityHandle{INDEX_NONE,INDEX_NONE}; } // @todo possibly just replace with an ensure
 	
 	const FVector Direction = EndLocation - StartLocation;
 
@@ -539,7 +544,7 @@ FMassEntityHandle AGodHandPawn::OctreeEntityTrace(const FVector& StartLocation, 
 	FOctreeElementId2* ClosestIDSlow{}; 
 	double ClosestDistanceSlow{AGodHandPawn::InvalidDistance};
 
-	if (WorldOctree.IsLocked()) { return FMassEntityHandle(); }
+	if (WorldOctree.IsLocked()) { return FMassEntityHandle{INDEX_NONE,INDEX_NONE}; }
 	WorldOctree.FindElementsWithBoundsTest(QueryBounds, [&](const FPDEntityOctreeCell& Cell)
 	{
 		if (Cell.EntityHandle.Index == INDEX_NONE) { return; } 
@@ -608,16 +613,34 @@ const FTransform& AGodHandPawn::GetEntityTransform(const FMassEntityHandle& Hand
 
 FMassEntityHandle AGodHandPawn::FindClosestMassEntity()
 {
-	const ARTSOController* PC = GetController<ARTSOController>();
-	if (PC == nullptr || PC->IsValidLowLevelFast() == false) { return FMassEntityHandle{INDEX_NONE,INDEX_NONE}; }
+	UPDRTSBaseSubsystem* RTSBaseSubsystem = GEngine->GetEngineSubsystem<UPDRTSBaseSubsystem>();
+	const TMap<int32, TArray<FLEntityCompound>>& CurrentBuffer = RTSBaseSubsystem->OctreeUserQuery.CurrentBuffer;
+	if (CurrentBuffer.Contains(UPDRTSBaseSubsystem::EPDQueryGroups::QUERY_GROUP_HOVERSELECTION) == false)
+	{
+		return FMassEntityHandle{INDEX_NONE,INDEX_NONE};
+	}
+
+	const TArray<FLEntityCompound>& QueryBufferData = CurrentBuffer.FindRef(UPDRTSBaseSubsystem::EPDQueryGroups::QUERY_GROUP_HOVERSELECTION);
+	if (QueryBufferData.IsEmpty())
+	{
+		return FMassEntityHandle{INDEX_NONE,INDEX_NONE};
+	}
+
+	return QueryBufferData[QueryBufferData.Num() - 1].EntityHandle;
+
+
+	// Below will be deprecated when above is finished by next commit
 	
-	FHitResult HitResult;
-	bool bFoundInputType;
-	FVector2D ScreenCoordinates;
-	FVector LocalWorkUnitTargetLocation{};
-	
-	PC->ProjectMouseToGroundPlane(HitResult, ECollisionChannel::ECC_Visibility, ScreenCoordinates, LocalWorkUnitTargetLocation, bFoundInputType);
-	return OctreeEntityTrace(HitResult.TraceStart, LocalWorkUnitTargetLocation); 
+	// const ARTSOController* PC = GetController<ARTSOController>();
+	// if (PC == nullptr || PC->IsValidLowLevelFast() == false) { return FMassEntityHandle{INDEX_NONE,INDEX_NONE}; }
+	//
+	// FHitResult HitResult;
+	// bool bFoundInputType;
+	// FVector2D ScreenCoordinates;
+	// FVector LocalWorkUnitTargetLocation{};
+	//
+	// PC->ProjectMouseToGroundPlane(HitResult, ECollisionChannel::ECC_Visibility, ScreenCoordinates, LocalWorkUnitTargetLocation, bFoundInputType);
+	// return OctreeEntityTrace(HitResult.TraceStart, LocalWorkUnitTargetLocation); 
 }
 
 //
@@ -653,6 +676,7 @@ AGodHandPawn::AGodHandPawn()
 
 	Collision  = CreateDefaultSubobject<USphereComponent>(TEXT("Collision"));
 	Collision->SetupAttachment(SceneRoot);
+	Collision->InitSphereRadius(50.0f);
 	PawnMovement = CreateDefaultSubobject<UFloatingPawnMovement>(TEXT("FloatingMovement"));
 	ParticipantComponent = CreateDefaultSubobject<UConversationParticipantComponent>(TEXT("ConversationParticipantComponent"));	
 }
@@ -660,6 +684,19 @@ AGodHandPawn::AGodHandPawn()
 void AGodHandPawn::BeginPlay()
 {
 	Super::BeginPlay();
+
+	UPDRTSBaseSubsystem* RTSSubSystem = GEngine->GetEngineSubsystem<UPDRTSBaseSubsystem>();
+	const FVector& QueryLocation = CursorMesh->GetComponentLocation();
+
+	const UE::Math::TVector<double> MinimapQueryExtent{ 2000.0, 2000.0, 500.0};
+
+	const double CollisionRadius = Collision->GetScaledSphereRadius(); 
+	const UE::Math::TVector<double> HoverSelectionQueryExtent{ CollisionRadius};
+	const UPDRTSBaseSubsystem::FPDOctreeUserQuery::QBox MinimapQueryBox = UPDRTSBaseSubsystem::FPDOctreeUserQuery::MakeUserQuery(QueryLocation, MinimapQueryExtent);
+	const UPDRTSBaseSubsystem::FPDOctreeUserQuery::QBox HoverSelectionQueryBox = UPDRTSBaseSubsystem::FPDOctreeUserQuery::MakeUserQuery(QueryLocation, HoverSelectionQueryExtent);
+	RTSSubSystem->OctreeUserQuery.CreateNewQueryEntry(UPDRTSBaseSubsystem::EPDQueryGroups::QUERY_GROUP_MINIMAP, MinimapQueryBox);
+	RTSSubSystem->OctreeUserQuery.CreateNewQueryEntry(UPDRTSBaseSubsystem::EPDQueryGroups::QUERY_GROUP_HOVERSELECTION, HoverSelectionQueryBox);
+	RTSSubSystem->OctreeUserQuery.CallingUser = this;
 
 	Collision->OnComponentBeginOverlap.AddDynamic(this, &AGodHandPawn::OnCollisionBeginOverlap);
 	Collision->OnComponentEndOverlap.AddDynamic(this, &AGodHandPawn::OnCollisionEndOverlap);
@@ -728,7 +765,7 @@ void AGodHandPawn::PossessedBy(AController* NewController)
 	
 	// There is a bug causing any modifier I am applying to the IA to be called but the modified value to be discarded,
 	// I have however confirmed that the value in here at-least is correct
-	// A temporary way around it maybe have to be a subsystem or other singleton which caches a stack of modifier values 	
+	// A temporary way around it maybe have to be a subsystem or other singleton which caches a stack of modifier values
 	URTSOInputStackSubsystem* InputStackWorkaround = GetWorld()->GetSubsystem<URTSOInputStackSubsystem>();
 	InputStackWorkaround->DispatchValueStackReset();	
 }

@@ -1,85 +1,67 @@
-/* @author: Ario Amin @ Permafrost Development. @copyright: Full BSL(1.1) License included at bottom of the file  */
+﻿/* @author: Ario Amin @ Permafrost Development. @copyright: Full BSL(1.1) License included at bottom of the file  */
+#include "Widgets/Slate/SRTSOMiniMap.h"
 
-#include "Core/PD_HUD.h"
-
-#include "MassEntitySubsystem.h"
 #include "PDRTSBaseSubsystem.h"
-#include "RTSOpenCommon.h"
 #include "Actors/GodHandPawn.h"
-#include "Engine/Canvas.h"
 #include "Actors/RTSOController.h"
 #include "AI/Mass/RTSOMassFragments.h"
 #include "Chaos/DebugDrawQueue.h"
+#include "ImageUtils.h"
 #include "Kismet/KismetSystemLibrary.h"
 
-APD_HUD::APD_HUD()
-	: Super()
+void SRTSOMiniMap::Tick(
+	const FGeometry& AllottedGeometry,
+	const double InCurrentTime,
+	const float InDeltaTime)
 {
-	const TSoftObjectPtr<URTSOMinimapData_Deprecated> SofMinimapDataPtr = GetDefault<URTSOMinimapDeveloperSettings_Deprecated>()->DefaultMinimapData;
-	if (SofMinimapDataPtr.IsValid() == false)
-	{
-		UE_LOG(PDLog_RTSO, Warning, TEXT("APD_HUD::BeginPlay -- URTSOMinimapDeveloperSettings has no valid default value set for 'DefaultMinimapData'"))
-		return;
-	}
-	MiniMapData = SofMinimapDataPtr.LoadSynchronous();
-}
-
-void APD_HUD::BeginPlay()
-{
-	Super::BeginPlay();
-
-	// Already have a valid arrow texture, skip
-	if (MiniMapData != nullptr) { return; }
-
-	const TSoftObjectPtr<URTSOMinimapData_Deprecated> SofMinimapDataPtr = GetDefault<URTSOMinimapDeveloperSettings_Deprecated>()->DefaultMinimapData;
-	if (SofMinimapDataPtr.IsValid() == false)
-	{
-		UE_LOG(PDLog_RTSO, Error, TEXT("APD_HUD::BeginPlay -- URTSOMinimapDeveloperSettings has no valid default value set for 'DefaultMinimapData'"))
-		return;
-	}
+	SCompoundWidget::Tick(AllottedGeometry, InCurrentTime, InDeltaTime);
 	
-	MiniMapData = SofMinimapDataPtr.LoadSynchronous();
+	// Update positions?
+
+	// todo move outside of the tick, some analogue to OnConstruction for slate widgets if there are any
+	RTSSubSystem = GEngine->GetEngineSubsystem<UPDRTSBaseSubsystem>();	
 }
 
-void APD_HUD::DrawRadarMinimap()
+int32 SRTSOMiniMap::OnPaint(
+	const FPaintArgs& Args,
+	const FGeometry& AllottedGeometry,
+	const FSlateRect& MyCullingRect,
+	FSlateWindowElementList& OutDrawElements,
+	int32 LayerId,
+	const FWidgetStyle& InWidgetStyle,
+	bool bParentEnabled) const
 {
-	DrawRadar(FLinearColor::Gray);
-	DrawOwnerOnMiniMap();
-	DrawActorsOnMiniMap();
-	DrawEntitiesOnMiniMap();
-}
+	const int32 SuperResult =SCompoundWidget::OnPaint(Args, AllottedGeometry, MyCullingRect, OutDrawElements, LayerId, InWidgetStyle, bParentEnabled);
 
-void APD_HUD::DrawSelectionMarquee()
-{
-	const ARTSOController* RTSOController = Cast<ARTSOController>(GetOwningPlayerController());
-	if (RTSOController == nullptr || RTSOController->IsDrawingMarquee() == false) { return; }
+	// Update positions. Call 'PaintRadarMiniMap'
+	PaintRadarMiniMap(OutDrawElements, AllottedGeometry, LayerId);
 	
-	const FVector2D DeltaMarquee(RTSOController->GetCurrentMousePositionMarquee() - RTSOController->GetStartMousePositionMarquee());
-	const float Width = DeltaMarquee.X;
-	const float Height = DeltaMarquee.Y;
-	
-	DrawRect(FLinearColor(.4, .4, .4, .42), RTSOController->GetStartMousePositionMarquee().X, RTSOController->GetStartMousePositionMarquee().Y, Width, Height);
+	return SuperResult;
 }
 
-void APD_HUD::DrawHUD()
-{
-	Super::DrawHUD();
 
-	//
-	// Draw Minimap
-	DrawRadarMinimap();
-	
-	//
-	// Draw Marquee for entity selection
-	DrawSelectionMarquee();
+// Paint functions
+void SRTSOMiniMap::PaintRadarMiniMap(FSlateWindowElementList& OutDrawElements, const FGeometry& AllottedGeometry, int32 LayerId) const
+{
+
+	PaintRadar(OutDrawElements, AllottedGeometry, LayerId ,FLinearColor::Gray);
+	PaintOwnerOnMiniMap(OutDrawElements, AllottedGeometry, LayerId);
+	PaintActorsOnMiniMap(OutDrawElements, AllottedGeometry, LayerId);
+	PaintEntitiesOnMiniMap(OutDrawElements, AllottedGeometry, LayerId);
 }
 
-void APD_HUD::DrawActorsOnMiniMap()
+// Move overlap logic out of the actual slate class, perform before of after the onpaint function
+void SRTSOMiniMap::PaintActorsOnMiniMap(FSlateWindowElementList& OutDrawElements, const FGeometry& AllottedGeometry, int32 LayerId) const
 {
-	APawn* OwnerPawn = GetWorld()->GetFirstPlayerController()->GetPawn();
+	TArray<FLEntityCompound>* MinimapEntityBuffer = RTSSubSystem->OctreeUserQuery.CurrentBuffer.Find(UPDRTSBaseSubsystem::EPDQueryGroups::QUERY_GROUP_MINIMAP);
+	if (MinimapEntityBuffer == nullptr) { return; }
+	
+	APawn* OwnerPawn = Cast<APawn>(RTSSubSystem->OctreeUserQuery.CallingUser);
 	if (OwnerPawn == nullptr) { return; }
+
+	TArray<AActor*>& MutableWorldActors = const_cast<TArray<AActor*>&>(OnWorldActors);
 	
-	OnWorldActors.Empty();
+	MutableWorldActors.Empty();
 	UKismetSystemLibrary::SphereOverlapActors(
 		OwnerPawn,
 		OwnerPawn->GetActorLocation(),
@@ -87,89 +69,69 @@ void APD_HUD::DrawActorsOnMiniMap()
 		{UEngineTypes::ConvertToObjectType(ECollisionChannel::ECC_WorldStatic)},
 		nullptr, 
 		{OwnerPawn},
-		OnWorldActors);
+		MutableWorldActors);
 	
 	const FVector2D RadarCenter = GetRadarCenter();
 	const FLinearColor EnemyLinearColour = FLinearColor(EnemyColour.R, EnemyColour.G, EnemyColour.B, 0.0);
 	const FLinearColor GenericActorLinearColour = FColor::Silver.ReinterpretAsLinear();
 	FLinearColor OffsetAlpha(0,0,0, 0);
 	
+	const FGeometry DerivedGeometry = AllottedGeometry;
+	TSharedPtr<FSlateBrush> MutableGenericIconBrush = InstanceData.GenericIconBrush;
+	UE::Slate::FDeprecateVector2DParameter ImageSize{GenericMinimapIconRectSize};
+	MutableGenericIconBrush->SetImageSize(ImageSize);	
+	
 	for (const AActor* It : OnWorldActors)
 	{
-		const FVector2D Location2D = WorldToScreen2D(It);
+		const FVector2D Location2D = WorldToScreen2D(It, OwnerPawn);
 
 		//Clamp positions in between the minimap size so they are not out of bounds
 		const float NewX = FMath::Clamp<float>(Location2D.X, -RadarSize / 2, RadarSize / 2 - GenericMinimapIconRectSize);
 		const float NewY = FMath::Clamp<float>(Location2D.Y, -RadarSize / 2, RadarSize / 2 - GenericMinimapIconRectSize);
 
-		FVector MyLocation = GetCurrentActorLocation();
+		FVector OwnerLocation = OwnerPawn->GetActorLocation();
 		FVector EnemyLocation = It->GetActorLocation();
 
-		const float Distance = FVector::Distance(MyLocation, EnemyLocation);
-		
+		const float Distance = FVector::Distance(OwnerLocation, EnemyLocation);
+
 		// // @todo Decide what type of actors this is, if enemy use 'EnemyColour' and so forth
 		// Contexts to consider:: Mission / Interactable :  {MissionColour; InteractableColour}
 		// Relation to consider:: Enemy / OwnedUnits / Friend : {EnemyColour; OwnedUnitsColour; FriendColour;}
 
 		const FLinearColor EntityColour = Cast<APawn>(It) != nullptr ? EnemyLinearColour: GenericActorLinearColour; 
 		OffsetAlpha.A = Alpha / Distance * 4;
-		DrawRect(EntityColour + OffsetAlpha, RadarCenter.X + NewX, RadarCenter.Y + NewY, GenericMinimapIconRectSize, GenericMinimapIconRectSize);
+
+		// Paint box element
+		const FSlateRenderTransform RT{{1.0},{static_cast<float>(GetRadarCenter().X + NewX), static_cast<float>(GetRadarCenter().Y + NewY)}};
+		DerivedGeometry.ToPaintGeometry().SetRenderTransform(RT);
+		FSlateDrawElement::MakeBox(
+			OutDrawElements,
+			LayerId,
+			DerivedGeometry.ToPaintGeometry(),
+			InstanceData.ConstructedBackgroundBrush.Get(),
+			ESlateDrawEffect::None,
+			EntityColour + OffsetAlpha);
 	}
 }
 
 // @todo move calculations out of the hud, keep cached data the HUD can quickly access during the draw call wittout having to run the octree iteration themselves
-void APD_HUD::DrawEntitiesOnMiniMap()
+void SRTSOMiniMap::PaintEntitiesOnMiniMap(FSlateWindowElementList& OutDrawElements, const FGeometry& AllottedGeometry, int32 LayerId) const
 {
+	TArray<FLEntityCompound>* MinimapEntityBuffer = RTSSubSystem->OctreeUserQuery.CurrentBuffer.Find(UPDRTSBaseSubsystem::EPDQueryGroups::QUERY_GROUP_MINIMAP);
+	if (MinimapEntityBuffer == nullptr) { return; }
+	
+	APawn* OwnerPawn = Cast<APawn>(RTSSubSystem->OctreeUserQuery.CallingUser);
+	if (OwnerPawn == nullptr) { return; }
+	
 	// @todo consider caching
-	ARTSOController* RTSOController = Cast<ARTSOController>(GetOwningPlayerController());
+	ARTSOController* RTSOController = OwnerPawn->GetController<ARTSOController>();
 	if (RTSOController == nullptr || RTSOController->GetPawn() == nullptr) { return; }
 	
 	// Viewport halfsize
-	PD::Mass::Entity::FPDSafeOctree& WorldOctree =  GEngine->GetEngineSubsystem<UPDRTSBaseSubsystem>()->WorldOctree;
-	
-	static const FVector OffsetCorner_FwdLeft {1,  -1,  0.0};
-	static const FVector OffsetCorner_FwdRight {1,   1,  0.0};
-	static const FVector OffsetCorner_BwdLeft {-1,  1,  0.0};
-	static const FVector OffsetCorner_BwdRight {-1, -1,  0.0};
-	
-	const FVector OffsetZVector = FVector{0,0, SphereHeight};
-	// // assumes we are rotated along one of four cardinal directions
-	FVector BoundsCenter = RTSOController->GetPawn<AGodHandPawn>()->CursorMesh->GetComponentLocation();
-	const FBox MarqueeWorldBox{
-		{
-			// Bottom points, below player
-			BoundsCenter - OffsetZVector + (OffsetCorner_FwdLeft  * RadarTraceSphereRadius),
-			BoundsCenter - OffsetZVector + (OffsetCorner_FwdRight * RadarTraceSphereRadius),  
-			BoundsCenter - OffsetZVector + (OffsetCorner_BwdLeft  * RadarTraceSphereRadius),             
-			BoundsCenter - OffsetZVector + (OffsetCorner_BwdRight * RadarTraceSphereRadius),  
-			
-			// Upper Points, above player
-			BoundsCenter + OffsetZVector + (OffsetCorner_FwdLeft  * RadarTraceSphereRadius),
-			BoundsCenter + OffsetZVector + (OffsetCorner_FwdRight * RadarTraceSphereRadius),
-			BoundsCenter + OffsetZVector + (OffsetCorner_BwdLeft  * RadarTraceSphereRadius),
-			BoundsCenter + OffsetZVector + (OffsetCorner_BwdRight * RadarTraceSphereRadius)
-		}};
-	FVector Extent;
-	MarqueeWorldBox.GetCenterAndExtents(BoundsCenter, Extent);
-	
-	FBoxCenterAndExtent QueryBounds = FBoxCenterAndExtent(BoundsCenter, Extent);
-	QueryBounds.Center.W = QueryBounds.Extent.W = 0;
-
-	const FMassEntityManager& EntityManager = GetWorld()->GetSubsystem<UMassEntitySubsystem>()->GetEntityManager();
-	
-	TArray<FLEntityCompound> OverlappingHandles;
-	TArray<FVector> EntityLocations;
-	WorldOctree.FindElementsWithBoundsTest(QueryBounds, [&](const FPDEntityOctreeCell& Cell)
-	{
-		if (Cell.EntityHandle.Index == INDEX_NONE) { return; }
-		const int32 OwnerID = EntityManager.GetFragmentDataPtr<FRTSOFragment_Agent>(Cell.EntityHandle)->OwnerID;
-
-		OverlappingHandles.Emplace(FLEntityCompound{Cell.EntityHandle, Cell.Bounds.Center, OwnerID});
-	}, true);
-
-	
 #if CHAOS_DEBUG_DRAW
 	{
+		FVector BoundsCenter = RTSSubSystem->OctreeUserQuery.QueryArchetypes.Find(UPDRTSBaseSubsystem::EPDQueryGroups::QUERY_GROUP_MINIMAP)->Location;
+		FVector Extent = RTSSubSystem->OctreeUserQuery.QueryArchetypes.Find(UPDRTSBaseSubsystem::EPDQueryGroups::QUERY_GROUP_MINIMAP)->QuerySizes;
 		Chaos::FDebugDrawQueue::GetInstance().DrawDebugBox(BoundsCenter, Extent, FQuat::Identity, FColor::Silver, false, 0, 0, 10.0f);
 		const FVector& TextLocation = BoundsCenter + FVector(0, 0, Extent.Z * 2);
 		Chaos::FDebugDrawQueue::GetInstance().DrawDebugString(TextLocation,FString("Radar Octree Trace"), nullptr, FColor::Yellow, 0, true, 2);
@@ -181,15 +143,21 @@ void APD_HUD::DrawEntitiesOnMiniMap()
 	FLinearColor OffsetAlpha(0,0,0, 0);
 
 	// Copy some values we'll keep calling for the following loop
-	const FVector PlayerLocation = GetCurrentActorLocation();
+	const FVector PlayerLocation = OwnerPawn->GetActorLocation();
 	const FVector2D RadarCenter  = GetRadarCenter();
 	const int32 CallerID         = RTSOController->GetActorID();
+
+
+	const FGeometry DerivedGeometry = AllottedGeometry;
+	TSharedPtr<FSlateBrush> MutableGenericIconBrush = InstanceData.GenericIconBrush;
+	UE::Slate::FDeprecateVector2DParameter ImageSize{GenericMinimapIconRectSize};
+	MutableGenericIconBrush->SetImageSize(ImageSize);	
 	
 	// Iterate all found entities and draw boxes on screen to display them
-	for (FLEntityCompound& EntityCompound : OverlappingHandles)
+	for (FLEntityCompound& EntityCompound : *MinimapEntityBuffer)
 	{
 		FVector EntityLocation = EntityCompound.Location;
-		const FVector2D Location2D = WorldToScreen2D(EntityCompound);
+		const FVector2D Location2D = WorldToScreen2D(EntityCompound, OwnerPawn);
 
 		//Clamp positions in between the minimap size so they are not out of bounds
 		const float NewX = FMath::Clamp<float>(Location2D.X, -RadarSize / 2, RadarSize / 2 - GenericMinimapIconRectSize);
@@ -204,83 +172,174 @@ void APD_HUD::DrawEntitiesOnMiniMap()
 		const FLinearColor EntityColour = CallerID != EntityCompound.OwnerID ? EnemyLinearColour: OwnerLinearColour; 
 		OffsetAlpha.A = Alpha / Distance * 4;
 
-		DrawRect(EntityColour + OffsetAlpha, RadarCenter.X + NewX, RadarCenter.Y + NewY, GenericMinimapIconRectSize, GenericMinimapIconRectSize);
+		// Paint box element
+		const FSlateRenderTransform RT{{1.0},{static_cast<float>(RadarCenter.X + NewX), static_cast<float>(RadarCenter.Y + NewY)}};
+		DerivedGeometry.ToPaintGeometry().SetRenderTransform(RT);
+		FSlateDrawElement::MakeBox(
+			OutDrawElements,
+			LayerId,
+			DerivedGeometry.ToPaintGeometry(),
+			InstanceData.ConstructedBackgroundBrush.Get(),
+			ESlateDrawEffect::None,
+			EntityColour + OffsetAlpha);
 	}
 }
 
-void APD_HUD::DrawOwnerOnMiniMap()
+void SRTSOMiniMap::PaintOwnerOnMiniMap(FSlateWindowElementList& OutDrawElements, const FGeometry& AllottedGeometry, int32 LayerId) const
 {
+	const FGeometry DerivedGeometry = AllottedGeometry;
+	const FSlateRenderTransform RT{{1.0},{static_cast<float>(GetRadarCenter().X), static_cast<float>(GetRadarCenter().Y)}};
+	DerivedGeometry.ToPaintGeometry().SetRenderTransform(RT);
+	
 	//Clamp positions in between the minimap size so they are not out of bounds
 	if (MiniMapData == nullptr || MiniMapData->ArrowTexture == nullptr)
 	{
-		DrawRect(FLinearColor::White, GetRadarCenter().X, GetRadarCenter().Y, GenericMinimapIconRectSize, GenericMinimapIconRectSize);
+		// Draw Background Colour @todo replace with background material 
+		static_cast<TSharedPtr<FSlateBrush>>(InstanceData.ConstructedBackgroundBrush) = MakeRadarBGBrush(GenericMinimapIconRectSize);
+
+		// Paint box element		
+		FSlateDrawElement::MakeBox(
+			OutDrawElements,
+			LayerId,
+			DerivedGeometry.ToPaintGeometry(),
+			InstanceData.ConstructedBackgroundBrush.Get(),
+			ESlateDrawEffect::None,
+			FLinearColor::White);
 		return;
 	}
 
 	const float TextureWidth = MiniMapData->ArrowTexture->GetSurfaceWidth();
 	const float TextureHeight = MiniMapData->ArrowTexture->GetSurfaceHeight();
 
-	DrawTextureSimple(MiniMapData->ArrowTexture, GetRadarCenter().X - TextureWidth * FixedTextureScale / 2, GetRadarCenter().Y - TextureHeight * FixedTextureScale / 2, FixedTextureScale);
+	// Draw Background Colour @todo replace with background material
+	TSharedPtr<FSlateBrush> MutableOwnerIconBrush = InstanceData.OwnerIconBrush;
+
+	UE::Slate::FDeprecateVector2DParameter ImageSize{TextureWidth,TextureHeight};
+	MutableOwnerIconBrush->SetImageSize(ImageSize);
+	MutableOwnerIconBrush->ImageType = ESlateBrushImageType::FullColor;
+	MutableOwnerIconBrush->SetResourceObject(MiniMapData->ArrowTexture);
+			
+	FSlateDrawElement::MakeBox(
+		OutDrawElements,
+		LayerId,
+		DerivedGeometry.ToPaintGeometry(),
+		InstanceData.OwnerIconBrush.Get(),
+		ESlateDrawEffect::None,
+		FLinearColor::White);	
 }
 
-void APD_HUD::DrawRadar(FLinearColor Color)
+void SRTSOMiniMap::PaintRadar(FSlateWindowElementList& OutDrawElements, const FGeometry& AllottedGeometry, int32 LayerId, FLinearColor Color) const
 {
-	const float PosX = RadarStartLocation.X;
-	const float PosY = RadarStartLocation.Y;
-	const float Size = RadarSize;
+	const double PosX = RadarStartLocation.X;
+	const double PosY = RadarStartLocation.Y;
+	const double HalfSize = RadarSize * 0.5;
 
-	// Draw Outer Box
-	DrawRect(Color, PosX, PosY, 1, Size);
-	DrawRect(Color, PosX, PosY, Size, 1);
-	DrawRect(Color, PosX, PosY + Size, Size, 1);
-	DrawRect(Color, PosX + Size, PosY, 1, Size + 1);
+	// Outer box screen coordinated
+	TArray<FVector2D> Axes;
+	Axes.Add(FVector2D{PosX - HalfSize, PosY + HalfSize}); // Fwd Left 
+	Axes.Add(FVector2D{PosX + HalfSize, PosY + HalfSize}); // Fwd Right
+	Axes.Add(FVector2D{PosX - HalfSize, PosY - HalfSize}); // Bwd Left
+	Axes.Add(FVector2D{PosX + HalfSize, PosY - HalfSize}); // Bwd Right
 	
+	// Actually Draw Outer Box
+	FSlateDrawElement::MakeLines(
+		OutDrawElements,
+		LayerId,
+		AllottedGeometry.ToPaintGeometry(),
+		Axes,
+		ESlateDrawEffect::None,
+		FLinearColor(1,1,0,.5),
+		true,
+		2.0
+		);
+
 	// Draw Horizontal Radar Line
-	DrawRect(Color, PosX + Size / 2, PosY, 1, Size + 1);
-
+	TArray<FVector2D> RadarHLine;
+	RadarHLine.Emplace(FVector2D{PosX + HalfSize, PosY});
+	RadarHLine.Emplace(FVector2D{PosX - HalfSize, PosY});
+	FSlateDrawElement::MakeLines(
+		OutDrawElements,
+		LayerId,
+		AllottedGeometry.ToPaintGeometry(),
+		RadarHLine,
+		ESlateDrawEffect::None,
+		FLinearColor(1,1,0,.5),
+		true,
+		2.0
+		);
+	
 	// Draw Vertical Radar Line
-	DrawRect(Color, PosX, PosY + Size / 2, Size, 1);
-
+	TArray<FVector2D> RadarVLine;
+	RadarVLine.Emplace(FVector2D{PosX + HalfSize, PosY});
+	RadarVLine.Emplace(FVector2D{PosX - HalfSize, PosY});
+	FSlateDrawElement::MakeLines(
+		OutDrawElements,
+		LayerId,
+		AllottedGeometry.ToPaintGeometry(),
+		RadarVLine,
+		ESlateDrawEffect::None,
+		FLinearColor(1,1,0,.5),
+		true,
+		2.0
+		);
+	
 	// Draw Background Colour @todo replace with background material 
-	DrawRect(FLinearColor(0, 0, 0, 0.3f), PosX, PosY, Size, Size);
+	static_cast<TSharedPtr<FSlateBrush>>(InstanceData.ConstructedBackgroundBrush) = MakeRadarBGBrush(RadarSize);
+	
+	FSlateDrawElement::MakeBox(
+		OutDrawElements,
+		LayerId,
+		AllottedGeometry.ToPaintGeometry(),
+		InstanceData.ConstructedBackgroundBrush.Get(),
+		ESlateDrawEffect::None,
+		FLinearColor(0,0,0,0.3));
 }
 
-FVector2D APD_HUD::GetRadarCenter() const
+FVector2D SRTSOMiniMap::GetRadarCenter() const
 {
-	return Canvas != nullptr ? FVector2D(RadarStartLocation.X + RadarSize / 2, RadarStartLocation.Y + RadarSize / 2) : FVector2D(0, 0);
+	return FVector2D(RadarStartLocation.X + RadarSize / 2, RadarStartLocation.Y + RadarSize / 2);
 }
 
-FVector APD_HUD::GetCurrentActorLocation() const
+FVector2D SRTSOMiniMap::WorldToScreen2D(FLEntityCompound& EntityCompound, APawn* OwnerPawn) const
 {
-	return GetWorld()->GetFirstPlayerController()->GetPawn()->GetActorLocation();
-}
-
-FVector2D APD_HUD::WorldToScreen2D(FLEntityCompound& EntityCompound) const
-{
-	const APawn* Player = GetWorld()->GetFirstPlayerController()->GetPawn();
-	if (Player == nullptr || EntityCompound.EntityHandle.IsValid() == false)
+	if (OwnerPawn == nullptr || EntityCompound.EntityHandle.IsValid() == false)
 	{
 		return FVector2D(0, 0);
 	}
 
-	FVector ActorPosition3D = Player->GetTransform().InverseTransformPosition(EntityCompound.Location);
+	FVector ActorPosition3D = OwnerPawn->GetTransform().InverseTransformPosition(EntityCompound.Location);
 	return WorldToScreen2D(ActorPosition3D);
 }
 
-FVector2D APD_HUD::WorldToScreen2D(const AActor * Actor) const
+FVector2D SRTSOMiniMap::WorldToScreen2D(const AActor* Actor, APawn* OwnerPawn) const
 {
-	const APawn* Player = GetWorld()->GetFirstPlayerController()->GetPawn();
-	if (Player == nullptr || Actor == nullptr) { return FVector2D(0, 0); }
+	if (OwnerPawn == nullptr || Actor == nullptr) { return FVector2D(0, 0); }
 	
-	FVector ActorPosition3D = Player->GetTransform().InverseTransformPosition(Actor->GetActorLocation());
+	FVector ActorPosition3D = OwnerPawn->GetTransform().InverseTransformPosition(Actor->GetActorLocation());
 	return WorldToScreen2D(ActorPosition3D);
 }
 
-FVector2D APD_HUD::WorldToScreen2D(FVector& WorldLocation) const
+FVector2D SRTSOMiniMap::WorldToScreen2D(FVector& WorldLocation) const
 {
 	WorldLocation = FRotator(0.f, -90.f, 0.f).RotateVector(WorldLocation);
 	WorldLocation /= RadarDistanceScale;
 	return FVector2D(WorldLocation);	
+}
+
+const TSharedPtr<FSlateBrush> SRTSOMiniMap::MakeRadarBGBrush(double UniformBoxSize) const
+{
+	static const FName RadarBGName = TEXT("RadarBackground");
+	UE::Slate::FDeprecateVector2DParameter ImageSize{UniformBoxSize};
+
+	TSharedPtr<FSlateBrush> SlateBrush = MakeShared<FSlateBrush>();
+	SlateBrush->DrawAs = ESlateBrushDrawType::Box;
+	SlateBrush->Margin = FMargin();
+	SlateBrush->Tiling = ESlateBrushTileType::Both;
+	SlateBrush->ImageType = ESlateBrushImageType::Linear;
+	SlateBrush->SetImageSize(ImageSize);
+	SlateBrush->TintColor = FLinearColor(0, 0, 0, 0.3f);
+	
+	return SlateBrush;
 }
 
 
