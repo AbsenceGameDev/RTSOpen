@@ -112,7 +112,6 @@ namespace PD::Mass::Entity
 			
 			if (bShouldLock) { Lock();}
 			
-			// FScopeLock ReadLock(CriticalSectionMutex);
 			UnsafeOctree::FindElementsWithBoundsTest(BoxBounds, Func);
 
 			if (bShouldLock) { Unlock(); }						
@@ -126,7 +125,6 @@ namespace PD::Mass::Entity
 			
 			if (bShouldLock) { Lock(); }
 			
-			// FScopeLock ReadLock(CriticalSectionMutex);
 			bool ContinueTraversal = true;
 			UnsafeOctree::FindFirstElementWithBoundsTest(BoxBounds, Func, ContinueTraversal);
 
@@ -287,7 +285,7 @@ public:
 		QPDUserQuery_t() = default;
 		explicit QPDUserQuery_t(AActor* CallingActor) : CallingUser(CallingActor) { }
 		
-		struct QBox : public TPDQueryBase<double> { UE::Math::TVector<double> QuerySizes = UE::Math::TVector<double>::ZeroVector; };
+		struct QBox    : public TPDQueryBase<double> { UE::Math::TVector<double> QuerySizes = UE::Math::TVector<double>::ZeroVector; };
 		struct QSphere : public TPDQueryBase<double> { double QueryRadius = 0.0; };
 
 		static QBox MakeUserQuery(const FVector& Location = UE::Math::TVector<double>::ZeroVector, const FVector& QuerySizes = UE::Math::TVector<double>::OneVector)
@@ -302,11 +300,7 @@ public:
 
 		static bool IsPointWithinQuery(const UE::Math::TVector<double>& Point, const QBox& Box)
 		{
-			const UE::Math::TBox<double> InnerBox{{Point - Box.QuerySizes},{Point + Box.QuerySizes}};
-
-			// UE_LOG(PDLog_RTSBase, Warning, TEXT("IsPointWithinQuery -- Query Min: [%f,%f,%f]"), InnerBox.Min.X, InnerBox.Min.Y, InnerBox.Min.Z)
-			// UE_LOG(PDLog_RTSBase, Warning, TEXT("IsPointWithinQuery -- Query Max: [%f,%f,%f]"), InnerBox.Max.X, InnerBox.Max.Y, InnerBox.Max.Z)
-			
+			const UE::Math::TBox<double> InnerBox{{Box.Location - Box.QuerySizes},{Box.Location + Box.QuerySizes}};
 			return IsPointWithinQuery(Point, InnerBox);
 		}
 		static bool IsPointWithinQuery(const UE::Math::TVector<double>& Point, const QSphere& Sphere)

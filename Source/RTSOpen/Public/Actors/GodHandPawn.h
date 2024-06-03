@@ -96,9 +96,11 @@ public:
 	/** @brief Calls 'ActorEndOverlapValidation()' @todo This might not needed anymore. revise if should be removed*/
 	virtual void NotifyActorEndOverlap(AActor* OtherActor) override;
 
-	/** @brief 'Traces' against mass entities via a bounds-query of the octree */
-	virtual FMassEntityHandle OctreeEntityTrace(const FVector& StartLocation, const FVector& EndLocation);
-	/** @brief Projects the mouse to the world and then performs and octree bounds query in a bound starting at camera and ending at trace location */
+	/** @brief Deprecated, remove next commit: 'Traces' against mass entities via a bounds-query of the octree */
+	UE_DEPRECATED(5.3, "Entities are queried using the RTS subsystem. Call AGodHandPawn::FindClosestMassEntity to retrieve any entitiy overlapping the player cursor.")
+	virtual FMassEntityHandle OctreeEntityTrace_DEPRECATED(const FVector& StartLocation, const FVector& EndLocation);
+	
+	/** @brief Call into the UPDRTSBaseSubsystem and check if it's OctreeUserQuery.CurrentBuffer has anything entries for us to read */
 	FMassEntityHandle FindClosestMassEntity();
 	/** @brief Does an overlap check and picks the closes actor inheriting from IPDInteractInterface, if any*/
 	AActor* FindClosestInteractableActor() const;

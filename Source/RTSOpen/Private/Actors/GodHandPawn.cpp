@@ -33,6 +33,8 @@
 #include "Chaos/DebugDrawQueue.h"
 
 // Navigation
+#include <functional>
+
 #include "ConversationParticipantComponent.h"
 #include "MassCrowdRepresentationSubsystem.h"
 #include "MassRepresentationFragments.h"
@@ -101,7 +103,6 @@ void AGodHandPawn::HoverTick(const float DeltaTime)
 	const FVector& QueryLocation = CursorMesh->GetComponentLocation();
 	RTSSubSystem->OctreeUserQuery.UpdateQueryPosition(UPDRTSBaseSubsystem::EPDQueryGroups::QUERY_GROUP_MINIMAP, QueryLocation);
 	RTSSubSystem->OctreeUserQuery.UpdateQueryPosition(UPDRTSBaseSubsystem::EPDQueryGroups::QUERY_GROUP_HOVERSELECTION, QueryLocation);
-
 	
 	AActor* ClosestActor = FindClosestInteractableActor();
 	// Overwrite HoveredActor if they are not the same
@@ -110,7 +111,6 @@ void AGodHandPawn::HoverTick(const float DeltaTime)
 		InstanceState.HoveredActor = ClosestActor;
 		UE_LOG(PDLog_RTSO, Warning, TEXT("HoverTick - Found New Hover Actor"))
 	}
-
 	
 	const FMassEntityHandle ClosestMeshInstance = FindClosestMassEntity();
 	if (ClosestMeshInstance.Index != INDEX_NONE && InstanceState.SelectedWorkerUnitHandle.Index != ClosestMeshInstance.Index)
@@ -529,55 +529,57 @@ void AGodHandPawn::ActionChordedBase_Implementation(const FInputActionValue& Val
 
 //
 // Utility functions
-
-FMassEntityHandle AGodHandPawn::OctreeEntityTrace(const FVector& StartLocation, const FVector& EndLocation)
+FMassEntityHandle AGodHandPawn::OctreeEntityTrace_DEPRECATED(const FVector& StartLocation, const FVector& EndLocation)
 {
-	UPDRTSBaseSubsystem* RTSBaseSubsystem = GEngine->GetEngineSubsystem<UPDRTSBaseSubsystem>();
-	PD::Mass::Entity::FPDSafeOctree& WorldOctree = RTSBaseSubsystem->WorldOctree;
-	if (WorldOctree.GetNumNodes() == 0) { return FMassEntityHandle{INDEX_NONE,INDEX_NONE}; } // @todo possibly just replace with an ensure
-	
-	const FVector Direction = EndLocation - StartLocation;
-
-	// Halving extents
-	const FBoxCenterAndExtent QueryBounds = FBoxCenterAndExtent(StartLocation + (Direction / 2), (Direction.GetAbs() / 2));
-
-	FOctreeElementId2* ClosestIDSlow{}; 
-	double ClosestDistanceSlow{AGodHandPawn::InvalidDistance};
-
-	if (WorldOctree.IsLocked()) { return FMassEntityHandle{INDEX_NONE,INDEX_NONE}; }
-	WorldOctree.FindElementsWithBoundsTest(QueryBounds, [&](const FPDEntityOctreeCell& Cell)
-	{
-		if (Cell.EntityHandle.Index == INDEX_NONE) { return; } 
-		
-		const double Delta = (EndLocation - Cell.Bounds.GetBox().GetCenter()).Length();
-		ClosestIDSlow = Delta < ClosestDistanceSlow ? Cell.SharedCellID.Get() : ClosestIDSlow;
-		ClosestDistanceSlow = Delta < ClosestDistanceSlow ? Delta : ClosestDistanceSlow;
-	}, true);
-
-	const double MinDistance = Collision->GetScaledSphereRadius();  // Not valid selection if above this
-	FMassEntityHandle RetHandleSlow{INDEX_NONE, INDEX_NONE};
-	FVector ClosestVectorSlow{AGodHandPawn::InvalidVector};
-	if (ClosestIDSlow != nullptr && ClosestDistanceSlow <= MinDistance)
-	{
-		const FPDEntityOctreeCell& Cell = static_cast<FPDEntityOctreeCell&>(WorldOctree.GetElementById(*ClosestIDSlow));
-		ClosestVectorSlow = Cell.Bounds.GetBox().GetCenter();
-		RetHandleSlow = Cell.EntityHandle;
-	}
-
-#if 1
-
-#if CHAOS_DEBUG_DRAW
-	{
-		QUICK_SCOPE_CYCLE_COUNTER(STAT_InteractGodHandDraw)
-		Chaos::FDebugDrawQueue::GetInstance().DrawDebugBox(ClosestVectorSlow, FVector(25.0), FQuat::Identity, FColor::White, false, 0, 0, 1.0f);
-		const FVector& TextLocation = ClosestVectorSlow + FVector(0, 0, (FVector(25.0).Z * 2));
-		Chaos::FDebugDrawQueue::GetInstance().DrawDebugString(TextLocation,FString("Hovered Entity"), nullptr, FColor::Blue, 0, true, 2);
-	}
-#endif
-	
-#endif
-
-	return RetHandleSlow;
+	PRAGMA_DISABLE_DEPRECATION_WARNINGS
+		return FMassEntityHandle{INDEX_NONE,INDEX_NONE};
+	PRAGMA_ENABLE_DEPRECATION_WARNINGS
+// 	UPDRTSBaseSubsystem* RTSBaseSubsystem = GEngine->GetEngineSubsystem<UPDRTSBaseSubsystem>();
+// 	PD::Mass::Entity::FPDSafeOctree& WorldOctree = RTSBaseSubsystem->WorldOctree;
+// 	if (WorldOctree.GetNumNodes() == 0) { return FMassEntityHandle{INDEX_NONE,INDEX_NONE}; } // @todo possibly just replace with an ensure
+// 	
+// 	const FVector Direction = EndLocation - StartLocation;
+//
+// 	// Halving extents
+// 	const FBoxCenterAndExtent QueryBounds = FBoxCenterAndExtent(StartLocation + (Direction / 2), (Direction.GetAbs() / 2));
+//
+// 	FOctreeElementId2* ClosestIDSlow{}; 
+// 	double ClosestDistanceSlow{AGodHandPawn::InvalidDistance};
+//
+// 	if (WorldOctree.IsLocked()) { return FMassEntityHandle{INDEX_NONE,INDEX_NONE}; }
+// 	WorldOctree.FindElementsWithBoundsTest(QueryBounds, [&](const FPDEntityOctreeCell& Cell)
+// 	{
+// 		if (Cell.EntityHandle.Index == INDEX_NONE) { return; } 
+// 		
+// 		const double Delta = (EndLocation - Cell.Bounds.GetBox().GetCenter()).Length();
+// 		ClosestIDSlow = Delta < ClosestDistanceSlow ? Cell.SharedCellID.Get() : ClosestIDSlow;
+// 		ClosestDistanceSlow = Delta < ClosestDistanceSlow ? Delta : ClosestDistanceSlow;
+// 	}, true);
+//
+// 	const double MinDistance = Collision->GetScaledSphereRadius();  // Not valid selection if above this
+// 	FMassEntityHandle RetHandleSlow{INDEX_NONE, INDEX_NONE};
+// 	FVector ClosestVectorSlow{AGodHandPawn::InvalidVector};
+// 	if (ClosestIDSlow != nullptr && ClosestDistanceSlow <= MinDistance)
+// 	{
+// 		const FPDEntityOctreeCell& Cell = static_cast<FPDEntityOctreeCell&>(WorldOctree.GetElementById(*ClosestIDSlow));
+// 		ClosestVectorSlow = Cell.Bounds.GetBox().GetCenter();
+// 		RetHandleSlow = Cell.EntityHandle;
+// 	}
+//
+// #if 1
+//
+// #if CHAOS_DEBUG_DRAW
+// 	{
+// 		QUICK_SCOPE_CYCLE_COUNTER(STAT_InteractGodHandDraw)
+// 		Chaos::FDebugDrawQueue::GetInstance().DrawDebugBox(ClosestVectorSlow, FVector(25.0), FQuat::Identity, FColor::White, false, 0, 0, 1.0f);
+// 		const FVector& TextLocation = ClosestVectorSlow + FVector(0, 0, (FVector(25.0).Z * 2));
+// 		Chaos::FDebugDrawQueue::GetInstance().DrawDebugString(TextLocation,FString("Hovered Entity"), nullptr, FColor::Blue, 0, true, 2);
+// 	}
+// #endif
+// 	
+// #endif
+//
+// 	return RetHandleSlow;
 }
 
 
@@ -614,33 +616,19 @@ const FTransform& AGodHandPawn::GetEntityTransform(const FMassEntityHandle& Hand
 FMassEntityHandle AGodHandPawn::FindClosestMassEntity()
 {
 	UPDRTSBaseSubsystem* RTSBaseSubsystem = GEngine->GetEngineSubsystem<UPDRTSBaseSubsystem>();
-	const TMap<int32, TArray<FLEntityCompound>>& CurrentBuffer = RTSBaseSubsystem->OctreeUserQuery.CurrentBuffer;
+	TMap<int32, TArray<FLEntityCompound>>& CurrentBuffer = RTSBaseSubsystem->OctreeUserQuery.CurrentBuffer;
 	if (CurrentBuffer.Contains(UPDRTSBaseSubsystem::EPDQueryGroups::QUERY_GROUP_HOVERSELECTION) == false)
 	{
 		return FMassEntityHandle{INDEX_NONE,INDEX_NONE};
 	}
 
-	const TArray<FLEntityCompound>& QueryBufferData = CurrentBuffer.FindRef(UPDRTSBaseSubsystem::EPDQueryGroups::QUERY_GROUP_HOVERSELECTION);
-	if (QueryBufferData.IsEmpty())
+	TArray<FLEntityCompound>* QueryBufferData = CurrentBuffer.Find(UPDRTSBaseSubsystem::EPDQueryGroups::QUERY_GROUP_HOVERSELECTION);
+	if (QueryBufferData == nullptr || QueryBufferData->IsEmpty())
 	{
 		return FMassEntityHandle{INDEX_NONE,INDEX_NONE};
 	}
 
-	return QueryBufferData[QueryBufferData.Num() - 1].EntityHandle;
-
-
-	// Below will be deprecated when above is finished by next commit
-	
-	// const ARTSOController* PC = GetController<ARTSOController>();
-	// if (PC == nullptr || PC->IsValidLowLevelFast() == false) { return FMassEntityHandle{INDEX_NONE,INDEX_NONE}; }
-	//
-	// FHitResult HitResult;
-	// bool bFoundInputType;
-	// FVector2D ScreenCoordinates;
-	// FVector LocalWorkUnitTargetLocation{};
-	//
-	// PC->ProjectMouseToGroundPlane(HitResult, ECollisionChannel::ECC_Visibility, ScreenCoordinates, LocalWorkUnitTargetLocation, bFoundInputType);
-	// return OctreeEntityTrace(HitResult.TraceStart, LocalWorkUnitTargetLocation); 
+	return (*QueryBufferData)[QueryBufferData->Num() - 1].EntityHandle; 
 }
 
 //
