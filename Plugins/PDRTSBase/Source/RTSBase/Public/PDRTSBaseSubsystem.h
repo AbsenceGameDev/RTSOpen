@@ -148,6 +148,8 @@ struct FLEntityCompound
 {
 	GENERATED_BODY()
 
+	bool operator==(const FLEntityCompound& Other) const { return this->EntityHandle == Other.EntityHandle; }
+	
 	UPROPERTY()
 	FMassEntityHandle EntityHandle;
 	UPROPERTY()
@@ -336,7 +338,15 @@ public:
 			{
 				FLEntityCompound EntityCompound{OptionalEntityHandle, ComparePos, OptionalID};
 				CurrentBuffer.FindOrAdd(Key).Emplace(EntityCompound);
-			}		
+			}
+
+			// Clear key if it still persists for some reason, this fricking data-race condition is fixed now but damn it is not pretty
+			else if (CurrentBuffer.Contains(Key))
+			{
+				TArray<FLEntityCompound>& EntityArray = *CurrentBuffer.Find(Key);
+				const FLEntityCompound EntityCompound{OptionalEntityHandle, ComparePos, OptionalID};
+				EntityArray.Remove(EntityCompound);
+			}
 		}
 		
 		void RemoveQueryData(const int32 Key)
@@ -356,7 +366,15 @@ public:
 
 		void ClearQueryBuffer(int32 Key)
 		{
-			CurrentBuffer.FindOrAdd(Key).Empty();
+			// CurrentBuffer.FindOrAdd(Key).Empty();
+			if (CurrentBuffer.Contains(Key))
+			{
+				CurrentBuffer.FindRef(Key).Empty();
+			}
+			else
+			{
+				CurrentBuffer.Add(Key).Empty();
+			}			
 		}		
 		
 		TMap<int32, QBox> QueryArchetypes;

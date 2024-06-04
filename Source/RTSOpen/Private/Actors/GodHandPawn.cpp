@@ -58,7 +58,10 @@ void AGodHandPawn::Tick(float DeltaTime)
 	HoverTick(DeltaTime);
 	RotationTick(DeltaTime);
 
-	if (InstanceState.bUpdatePathOnTick) { RefreshPathingEffects(); }
+	if (InstanceState.bUpdatePathOnTick)
+	{
+		RefreshPathingEffects();
+	}
 	
 }
 
@@ -613,22 +616,31 @@ const FTransform& AGodHandPawn::GetEntityTransform(const FMassEntityHandle& Hand
 	return EntityManager->IsEntityValid(Handle) ? EntityManager->GetFragmentDataPtr<FTransformFragment>(Handle)->GetTransform() : Collision->GetComponentTransform();
 }
 
-FMassEntityHandle AGodHandPawn::FindClosestMassEntity()
+FMassEntityHandle AGodHandPawn::FindClosestMassEntity() const
 {
-	UPDRTSBaseSubsystem* RTSBaseSubsystem = GEngine->GetEngineSubsystem<UPDRTSBaseSubsystem>();
-	TMap<int32, TArray<FLEntityCompound>>& CurrentBuffer = RTSBaseSubsystem->OctreeUserQuery.CurrentBuffer;
-	if (CurrentBuffer.Contains(UPDRTSBaseSubsystem::EPDQueryGroups::QUERY_GROUP_HOVERSELECTION) == false)
+	const UPDRTSBaseSubsystem* RTSBaseSubsystem = GEngine->GetEngineSubsystem<UPDRTSBaseSubsystem>();
+	const TMap<int32, TArray<FLEntityCompound>>* CurrentBuffer = &RTSBaseSubsystem->OctreeUserQuery.CurrentBuffer;
+	if (CurrentBuffer == nullptr || CurrentBuffer->Contains(UPDRTSBaseSubsystem::EPDQueryGroups::QUERY_GROUP_HOVERSELECTION) == false)
 	{
 		return FMassEntityHandle{INDEX_NONE,INDEX_NONE};
 	}
-
-	TArray<FLEntityCompound>* QueryBufferData = CurrentBuffer.Find(UPDRTSBaseSubsystem::EPDQueryGroups::QUERY_GROUP_HOVERSELECTION);
+	
+	const TArray<FLEntityCompound>* QueryBufferData = CurrentBuffer->Find(UPDRTSBaseSubsystem::EPDQueryGroups::QUERY_GROUP_HOVERSELECTION);
 	if (QueryBufferData == nullptr || QueryBufferData->IsEmpty())
 	{
 		return FMassEntityHandle{INDEX_NONE,INDEX_NONE};
 	}
+	const FLEntityCompound& EntityCompound = (*QueryBufferData)[QueryBufferData->Num() - 1];
 
-	return (*QueryBufferData)[QueryBufferData->Num() - 1].EntityHandle; 
+	// Temporary work-around to resolve edgecase created by fixing a data-race in the query buffer 
+	// Ensure that it is not a hovered entity from a previous frame still lingering in the query buffer
+	const FVector DeltaV = Collision->GetComponentLocation() - EntityCompound.Location;
+	if (DeltaV.IsNearlyZero(50.0) == false)
+	{
+		return FMassEntityHandle{INDEX_NONE,INDEX_NONE};
+	}
+	
+	return EntityCompound.EntityHandle; 
 }
 
 //
