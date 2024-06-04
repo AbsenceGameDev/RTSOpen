@@ -101,7 +101,7 @@ public:
 	virtual FMassEntityHandle OctreeEntityTrace_DEPRECATED(const FVector& StartLocation, const FVector& EndLocation);
 	
 	/** @brief Call into the UPDRTSBaseSubsystem and check if it's OctreeUserQuery.CurrentBuffer has anything entries for us to read */
-	FMassEntityHandle FindClosestMassEntity();
+	static FMassEntityHandle FindClosestMassEntity();
 	/** @brief Does an overlap check and picks the closes actor inheriting from IPDInteractInterface, if any*/
 	AActor* FindClosestInteractableActor() const;
 	/** @brief Helper to return the value of the given entity's transform fragment, if entity is valid. */

@@ -30,7 +30,7 @@ public class RTSOpen : ModuleRules
 		PrivateDependencyModuleNames.AddRange(new string[] 
 		{ 
 			"GameplayTags", "EnhancedInput", 
-			"SlateCore", "CommonUI", "UMG", 
+			"SlateCore", "Slate", "CommonUI", "UMG", 
 			"Niagara", "MassCrowd", "CommonConversationRuntime", 
 			"PDInteraction", "PDInventory", "PDRTSBase", "PDConversationHelper",
 		});
