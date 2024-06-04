@@ -6,9 +6,6 @@
 #include "PDRTSBaseSubsystem.h"
 #include "SRTSOMiniMap.generated.h"
 
-
-// Move the below classes into the shared UI under 'Classes' when moving his into it's own slate widget 
-
 UCLASS()
 class RTSOPEN_API URTSOMinimapData : public UDataAsset
 {
@@ -49,6 +46,8 @@ public:
 		SLATE_ARGUMENT(FColor, OwnedUnitsColour)
 		SLATE_ARGUMENT(FColor, InteractableColour)
 		SLATE_ARGUMENT(FColor, MissionColour)
+		SLATE_ARGUMENT(EHorizontalAlignment, HAlign)
+		SLATE_ARGUMENT(EVerticalAlignment, VAlign)
 		SLATE_ARGUMENT(URTSOMinimapData*, MiniMapData)
 	SLATE_END_ARGS()
 

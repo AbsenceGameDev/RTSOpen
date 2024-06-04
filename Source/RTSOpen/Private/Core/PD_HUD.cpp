@@ -65,9 +65,10 @@ void APD_HUD::DrawHUD()
 {
 	Super::DrawHUD();
 
-	//
-	// Draw Minimap
-	DrawRadarMinimap();
+	// @todo Moved to slate widget
+	// //
+	// // Draw Minimap
+	// DrawRadarMinimap();
 	
 	//
 	// Draw Marquee for entity selection

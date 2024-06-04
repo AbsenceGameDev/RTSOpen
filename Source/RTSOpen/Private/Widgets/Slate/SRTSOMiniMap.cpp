@@ -9,6 +9,16 @@
 #include "ImageUtils.h"
 #include "Kismet/KismetSystemLibrary.h"
 
+void SRTSOMiniMap::Construct(const FArguments& InArgs)
+{
+	this->ChildSlot
+	.HAlign( InArgs._HAlign)
+	.VAlign( InArgs._VAlign)
+	[
+		SNew(SBorder) // @todo rewrite below manual radar line and box rendering into a constructed slate compound 
+	];
+}
+
 void SRTSOMiniMap::Tick(
 	const FGeometry& AllottedGeometry,
 	const double InCurrentTime,
@@ -43,7 +53,6 @@ int32 SRTSOMiniMap::OnPaint(
 // Paint functions
 void SRTSOMiniMap::PaintRadarMiniMap(FSlateWindowElementList& OutDrawElements, const FGeometry& AllottedGeometry, int32 LayerId) const
 {
-
 	PaintRadar(OutDrawElements, AllottedGeometry, LayerId ,FLinearColor::Gray);
 	PaintOwnerOnMiniMap(OutDrawElements, AllottedGeometry, LayerId);
 	PaintActorsOnMiniMap(OutDrawElements, AllottedGeometry, LayerId);

@@ -10,7 +10,7 @@ class SRTSOMiniMap;
 /**
  * 
  */
-UCLASS()
+UCLASS(Blueprintable)
 class RTSOPEN_API URTSOMiniMap : public UWidget
 {
 public:
