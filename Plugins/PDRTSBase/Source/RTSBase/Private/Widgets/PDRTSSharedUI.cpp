@@ -2,6 +2,101 @@
 
 #include "PDRTSSharedUI.h"
 
+#include "PDRTSCommon.h"
+#include "Components/TextBlock.h"
+#include "Components/Border.h"
+#include "Components/TileView.h"
+
+void UPDBuildableEntry::NativeOnListItemObjectSet(UObject* ListItemObject)
+{
+	IUserObjectListEntry::NativeOnListItemObjectSet(ListItemObject);
+
+	const UPDBuildStructWrapper* Item = Cast<UPDBuildStructWrapper>(ListItemObject);
+	if (Item == nullptr) { return; }
+	
+	// 1. Read data
+	BuildableTitle->SetText(Item->GetBuildableTitle());
+	bCanBuild             = Item->GetCanBuild();
+	DirectParentReference = Item->GetDirectParentReference();
+
+	// 2. Set data-asset variable
+	const FPDBuildContext* BuildContext = DirectParentReference->GetCurrentBuildContext().GetRow<FPDBuildContext>("");
+	if (BuildContext != nullptr)
+	{
+		const UPDBuildableDataAsset* BuildDataAsset = BuildContext->BuildablesData.FindRef(Item->GetBuildableTag()).DABuildAsset;
+		if (BuildDataAsset != nullptr)
+		{
+			UMaterialInstance* MatInst = BuildDataAsset->Buildable_MaterialInstance;
+			UTexture2D* Tex = BuildDataAsset->Buildable_Texture;
+			if (MatInst != nullptr)
+			{
+				TextContentBorder->SetBrushFromMaterial(MatInst);
+			}
+			else if (Tex != nullptr) // Fallback to texture
+			{
+				TextContentBorder->SetBrushFromTexture(Tex);
+			}
+		}
+	}
+	
+	// 3. Bind delegates
+	TextContentBorder->OnMouseMoveEvent.BindDynamic(this, &UPDBuildableEntry::MouseMove); 
+	TextContentBorder->OnMouseButtonDownEvent.BindDynamic(this, &UPDBuildableEntry::MouseButtonDown);
+	TextContentBorder->OnMouseButtonUpEvent.BindDynamic(this, &UPDBuildableEntry::MouseButtonUp);
+	TextContentBorder->OnMouseDoubleClickEvent.BindDynamic(this, &UPDBuildableEntry::MouseDoubleClick);
+}
+
+FEventReply UPDBuildableEntry::MouseMove(FGeometry MyGeometry, const FPointerEvent& MouseEvent)
+{
+	return FEventReply();/** @todo: write impl.*/
+}
+
+FEventReply UPDBuildableEntry::MouseButtonDown(FGeometry MyGeometry, const FPointerEvent& MouseEvent)
+{
+	return FEventReply();/** @todo: write impl.*/
+}
+
+FEventReply UPDBuildableEntry::MouseButtonUp(FGeometry MyGeometry, const FPointerEvent& MouseEvent)
+{
+	return FEventReply();/** @todo: write impl.*/
+}
+
+FEventReply UPDBuildableEntry::MouseDoubleClick(FGeometry MyGeometry, const FPointerEvent& MouseEvent)
+{
+	return FEventReply();/** @todo: write impl.*/
+}
+
+void UPDBuildWidgetBase::NativeConstruct()
+{
+	Super::NativeConstruct();
+
+	CurrentBuildableContext = DefaultBuildableContext;
+}
+
+void UPDBuildWidgetBase::OverwriteBuildContext(const FPDBuildContextParam& NewRowParams)
+{
+	CurrentBuildableContext = NewRowParams.NewBuildableContext;
+}
+
+void UPDBuildWidgetBase::LoadBuildContext()
+{
+	// Build the current context
+	const FString CtxtStr = FString::Printf(TEXT("UPDBuildWidgetBase(%s)::LoadBuildContext"), *GetName());
+	FPDBuildContext* LoadedContext = CurrentBuildableContext.GetRow<FPDBuildContext>(CtxtStr);
+	if (LoadedContext == nullptr) { return; }
+
+	for (const TTuple<FGameplayTag, FPDBuildableData>& BuildData : LoadedContext->BuildablesData)
+	{
+		UPDBuildStructWrapper* DataWrapper = NewObject<UPDBuildStructWrapper>(this, UPDBuildStructWrapper::StaticClass());		
+
+		FGameplayTag BuildableTag = BuildData.Key;
+		const FPDBuildableData& DABuild = BuildData.Value;
+
+		constexpr bool bCanBuild = true; // @todo extrapolate bCanBuild based on available resources and such, possibly control via a virtual function and define in game module
+		DataWrapper->AssignData(DABuild.ReadableName, bCanBuild, BuildableTag, this);
+		Buildables->AddItem(DataWrapper);
+	}
+}
 
 
 

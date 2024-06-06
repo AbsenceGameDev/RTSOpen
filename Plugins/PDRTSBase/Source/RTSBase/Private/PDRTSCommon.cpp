@@ -15,10 +15,23 @@ UE_DEFINE_GAMEPLAY_TAG(TAG_CTRL_Ctxt_WorkerUnitMode, "CTRL.Ctxt.WorkerUnitMode")
 UE_DEFINE_GAMEPLAY_TAG(TAG_CTRL_Ctxt_BuildMode, "CTRL.Ctxt.BuildMode");
 UE_DEFINE_GAMEPLAY_TAG(TAG_CTRL_Ctxt_ConversationMode, "CTRL.Ctxt.ConversationMode");
 
-
 /** Define the gameplay "AI.Type." tags */
 UE_DEFINE_GAMEPLAY_TAG(TAG_AI_Type_DefaultUnit, "AI.Type.DefaultUnit");
 UE_DEFINE_GAMEPLAY_TAG(TAG_AI_Type_InvalidUnit, "AI.Type.InvalidUnit");
+
+UE_DEFINE_GAMEPLAY_TAG(TAG_AI_Type_BuilderUnit_Novice, "AI.Type.Builder.Novice");
+UE_DEFINE_GAMEPLAY_TAG(TAG_AI_Type_BuilderUnit_Intermeditate, "AI.Type.Builder.Intermeditate");
+UE_DEFINE_GAMEPLAY_TAG(TAG_AI_Type_BuilderUnit_Advanced, "AI.Type.Builder.Advanced");
+UE_DEFINE_GAMEPLAY_TAG(TAG_AI_Type_BuilderUnit_Expert, "AI.Type.Builder.Expert");
+
+/** Declaring the "BUILD.ContextMenu." gameplay tags */
+UE_DEFINE_GAMEPLAY_TAG(TAG_BUILD_ContextMenu_DefaultWorker, "BUILD.ContextMenu.DefaultWorker");
+
+UE_DEFINE_GAMEPLAY_TAG(TAG_BUILD_ContextMenu_Builder_Novice, "BUILD.ContextMenu.Builder.Novice");
+UE_DEFINE_GAMEPLAY_TAG(TAG_BUILD_ContextMenu_Builder_Intermediate, "BUILD.ContextMenu.Builder.Intermediate");
+UE_DEFINE_GAMEPLAY_TAG(TAG_BUILD_ContextMenu_Builder_Advanced, "BUILD.ContextMenu.Builder.Advanced");
+UE_DEFINE_GAMEPLAY_TAG(TAG_BUILD_ContextMenu_Builder_Expert, "BUILD.ContextMenu.Builder.Expert");
+
 
 /**
 Business Source License 1.1

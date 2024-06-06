@@ -11,7 +11,7 @@ public class PDRTSBase : ModuleRules
 		PublicDependencyModuleNames.AddRange(
 			new string[]
 			{
-				"Core", "DeveloperSettings"
+				"Core", "DeveloperSettings", "UMG"
 				// ... add other public dependencies that you statically link with here ...
 			}
 			);

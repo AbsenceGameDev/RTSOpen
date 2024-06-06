@@ -18,16 +18,30 @@ PDRTSBASE_API UE_DECLARE_GAMEPLAY_TAG_EXTERN(TAG_AI_Job_WalkToTarget);
 PDRTSBASE_API UE_DECLARE_GAMEPLAY_TAG_EXTERN(TAG_AI_Job_GenericInteract);
 PDRTSBASE_API UE_DECLARE_GAMEPLAY_TAG_EXTERN(TAG_AI_Job_GatherResource);
 
-/** Declaring the "Control.Context." gameplay tags. to be defined in an object-file */
+/** Declaring the "CTRL.Context." gameplay tags. to be defined in an object-file */
 PDRTSBASE_API UE_DECLARE_GAMEPLAY_TAG_EXTERN(TAG_CTRL_Ctxt_BaseInput);
 PDRTSBASE_API UE_DECLARE_GAMEPLAY_TAG_EXTERN(TAG_CTRL_Ctxt_DragMove);
 PDRTSBASE_API UE_DECLARE_GAMEPLAY_TAG_EXTERN(TAG_CTRL_Ctxt_WorkerUnitMode);
 PDRTSBASE_API UE_DECLARE_GAMEPLAY_TAG_EXTERN(TAG_CTRL_Ctxt_BuildMode);
 PDRTSBASE_API UE_DECLARE_GAMEPLAY_TAG_EXTERN(TAG_CTRL_Ctxt_ConversationMode);
 
-/** Declaring the "Control.Context." gameplay tags. to be defined in an object-file */
+/** Declaring the "AI.Type." gameplay tags. to be defined in an object-file */
 PDRTSBASE_API UE_DECLARE_GAMEPLAY_TAG_EXTERN(TAG_AI_Type_DefaultUnit);
 PDRTSBASE_API UE_DECLARE_GAMEPLAY_TAG_EXTERN(TAG_AI_Type_InvalidUnit);
+
+PDRTSBASE_API UE_DECLARE_GAMEPLAY_TAG_EXTERN(TAG_AI_Type_BuilderUnit_Novice);
+PDRTSBASE_API UE_DECLARE_GAMEPLAY_TAG_EXTERN(TAG_AI_Type_BuilderUnit_Intermeditate);
+PDRTSBASE_API UE_DECLARE_GAMEPLAY_TAG_EXTERN(TAG_AI_Type_BuilderUnit_Advanced);
+PDRTSBASE_API UE_DECLARE_GAMEPLAY_TAG_EXTERN(TAG_AI_Type_BuilderUnit_Expert);
+
+/** Declaring the "BUILD.ContextMenu." gameplay tags. to be defined in an object-file */
+PDRTSBASE_API UE_DECLARE_GAMEPLAY_TAG_EXTERN(TAG_BUILD_ContextMenu_DefaultWorker);
+
+PDRTSBASE_API UE_DECLARE_GAMEPLAY_TAG_EXTERN(TAG_BUILD_ContextMenu_Builder_Novice);
+PDRTSBASE_API UE_DECLARE_GAMEPLAY_TAG_EXTERN(TAG_BUILD_ContextMenu_Builder_Intermediate);
+PDRTSBASE_API UE_DECLARE_GAMEPLAY_TAG_EXTERN(TAG_BUILD_ContextMenu_Builder_Advanced);
+PDRTSBASE_API UE_DECLARE_GAMEPLAY_TAG_EXTERN(TAG_BUILD_ContextMenu_Builder_Expert);
+
 
 /** @brief */
 UENUM()
@@ -61,6 +75,58 @@ struct FPDWorkUnitDatum : public FTableRowBase
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "RTSBase|WorkerUnits")
 	uint8 bCanShareJob : 1;
 };
+
+UCLASS(Blueprintable)
+class UPDBuildableDataAsset : public UDataAsset
+{
+	GENERATED_BODY()
+public:
+	// 1. Image resource
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	UTexture2D* Buildable_Texture = nullptr;
+
+	// 2. Material resource
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	UMaterialInstance* Buildable_MaterialInstance = nullptr;
+	
+	// 3. Audio resource
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	USoundBase* Buildable_AudioLoop = nullptr;
+	
+};
+
+USTRUCT(Blueprintable)
+struct FPDBuildableData
+{
+	GENERATED_BODY()
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "RTSBase|WorkerUnits")
+	FText ReadableName{};
+	
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "RTSBase|WorkerUnits")
+	UPDBuildableDataAsset* DABuildAsset = nullptr;
+};
+
+USTRUCT(Blueprintable)
+struct FPDBuildContext : public FTableRowBase
+{
+	GENERATED_BODY()
+
+	FPDBuildContext() = default;
+
+	/** @brief The tags of this buildable context */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "RTSBase|WorkerUnits")
+	FGameplayTag ContextTag{};	
+
+	/** @brief The types of workers that can use this build context */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "RTSBase|WorkerUnits")
+	TSet<FGameplayTag> AllowedWorkerTypes{};
+	
+	/** @brief The resource data of buildables this context provides */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "RTSBase|WorkerUnits")
+	TMap<FGameplayTag, FPDBuildableData> BuildablesData{};
+};
+
 
 /**
 Business Source License 1.1
