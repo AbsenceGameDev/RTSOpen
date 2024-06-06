@@ -11,19 +11,28 @@ void UPDBuildableEntry::NativeOnListItemObjectSet(UObject* ListItemObject)
 {
 	IUserObjectListEntry::NativeOnListItemObjectSet(ListItemObject);
 
-	const UPDBuildStructWrapper* Item = Cast<UPDBuildStructWrapper>(ListItemObject);
+	const UPDBuildableWrapper* Item = Cast<UPDBuildableWrapper>(ListItemObject);
 	if (Item == nullptr) { return; }
 	
 	// 1. Read data
 	BuildableTitle->SetText(Item->GetBuildableTitle());
 	bCanBuild             = Item->GetCanBuild();
 	DirectParentReference = Item->GetDirectParentReference();
+	ParentMenuContextTag  = Item->GetParentContextTag();
 
 	// 2. Set data-asset variable
-	const FPDBuildContext* BuildContext = DirectParentReference->GetCurrentBuildContext().GetRow<FPDBuildContext>("");
-	if (BuildContext != nullptr)
+	TArray<FDataTableRowHandle>& BuildContexts = DirectParentReference->GetCurrentBuildContexts();
+	for (const FDataTableRowHandle& Context : BuildContexts)
 	{
-		const UPDBuildableDataAsset* BuildDataAsset = BuildContext->BuildablesData.FindRef(Item->GetBuildableTag()).DABuildAsset;
+		const FString CtxtStr = FString::Printf(TEXT("UPDBuildWidgetBase(%s, %s)::SelectBuildContext"), *Context.RowName.ToString(), *GetName());
+		const FPDBuildContext* LoadedContext = Context.GetRow<FPDBuildContext>(CtxtStr);
+		if (LoadedContext == nullptr || LoadedContext->ContextTag.IsValid() == false || LoadedContext->ContextTag != ParentMenuContextTag)
+		{
+			/** @todo Output to log with warning or error level verbosity if the context or the tag was invalid */ 
+			continue;
+		}
+
+		const UPDBuildableDataAsset* BuildDataAsset = LoadedContext->BuildablesData.FindRef(Item->GetBuildableTag()).DABuildAsset;
 		if (BuildDataAsset != nullptr)
 		{
 			UMaterialInstance* MatInst = BuildDataAsset->Buildable_MaterialInstance;
@@ -38,6 +47,7 @@ void UPDBuildableEntry::NativeOnListItemObjectSet(UObject* ListItemObject)
 			}
 		}
 	}
+	
 	
 	// 3. Bind delegates
 	TextContentBorder->OnMouseMoveEvent.BindDynamic(this, &UPDBuildableEntry::MouseMove); 
@@ -66,38 +76,197 @@ FEventReply UPDBuildableEntry::MouseDoubleClick(FGeometry MyGeometry, const FPoi
 	return FEventReply();/** @todo: write impl.*/
 }
 
+void UPDBuildContextEntry::NativeOnListItemObjectSet(UObject* ListItemObject)
+{
+	IUserObjectListEntry::NativeOnListItemObjectSet(ListItemObject);
+
+	const UPDBuildContextWrapper* Item = Cast<UPDBuildContextWrapper>(ListItemObject);
+	if (Item == nullptr) { return; }
+	
+	// 1. Read data
+	ContextTitle->SetText(Item->GetBuildContextTitle());
+	SelfContextTag        = Item->GetContextTag();
+	DirectParentReference = Item->GetDirectParentReference();
+
+	// 2. Set data-asset variable
+	TArray<FDataTableRowHandle>& BuildContexts = DirectParentReference->GetCurrentBuildContexts();
+	for (const FDataTableRowHandle& Context : BuildContexts)
+	{
+		const FString CtxtStr = FString::Printf(TEXT("UPDBuildWidgetBase(%s, %s)::SelectBuildContext"), *Context.RowName.ToString(), *GetName());
+		const FPDBuildContext* LoadedContext = Context.GetRow<FPDBuildContext>(CtxtStr);
+		if (LoadedContext == nullptr || LoadedContext->ContextTag.IsValid() == false)
+		{
+			/** @todo Output to log with warning or error level verbosity if the context or the tag was invalid */ 
+			continue;
+		}
+
+		const UPDBuildContextDataAsset* BuildDataAsset = LoadedContext->ContextData.DABuildContextAsset;
+		if (BuildDataAsset != nullptr)
+		{
+			UMaterialInstance* MatInst = BuildDataAsset->BuildContext_MaterialInstance;
+			UTexture2D* Tex = BuildDataAsset->BuildContext_Texture;
+			if (MatInst != nullptr)
+			{
+				TextContentBorder->SetBrushFromMaterial(MatInst);
+			}
+			else if (Tex != nullptr) // Fallback to texture
+			{
+				TextContentBorder->SetBrushFromTexture(Tex);
+			}
+		}
+	}
+	
+	
+	// 3. Bind delegates
+	TextContentBorder->OnMouseMoveEvent.BindDynamic(this, &UPDBuildContextEntry::MouseMove); 
+	TextContentBorder->OnMouseButtonDownEvent.BindDynamic(this, &UPDBuildContextEntry::MouseButtonDown);
+	TextContentBorder->OnMouseButtonUpEvent.BindDynamic(this, &UPDBuildContextEntry::MouseButtonUp);
+	TextContentBorder->OnMouseDoubleClickEvent.BindDynamic(this, &UPDBuildContextEntry::MouseDoubleClick);	
+}
+
+FEventReply UPDBuildContextEntry::MouseMove(FGeometry MyGeometry, const FPointerEvent& MouseEvent)
+{
+	return FEventReply();/** @todo: write impl.*/
+}
+
+FEventReply UPDBuildContextEntry::MouseButtonDown(FGeometry MyGeometry, const FPointerEvent& MouseEvent)
+{
+	ensure(DirectParentReference != nullptr);
+
+	if (DirectParentReference->SelectedWidgetFlair == nullptr)
+	{
+		/** @todo: log about widget falir not being set.*/
+	}
+
+	// tell DirectParentReference about the cliked button 
+	DirectParentReference->UpdateSelectedContext(SelfContextTag);
+	
+	return FEventReply();/** @todo: write impl.*/
+}
+
+FEventReply UPDBuildContextEntry::MouseButtonUp(FGeometry MyGeometry, const FPointerEvent& MouseEvent)
+{
+	return FEventReply();/** @todo: write impl.*/
+}
+
+FEventReply UPDBuildContextEntry::MouseDoubleClick(FGeometry MyGeometry, const FPointerEvent& MouseEvent)
+{
+	return FEventReply();/** @todo: write impl.*/
+}
+
 void UPDBuildWidgetBase::NativeConstruct()
 {
 	Super::NativeConstruct();
 
-	CurrentBuildableContext = DefaultBuildableContext;
+	CurrentBuildableContexts = DefaultBuildableContexts;
+	
+	SelectedWidgetFlair = BuildWidgetFlairHandle.GetRow<FPDSharedBuildWidgetFlair>("");
 }
 
 void UPDBuildWidgetBase::OverwriteBuildContext(const FPDBuildContextParam& NewRowParams)
 {
-	CurrentBuildableContext = NewRowParams.NewBuildableContext;
+	CurrentBuildableContexts = NewRowParams.NewBuildableContext;
 }
 
-void UPDBuildWidgetBase::LoadBuildContext()
+void UPDBuildWidgetBase::LoadBuildContexts()
 {
-	// Build the current context
-	const FString CtxtStr = FString::Printf(TEXT("UPDBuildWidgetBase(%s)::LoadBuildContext"), *GetName());
-	FPDBuildContext* LoadedContext = CurrentBuildableContext.GetRow<FPDBuildContext>(CtxtStr);
-	if (LoadedContext == nullptr) { return; }
+	// Build the context menu entries (Category)
+	BuildContexts->ClearListItems();
 
-	for (const TTuple<FGameplayTag, FPDBuildableData>& BuildData : LoadedContext->BuildablesData)
+	FGameplayTag SelectedContextTag = FGameplayTag::EmptyTag;
+	bool bLastSelectedContextStillValid = false;
+	for (const FDataTableRowHandle& Context : CurrentBuildableContexts)
 	{
-		UPDBuildStructWrapper* DataWrapper = NewObject<UPDBuildStructWrapper>(this, UPDBuildStructWrapper::StaticClass());		
+		const FString CtxtStr = FString::Printf(TEXT("UPDBuildWidgetBase(%s, %s)::SelectBuildContext"), *Context.RowName.ToString(), *GetName());
+		FPDBuildContext* LoadedContext = Context.GetRow<FPDBuildContext>(CtxtStr);
+		if (LoadedContext == nullptr || LoadedContext->ContextTag.IsValid() == false)
+		{
+			/** @todo Output to log with warning or error level verbosity if the context or the tag was invalid */ 
+			continue;
+		}
+		
+		UPDBuildContextWrapper* DataWrapper = NewObject<UPDBuildContextWrapper>(this, UPDBuildContextWrapper::StaticClass());		
 
-		FGameplayTag BuildableTag = BuildData.Key;
-		const FPDBuildableData& DABuild = BuildData.Value;
+		FText SelectedName = LoadedContext->ContextReadableName.IsEmpty() ?
+			FText::FromName(LoadedContext->ContextTag.GetTagName()) : LoadedContext->ContextReadableName;
 
-		constexpr bool bCanBuild = true; // @todo extrapolate bCanBuild based on available resources and such, possibly control via a virtual function and define in game module
-		DataWrapper->AssignData(DABuild.ReadableName, bCanBuild, BuildableTag, this);
-		Buildables->AddItem(DataWrapper);
+		TSet<FGameplayTag> InnerBuildableTags;
+		LoadedContext->BuildablesData.GetKeys(InnerBuildableTags); 
+		
+		DataWrapper->AssignData(SelectedName, LoadedContext->ContextTag, InnerBuildableTags, this);
+		BuildContexts->AddItem(DataWrapper);
+		
+		SelectedContextTag = SelectedContextTag.IsValid() == false ? LoadedContext->ContextTag : SelectedContextTag;
+		bLastSelectedContextStillValid &= LastSelectedContextTag == LoadedContext->ContextTag;
 	}
+	
+	SelectedContextTag = bLastSelectedContextStillValid ? LastSelectedContextTag : SelectedContextTag;
+	SelectBuildContext(SelectedContextTag);
 }
 
+void UPDBuildWidgetBase::SelectBuildContext(const FGameplayTag& NewSelectedContext)
+{
+	bool bRequestedContextWasValid = false;
+	for (const FDataTableRowHandle& Context : CurrentBuildableContexts)
+	{
+		const FString CtxtStr = FString::Printf(TEXT("UPDBuildWidgetBase(%s, %s)::SelectBuildContext"), *Context.RowName.ToString(), *GetName());
+		FPDBuildContext* LoadedContext = Context.GetRow<FPDBuildContext>(CtxtStr);
+		if (LoadedContext == nullptr || LoadedContext->ContextTag != NewSelectedContext) { continue; }
+
+		bRequestedContextWasValid = true;
+		
+		Buildables->ClearListItems();
+		for (const TTuple<FGameplayTag, FPDBuildableData>& BuildData : LoadedContext->BuildablesData)
+		{
+			UPDBuildableWrapper* DataWrapper = NewObject<UPDBuildableWrapper>(this, UPDBuildableWrapper::StaticClass());		
+
+			FGameplayTag BuildableTag = BuildData.Key;
+			const FPDBuildableData& DABuild = BuildData.Value;
+
+			constexpr bool bCanBuild = true; // @todo extrapolate bCanBuild based on available resources and such, possibly control via a virtual function and define in game module
+			DataWrapper->AssignData(DABuild.ReadableName, bCanBuild, BuildableTag, LoadedContext->ContextTag, this);
+			Buildables->AddItem(DataWrapper);
+		}
+		break;
+	}
+	
+	LastSelectedContextTag = bRequestedContextWasValid ? NewSelectedContext : LastSelectedContextTag;
+}
+
+void UPDBuildWidgetBase::UpdateSelectedContext(const FGameplayTag& RequestToSelectTag)
+{
+
+	// Is it already selected?
+
+	for (const FDataTableRowHandle& Context : CurrentBuildableContexts)
+	{
+		const FString CtxtStr = FString::Printf(TEXT("UPDBuildWidgetBase(%s, %s)::SelectBuildContext"), *Context.RowName.ToString(), *GetName());
+		const FPDBuildContext* LoadedContext = Context.GetRow<FPDBuildContext>(CtxtStr);
+		if (LoadedContext == nullptr || LoadedContext->ContextTag.IsValid() == false)
+		{
+			/** @todo Output to log with warning or error level verbosity if the context or the tag was invalid */ 
+			continue;
+		}
+		
+		// Resets any previous selected tints
+		const TArray<UObject*>& ListItems = BuildContexts->GetListItems();
+		for (UObject* const& Item : ListItems)
+		{
+			const UPDBuildContextEntry* AsContextEntry = BuildContexts->GetEntryWidgetFromItem<UPDBuildContextEntry>(Item);
+			if (AsContextEntry == nullptr || AsContextEntry->IsValidLowLevelFast() == false)
+			{
+				continue;
+			}
+
+			const bool bShouldSelect = (RequestToSelectTag == AsContextEntry->SelfContextTag);
+			FSlateBrush& Brush = AsContextEntry->TextContentBorder->Background;
+			Brush.TintColor = bShouldSelect ? FSlateColor(SelectedWidgetFlair->SelectedContextTint) : FSlateColor(SelectedWidgetFlair->NotSelectedContextTint);
+			AsContextEntry->TextContentBorder->SetBrush(Brush);	
+		}
+	}
+	
+	SelectBuildContext(RequestToSelectTag);
+}
 
 
 /**

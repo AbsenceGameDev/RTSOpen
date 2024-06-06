@@ -17,9 +17,64 @@ struct FPDBuildContext;
 
 DECLARE_LOG_CATEGORY_CLASS(PDLog_RTSBaseUI, Log, All);
 
+
 /** @brief Tile view object type for loading buildable data */
 UCLASS(Blueprintable)
-class UPDBuildStructWrapper : public UObject
+class UPDBuildContextWrapper : public UObject
+{
+	GENERATED_BODY()
+public:
+	
+	/** @brief Self-explanatory */
+	void AssignData(
+		const FText& InBuildableTitle,
+		const FGameplayTag& InContextTag,
+		const TSet<FGameplayTag>& InInnerBuildableTags,
+		class UPDBuildWidgetBase* InDirectParentReference)
+	{
+		BuildContextTitle = InBuildableTitle;
+		ContextTag = InContextTag;
+		InnerBuildableTags = InInnerBuildableTags;
+		DirectParentReference = InDirectParentReference;
+	}
+
+	/** @brief Access to private BuildContextTitle value */
+	UFUNCTION(BlueprintCallable)
+	const FText& GetBuildContextTitle() const { return BuildContextTitle; };
+
+	/** @brief Access to private InnerBuildableTags value */
+	UFUNCTION(BlueprintCallable)
+	const FGameplayTag& GetContextTag() const { return ContextTag; };	
+	
+	/** @brief Access to private InnerBuildableTags value */
+	UFUNCTION(BlueprintCallable)
+	const TSet<FGameplayTag>& GetBuildableTags() const { return InnerBuildableTags; };	
+
+	/** @brief Access to private DirectParentReference value */
+	UFUNCTION(BlueprintCallable)
+	class UPDBuildWidgetBase* GetDirectParentReference() const { return DirectParentReference; };
+
+private:
+	/** @brief Assigned by 'AssignData', retrieved by 'GetBuildableTitle'  */
+	UPROPERTY(VisibleInstanceOnly, BlueprintReadOnly, Meta = (ExposeOnSpawn=true, AllowPrivateAccess="true"))
+	FText BuildContextTitle{};
+
+	/** @brief Assigned by 'AssignData', retrieved by 'GetBuildableTag'  */
+	UPROPERTY(VisibleInstanceOnly, BlueprintReadOnly, Meta = (ExposeOnSpawn=true, AllowPrivateAccess="true"))
+	FGameplayTag ContextTag{};
+	
+	/** @brief Assigned by 'AssignData', retrieved by 'GetBuildableTag'  */
+	UPROPERTY(VisibleInstanceOnly, BlueprintReadOnly, Meta = (ExposeOnSpawn=true, AllowPrivateAccess="true"))
+	TSet<FGameplayTag> InnerBuildableTags;
+
+	/** @brief Assigned by 'AssignData', retrieved by 'GetDirectParentReference'  */
+	UPROPERTY(VisibleInstanceOnly, BlueprintReadWrite, Meta = (ExposeOnSpawn=true, AllowPrivateAccess="true"))
+	class UPDBuildWidgetBase* DirectParentReference = nullptr;
+};
+
+/** @brief Tile view object type for loading buildable data */
+UCLASS(Blueprintable)
+class UPDBuildableWrapper : public UObject
 {
 	GENERATED_BODY()
 public:
@@ -29,23 +84,25 @@ public:
 		const FText& InBuildableTitle,
 		const bool bInCanBuild,
 		const FGameplayTag& InBuildableTag,
+		const FGameplayTag& InParentContextTag,
 		class UPDBuildWidgetBase* InDirectParentReference)
 	{
 		BuildableTitle = InBuildableTitle;
 		BuildableTag = InBuildableTag;
+		ParentContextTag = InParentContextTag;
 		bCanBuild = bInCanBuild;
 		DirectParentReference = InDirectParentReference;
 	}
 
-	/** @brief Access to private SelectionEntry value */
+	/** @brief Access to private BuildableTitle value */
 	UFUNCTION(BlueprintCallable)
 	const FText& GetBuildableTitle() const { return BuildableTitle; };
 	
-	/** @brief Access to private ChoiceIndex value */
+	/** @brief Access to private bCanBuild value */
 	UFUNCTION(BlueprintCallable)
 	bool GetCanBuild() const { return bCanBuild; };
 
-	/** @brief Access to private ChoiceIndex value */
+	/** @brief Access to private BuildableTag value */
 	UFUNCTION(BlueprintCallable)
 	const FGameplayTag& GetBuildableTag() const { return BuildableTag; };	
 
@@ -53,6 +110,10 @@ public:
 	UFUNCTION(BlueprintCallable)
 	class UPDBuildWidgetBase* GetDirectParentReference() const { return DirectParentReference; };
 
+	/** @brief Access to private DirectParentReference value */
+	UFUNCTION(BlueprintCallable)
+	const FGameplayTag& GetParentContextTag() const { return ParentMenuContextTag; };
+	
 private:
 	/** @brief Assigned by 'AssignData', retrieved by 'GetBuildableTitle'  */
 	UPROPERTY(VisibleInstanceOnly, BlueprintReadOnly, Meta = (ExposeOnSpawn=true, AllowPrivateAccess="true"))
@@ -65,10 +126,15 @@ private:
 	/** @brief Assigned by 'AssignData', retrieved by 'GetBuildableTag'  */
 	UPROPERTY(VisibleInstanceOnly, BlueprintReadOnly, Meta = (ExposeOnSpawn=true, AllowPrivateAccess="true"))
 	FGameplayTag BuildableTag;
-
+	/** @brief Assigned by 'AssignData', retrieved by 'GetBuildableTag'  */
+	UPROPERTY(VisibleInstanceOnly, BlueprintReadOnly, Meta = (ExposeOnSpawn=true, AllowPrivateAccess="true"))
+	FGameplayTag ParentContextTag;
+	
 	/** @brief Assigned by 'AssignData', retrieved by 'GetDirectParentReference'  */
 	UPROPERTY(VisibleInstanceOnly, BlueprintReadWrite, Meta = (ExposeOnSpawn=true, AllowPrivateAccess="true"))
 	class UPDBuildWidgetBase* DirectParentReference = nullptr;
+
+	FGameplayTag ParentMenuContextTag{};
 };
 
 UCLASS()
@@ -100,7 +166,40 @@ public:
 
 	/** @brief Assigned by 'AssignData', retrieved by 'DirectParentReference'  */
 	UPROPERTY(BlueprintReadWrite, Meta = (ExposeOnSpawn=true, AllowPrivateAccess="true"))
-	class UPDBuildWidgetBase* DirectParentReference = nullptr;	
+	class UPDBuildWidgetBase* DirectParentReference = nullptr;
+	
+	FGameplayTag ParentMenuContextTag{};
+};
+
+UCLASS()
+class PDRTSBASE_API UPDBuildContextEntry : public UUserWidget, public IUserObjectListEntry
+{
+	GENERATED_BODY()
+public:
+
+	virtual void NativeOnListItemObjectSet(UObject* ListItemObject) override;
+
+	/** @brief @todo Calls into 'ParentAsMessageWidget->MouseMove' and returns its event reply results */
+	UFUNCTION() FEventReply MouseMove(FGeometry MyGeometry, const FPointerEvent& MouseEvent);
+	/** @brief @todo Calls into 'ParentAsMessageWidget->MouseButtonDown' and returns its event reply results */
+	UFUNCTION() FEventReply MouseButtonDown(FGeometry MyGeometry, const FPointerEvent& MouseEvent);
+	/** @brief @todo Calls into 'ParentAsMessageWidget->MouseButtonUp' and returns its event reply results */
+	UFUNCTION() FEventReply MouseButtonUp(FGeometry MyGeometry, const FPointerEvent& MouseEvent);
+	/** @brief @todo Calls into 'ParentAsMessageWidget->MouseDoubleClick' and returns its event reply results */
+	UFUNCTION() FEventReply MouseDoubleClick(FGeometry MyGeometry, const FPointerEvent& MouseEvent);	
+
+	/** @brief Border for the 'TextContent' text-block widget.*/
+	UPROPERTY(BlueprintReadWrite, Meta=(BindWidget))
+	class UBorder* TextContentBorder = nullptr;	
+	
+	UPROPERTY(Meta = (BindWidget))
+	UTextBlock* ContextTitle = nullptr;
+
+	/** @brief Assigned by 'AssignData', retrieved by 'DirectParentReference'  */
+	UPROPERTY(BlueprintReadWrite, Meta = (ExposeOnSpawn=true, AllowPrivateAccess="true"))
+	class UPDBuildWidgetBase* DirectParentReference = nullptr;
+	
+	FGameplayTag SelfContextTag{};
 };
 
 USTRUCT(Blueprintable)
@@ -109,7 +208,7 @@ struct FPDBuildContextParam
 	GENERATED_BODY()
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Meta = (RowType = "/Script/PDRTSBase.PDBuildContext"))
-	FDataTableRowHandle NewBuildableContext;
+	TArray<FDataTableRowHandle> NewBuildableContext;
 };
 
 UCLASS()
@@ -124,30 +223,52 @@ public:
 	UFUNCTION(BlueprintCallable)
 	void OverwriteBuildContext(const FPDBuildContextParam& NewRowParams);
 
-	/** @brief  Loads 'CurrentBuildableContext' data into the widget */
+	/** @brief  Loads 'CurrentBuildableContexts' data into the widget */
 	UFUNCTION(BlueprintCallable)
-	virtual void LoadBuildContext();
-
+	virtual void LoadBuildContexts();
+	
+	/** @brief  Selects the given context and loads its data into the widget, given that it is part of the CurrentBuildableContexts array */
+	UFUNCTION(BlueprintCallable)
+	virtual void SelectBuildContext(const FGameplayTag& NewSelectedContext);
+	
 	/** @return 'CurrentBuildableContext' */
 	UFUNCTION(BlueprintCallable)
-	virtual FDataTableRowHandle GetCurrentBuildContext() { return CurrentBuildableContext; }
+	virtual TArray<FDataTableRowHandle>& GetCurrentBuildContexts() { return CurrentBuildableContexts; }
 
 	/** @return 'DefaultBuildableContext' */
 	UFUNCTION(BlueprintCallable)
-	virtual FDataTableRowHandle GetDefaultBuildContext() { return DefaultBuildableContext; }
+	virtual TArray<FDataTableRowHandle>& GetDefaultBuildContexts() { return DefaultBuildableContexts; }
+
+	/** @return 'DefaultBuildableContext' */
+	UFUNCTION(BlueprintCallable)
+	virtual const FGameplayTag& GetLastSelectedContextTag() { return LastSelectedContextTag; }
+
+	UFUNCTION(BlueprintCallable)
+	void UpdateSelectedContext(const FGameplayTag& RequestToSelectTag);
 
 	/** @brief Tileview which will display our 'UPDBuildableEntry's */
 	UPROPERTY(BlueprintReadWrite, Meta = (BindWidget))
 	class UTileView* Buildables = nullptr;
 
+	/** @brief Tileview which will display our contexts themselves */
+	UPROPERTY(BlueprintReadWrite, Meta = (BindWidget))
+	class UTileView* BuildContexts = nullptr;
+	
 	/** @brief DefaultBuildContext  */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Meta = (RowType = "/Script/PDRTSBase.PDBuildContext"))
-	FDataTableRowHandle DefaultBuildableContext;
+	TArray<FDataTableRowHandle> DefaultBuildableContexts;
+
+	/** @brief DefaultBuildContext  */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Meta = (RowType = "/Script/PDRTSBase.PDSharedBuildWidgetFlair"))
+	FDataTableRowHandle BuildWidgetFlairHandle;
 	
+	struct FPDSharedBuildWidgetFlair* SelectedWidgetFlair = nullptr;
 private:
 	/** @brief Currently selected build context  */
 	UPROPERTY(VisibleInstanceOnly, BlueprintReadOnly, Meta = (AllowPrivateAccess="true", RowType = "/Script/PDRTSBase.PDBuildContext"))
-	FDataTableRowHandle CurrentBuildableContext;
+	TArray<FDataTableRowHandle> CurrentBuildableContexts;
+
+	FGameplayTag LastSelectedContextTag{};
 };
 
 

@@ -92,7 +92,20 @@ public:
 	// 3. Audio resource
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
 	USoundBase* Buildable_AudioLoop = nullptr;
-	
+};
+
+UCLASS(Blueprintable)
+class UPDBuildContextDataAsset : public UDataAsset
+{
+	GENERATED_BODY()
+public:
+	// 1. Image resource
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	UTexture2D* BuildContext_Texture = nullptr;
+
+	// 2. Material resource
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	UMaterialInstance* BuildContext_MaterialInstance = nullptr;
 };
 
 USTRUCT(Blueprintable)
@@ -108,6 +121,18 @@ struct FPDBuildableData
 };
 
 USTRUCT(Blueprintable)
+struct FPDBuildContextData
+{
+	GENERATED_BODY()
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "RTSBase|WorkerUnits")
+	FText ReadableName{};
+	
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "RTSBase|WorkerUnits")
+	UPDBuildContextDataAsset* DABuildContextAsset = nullptr;
+};
+
+USTRUCT(Blueprintable)
 struct FPDBuildContext : public FTableRowBase
 {
 	GENERATED_BODY()
@@ -118,14 +143,56 @@ struct FPDBuildContext : public FTableRowBase
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "RTSBase|WorkerUnits")
 	FGameplayTag ContextTag{};	
 
-	/** @brief The types of workers that can use this build context */
+	/** @brief The readable name of this buildable context */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "RTSBase|WorkerUnits")
-	TSet<FGameplayTag> AllowedWorkerTypes{};
+	FText ContextReadableName{};	
 	
 	/** @brief The resource data of buildables this context provides */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "RTSBase|WorkerUnits")
 	TMap<FGameplayTag, FPDBuildableData> BuildablesData{};
+
+	/** @brief The resource data of this actual context */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "RTSBase|WorkerUnits")
+	FPDBuildContextData ContextData{};
 };
+
+USTRUCT()
+struct FPDSharedBuildWidgetFlair : public FTableRowBase
+{
+	GENERATED_BODY()
+
+	/** @brief Tint when context is selected */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Meta = (RowType = "/Script/PDRTSBase.PDBuildContext"))	
+	FLinearColor SelectedContextTint = FLinearColor::Gray; 
+	/** @brief Tint when context is not selected */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Meta = (RowType = "/Script/PDRTSBase.PDBuildContext"))	
+	FLinearColor NotSelectedContextTint = FLinearColor::Blue;
+	
+	/** @brief Tint when a buildable is selected */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Meta = (RowType = "/Script/PDRTSBase.PDBuildContext"))	
+	FLinearColor SelectedBuildableTint = FLinearColor::Gray; 
+	/** @brief Tint when a buildable is not selected */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Meta = (RowType = "/Script/PDRTSBase.PDBuildContext"))	
+	FLinearColor NotSelectedBuildableTint = FLinearColor::Blue;	
+};
+
+USTRUCT(Blueprintable)
+struct FPDBuildWorker : public FTableRowBase
+{
+	GENERATED_BODY()
+
+	FPDBuildWorker() = default;
+
+	/** @brief The worker that this entry defines */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "RTSBase|WorkerUnits")
+	FGameplayTag WorkerType{};
+	
+	/** @brief The buildable contexts granted to this worked */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Meta = (RowType = "/Script/PDRTSBase.PDBuildContext"))
+	TArray<FDataTableRowHandle> GrantedContexts;	
+};
+
+// A build menu can have multiple build contexts, each context will in essence be a category 
 
 
 /**
