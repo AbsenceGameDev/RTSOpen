@@ -10,6 +10,7 @@
 #include "RTSOpenCommon.h"
 #include "Containers/Deque.h"
 #include "GameFramework/Pawn.h"
+#include "Interfaces/PDRTSBuilderInterface.h"
 #include "Interfaces/RTSOConversationInterface.h"
 #include "Interfaces/RTSOInputInterface.h"
 #include "GodHandPawn.generated.h"
@@ -27,6 +28,7 @@ class UPDInventoryComponent;
 UCLASS()
 class RTSOPEN_API AGodHandPawn
 	: public APawn
+	, public IPDRTSBuilderInterface
 	, public IRTSOInputInterface
 	, public IRTSOConversationInterface
 {
@@ -59,6 +61,9 @@ public:
 
 	/** @brief Only calls super. Reserved for later use */
 	virtual void OnConstruction(const FTransform& Transform) override;
+
+	/** @brief Only calls super. Reserved for later use */
+	virtual void NewAction_Implementation(ERTSActionMode ActionMode, FGameplayTag ActionTag) override;
 
 	/** @brief Retrieves the ISM Agent component from UPDRTSBaseSubsystem and sets its entity manager*/
 	UFUNCTION()
@@ -207,6 +212,12 @@ public:
 	UPROPERTY(VisibleInstanceOnly, BlueprintReadOnly, Category = "RTS|Pawn|Cursor|Settings")
 	FRTSGodhandState InstanceState;
 	
+	/** @brief The currently selected build context */
+	const FPDBuildContext* CurrentBuildContext;
+
+	/** @brief The currently selected buildable data */
+	const FPDBuildableData* CurrentBuildableData;
+
 	/** @brief Fallback comparison value for a closest distance search when the vector was not valid */
 	static inline constexpr double  InvalidDistance{UE_MAX_FLT * UE_MAX_FLT};
 	/** @brief Fallback comparison value for a closest distance search when the vector was not valid */

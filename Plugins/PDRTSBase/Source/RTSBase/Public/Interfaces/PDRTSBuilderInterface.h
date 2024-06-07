@@ -4,19 +4,21 @@
 #pragma once
 
 #include "CoreMinimal.h"
+#include "GameplayTagContainer.h"
 #include "UObject/Interface.h"
-#include "PDRTSActionInterface.generated.h"
+#include "PDRTSBuilderInterface.generated.h"
 
 /** @brief Unused, @todo decide if needed or if I should rethink this*/
 UENUM()
 enum class ERTSActionMode : uint8
 {
-	Build,
-	Interact,
+	SelectBuildable,
+	SelectContext
 };
 
+
 /** @brief Boilerplate */
-UINTERFACE(MinimalAPI) class UPDRTSActionInterface : public UInterface { GENERATED_BODY() };
+UINTERFACE(MinimalAPI) class UPDRTSBuilderInterface : public UInterface { GENERATED_BODY() };
 
 /**
  * @brief This interface will be placed on pawns or characters we want to perform an action from.
@@ -25,28 +27,28 @@ UINTERFACE(MinimalAPI) class UPDRTSActionInterface : public UInterface { GENERAT
  * @note Unused
  * @todo decide if needed or if I should rethink this
  */
-class PDRTSBASE_API IPDRTSActionInterface
+class PDRTSBASE_API IPDRTSBuilderInterface
 {
 	GENERATED_BODY()
 
 public:
 	/** @brief Unused, @todo decide if needed or if I should rethink this*/
 	UFUNCTION(BlueprintNativeEvent, CallInEditor, Category = "Action|Interface")
-	void StartAction(ERTSActionMode ActionMode, int32 ActionID) const;
-	virtual void StartAction_Implementation(ERTSActionMode ActionMode, int32 ActionID) const
+	void NewAction(ERTSActionMode ActionMode, FGameplayTag ActionTag);
+	virtual void NewAction_Implementation(ERTSActionMode ActionMode, FGameplayTag ActionTag)
 	{
 		// Perform actions
+
+		switch (ActionMode)
+		{
+		case ERTSActionMode::SelectBuildable:
+			break;
+		case ERTSActionMode::SelectContext:
+			break;
+		}
+		
 		return;
 	}
-
-	/** @brief Unused, @todo decide if needed or if I should rethink this*/
-	UFUNCTION(BlueprintNativeEvent, CallInEditor, Category = "Action|Interface")
-	void StopAction(ERTSActionMode ActionMode, int32 ActionID) const;
-	virtual void StopAction_Implementation(ERTSActionMode ActionMode, int32 ActionID) const
-	{
-		// Perform actions
-		return;
-	}	
 public:
 };
 

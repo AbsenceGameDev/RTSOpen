@@ -16,6 +16,7 @@ struct FTransformFragment;
 class UMassCrowdRepresentationSubsystem;
 class AMassVisualizer;
 
+
 void UPDRTSBaseSubsystem::Initialize(FSubsystemCollectionBase& Collection)
 {
 	Super::Initialize(Collection);
@@ -24,11 +25,36 @@ void UPDRTSBaseSubsystem::Initialize(FSubsystemCollectionBase& Collection)
 		WorkTables.Emplace(TablePath.LoadSynchronous());
 	}
 
+	for(const TSoftObjectPtr<UDataTable>& TablePath : GetDefault<UPDRTSSubsystemSettings>()->BuildContextTables)
+	{
+		ProcessBuildContextTable(TablePath);
+	}	
+
 	GetMutableDefault<UPDRTSSubsystemSettings>()->OnSettingChanged().AddLambda(
 		[&](UObject* SettingsToChange, FPropertyChangedEvent& PropertyEvent)
 		{
 			OnDeveloperSettingsChanged(SettingsToChange,PropertyEvent);
 		});
+}
+
+const TCHAR* StrCtxt_ProcessBuildData = *FString("UPDRTSBaseSubsystem::ProcessBuildContextTable");
+void UPDRTSBaseSubsystem::ProcessBuildContextTable(const TSoftObjectPtr<UDataTable>& TablePath)
+{
+	UDataTable* BuildContextTable = TablePath.LoadSynchronous();
+	BuildContextTables.Emplace(BuildContextTable);
+
+	TArray<FPDBuildContext*> BuildContexts;
+	BuildContextTable->GetAllRows<FPDBuildContext>(StrCtxt_ProcessBuildData, BuildContexts);
+
+	for (const FPDBuildContext* BuildContext : BuildContexts)
+	{
+		for (const FDataTableRowHandle& BuildableDatum : BuildContext->BuildablesData)
+		{
+			FPDBuildable* Buildable = BuildableDatum.GetRow<FPDBuildable>("");
+			BuildableData_WTag.Emplace(Buildable->BuildableTag, &Buildable->BuildableData);
+		}
+		
+	}
 }
 
 void UPDRTSBaseSubsystem::DispatchOctreeGeneration()
@@ -184,6 +210,16 @@ const FPDWorkUnitDatum* UPDRTSBaseSubsystem::GetWorkEntry(const FName& JobRowNam
 	return GetWorkEntry(JobTag);
 }
 
+const FPDBuildContext* UPDRTSBaseSubsystem::GetBuildContextEntry(const FGameplayTag& BuildContextTag)
+{
+	return BuildContexts_WTag.Contains(BuildContextTag) ? *BuildContexts_WTag.Find(BuildContextTag) : nullptr;
+}
+
+const FPDBuildableData* UPDRTSBaseSubsystem::GetBuildableData(const FGameplayTag& BuildableTag)
+{
+	return BuildableData_WTag.Contains(BuildableTag) ? *BuildableData_WTag.Find(BuildableTag) : nullptr;
+}
+
 void UPDRTSBaseSubsystem::AssociateArchetypeWithConfigAsset(const FMassArchetypeHandle& Archetype, const TSoftObjectPtr<UMassEntityConfigAsset>& EntityConfig)
 {
 	ConfigAssociations.FindOrAdd(Archetype) = EntityConfig;
@@ -209,6 +245,12 @@ void UPDRTSBaseSubsystem::OnDeveloperSettingsChanged(UObject* SettingsToChange, 
 	{
 		WorkTables.Emplace(TablePath.LoadSynchronous());
 	}
+
+	BuildContextTables.Empty();
+	for(const TSoftObjectPtr<UDataTable>& TablePath : Cast<UPDRTSSubsystemSettings>(SettingsToChange)->BuildContextTables)
+	{
+		ProcessBuildContextTable(TablePath);
+	}		
 }
 
 

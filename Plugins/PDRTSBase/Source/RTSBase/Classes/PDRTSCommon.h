@@ -115,9 +115,28 @@ struct FPDBuildableData
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "RTSBase|WorkerUnits")
 	FText ReadableName{};
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "RTSBase|WorkerUnits")
+	TSubclassOf<AActor> ActorToSpawn{};
 	
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "RTSBase|WorkerUnits")
 	UPDBuildableDataAsset* DABuildAsset = nullptr;
+};
+
+USTRUCT(Blueprintable)
+struct FPDBuildable : public FTableRowBase
+{
+	GENERATED_BODY()
+
+	FPDBuildable() = default;
+
+	/** @brief The tag of this buildable */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "RTSBase|WorkerUnits")
+	FGameplayTag BuildableTag{};	
+
+	/** @brief The data of this buildable */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "RTSBase|WorkerUnits")
+	FPDBuildableData BuildableData{};	
 };
 
 USTRUCT(Blueprintable)
@@ -148,8 +167,8 @@ struct FPDBuildContext : public FTableRowBase
 	FText ContextReadableName{};	
 	
 	/** @brief The resource data of buildables this context provides */
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "RTSBase|WorkerUnits")
-	TMap<FGameplayTag, FPDBuildableData> BuildablesData{};
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "RTSBase|WorkerUnits", Meta = (RowType = "/Script/PDRTSBase.PDBuildable"))
+	TArray<FDataTableRowHandle> BuildablesData{};
 
 	/** @brief The resource data of this actual context */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "RTSBase|WorkerUnits")
@@ -162,17 +181,17 @@ struct FPDSharedBuildWidgetFlair : public FTableRowBase
 	GENERATED_BODY()
 
 	/** @brief Tint when context is selected */
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Meta = (RowType = "/Script/PDRTSBase.PDBuildContext"))	
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)	
 	FLinearColor SelectedContextTint = FLinearColor::Gray; 
 	/** @brief Tint when context is not selected */
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Meta = (RowType = "/Script/PDRTSBase.PDBuildContext"))	
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)	
 	FLinearColor NotSelectedContextTint = FLinearColor::Blue;
 	
 	/** @brief Tint when a buildable is selected */
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Meta = (RowType = "/Script/PDRTSBase.PDBuildContext"))	
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)	
 	FLinearColor SelectedBuildableTint = FLinearColor::Gray; 
 	/** @brief Tint when a buildable is not selected */
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Meta = (RowType = "/Script/PDRTSBase.PDBuildContext"))	
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)	
 	FLinearColor NotSelectedBuildableTint = FLinearColor::Blue;	
 };
 

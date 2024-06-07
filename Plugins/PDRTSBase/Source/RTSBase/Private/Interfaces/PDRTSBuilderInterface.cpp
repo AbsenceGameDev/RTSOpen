@@ -1,5 +1,5 @@
 /* @author: Ario Amin @ Permafrost Development. @copyright: Full BSL(1.1) License included at bottom of the file  */
-#include "Interfaces/PDRTSActionInterface.h"
+#include "Interfaces/PDRTSBuilderInterface.h"
 
 /**
 Business Source License 1.1

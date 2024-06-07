@@ -735,6 +735,26 @@ void AGodHandPawn::OnConstruction(const FTransform& Transform)
 	Super::OnConstruction(Transform);
 }
 
+void AGodHandPawn::NewAction_Implementation(ERTSActionMode ActionMode, FGameplayTag ActionTag)
+{
+	IPDRTSBuilderInterface::NewAction_Implementation(ActionMode, ActionTag);
+
+	UPDRTSBaseSubsystem* RTSSubSystem = GEngine->GetEngineSubsystem<UPDRTSBaseSubsystem>();
+	switch (ActionMode)
+	{
+	case ERTSActionMode::SelectBuildable:
+		CurrentBuildableData = RTSSubSystem->GetBuildableData(ActionTag); // If null clear current
+
+		// @todo spawn ghost, pin to grid
+		break;
+	case ERTSActionMode::SelectContext:
+		CurrentBuildContext = RTSSubSystem->GetBuildContextEntry(ActionTag); // If null clear current
+
+		// @todo spawn ghost, pin to grid
+		break;
+	}
+}
+
 void AGodHandPawn::InitializeISMAgent()
 {
 	const FLatentActionInfo DelayInfo{0,0, TEXT("InitializeISMAgent"), this};

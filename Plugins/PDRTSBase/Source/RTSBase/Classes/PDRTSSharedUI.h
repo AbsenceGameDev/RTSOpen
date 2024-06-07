@@ -29,7 +29,7 @@ public:
 	void AssignData(
 		const FText& InBuildableTitle,
 		const FGameplayTag& InContextTag,
-		const TSet<FGameplayTag>& InInnerBuildableTags,
+		const TArray<FDataTableRowHandle>& InInnerBuildableTags,
 		class UPDBuildWidgetBase* InDirectParentReference)
 	{
 		BuildContextTitle = InBuildableTitle;
@@ -48,7 +48,7 @@ public:
 	
 	/** @brief Access to private InnerBuildableTags value */
 	UFUNCTION(BlueprintCallable)
-	const TSet<FGameplayTag>& GetBuildableTags() const { return InnerBuildableTags; };	
+	const TArray<FDataTableRowHandle>& GetBuildableTags() const { return InnerBuildableTags; };	
 
 	/** @brief Access to private DirectParentReference value */
 	UFUNCTION(BlueprintCallable)
@@ -65,7 +65,7 @@ private:
 	
 	/** @brief Assigned by 'AssignData', retrieved by 'GetBuildableTag'  */
 	UPROPERTY(VisibleInstanceOnly, BlueprintReadOnly, Meta = (ExposeOnSpawn=true, AllowPrivateAccess="true"))
-	TSet<FGameplayTag> InnerBuildableTags;
+	TArray<FDataTableRowHandle> InnerBuildableTags;
 
 	/** @brief Assigned by 'AssignData', retrieved by 'GetDirectParentReference'  */
 	UPROPERTY(VisibleInstanceOnly, BlueprintReadWrite, Meta = (ExposeOnSpawn=true, AllowPrivateAccess="true"))
@@ -164,6 +164,9 @@ public:
 	UPROPERTY(BlueprintReadWrite)
 	bool bCanBuild = true;
 
+	UPROPERTY(VisibleInstanceOnly, BlueprintReadOnly)
+	FGameplayTag BuildableTag;
+	
 	/** @brief Assigned by 'AssignData', retrieved by 'DirectParentReference'  */
 	UPROPERTY(BlueprintReadWrite, Meta = (ExposeOnSpawn=true, AllowPrivateAccess="true"))
 	class UPDBuildWidgetBase* DirectParentReference = nullptr;
@@ -245,6 +248,10 @@ public:
 
 	UFUNCTION(BlueprintCallable)
 	void UpdateSelectedContext(const FGameplayTag& RequestToSelectTag);
+	void SelectBuildable(const FGameplayTag& NewSelectedBuildable);
+
+	UFUNCTION(BlueprintCallable)
+	void UpdateSelectedBuildable(const FGameplayTag& RequestToSelectTag, const bool bSelect);	
 
 	/** @brief Tileview which will display our 'UPDBuildableEntry's */
 	UPROPERTY(BlueprintReadWrite, Meta = (BindWidget))
@@ -269,6 +276,7 @@ private:
 	TArray<FDataTableRowHandle> CurrentBuildableContexts;
 
 	FGameplayTag LastSelectedContextTag{};
+	FGameplayTag LastSelectedBuildableTag{};
 };
 
 

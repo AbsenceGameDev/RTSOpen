@@ -164,7 +164,7 @@ class PDRTSBASE_API UPDRTSBaseSubsystem : public UEngineSubsystem
 {
 	GENERATED_BODY()
 public:
-
+	void ProcessBuildContextTable(const TSoftObjectPtr<UDataTable>& TablePath);
 	/** @brief Loads the worktables when the subsystem initializes during engine startup, far earlier than any world exists.
 	 * It uses developer settings (UPDRTSSubsystemSettings) to read and write selected worktable paths via config, and or project settings window  
 	 */
@@ -205,6 +205,12 @@ public:
 	const FPDWorkUnitDatum* GetWorkEntry(const FGameplayTag& JobTag);
 	/** @brief Returns the default work data via it's rowname in the table it was sourced from*/
 	const FPDWorkUnitDatum* GetWorkEntry(const FName& JobRowName);
+
+	/** @brief Returns the default build context data via it's BuildContext-tag*/
+	const FPDBuildContext* GetBuildContextEntry(const FGameplayTag& BuildContextTag);
+	/** @brief Returns the default Buildable data via it's Buildable-tag*/
+	const FPDBuildableData* GetBuildableData(const FGameplayTag& BuildableTag);
+
 	
 	/** @brief Associates and FMassArchetypeHandle with a config asset, so we can retrieve this info back to our save system fast when needed */
 	void AssociateArchetypeWithConfigAsset(const FMassArchetypeHandle& Archetype, const TSoftObjectPtr<UMassEntityConfigAsset>& EntityConfig);
@@ -215,11 +221,19 @@ public:
 	/** @brief Does some portable iso-approved 'hacks' to fetch the all the mass ISM's */
 	static const TArray<TObjectPtr<UInstancedStaticMeshComponent>>& GetMassISMs(const UWorld* InWorld);
 
+
 public:	
 	/** @brief Work tables used by subsystem to organize ai-jobs */
 	UPROPERTY()
-	TArray<UDataTable*> WorkTables;
+	TArray<UDataTable*> WorkTables{};
 
+	/** @brief Build context tables held by subsystem for others to fetch */
+	UPROPERTY()
+	TArray<UDataTable*> BuildContextTables{};
+
+	TMap<FGameplayTag, FPDBuildContext*> BuildContexts_WTag{};	
+	TMap<FGameplayTag, FPDBuildableData*> BuildableData_WTag{};	
+	
 	/** @brief Selection group navpath map, Keyed by owner ID, valued by selection group navdata container*/
 	UPROPERTY()
 	TMap<int32 /*OwnerID*/, FPDWrappedSelectionGroupNavData> SelectionGroupNavData{};
@@ -406,6 +420,10 @@ public:
 	/** @brief Work tables soft objects */
 	UPROPERTY(Config, EditAnywhere, Category = "Worker AI Subsystem", Meta = (RequiredAssetDataTags="RowStructure=/Script/PDRTSBase.PDWorkUnitDatum"))
 	TArray<TSoftObjectPtr<UDataTable>> WorkTables;
+
+	/** @brief Work tables soft objects */
+	UPROPERTY(Config, EditAnywhere, Category = "Worker AI Subsystem", Meta = (RequiredAssetDataTags="RowStructure=/Script/PDRTSBase.PDBuildContext"))
+	TArray<TSoftObjectPtr<UDataTable>> BuildContextTables;	
 	
 };
 
