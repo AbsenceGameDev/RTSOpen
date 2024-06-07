@@ -46,6 +46,9 @@ public:
 	/** @brief Rotates towards the requested direction, rotates in 90 degree increments, snaps to worlds cardinal directions*/
 	void RotationTick(float& DeltaTime);
 	
+	/** @brief Updated the current buildable ghost in the world-grid */
+	void BuildableGhostTick(float DeltaTime);
+	
 	/** @brief Offset own actor location based on tracked actor, to keep in view */
 	void TrackUnitMovement();
 
@@ -217,6 +220,10 @@ public:
 
 	/** @brief The currently selected buildable data */
 	const FPDBuildableData* CurrentBuildableData;
+
+	/** @brief The ghost mesh of the currently selected buildable */
+	UPROPERTY()
+	AActor* CurrentGhost = nullptr;
 
 	/** @brief Fallback comparison value for a closest distance search when the vector was not valid */
 	static inline constexpr double  InvalidDistance{UE_MAX_FLT * UE_MAX_FLT};

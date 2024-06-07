@@ -14,6 +14,12 @@
 #include "Components/PDInteractComponent.h"
 #include "Components/PDInventoryComponent.h"
 
+/* Permadev - Mass */
+#include "AI/Mass/PDMassFragments.h"
+
+/* Permadev - Input */
+#include "Core/RTSOInputStackSubsystem.h"
+
 /* Engine - Components */
 #include "Camera/CameraComponent.h"
 #include "Components/SphereComponent.h"
@@ -32,17 +38,18 @@
 #include "NiagaraDataInterfaceArrayFunctionLibrary.h"
 #include "Chaos/DebugDrawQueue.h"
 
-// Navigation
-#include <functional>
-
-#include "ConversationParticipantComponent.h"
+/* Engine - Mass Representation */
 #include "MassCrowdRepresentationSubsystem.h"
 #include "MassRepresentationFragments.h"
+
+/* Engine - Conversation */
+#include "ConversationParticipantComponent.h"
+
+/* Engine - Navigation */
 #include "NavigationPath.h"
 #include "NavigationSystem.h"
-#include "AI/Mass/PDMassFragments.h"
-#include "Core/RTSOInputStackSubsystem.h"
 
+/* Engine - Kismet */
 #include "Kismet/KismetMathLibrary.h"
 #include "Kismet/KismetSystemLibrary.h"
 
@@ -57,6 +64,8 @@ void AGodHandPawn::Tick(float DeltaTime)
 	TrackMovement(DeltaTime);
 	HoverTick(DeltaTime);
 	RotationTick(DeltaTime);
+
+	BuildableGhostTick(DeltaTime);
 
 	if (InstanceState.bUpdatePathOnTick)
 	{
@@ -167,6 +176,43 @@ void AGodHandPawn::RotationTick(float& DeltaTime)
 	}
 	
 	AddActorLocalRotation(FRotator(0, DeltaYaw * Direction, 0));
+}
+
+void AGodHandPawn::BuildableGhostTick(float DeltaTime)
+{
+	if (CurrentBuildableData == nullptr)
+	{
+		if (CurrentGhost != nullptr)
+		{
+			CurrentGhost->SetActorHiddenInGame(true);
+		}
+		
+		return;
+	}
+
+	// Calculate stepped position, collision is our source of truth for our location
+	const FVector& TrueLocation = Collision->GetComponentLocation();
+
+	// @todo set up developer settings for UPDDynamicHashGridSubsystem grid size
+	const UPDHashGridSubsystem* HashGridSubsystem = GEngine->GetEngineSubsystem<UPDHashGridSubsystem>();
+	const FVector SteppedLocation = HashGridSubsystem->GetCellVector(TrueLocation);
+	
+	if (CurrentGhost == nullptr || CurrentGhost->GetClass() != CurrentBuildableData->ActorToSpawn)
+	{
+		CurrentGhost = GetWorld()->SpawnActor(CurrentBuildableData->ActorToSpawn, &SteppedLocation);
+		// @todo Create and call event to set the mesh visuals to reflect that it's a ghost 
+	}
+
+	const FVector DeltaLocation = CurrentGhost->GetActorLocation() - SteppedLocation;
+	if (DeltaLocation.IsNearlyZero(HashGridSubsystem->UniformCellSize * 0.5f))
+	{
+		return;
+	}
+	
+	// const FVector WorldSpace =  CurrentGhost->GetActorLocation();	
+	// const FVector InterpLocation = UKismetMathLibrary::VInterpTo(WorldSpace, SteppedLocation, DeltaTime, InstanceSettings.SelectionRescaleSpeed);	
+	CurrentGhost->SetActorLocation(SteppedLocation);
+	
 }
 
 void AGodHandPawn::UpdateMagnification()

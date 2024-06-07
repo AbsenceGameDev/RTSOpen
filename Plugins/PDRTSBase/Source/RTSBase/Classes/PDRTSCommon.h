@@ -5,6 +5,8 @@
 #include "CoreMinimal.h"
 #include "GameplayTagContainer.h"
 #include "NativeGameplayTags.h"
+#include "Subsystems/EngineSubsystem.h"
+
 #include "PDRTSCommon.generated.h"
 
 DECLARE_LOG_CATEGORY_CLASS(PDLog_RTSBase, Log, All);
@@ -57,7 +59,7 @@ enum class EPDVertexAnimSelector : uint8
 
 /** @todo Write actual support for 'RequiredUnitTypeTags' */
 USTRUCT(BlueprintType, Blueprintable)
-struct FPDWorkUnitDatum : public FTableRowBase
+struct PDRTSBASE_API FPDWorkUnitDatum : public FTableRowBase
 {
 	GENERATED_BODY()
 
@@ -77,7 +79,7 @@ struct FPDWorkUnitDatum : public FTableRowBase
 };
 
 UCLASS(Blueprintable)
-class UPDBuildableDataAsset : public UDataAsset
+class PDRTSBASE_API UPDBuildableDataAsset : public UDataAsset
 {
 	GENERATED_BODY()
 public:
@@ -95,7 +97,7 @@ public:
 };
 
 UCLASS(Blueprintable)
-class UPDBuildContextDataAsset : public UDataAsset
+class PDRTSBASE_API UPDBuildContextDataAsset : public UDataAsset
 {
 	GENERATED_BODY()
 public:
@@ -109,7 +111,7 @@ public:
 };
 
 USTRUCT(Blueprintable)
-struct FPDBuildableData
+struct PDRTSBASE_API FPDBuildableData
 {
 	GENERATED_BODY()
 
@@ -124,7 +126,7 @@ struct FPDBuildableData
 };
 
 USTRUCT(Blueprintable)
-struct FPDBuildable : public FTableRowBase
+struct PDRTSBASE_API FPDBuildable : public FTableRowBase
 {
 	GENERATED_BODY()
 
@@ -140,7 +142,7 @@ struct FPDBuildable : public FTableRowBase
 };
 
 USTRUCT(Blueprintable)
-struct FPDBuildContextData
+struct PDRTSBASE_API FPDBuildContextData
 {
 	GENERATED_BODY()
 
@@ -152,7 +154,7 @@ struct FPDBuildContextData
 };
 
 USTRUCT(Blueprintable)
-struct FPDBuildContext : public FTableRowBase
+struct PDRTSBASE_API FPDBuildContext : public FTableRowBase
 {
 	GENERATED_BODY()
 
@@ -176,7 +178,7 @@ struct FPDBuildContext : public FTableRowBase
 };
 
 USTRUCT()
-struct FPDSharedBuildWidgetFlair : public FTableRowBase
+struct PDRTSBASE_API FPDSharedBuildWidgetFlair : public FTableRowBase
 {
 	GENERATED_BODY()
 
@@ -196,7 +198,7 @@ struct FPDSharedBuildWidgetFlair : public FTableRowBase
 };
 
 USTRUCT(Blueprintable)
-struct FPDBuildWorker : public FTableRowBase
+struct PDRTSBASE_API FPDBuildWorker : public FTableRowBase
 {
 	GENERATED_BODY()
 
@@ -211,7 +213,159 @@ struct FPDBuildWorker : public FTableRowBase
 	TArray<FDataTableRowHandle> GrantedContexts;	
 };
 
-// A build menu can have multiple build contexts, each context will in essence be a category 
+USTRUCT()
+struct PDRTSBASE_API FPDGridCell : public FIntVector 
+{
+	GENERATED_BODY()
+	
+	/** @brief */
+	inline FVector ToFloatVector() const
+	{
+		FVector RetVector;
+		RetVector.X = this->X;
+		RetVector.Y = this->Y;
+		RetVector.Z = this->Z;
+		return RetVector;
+	}		
+
+	/** @brief  Compares if cell is neighbour in X and Y */
+	bool IsNeighbour2D(const FPDGridCell& OtherCell) const
+	{
+		const FPDGridCell Delta = OtherCell - *this; 
+		return Delta.X >= -1 && Delta.X <= 1 && Delta.Y >= -1 && Delta.Y <= 1;
+	}
+	
+	/** @brief  Compares if cell is neighbour in X, Y and Z */
+	bool IsNeighbour3D(const FPDGridCell& OtherCell) const
+	{
+		const FPDGridCell Delta = OtherCell - *this; 
+		return IsNeighbour2D(OtherCell) && Delta.Z >= -1 && Delta.Z <= 1 ;
+	}
+
+	/** @brief  */
+	bool operator==(const FPDGridCell & OtherCell) const
+	{
+		return this->X == OtherCell.X
+		    && this->Y == OtherCell.Y
+		    && this->Z == OtherCell.Z;
+	}
+        
+	/** @brief  */
+	FPDGridCell& operator+=(const FPDGridCell& OtherCell) 
+	{
+		*this = *this + OtherCell;
+		return *this;
+	}
+        
+	/** @brief  */
+	FPDGridCell& operator-=(const FPDGridCell & OtherCell) 
+	{
+		*this = *this - OtherCell;
+		return *this;
+	}
+
+	/** @brief  */
+	FPDGridCell operator+(const FPDGridCell & OtherCell) const
+	{
+		FPDGridCell ThisCopy = *this;
+		ThisCopy.X += OtherCell.X;
+		ThisCopy.Y += OtherCell.Y;
+		ThisCopy.Z += OtherCell.Z;
+		return ThisCopy;
+	}
+	
+	/** @brief  */
+	FPDGridCell operator-(const FPDGridCell& OtherCell) const
+	{
+		FPDGridCell ThisCopy = *this;
+		ThisCopy.X -= OtherCell.X;
+		ThisCopy.Y -= OtherCell.Y;
+		ThisCopy.Z -= OtherCell.Z;
+		return ThisCopy;
+	}
+};
+
+UCLASS(Config = "Game", DefaultConfig)
+class PDRTSBASE_API UPDHashGridDeveloperSettings : public UDeveloperSettings
+{
+	GENERATED_BODY()
+	
+public:
+	UPDHashGridDeveloperSettings(){}
+	
+	/** @brief Default grid data */
+	UPROPERTY(Config, EditAnywhere, Category = "HashGrid")
+	double UniformCellSize = 200.0f; 
+	
+};
+
+/** @brief  */
+UCLASS()
+class PDRTSBASE_API UPDHashGridSubsystem : public UEngineSubsystem
+{
+	GENERATED_BODY()
+
+public:
+	virtual void Initialize(FSubsystemCollectionBase& Collection) final override;
+
+#if WITH_EDITOR
+	void OnDeveloperSettingsChanged(UObject* SettingsToChange, const FPropertyChangedEvent& PropertyEvent);
+#endif
+
+	/** @brief  */
+    inline static struct FPDGridCell FloorVectorC(const FVector&& LocationToCell)
+    {
+        return FPDGridCell
+        {
+            {
+				static_cast<int32_t>(FMath::Floor(LocationToCell.X)),
+				static_cast<int32_t>(FMath::Floor(LocationToCell.Y)),
+				static_cast<int32_t>(FMath::Floor(LocationToCell.Z))
+            }
+        };
+    }
+
+	inline static FVector FloorVectorV(const FVector&& LocationToCell)
+    {
+    	return FVector
+		{
+		    FMath::Floor(LocationToCell.X),
+			FMath::Floor(LocationToCell.Y),
+			FMath::Floor(LocationToCell.Z)
+		};
+    }	
+  
+    /** @brief  */
+    inline FPDGridCell GetCellIndex(const FVector& LocationToCell) const
+    {
+        return FloorVectorC(LocationToCell / UniformCellSize);
+    }
+
+	/** @brief  */
+	inline FVector GetCellVector(const FVector& LocationToCell) const
+    {
+    	return FloorVectorV(LocationToCell / UniformCellSize);
+    }	
+
+    /** @brief Slow if used often, instead cache a pointer to the subsystem and call it 'GetCellIndex' instead  */
+	static inline FPDGridCell GetCellIndexStatic(const FVector& LocationToCell)
+    {
+    	const double CellSize = GEngine->GetEngineSubsystem<UPDHashGridSubsystem>()->UniformCellSize;
+    	
+    	return FloorVectorC(LocationToCell / CellSize);
+    }
+
+	/** @brief Slow if used often, instead cache a pointer to the subsystem and call it 'GetCellIndex' instead  */
+	static inline FVector GetCellVectorStatic(const FVector& LocationToCell)
+    {
+    	const double CellSize = GEngine->GetEngineSubsystem<UPDHashGridSubsystem>()->UniformCellSize;
+    	
+    	return FloorVectorV(LocationToCell / CellSize);
+    }		
+
+	UPROPERTY()
+    double UniformCellSize = 200.0f; 
+};
 
 
 /**

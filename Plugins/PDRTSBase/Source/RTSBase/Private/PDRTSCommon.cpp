@@ -32,6 +32,31 @@ UE_DEFINE_GAMEPLAY_TAG(TAG_BUILD_ContextMenu_Builder_Intermediate, "BUILD.Contex
 UE_DEFINE_GAMEPLAY_TAG(TAG_BUILD_ContextMenu_Builder_Advanced, "BUILD.ContextMenu.Builder.Advanced");
 UE_DEFINE_GAMEPLAY_TAG(TAG_BUILD_ContextMenu_Builder_Expert, "BUILD.ContextMenu.Builder.Expert");
 
+void UPDHashGridSubsystem::Initialize(FSubsystemCollectionBase& Collection)
+{
+	Super::Initialize(Collection);
+
+	UniformCellSize = GetDefault<UPDHashGridDeveloperSettings>()->UniformCellSize;
+
+#if WITH_EDITOR
+	GetMutableDefault<UPDHashGridDeveloperSettings>()->OnSettingChanged().AddLambda(
+		[&](UObject* SettingsToChange, FPropertyChangedEvent& PropertyEvent)
+		{
+			OnDeveloperSettingsChanged(SettingsToChange,PropertyEvent);
+		});	
+#endif // WITH_EDITOR
+}
+
+#if WITH_EDITOR
+void UPDHashGridSubsystem::OnDeveloperSettingsChanged(UObject* SettingsToChange, const FPropertyChangedEvent& PropertyEvent)
+{
+	const UPDHashGridDeveloperSettings* AsSettings = Cast<UPDHashGridDeveloperSettings>(SettingsToChange);
+	if (AsSettings == nullptr) { return; }
+	
+	UniformCellSize = AsSettings->UniformCellSize;
+}
+#endif // WITH_EDITOR
+
 
 /**
 Business Source License 1.1
