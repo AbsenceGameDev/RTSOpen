@@ -1,40 +1,5 @@
 /* @author: Ario Amin @ Permafrost Development. @copyright: Full BSL(1.1) License included at bottom of the file  */
-/** @todo rethink if needed/wanted or if this plugin should only use entities */
-
-#pragma once
-
-#include "CoreMinimal.h"
-#include "UObject/Interface.h"
-#include "PDRTSActorInterface.generated.h"
-
-/** @brief Boilerplate */
-UINTERFACE(MinimalAPI) class UPDRTSActorInterface : public UInterface { GENERATED_BODY() };
-
-/**
- * @brief This interface will be placed on actors we want to perform an action in.
- * @note Allows us to return an ID thath will be associated with the actor
- * 
- * @note Unused
- * @todo decide if needed or if I should rethink this
- */
-class PDRTSBASE_API IPDRTSActorInterface
-{
-	GENERATED_BODY()
-
-public:
-	/** @brief Unused, @todo decide if needed or if I should rethink this*/
-	UFUNCTION(BlueprintNativeEvent, CallInEditor, Category = "Actor|Interface")
-	void GetActorActionID() const;
-	virtual int32 GetActorActionID_Implementation() const
-	{
-		// Perform actions
-		return INDEX_NONE;
-	}
-public:
-};
-
-
-
+#include "Interfaces/PDRTSBuildableGhostInterface.h"
 
 /**
 Business Source License 1.1

@@ -11,24 +11,27 @@
 #include "NavigationSystem.h"
 #include "RTSBase/Classes/PDRTSCommon.h"
 
-
 struct FTransformFragment;
 class UMassCrowdRepresentationSubsystem;
 class AMassVisualizer;
 
-
 void UPDRTSBaseSubsystem::Initialize(FSubsystemCollectionBase& Collection)
 {
 	Super::Initialize(Collection);
-	for(const TSoftObjectPtr<UDataTable>& TablePath : GetDefault<UPDRTSSubsystemSettings>()->WorkTables)
+	for (const TSoftObjectPtr<UDataTable>& TablePath : GetDefault<UPDRTSSubsystemSettings>()->WorkTables)
 	{
 		WorkTables.Emplace(TablePath.LoadSynchronous());
 	}
 
-	for(const TSoftObjectPtr<UDataTable>& TablePath : GetDefault<UPDRTSSubsystemSettings>()->BuildContextTables)
+	for (const TSoftObjectPtr<UDataTable>& TablePath : GetDefault<UPDRTSSubsystemSettings>()->BuildContextTables)
 	{
 		ProcessBuildContextTable(TablePath);
-	}	
+	}
+
+	for (const TSoftObjectPtr<UDataTable>& TablePath : GetDefault<UPDRTSSubsystemSettings>()->BuildWorkerTables)
+	{
+		ProcessBuildContextTable(TablePath);
+	}		
 
 	GetMutableDefault<UPDRTSSubsystemSettings>()->OnSettingChanged().AddLambda(
 		[&](UObject* SettingsToChange, FPropertyChangedEvent& PropertyEvent)
@@ -41,19 +44,32 @@ const TCHAR* StrCtxt_ProcessBuildData = *FString("UPDRTSBaseSubsystem::ProcessBu
 void UPDRTSBaseSubsystem::ProcessBuildContextTable(const TSoftObjectPtr<UDataTable>& TablePath)
 {
 	UDataTable* BuildContextTable = TablePath.LoadSynchronous();
-	BuildContextTables.Emplace(BuildContextTable);
-
-	TArray<FPDBuildContext*> BuildContexts;
-	BuildContextTable->GetAllRows<FPDBuildContext>(StrCtxt_ProcessBuildData, BuildContexts);
-
-	for (const FPDBuildContext* BuildContext : BuildContexts)
-	{
-		for (const FDataTableRowHandle& BuildableDatum : BuildContext->BuildablesData)
-		{
-			FPDBuildable* Buildable = BuildableDatum.GetRow<FPDBuildable>("");
-			BuildableData_WTag.Emplace(Buildable->BuildableTag, &Buildable->BuildableData);
-		}
+	if (BuildContextTable == nullptr) { return; }
 		
+	BuildContextTables.Emplace(BuildContextTable);
+	if (BuildContextTable->RowStruct == FPDBuildContext::StaticStruct())
+	{
+		TArray<FPDBuildContext*> BuildContexts;
+		BuildContextTable->GetAllRows<FPDBuildContext>(StrCtxt_ProcessBuildData, BuildContexts);
+		for (const FPDBuildContext* BuildContext : BuildContexts)
+		{
+			for (const FDataTableRowHandle& BuildableDatum : BuildContext->BuildablesData)
+			{
+				FPDBuildable* Buildable = BuildableDatum.GetRow<FPDBuildable>("");
+				BuildableData_WTag.Emplace(Buildable->BuildableTag, &Buildable->BuildableData);
+			}
+			BuildContexts_WTag.Emplace(BuildContext->ContextTag, BuildContext);
+		}
+	}
+	
+	if (BuildContextTable->RowStruct == FPDBuildWorker::StaticStruct())
+	{
+		TArray<FPDBuildWorker*> WorkerGrantedContexts;
+		BuildContextTable->GetAllRows<FPDBuildWorker>(StrCtxt_ProcessBuildData, WorkerGrantedContexts);
+		for (const FPDBuildWorker* GrantedContext : WorkerGrantedContexts)
+		{
+			GrantedBuildContexts_WorkerTag.Emplace(GrantedContext->WorkerType, GrantedContext);
+		}
 	}
 }
 
@@ -81,7 +97,6 @@ void UPDRTSBaseSubsystem::SetupOctreeWithNewWorld(UWorld* NewWorld)
 		
 	static const FString BuildString = "UPDRTSBaseSubsystem::SetupOctreeWithNewWorld";
 	UE_LOG(PDLog_RTSBase, Log, TEXT("%s"), *BuildString);
-
 	
 	if (NewWorld == nullptr || NewWorld->IsInitialized() == false)
 	{
@@ -228,6 +243,12 @@ void UPDRTSBaseSubsystem::AssociateArchetypeWithConfigAsset(const FMassArchetype
 TSoftObjectPtr<UMassEntityConfigAsset> UPDRTSBaseSubsystem::GetConfigAssetForArchetype(const FMassArchetypeHandle& Archetype)
 {
 	return ConfigAssociations.Contains(Archetype) ? *ConfigAssociations.Find(Archetype) : TSoftObjectPtr<UMassEntityConfigAsset>{nullptr};
+}
+
+void UPDRTSBaseSubsystem::WorldInit(UWorld* World)
+{
+	check(World)
+	EntityManager = &World->GetSubsystem<UMassEntitySubsystem>()->GetEntityManager();	
 }
 
 void UPDRTSBaseSubsystem::OnDeveloperSettingsChanged(UObject* SettingsToChange, FPropertyChangedEvent& PropertyEvent)

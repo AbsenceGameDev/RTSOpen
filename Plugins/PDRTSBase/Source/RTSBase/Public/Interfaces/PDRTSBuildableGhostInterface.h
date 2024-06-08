@@ -1,5 +1,43 @@
 /* @author: Ario Amin @ Permafrost Development. @copyright: Full BSL(1.1) License included at bottom of the file  */
-#include "Interfaces/PDRTSActorInterface.h"
+/** @todo rethink if needed/wanted or if this plugin should only use entities */
+
+#pragma once
+
+#include "CoreMinimal.h"
+#include "UObject/Interface.h"
+#include "PDRTSBuildableGhostInterface.generated.h"
+
+/** @brief Boilerplate */
+UINTERFACE(MinimalAPI) class UPDRTSBuildableGhostInterface : public UInterface { GENERATED_BODY() };
+
+/**
+ * @brief This interface will be placed on actors we want to be able to act as a ghost.
+ * @note Allows us to call some functions when spawning this where it can be nestled into the same actor as the actor you want to ghost
+ * 
+ */
+class PDRTSBASE_API IPDRTSBuildableGhostInterface
+{
+	GENERATED_BODY()
+
+public:
+	/** @brief */
+	UFUNCTION(BlueprintNativeEvent, CallInEditor, Category = "Actor|Interface|Ghost")
+	void OnSpawnedAsGhost();
+	virtual void OnSpawnedAsGhost_Implementation()
+	{
+	}
+
+	/** @brief */
+	UFUNCTION(BlueprintNativeEvent, CallInEditor, Category = "Actor|Interface|Ghost")
+	void OnSpawnedAsMain();
+	virtual void OnSpawnedAsMain_Implementation()
+	{
+	}	
+public:
+};
+
+
+
 
 /**
 Business Source License 1.1

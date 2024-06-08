@@ -338,13 +338,13 @@ public:
     /** @brief  */
     inline FPDGridCell GetCellIndex(const FVector& LocationToCell) const
     {
-        return FloorVectorC(LocationToCell / UniformCellSize);
+        return FloorVectorC(LocationToCell * UniformCellSize);
     }
 
 	/** @brief  */
 	inline FVector GetCellVector(const FVector& LocationToCell) const
     {
-    	return FloorVectorV(LocationToCell / UniformCellSize);
+    	return FloorVectorV(LocationToCell * UniformCellSize);
     }	
 
     /** @brief Slow if used often, instead cache a pointer to the subsystem and call it 'GetCellIndex' instead  */

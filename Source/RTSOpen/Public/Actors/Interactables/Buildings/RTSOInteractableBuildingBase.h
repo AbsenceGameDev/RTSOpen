@@ -3,6 +3,7 @@
 
 #include "CoreMinimal.h"
 #include "Actors/PDInteractActor.h"
+#include "Interfaces/PDRTSBuildableGhostInterface.h"
 #include "RTSOInteractableBuildingBase.generated.h"
 
 /**
@@ -10,7 +11,9 @@
  * @todo declare and define the OnInteract interface function
  */
 UCLASS()
-class RTSOPEN_API ARTSOInteractableBuildingBase : public APDInteractActor
+class RTSOPEN_API ARTSOInteractableBuildingBase
+	: public APDInteractActor
+	, public IPDRTSBuildableGhostInterface
 {
 	GENERATED_BODY()
 
@@ -24,11 +27,22 @@ public:
 	
 	/** @brief adds 'JobTag' to a 'FGameplayTagContainer' and returns it */
 	virtual FGameplayTagContainer GetGenericTagContainer_Implementation() const override;
+	
+	/* IPDRTSBuildableGhostInterface Interface Start */
+	virtual void OnSpawnedAsGhost_Implementation() override;
+	virtual void OnSpawnedAsMain_Implementation()  override;
+	/* IPDRTSBuildableGhostInterface Interface End */
 
 private:
 	/** @brief JobTag associated with this actor */
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Meta = (AllowPrivateAccess="true"))
-	FGameplayTag JobTag{};	
+	FGameplayTag JobTag{};
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Meta = (AllowPrivateAccess="true"))
+	UMaterialInstance* MainMat = nullptr;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Meta = (AllowPrivateAccess="true"))
+	UMaterialInstance* GhostMat = nullptr;	
 };
 
 

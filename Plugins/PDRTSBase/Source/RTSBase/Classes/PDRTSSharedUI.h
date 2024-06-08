@@ -7,16 +7,13 @@
 #include "GameplayTagContainer.h"
 #include "Blueprint/IUserObjectListEntry.h"
 #include "Blueprint/UserWidget.h"
-#include "Containers/Deque.h"
 #include "PDRTSSharedUI.generated.h"
-
 
 class UImage;
 class UTextBlock;
 struct FPDBuildContext;
 
 DECLARE_LOG_CATEGORY_CLASS(PDLog_RTSBaseUI, Log, All);
-
 
 /** @brief Tile view object type for loading buildable data */
 UCLASS(Blueprintable)
@@ -38,19 +35,19 @@ public:
 		DirectParentReference = InDirectParentReference;
 	}
 
-	/** @brief Access to private BuildContextTitle value */
+	/** @brief Immutable access to private member BuildContextTitle */
 	UFUNCTION(BlueprintCallable)
 	const FText& GetBuildContextTitle() const { return BuildContextTitle; };
 
-	/** @brief Access to private InnerBuildableTags value */
+	/** @brief Immutable access to private member InnerBuildableTags */
 	UFUNCTION(BlueprintCallable)
 	const FGameplayTag& GetContextTag() const { return ContextTag; };	
 	
-	/** @brief Access to private InnerBuildableTags value */
+	/** @brief Immutable access to private member InnerBuildableTags */
 	UFUNCTION(BlueprintCallable)
 	const TArray<FDataTableRowHandle>& GetBuildableTags() const { return InnerBuildableTags; };	
 
-	/** @brief Access to private DirectParentReference value */
+	/** @brief Mutable access to private member ptr DirectParentReference */
 	UFUNCTION(BlueprintCallable)
 	class UPDBuildWidgetBase* GetDirectParentReference() const { return DirectParentReference; };
 
@@ -94,43 +91,43 @@ public:
 		DirectParentReference = InDirectParentReference;
 	}
 
-	/** @brief Access to private BuildableTitle value */
+	/** @brief Immutable access to private member BuildableTitle */
 	UFUNCTION(BlueprintCallable)
 	const FText& GetBuildableTitle() const { return BuildableTitle; };
 	
-	/** @brief Access to private bCanBuild value */
+	/** @return private bCanBuild value */
 	UFUNCTION(BlueprintCallable)
 	bool GetCanBuild() const { return bCanBuild; };
 
-	/** @brief Access to private BuildableTag value */
+	/** @brief Immutable access to private member BuildableTag */
 	UFUNCTION(BlueprintCallable)
 	const FGameplayTag& GetBuildableTag() const { return BuildableTag; };	
 
-	/** @brief Access to private DirectParentReference value */
+	/** @brief Direct access to private member DirectParentReference */
 	UFUNCTION(BlueprintCallable)
 	class UPDBuildWidgetBase* GetDirectParentReference() const { return DirectParentReference; };
 
-	/** @brief Access to private DirectParentReference value */
+	/** @brief Immutable access to private member ParentMenuContextTag */
 	UFUNCTION(BlueprintCallable)
 	const FGameplayTag& GetParentContextTag() const { return ParentMenuContextTag; };
 	
 private:
-	/** @brief Assigned by 'AssignData', retrieved by 'GetBuildableTitle'  */
+	/** @brief Assigned by 'AssignData', retrieved by 'GetBuildableTitle'. Is passed into a tileview or listview entry upon creation  */
 	UPROPERTY(VisibleInstanceOnly, BlueprintReadOnly, Meta = (ExposeOnSpawn=true, AllowPrivateAccess="true"))
 	FText BuildableTitle{};
 
-	/** @brief Assigned by 'AssignData', retrieved by 'GetCanBuild'  */
+	/** @brief Assigned by 'AssignData', retrieved by 'GetCanBuild''. Is passed into a tileview or listview entry upon creation   */
 	UPROPERTY(VisibleInstanceOnly, BlueprintReadOnly, Meta = (ExposeOnSpawn=true, AllowPrivateAccess="true"))
 	bool bCanBuild = true;
 
-	/** @brief Assigned by 'AssignData', retrieved by 'GetBuildableTag'  */
+	/** @brief Assigned by 'AssignData', retrieved by 'GetBuildableTag''. Is passed into a tileview or listview entry upon creation   */
 	UPROPERTY(VisibleInstanceOnly, BlueprintReadOnly, Meta = (ExposeOnSpawn=true, AllowPrivateAccess="true"))
 	FGameplayTag BuildableTag;
-	/** @brief Assigned by 'AssignData', retrieved by 'GetBuildableTag'  */
+	/** @brief Assigned by 'AssignData', retrieved by 'GetParentContextTag''. Is passed into a tileview or listview entry upon creation   */
 	UPROPERTY(VisibleInstanceOnly, BlueprintReadOnly, Meta = (ExposeOnSpawn=true, AllowPrivateAccess="true"))
 	FGameplayTag ParentContextTag;
 	
-	/** @brief Assigned by 'AssignData', retrieved by 'GetDirectParentReference'  */
+	/** @brief Assigned by 'AssignData', retrieved by 'GetDirectParentReference''. Is passed into a tileview or listview entry upon creation   */
 	UPROPERTY(VisibleInstanceOnly, BlueprintReadWrite, Meta = (ExposeOnSpawn=true, AllowPrivateAccess="true"))
 	class UPDBuildWidgetBase* DirectParentReference = nullptr;
 
@@ -145,14 +142,11 @@ public:
 
 	virtual void NativeOnListItemObjectSet(UObject* ListItemObject) override;
 
-	/** @brief @todo Calls into 'ParentAsMessageWidget->MouseMove' and returns its event reply results */
-	UFUNCTION() FEventReply MouseMove(FGeometry MyGeometry, const FPointerEvent& MouseEvent);
-	/** @brief @todo Calls into 'ParentAsMessageWidget->MouseButtonDown' and returns its event reply results */
-	UFUNCTION() FEventReply MouseButtonDown(FGeometry MyGeometry, const FPointerEvent& MouseEvent);
-	/** @brief @todo Calls into 'ParentAsMessageWidget->MouseButtonUp' and returns its event reply results */
-	UFUNCTION() FEventReply MouseButtonUp(FGeometry MyGeometry, const FPointerEvent& MouseEvent);
-	/** @brief @todo Calls into 'ParentAsMessageWidget->MouseDoubleClick' and returns its event reply results */
-	UFUNCTION() FEventReply MouseDoubleClick(FGeometry MyGeometry, const FPointerEvent& MouseEvent);	
+	UFUNCTION() void OnPressed();
+	UFUNCTION() void OnHovered();
+	UFUNCTION() void OnUnhovered();
+	UFUNCTION() void OnClicked();
+	UFUNCTION() void OnReleased();
 
 	/** @brief Border for the 'TextContent' text-block widget.*/
 	UPROPERTY(BlueprintReadWrite, Meta=(BindWidget))
@@ -166,6 +160,10 @@ public:
 
 	UPROPERTY(VisibleInstanceOnly, BlueprintReadOnly)
 	FGameplayTag BuildableTag;
+
+	/** @brief Hitbox, what our mouse events actually interacts with */
+	UPROPERTY(BlueprintReadWrite, Meta=(BindWidget))
+	class UButton* Hitbox = nullptr;
 	
 	/** @brief Assigned by 'AssignData', retrieved by 'DirectParentReference'  */
 	UPROPERTY(BlueprintReadWrite, Meta = (ExposeOnSpawn=true, AllowPrivateAccess="true"))
@@ -182,14 +180,11 @@ public:
 
 	virtual void NativeOnListItemObjectSet(UObject* ListItemObject) override;
 
-	/** @brief @todo Calls into 'ParentAsMessageWidget->MouseMove' and returns its event reply results */
-	UFUNCTION() FEventReply MouseMove(FGeometry MyGeometry, const FPointerEvent& MouseEvent);
-	/** @brief @todo Calls into 'ParentAsMessageWidget->MouseButtonDown' and returns its event reply results */
-	UFUNCTION() FEventReply MouseButtonDown(FGeometry MyGeometry, const FPointerEvent& MouseEvent);
-	/** @brief @todo Calls into 'ParentAsMessageWidget->MouseButtonUp' and returns its event reply results */
-	UFUNCTION() FEventReply MouseButtonUp(FGeometry MyGeometry, const FPointerEvent& MouseEvent);
-	/** @brief @todo Calls into 'ParentAsMessageWidget->MouseDoubleClick' and returns its event reply results */
-	UFUNCTION() FEventReply MouseDoubleClick(FGeometry MyGeometry, const FPointerEvent& MouseEvent);	
+	UFUNCTION() void OnPressed();
+	UFUNCTION() void OnHovered();
+	UFUNCTION() void OnUnhovered();
+	UFUNCTION() void OnClicked();
+	UFUNCTION() void OnReleased();
 
 	/** @brief Border for the 'TextContent' text-block widget.*/
 	UPROPERTY(BlueprintReadWrite, Meta=(BindWidget))
@@ -199,8 +194,12 @@ public:
 	UTextBlock* ContextTitle = nullptr;
 
 	/** @brief Assigned by 'AssignData', retrieved by 'DirectParentReference'  */
-	UPROPERTY(BlueprintReadWrite, Meta = (ExposeOnSpawn=true, AllowPrivateAccess="true"))
+	UPROPERTY(BlueprintReadWrite, Meta = (ExposeOnSpawn=true))
 	class UPDBuildWidgetBase* DirectParentReference = nullptr;
+	
+	/** @brief Hitbox, what our mouse events actually interacts with */
+	UPROPERTY(BlueprintReadWrite, Meta=(BindWidget))
+	class UButton* Hitbox = nullptr;	
 	
 	FGameplayTag SelfContextTag{};
 };
@@ -251,7 +250,21 @@ public:
 	void SelectBuildable(const FGameplayTag& NewSelectedBuildable);
 
 	UFUNCTION(BlueprintCallable)
-	void UpdateSelectedBuildable(const FGameplayTag& RequestToSelectTag, const bool bSelect);	
+	void UpdateSelectedBuildable(const FGameplayTag& RequestToSelectTag, const bool bSelect);
+
+	UFUNCTION(BlueprintCallable)
+	void SpawnWorkerBuildMenu(const FPDBuildWorker& BuildWorker);
+	UFUNCTION(BlueprintCallable)
+	void BeginCloseWorkerBuildMenu();
+	UFUNCTION(BlueprintCallable)
+	void EndCloseWorkerBuildMenu();
+
+	UFUNCTION(BlueprintCallable)
+	void OpenWorkerContextMenu();	
+	UFUNCTION(BlueprintCallable)
+	void BeginCloseWorkerContext();
+	UFUNCTION(BlueprintCallable)
+	void EndCloseWorkerContext();		
 
 	/** @brief Tileview which will display our 'UPDBuildableEntry's */
 	UPROPERTY(BlueprintReadWrite, Meta = (BindWidget))
@@ -260,6 +273,22 @@ public:
 	/** @brief Tileview which will display our contexts themselves */
 	UPROPERTY(BlueprintReadWrite, Meta = (BindWidget))
 	class UTileView* BuildContexts = nullptr;
+
+	/** @brief Widget animation to play when opening the widget  */
+	UPROPERTY(Transient, BlueprintReadWrite, Meta = (BindWidgetAnim))
+	class UWidgetAnimation* OpenWidget = nullptr;	
+
+	/** @brief Widget animation to play when closing the widget  */
+	UPROPERTY(Transient, BlueprintReadWrite, Meta = (BindWidgetAnim))
+	class UWidgetAnimation* CloseWidget = nullptr;
+
+	/** @brief Widget animation to play when opening a widget context menus  */
+	UPROPERTY(Transient, BlueprintReadWrite, Meta = (BindWidgetAnim))
+	class UWidgetAnimation* OpenContextMenu = nullptr;	
+
+	/** @brief Widget animation to play when closing one a widget context menu  */
+	UPROPERTY(Transient, BlueprintReadWrite, Meta = (BindWidgetAnim))
+	class UWidgetAnimation* CloseContextMenu = nullptr;			
 	
 	/** @brief DefaultBuildContext  */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Meta = (RowType = "/Script/PDRTSBase.PDBuildContext"))
@@ -269,7 +298,12 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Meta = (RowType = "/Script/PDRTSBase.PDSharedBuildWidgetFlair"))
 	FDataTableRowHandle BuildWidgetFlairHandle;
 	
+	/** @brief DefaultBuildContext  */
 	struct FPDSharedBuildWidgetFlair* SelectedWidgetFlair = nullptr;
+
+	/** @brief DefaultBuildContext  */
+	bool bIsMenuVisible = false;
+
 private:
 	/** @brief Currently selected build context  */
 	UPROPERTY(VisibleInstanceOnly, BlueprintReadOnly, Meta = (AllowPrivateAccess="true", RowType = "/Script/PDRTSBase.PDBuildContext"))

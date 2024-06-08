@@ -3,6 +3,8 @@
 #include "Actors/Interactables/Buildings/RTSOInteractableBuildingBase.h"
 
 #include "PDRTSCommon.h"
+#include "RTSOpenCommon.h"
+#include "Components/BoxComponent.h"
 
 ARTSOInteractableBuildingBase::ARTSOInteractableBuildingBase()
 {
@@ -21,6 +23,41 @@ FGameplayTagContainer ARTSOInteractableBuildingBase::GetGenericTagContainer_Impl
 	FGameplayTagContainer GeneratedTags;
 	GeneratedTags.AddTag(JobTag);
 	return GeneratedTags;
+}
+
+void ARTSOInteractableBuildingBase::OnSpawnedAsGhost_Implementation()
+{
+	IPDRTSBuildableGhostInterface::OnSpawnedAsGhost_Implementation();
+
+	// Update material
+	if (GhostMat == nullptr || GhostMat->IsValidLowLevelFast() == false)
+	{
+		// Output error level log
+		UE_LOG(PDLog_RTSO, Error, TEXT("ARTSOInteractableBuildingBase::OnSpawnedAsGhost -- Material Instance member 'GhostMat' is not set"))
+		
+		return;
+	}
+
+	// @todo collision is not disabling, debug tomorrow, am getting too tired right now
+	Mesh->SetMaterial(0, GhostMat);
+	Boxcomp->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+	SetActorEnableCollision(false);
+}
+
+void ARTSOInteractableBuildingBase::OnSpawnedAsMain_Implementation()
+{
+	IPDRTSBuildableGhostInterface::OnSpawnedAsMain_Implementation();
+
+	// Update material
+	if (MainMat == nullptr || MainMat->IsValidLowLevelFast() == false)
+	{
+		// Output error level log
+		UE_LOG(PDLog_RTSO, Error, TEXT("ARTSOInteractableBuildingBase::OnSpawnedAsMain -- Material Instance member 'MainMat' is not set"))
+		
+		return;
+	}
+
+	Mesh->SetMaterial(0, MainMat);
 }
 
 void ARTSOInteractableBuildingBase::Tick(float DeltaTime)

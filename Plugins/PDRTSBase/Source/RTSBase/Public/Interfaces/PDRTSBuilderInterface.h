@@ -8,12 +8,13 @@
 #include "UObject/Interface.h"
 #include "PDRTSBuilderInterface.generated.h"
 
-/** @brief Unused, @todo decide if needed or if I should rethink this*/
 UENUM()
-enum class ERTSActionMode : uint8
+enum class ERTSBuildMenuModules : uint8
 {
 	SelectBuildable,
-	SelectContext
+	SelectContext,
+	DeselectBuildable,
+	DeselectContext
 };
 
 
@@ -24,26 +25,24 @@ UINTERFACE(MinimalAPI) class UPDRTSBuilderInterface : public UInterface { GENERA
  * @brief This interface will be placed on pawns or characters we want to perform an action from.
  * @note It is abstracted in the plugin to allow anything else to hook into it in the game layer
  *
- * @note Unused
- * @todo decide if needed or if I should rethink this
  */
 class PDRTSBASE_API IPDRTSBuilderInterface
 {
 	GENERATED_BODY()
 
 public:
-	/** @brief Unused, @todo decide if needed or if I should rethink this*/
+	/** @brief Used by the build system for when a enw context or buildable is selected (or when an old one is deselected) */
 	UFUNCTION(BlueprintNativeEvent, CallInEditor, Category = "Action|Interface")
-	void NewAction(ERTSActionMode ActionMode, FGameplayTag ActionTag);
-	virtual void NewAction_Implementation(ERTSActionMode ActionMode, FGameplayTag ActionTag)
+	void NewAction(ERTSBuildMenuModules ActionMode, FGameplayTag ActionTag);
+	virtual void NewAction_Implementation(ERTSBuildMenuModules ActionMode, FGameplayTag ActionTag)
 	{
 		// Perform actions
 
 		switch (ActionMode)
 		{
-		case ERTSActionMode::SelectBuildable:
+		case ERTSBuildMenuModules::SelectBuildable:
 			break;
-		case ERTSActionMode::SelectContext:
+		case ERTSBuildMenuModules::SelectContext:
 			break;
 		}
 		

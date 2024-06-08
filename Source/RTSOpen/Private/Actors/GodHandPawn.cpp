@@ -50,6 +50,7 @@
 #include "NavigationSystem.h"
 
 /* Engine - Kismet */
+#include "Interfaces/PDRTSBuildableGhostInterface.h"
 #include "Kismet/KismetMathLibrary.h"
 #include "Kismet/KismetSystemLibrary.h"
 
@@ -199,19 +200,37 @@ void AGodHandPawn::BuildableGhostTick(float DeltaTime)
 	
 	if (CurrentGhost == nullptr || CurrentGhost->GetClass() != CurrentBuildableData->ActorToSpawn)
 	{
+		if (CurrentGhost != nullptr )
+		{
+			CurrentGhost->Destroy();
+			CurrentGhost = nullptr;
+		}
+		
 		CurrentGhost = GetWorld()->SpawnActor(CurrentBuildableData->ActorToSpawn, &SteppedLocation);
+		CurrentGhost->SetOwner(this);
+
+		if (CurrentGhost->GetClass()->ImplementsInterface(UPDRTSBuildableGhostInterface::StaticClass()))
+		{
+			IPDRTSBuildableGhostInterface::Execute_OnSpawnedAsGhost(CurrentGhost);
+		}
+		
 		// @todo Create and call event to set the mesh visuals to reflect that it's a ghost 
 	}
 
 	const FVector DeltaLocation = CurrentGhost->GetActorLocation() - SteppedLocation;
-	if (DeltaLocation.IsNearlyZero(HashGridSubsystem->UniformCellSize * 0.5f))
-	{
-		return;
-	}
+
+
+	// if (DeltaLocation.IsNearlyZero(10.0)) // HashGridSubsystem->UniformCellSize * 0.5f))
+	// {
+	// 	return;
+	// }
 	
 	// const FVector WorldSpace =  CurrentGhost->GetActorLocation();	
 	// const FVector InterpLocation = UKismetMathLibrary::VInterpTo(WorldSpace, SteppedLocation, DeltaTime, InstanceSettings.SelectionRescaleSpeed);	
 	CurrentGhost->SetActorLocation(SteppedLocation);
+
+	UE_LOG(PDLog_RTSO, Warning, TEXT("AGodHandPawn::TickGhost -- CurrentGhost->SetActorLocation(SteppedLocation[%f,%f,%f])"), SteppedLocation.X, SteppedLocation.Y, SteppedLocation.Z)
+
 	
 }
 
@@ -354,7 +373,6 @@ void AGodHandPawn::ActionDragMove_Implementation(const FInputActionValue& Value)
 	// Handles click&drag, does not handle touch&drag
 	UE_LOG(PDLog_RTSO, Warning, TEXT("AGodHandPawn::ActionDragMove"))
 	
-	
 	TrackUnitMovement();
 }
 
@@ -418,6 +436,13 @@ void AGodHandPawn::ActionWorkerUnit_Cancelled_Implementation(const FInputActionV
 // -- Escape needs to be mapped to menu, so can't be used to de-selecting
 // -- 
 
+void AGodHandPawn::ResetPathParameters()
+{
+	InstanceState.bUpdatePathOnTick = false;
+	InstanceState.WorkUnitTargetLocation = FVector::ZeroVector;
+	InstanceState.WorkerUnitActionTarget = nullptr;
+}
+
 void AGodHandPawn::ActionWorkerUnit_Completed_Implementation(const FInputActionValue& Value)
 {
 	// const bool ImmutableMoveInput = Value.Get<bool>();
@@ -440,11 +465,27 @@ void AGodHandPawn::ActionWorkerUnit_Completed_Implementation(const FInputActionV
 	{
 		UE_LOG(PDLog_RTSO, Warning, TEXT("ActionWorkerUnit_Completed -- Unexpected error -- Clearing selected worker unit "))
 
-		InstanceState.bUpdatePathOnTick = false;
-		InstanceState.WorkUnitTargetLocation = FVector::ZeroVector;
-		InstanceState.WorkerUnitActionTarget = nullptr;
+		ResetPathParameters();
 		return;
 	}
+	
+	const FVector CollisionLocation = Collision->GetComponentLocation();
+	const FTransform& TargetInstanceTransform = GetEntityTransform(InstanceState.SelectedWorkerUnitHandle);
+	const FVector EntityLocation = TargetInstanceTransform.GetLocation(); 
+	const FVector DeltaLocation = EntityLocation - CollisionLocation;
+
+	if (DeltaLocation.IsNearlyZero(PC->ClickToSelectErrorMin))
+	{
+		ResetPathParameters();
+
+		TMap<int32, FMassEntityHandle> PassThroughHandle;
+		PassThroughHandle.Emplace(InstanceState.SelectedWorkerUnitHandle.Index, InstanceState.SelectedWorkerUnitHandle);
+		PC->GetMutableMarqueeSelectionMap().FindOrAdd(PC->GeneratedGroupID(), PassThroughHandle);
+		PC->OnSelectionChange(false);
+		PC->OnMarqueeSelectionUpdated( INDEX_NONE, {InstanceState.SelectedWorkerUnitHandle.Index});
+		return;
+	}
+	
 
 	FVector2D ScreenCoordinates;
 	bool bFoundInputType;
@@ -455,8 +496,7 @@ void AGodHandPawn::ActionWorkerUnit_Completed_Implementation(const FInputActionV
 		FHitResult HitResult = PC->ProjectMouseToGroundPlane(PC->DedicatedLandscapeTraceChannel, ScreenCoordinates, bFoundInputType);
 		FallbackTargetLocation = HitResult.bBlockingHit ? FMassInt16Vector{HitResult.Location} : FMassInt16Vector{};
 	}
-
-
+	
 	const TArray<TObjectPtr<UInstancedStaticMeshComponent>>& ISMs = UPDRTSBaseSubsystem::GetMassISMs(GetWorld());
 	if (ISMs.IsEmpty() == false && Cast<UPDRTSBaseUnit>(ISMs[0]))
 	{
@@ -503,7 +543,7 @@ void AGodHandPawn::ActionMoveSelection_Implementation(const FInputActionValue& V
 	}
 	
 	const int32 CurrentGroupID = PC->GetCurrentGroupID();
-	if (PC->GetMarqueeSelectionMap().Contains(CurrentGroupID) == false)
+	if (PC->GetImmutableMarqueeSelectionMap().Contains(CurrentGroupID) == false)
 	{
 		return;
 	}
@@ -559,7 +599,7 @@ void AGodHandPawn::ActionMoveSelection_Implementation(const FInputActionValue& V
 		PC->GetActorID(),
 		OptTarget,
 		AssociatedTags.GetByIndex(0),
-		*PC->GetMarqueeSelectionMap().Find(CurrentGroupID), 
+		*PC->GetImmutableMarqueeSelectionMap().Find(CurrentGroupID), 
 		StartLocation,
 		CurrentGroupID);
 }
@@ -583,54 +623,7 @@ FMassEntityHandle AGodHandPawn::OctreeEntityTrace_DEPRECATED(const FVector& Star
 	PRAGMA_DISABLE_DEPRECATION_WARNINGS
 		return FMassEntityHandle{INDEX_NONE,INDEX_NONE};
 	PRAGMA_ENABLE_DEPRECATION_WARNINGS
-// 	UPDRTSBaseSubsystem* RTSBaseSubsystem = GEngine->GetEngineSubsystem<UPDRTSBaseSubsystem>();
-// 	PD::Mass::Entity::FPDSafeOctree& WorldOctree = RTSBaseSubsystem->WorldOctree;
-// 	if (WorldOctree.GetNumNodes() == 0) { return FMassEntityHandle{INDEX_NONE,INDEX_NONE}; } // @todo possibly just replace with an ensure
-// 	
-// 	const FVector Direction = EndLocation - StartLocation;
-//
-// 	// Halving extents
-// 	const FBoxCenterAndExtent QueryBounds = FBoxCenterAndExtent(StartLocation + (Direction / 2), (Direction.GetAbs() / 2));
-//
-// 	FOctreeElementId2* ClosestIDSlow{}; 
-// 	double ClosestDistanceSlow{AGodHandPawn::InvalidDistance};
-//
-// 	if (WorldOctree.IsLocked()) { return FMassEntityHandle{INDEX_NONE,INDEX_NONE}; }
-// 	WorldOctree.FindElementsWithBoundsTest(QueryBounds, [&](const FPDEntityOctreeCell& Cell)
-// 	{
-// 		if (Cell.EntityHandle.Index == INDEX_NONE) { return; } 
-// 		
-// 		const double Delta = (EndLocation - Cell.Bounds.GetBox().GetCenter()).Length();
-// 		ClosestIDSlow = Delta < ClosestDistanceSlow ? Cell.SharedCellID.Get() : ClosestIDSlow;
-// 		ClosestDistanceSlow = Delta < ClosestDistanceSlow ? Delta : ClosestDistanceSlow;
-// 	}, true);
-//
-// 	const double MinDistance = Collision->GetScaledSphereRadius();  // Not valid selection if above this
-// 	FMassEntityHandle RetHandleSlow{INDEX_NONE, INDEX_NONE};
-// 	FVector ClosestVectorSlow{AGodHandPawn::InvalidVector};
-// 	if (ClosestIDSlow != nullptr && ClosestDistanceSlow <= MinDistance)
-// 	{
-// 		const FPDEntityOctreeCell& Cell = static_cast<FPDEntityOctreeCell&>(WorldOctree.GetElementById(*ClosestIDSlow));
-// 		ClosestVectorSlow = Cell.Bounds.GetBox().GetCenter();
-// 		RetHandleSlow = Cell.EntityHandle;
-// 	}
-//
-// #if 1
-//
-// #if CHAOS_DEBUG_DRAW
-// 	{
-// 		QUICK_SCOPE_CYCLE_COUNTER(STAT_InteractGodHandDraw)
-// 		Chaos::FDebugDrawQueue::GetInstance().DrawDebugBox(ClosestVectorSlow, FVector(25.0), FQuat::Identity, FColor::White, false, 0, 0, 1.0f);
-// 		const FVector& TextLocation = ClosestVectorSlow + FVector(0, 0, (FVector(25.0).Z * 2));
-// 		Chaos::FDebugDrawQueue::GetInstance().DrawDebugString(TextLocation,FString("Hovered Entity"), nullptr, FColor::Blue, 0, true, 2);
-// 	}
-// #endif
-// 	
-// #endif
-//
-// 	return RetHandleSlow;
 }
-
 
 AActor* AGodHandPawn::FindClosestInteractableActor() const
 {
@@ -746,7 +739,8 @@ void AGodHandPawn::BeginPlay()
 
 	Collision->OnComponentBeginOverlap.AddDynamic(this, &AGodHandPawn::OnCollisionBeginOverlap);
 	Collision->OnComponentEndOverlap.AddDynamic(this, &AGodHandPawn::OnCollisionEndOverlap);
-	EntityManager = &GetWorld()->GetSubsystem<UMassEntitySubsystem>()->GetEntityManager();
+	GEngine->GetEngineSubsystem<UPDRTSBaseSubsystem>()->WorldInit(GetWorld());
+	EntityManager = GEngine->GetEngineSubsystem<UPDRTSBaseSubsystem>()->EntityManager;
 
 	RefreshSettingsInstance();
 
@@ -781,22 +775,24 @@ void AGodHandPawn::OnConstruction(const FTransform& Transform)
 	Super::OnConstruction(Transform);
 }
 
-void AGodHandPawn::NewAction_Implementation(ERTSActionMode ActionMode, FGameplayTag ActionTag)
+void AGodHandPawn::NewAction_Implementation(ERTSBuildMenuModules ActionMode, FGameplayTag ActionTag)
 {
 	IPDRTSBuilderInterface::NewAction_Implementation(ActionMode, ActionTag);
 
 	UPDRTSBaseSubsystem* RTSSubSystem = GEngine->GetEngineSubsystem<UPDRTSBaseSubsystem>();
 	switch (ActionMode)
 	{
-	case ERTSActionMode::SelectBuildable:
+	case ERTSBuildMenuModules::SelectBuildable:
 		CurrentBuildableData = RTSSubSystem->GetBuildableData(ActionTag); // If null clear current
-
-		// @todo spawn ghost, pin to grid
 		break;
-	case ERTSActionMode::SelectContext:
+	case ERTSBuildMenuModules::SelectContext:
 		CurrentBuildContext = RTSSubSystem->GetBuildContextEntry(ActionTag); // If null clear current
-
-		// @todo spawn ghost, pin to grid
+		break;
+	case ERTSBuildMenuModules::DeselectBuildable:
+		CurrentBuildableData = nullptr;
+		break;
+	case ERTSBuildMenuModules::DeselectContext:
+		CurrentBuildContext = nullptr;
 		break;
 	}
 }
@@ -836,7 +832,7 @@ void AGodHandPawn::PossessedBy(AController* NewController)
 	InputStackWorkaround->DispatchValueStackReset();	
 }
 
-//
+// 
 // Boilerplate - Collisions
 void AGodHandPawn::OnCollisionBeginOverlap(UPrimitiveComponent* OverlappedComponent, AActor* OtherActor, UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bFromSweep, const FHitResult & SweepResult)
 {

@@ -66,7 +66,7 @@ public:
 	virtual void OnConstruction(const FTransform& Transform) override;
 
 	/** @brief Only calls super. Reserved for later use */
-	virtual void NewAction_Implementation(ERTSActionMode ActionMode, FGameplayTag ActionTag) override;
+	virtual void NewAction_Implementation(ERTSBuildMenuModules ActionMode, FGameplayTag ActionTag) override;
 
 	/** @brief Retrieves the ISM Agent component from UPDRTSBaseSubsystem and sets its entity manager*/
 	UFUNCTION()
@@ -138,6 +138,7 @@ public:
 	virtual void ActionWorkerUnit_Triggered_Implementation(const FInputActionValue& Value) override;
 	/** @brief Calls into IRTSOInputInterface::Execute_ActionWorkerUnit_Completed. Reserve for later use */
 	virtual void ActionWorkerUnit_Cancelled_Implementation(const FInputActionValue& Value) override;
+	void ResetPathParameters();
 	/** @brief If we were NOT drawing a marquee: then dispatch ai job to entity, if we had a valid entity.
 	 * If we were drawing a marquee: call MarqueeSelection(EMarqueeSelectionEvent::RELEASEMARQUEE).*/
 	virtual void ActionWorkerUnit_Completed_Implementation(const FInputActionValue& Value) override;

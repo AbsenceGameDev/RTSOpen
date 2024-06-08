@@ -216,8 +216,10 @@ public:
 	void AssociateArchetypeWithConfigAsset(const FMassArchetypeHandle& Archetype, const TSoftObjectPtr<UMassEntityConfigAsset>& EntityConfig);
 
 	/** @brief Retrieves the config asset */
-	TSoftObjectPtr<UMassEntityConfigAsset> GetConfigAssetForArchetype(const FMassArchetypeHandle& Archetype);	
-	
+	TSoftObjectPtr<UMassEntityConfigAsset> GetConfigAssetForArchetype(const FMassArchetypeHandle& Archetype);
+
+	void WorldInit(UWorld* World);
+
 	/** @brief Does some portable iso-approved 'hacks' to fetch the all the mass ISM's */
 	static const TArray<TObjectPtr<UInstancedStaticMeshComponent>>& GetMassISMs(const UWorld* InWorld);
 
@@ -231,8 +233,9 @@ public:
 	UPROPERTY()
 	TArray<UDataTable*> BuildContextTables{};
 
-	TMap<FGameplayTag, FPDBuildContext*> BuildContexts_WTag{};	
-	TMap<FGameplayTag, FPDBuildableData*> BuildableData_WTag{};	
+	TMap<FGameplayTag, const FPDBuildWorker*> GrantedBuildContexts_WorkerTag{};		
+	TMap<FGameplayTag, const FPDBuildContext*> BuildContexts_WTag{};	
+	TMap<FGameplayTag, const FPDBuildableData*> BuildableData_WTag{};	
 	
 	/** @brief Selection group navpath map, Keyed by owner ID, valued by selection group navdata container*/
 	UPROPERTY()
@@ -261,7 +264,7 @@ public:
 	FStreamableManager DataStreamer;
 
 	/** @brief Cached entity manager ptr*/
-	FMassEntityManager* EntityManager = nullptr;
+	const FMassEntityManager* EntityManager = nullptr;
 	/** @brief effectively unused. @todo revise if it still needed. any significant use of it has been removed since prototyping this  */
 	UWorld* TemporaryWorldCache = nullptr;
 	/** @brief The actual octree our worlds and our entities will make use of*/
@@ -417,14 +420,17 @@ public:
 	UPROPERTY(Config, EditAnywhere, Category="Visible")
 	float DefaultCellSize = 40.0;
 
-	/** @brief Work tables soft objects */
+	/** @brief Work table soft objects */
 	UPROPERTY(Config, EditAnywhere, Category = "Worker AI Subsystem", Meta = (RequiredAssetDataTags="RowStructure=/Script/PDRTSBase.PDWorkUnitDatum"))
 	TArray<TSoftObjectPtr<UDataTable>> WorkTables;
 
-	/** @brief Work tables soft objects */
+	/** @brief Build Contexts (categories) table soft objects */
 	UPROPERTY(Config, EditAnywhere, Category = "Worker AI Subsystem", Meta = (RequiredAssetDataTags="RowStructure=/Script/PDRTSBase.PDBuildContext"))
 	TArray<TSoftObjectPtr<UDataTable>> BuildContextTables;	
-	
+
+	/** @brief Build Workers (Worker types and their granted contexts) table soft objects */
+	UPROPERTY(Config, EditAnywhere, Category = "Worker AI Subsystem", Meta = (RequiredAssetDataTags="RowStructure=/Script/PDRTSBase.PDBuildWorker"))
+	TArray<TSoftObjectPtr<UDataTable>> BuildWorkerTables;		
 };
 
 /** @brief Entity octree ID, used for observer tracking if IDs has been invalidated */

@@ -20,7 +20,10 @@
 #include "EnhancedInputSubsystems.h"
 
 #include "NativeGameplayTags.h"
+#include "PDRTSSharedUI.h"
+#include "Animation/WidgetAnimation.h"
 #include "Chaos/DebugDrawQueue.h"
+#include "Components/TileView.h"
 #include "Kismet/KismetMathLibrary.h"
 #include "Misc/CString.h"
 
@@ -68,15 +71,25 @@ void ARTSOController::BeginPlay()
 		IDToActorMap.FindOrAdd(ActorID.GetID()) = this;
 	}
 
-	if (MainMenuWidget == nullptr)
+	if (MMWidgetClass->IsValidLowLevelFast())
 	{
-		MainMenuWidget = CreateWidget<URTSOMainMenuBase>(GetWorld(), MMWidgetClass);
+		MainMenuWidget = CreateWidget<URTSOMainMenuBase>(this, MMWidgetClass);
+		MainMenuWidget->SetOwningPlayer(this);
 	}
 	// if (MainMenuWidget->IsInViewport() == false) { MainMenuWidget->AddToViewport(); }
 	// if (MainMenuWidget->IsActivated() == false) { MainMenuWidget->ActivateWidget(); }	
 	
-	if (ConversationWidgetClass->IsValidLowLevelFast() == false) { return; }
-	ConversationWidget = NewObject<URTSOConversationWidget>(this, ConversationWidgetClass);
+	if (ConversationWidgetClass->IsValidLowLevelFast())
+	{
+		ConversationWidget = NewObject<URTSOConversationWidget>(this, ConversationWidgetClass);
+		ConversationWidget->SetOwningPlayer(this);
+	}
+
+	if (BuildMenuWidgetClass->IsValidLowLevelFast())
+	{
+		BuildMenuWidget = NewObject<UPDBuildWidgetBase>(this, BuildMenuWidgetClass);
+		BuildMenuWidget->SetOwningPlayer(this);
+	}	
 }
 
 void ARTSOController::EndPlay(const EEndPlayReason::Type EndPlayReason)
@@ -257,8 +270,7 @@ void ARTSOController::ActionClearSelection_Implementation(const FInputActionValu
 
 	OnSelectionChange(true);
 	MarqueeSelectedHandles.Remove(CurrentSelectionID);
-	const TArray<int32> NoKeys{};
-	OnMarqueeSelectionUpdated(CurrentSelectionID, NoKeys);
+	OnMarqueeSelectionUpdated(CurrentSelectionID, EmptyKeys);
 	
 	if (GetPawn() == nullptr || GetPawn()->GetClass()->ImplementsInterface(URTSOInputInterface::StaticClass()) == false) { return; }
 	IRTSOInputInterface::Execute_ActionClearSelection(GetPawn(), Value);	
@@ -307,10 +319,12 @@ void ARTSOController::ActionAssignSelectionToHotkey_Implementation(const FInputA
 		{
 			UE_LOG(PDLog_RTSO, Warning, TEXT("ARTSOController::ActionAssignSelectionToHotkey - Calling 'OnMarqueeSelectionUpdated' : (Head) Requested ID : %i"), CurrentSelectionID);
 			FoundHandleMap.GenerateKeyArray(Keys);
+
+			OnSelectionChange(false); // @todo TEST
 			OnMarqueeSelectionUpdated( ImmutableIndex, Keys);
 		}
 	}
-	else
+	else // ID does not exist, remove from hotkey and 
 	{
 		UE_LOG(PDLog_RTSO, Warning, TEXT("ARTSOController::ActionAssignSelectionToHotkey : Should remove assignment"));
 
@@ -338,14 +352,18 @@ void ARTSOController::ActionHotkeySelection_Implementation(const FInputActionVal
 	InputStackWorkaround->InputStackIntegers.TryPopLast(Tail);
 	InputStackWorkaround->InputStackIntegers.Empty(); // temporary system
 	CurrentSelectionID = Tail;
-	
+
+	//
+	// Handle conversation
 	if (IsMappingContextActive(TAG_CTRL_Ctxt_ConversationMode))
 	{
 		UE_LOG(PDLog_RTSO, Warning, TEXT("ARTSOController::ActionHotkeySelection : Processing Conversation Input"));
 		HandleConversationChoiceInput(CurrentSelectionID);
 		return;
 	}
-	
+
+	//
+	// Handle selection
 	UE_LOG(PDLog_RTSO, Warning, TEXT("ARTSOController::ActionHotkeySelection : (Head) Requested ID : %i"), CurrentSelectionID);
 	if (MarqueeSelectedHandles.Contains(CurrentSelectionID))
 	{
@@ -357,6 +375,7 @@ void ARTSOController::ActionHotkeySelection_Implementation(const FInputActionVal
 		{
 			UE_LOG(PDLog_RTSO, Warning, TEXT("ARTSOController::ActionHotkeySelection - Calling 'OnMarqueeSelectionUpdated' : (Head) Requested ID : %i"), CurrentSelectionID);
 			FoundHandleMap->GenerateKeyArray(Keys);
+			OnSelectionChange(false); // @todo TEST
 			OnMarqueeSelectionUpdated( SelectedGID, Keys);
 		}
 	}
@@ -586,6 +605,19 @@ void ARTSOController::ClampMovementToScreen(FVector& MoveDirection, double& Stre
 }
 
 
+void ARTSOController::OnMarqueeSelectionUpdated_Implementation(int32 SelectionGroup, const TArray<int32>& NewSelection) const
+{
+	const TMap<int32, FMassEntityHandle>* CurrentIDGroup = GetImmutableMarqueeSelectionMap().Find(CurrentSelectionID);
+	if (NewSelection.Num() != 1)
+	{
+		UpdateBuildMenuContexts(FMassEntityHandle{INDEX_NONE, INDEX_NONE});
+	}
+	else if (NewSelection.Num() == 1 && CurrentIDGroup != nullptr) // Don't do anything if this isn't true
+	{
+		UpdateBuildMenuContexts(CurrentIDGroup->begin().Value());
+	}	
+}
+
 void ARTSOController::MarqueeSelection(EMarqueeSelectionEvent SelectionEvent)
 {
 	// Viewport halfsize
@@ -795,7 +827,6 @@ void ARTSOController::GetEntitiesOrActorsInMarqueeSelection()
 	QueryBounds.Center.W = QueryBounds.Extent.W = 0;
 	
 	TMap<int32, FMassEntityHandle> Handles;
-	
 	WorldOctree.FindElementsWithBoundsTest(QueryBounds, [&](const FPDEntityOctreeCell& Cell)
 	{
 		if (Cell.EntityHandle.Index == INDEX_NONE) { return; } 
@@ -836,34 +867,72 @@ void ARTSOController::ReorderGroupIndex(const int32 OldID, const int32 NewID)
 	MarqueeSelectedHandles.Remove(OldID);
 }
 
-void ARTSOController::OnSelectionChange(const bool bClearSelection)
+void ARTSOController::OnSelectionChange(bool bClearSelection)
 {
 	const AGodHandPawn* PawnAsGodhand = GetPawn<AGodHandPawn>();
-	if (PawnAsGodhand == nullptr || GetMarqueeSelectionMap().Contains(CurrentSelectionID) == false)
+	if (PawnAsGodhand == nullptr || GetImmutableMarqueeSelectionMap().Contains(CurrentSelectionID) == false)
 	{
 		return;
 	}
-	
-	// const TArray<TObjectPtr<UInstancedStaticMeshComponent>>& ISMs = GEngine->GetEngineSubsystem<UPDRTSBaseSubsystem>()->GetMassISMs(PawnAsGodhand->GetWorld());
-	TArray<FMassEntityHandle> MarqueeSelectionArray;
-	GetMarqueeSelectionMap().Find(CurrentSelectionID)->GenerateValueArray(MarqueeSelectionArray);
-	
-	const TArray<FMassEntityHandle>& MarqueeSelectionArrayRef = MarqueeSelectionArray; 
-	ParallelFor(MarqueeSelectionArray.Num(),
-		[&MarqueeSelectionArrayRef, &PawnAsGodhand, bClearSelection, SelectionID = CurrentSelectionID, OwnerID = ActorID](const int32 Idx)
-		{
-			const FMassEntityHandle& EntityHandle = MarqueeSelectionArrayRef[Idx];
-			if (PawnAsGodhand->EntityManager->IsEntityValid(EntityHandle) == false) { return; }
 
-			FPDMFragment_RTSEntityBase* PermadevEntityBase = PawnAsGodhand->EntityManager->GetFragmentDataPtr<FPDMFragment_RTSEntityBase>(EntityHandle);
-			if (PermadevEntityBase == nullptr) { return; }
+	const TMap<int32, FMassEntityHandle>* CurrentIDGroup = GetImmutableMarqueeSelectionMap().Find(CurrentSelectionID);
+	// const TArray<TObjectPtr<UInstancedStaticMeshComponent>>& ISMs = GEngine->GetEngineSubsystem<UPDRTSBaseSubsystem>()->GetMassISMs(PawnAsGodhand->GetWorld());
+	{
+		TArray<FMassEntityHandle> MarqueeSelectionArray;
+		CurrentIDGroup->GenerateValueArray(MarqueeSelectionArray);
+	
+		const TArray<FMassEntityHandle>& MarqueeSelectionArrayRef = MarqueeSelectionArray; 
+		ParallelFor(MarqueeSelectionArray.Num(),
+			[&MarqueeSelectionArrayRef, &PawnAsGodhand, bClearSelection, SelectionID = CurrentSelectionID, OwnerID = ActorID](const int32 Idx)
+			{
+				const FMassEntityHandle& EntityHandle = MarqueeSelectionArrayRef[Idx];
+				if (PawnAsGodhand->EntityManager->IsEntityValid(EntityHandle) == false) { return; }
+
+				FPDMFragment_RTSEntityBase* PermadevEntityBase = PawnAsGodhand->EntityManager->GetFragmentDataPtr<FPDMFragment_RTSEntityBase>(EntityHandle);
+				if (PermadevEntityBase == nullptr) { return; }
 				
-			// Processing handled in UPDMProcessor_EntityCosmetics::Execute function
-			PermadevEntityBase->SelectionState = bClearSelection ? EPDEntitySelectionState::ENTITY_NOTSELECTED : EPDEntitySelectionState::ENTITY_SELECTED;
-			PermadevEntityBase->SelectionGroupIndex = SelectionID;
-			PermadevEntityBase->OwnerID = OwnerID.GetID();
+				// Processing handled in UPDMProcessor_EntityCosmetics::Execute function
+				PermadevEntityBase->SelectionState = bClearSelection ? EPDEntitySelectionState::ENTITY_NOTSELECTED : EPDEntitySelectionState::ENTITY_SELECTED;
+				PermadevEntityBase->SelectionGroupIndex = SelectionID;
+				PermadevEntityBase->OwnerID = OwnerID.GetID(); // @todo set upon spawning the entities
 			
-		}, EParallelForFlags::BackgroundPriority);
+			}, EParallelForFlags::BackgroundPriority);
+	}
+}
+
+void ARTSOController::UpdateBuildMenuContexts(const FMassEntityHandle& CurrentEntity) const
+{
+	check(BuildMenuWidget) // Never kill the build menu while the controller is alive
+	
+	const UPDRTSBaseSubsystem* RTSSubSystem = GEngine->GetEngineSubsystem<UPDRTSBaseSubsystem>();
+	const FMassEntityManager* EntityManager = RTSSubSystem->EntityManager;
+	if (EntityManager == nullptr)
+	{
+		UE_LOG(PDLog_RTSO, Warning, TEXT("ARTSOController::UpdateBuildMenuContexts -- EntityManager is null"));
+		return;
+	}
+
+	const FPDMFragment_RTSEntityBase* RTSBaseFragment = CurrentEntity.Index == INDEX_NONE ? nullptr : EntityManager->GetFragmentDataPtr<FPDMFragment_RTSEntityBase>(CurrentEntity);
+	if (RTSBaseFragment == nullptr)
+	{
+		UE_LOG(PDLog_RTSO, Warning, TEXT("ARTSOController::UpdateBuildMenuContexts -- entity '{%i,%i}' was not valid"), CurrentEntity.Index, CurrentEntity.SerialNumber);
+		BuildMenuWidget->BeginCloseWorkerBuildMenu();
+		return;
+	}
+	
+	if (RTSSubSystem->GrantedBuildContexts_WorkerTag.Contains(RTSBaseFragment->EntityType) == false)
+	{
+		UE_LOG(PDLog_RTSO, Warning, TEXT("ARTSOController::UpdateBuildMenuContexts -- '%s' was not found in UPDRTSBaseSubsystem::GrantedBuildContexts_WorkerTag"), *RTSBaseFragment->EntityType.GetTagName().ToString());
+		BuildMenuWidget->BeginCloseWorkerBuildMenu();
+		return;
+	}
+	
+	if (BuildMenuWidget->bIsMenuVisible) { return; }
+	
+	const FPDBuildWorker* BuildWorker = RTSSubSystem->GrantedBuildContexts_WorkerTag.FindRef(RTSBaseFragment->EntityType);
+	check(BuildWorker != nullptr)
+
+	BuildMenuWidget->SpawnWorkerBuildMenu(*BuildWorker);
 }
 
 

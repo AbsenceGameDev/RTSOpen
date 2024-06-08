@@ -13,9 +13,12 @@
 #include "GameplayTagContainer.h"
 #include "InputModifiers.h"
 #include "MassEntityTypes.h"
+#include "PDRTSCommon.h"
 #include "GameFramework/PlayerController.h"
 #include "RTSOController.generated.h"
 
+class URTSOConversationWidget;
+class UPDBuildWidgetBase;
 // Fwd decl.
 class URTSOInputStackSubsystem;
 
@@ -156,7 +159,7 @@ class RTSOPEN_API ARTSOController : public APlayerController, public IRTSOInputI
 	/** @brief Event that is called when the marquee is finished and it has queried the world octree for any entities in the projected marquee volume.
 	 * @param  SelectionGroup is the selectionID that was generated for this new group.
 	 * @param  NewSelection is an array of MassEntity indices pointing to the entities queried from the octree */
-	UFUNCTION(BlueprintImplementableEvent) void OnMarqueeSelectionUpdated(int32 SelectionGroup, const TArray<int32>& NewSelection) const;
+	UFUNCTION(BlueprintNativeEvent) void OnMarqueeSelectionUpdated(int32 SelectionGroup, const TArray<int32>& NewSelection) const;
 
 	/** @brief Marquee drawing/selection logic */
 	UFUNCTION(BlueprintCallable) void MarqueeSelection(EMarqueeSelectionEvent SelectionEvent);
@@ -180,9 +183,11 @@ class RTSOPEN_API ARTSOController : public APlayerController, public IRTSOInputI
 	UFUNCTION() void GetEntitiesOrActorsInMarqueeSelection();
 	/** @brief Reorder a selection group */
 	UFUNCTION() void ReorderGroupIndex(const int32 OldID, const int32 NewID);
-	/** @brief Returns 'MarqueeSelectedHandles'. A map keyed by the owner ID and value by a nested map keyed by selection indices and the nested value being the actual selection group handles*/
-	const TMap<int32, TMap<int32, FMassEntityHandle>>& GetMarqueeSelectionMap() { return MarqueeSelectedHandles; }
-
+	/** @brief Returns immutable ref to 'MarqueeSelectedHandles'. A map keyed by the owner ID and value by a nested map keyed by selection indices and the nested value being the actual selection group handles*/
+	const TMap<int32, TMap<int32, FMassEntityHandle>>& GetImmutableMarqueeSelectionMap() const { return MarqueeSelectedHandles; }
+	/** @brief Returns mutable ref to 'MarqueeSelectedHandles'. A map keyed by the owner ID and value by a nested map keyed by selection indices and the nested value being the actual selection group handles*/
+	TMap<int32, TMap<int32, FMassEntityHandle>>& GetMutableMarqueeSelectionMap() { return MarqueeSelectedHandles; }
+	
 	/** @return The conversation widget pointer, it will always be valid after begin-play in case 'ConversationWidgetClass' is pointing to a valid class */
 	UFUNCTION() URTSOConversationWidget* GetConversationWidget() const { return ConversationWidget;};
 
@@ -193,11 +198,29 @@ class RTSOPEN_API ARTSOController : public APlayerController, public IRTSOInputI
 	/** @brief Marquee related hit results, end corner */
 	UFUNCTION() FHitResult GetLatestEndHitResult()    { return LatestEndHitResult;};	
 	
-protected:
 	/** @brief Dispatches a sync 'parallellfor' that updates 'FPDMFragment_RTSEntityBase' fragments for all entities in the current selection group 
 	 * @note Called when a new selection group is created or deselected. */
 	void OnSelectionChange(bool bClearSelection);
+
+	// UFUNCTION(BlueprintCallable)
+	// void SpawnWorkerBuildMenu(const FPDBuildWorker& BuildWorker) const;
+	// UFUNCTION(BlueprintCallable)
+	// void BeginCloseWorkerBuildMenu();
+	// UFUNCTION(BlueprintCallable)
+	// void EndCloseWorkerBuildMenu();
+	//
+	// UFUNCTION(BlueprintCallable)
+	// void OpenWorkerContextMenu() const;	
+	// UFUNCTION(BlueprintCallable)
+	// void BeginCloseWorkerContext();
+	// UFUNCTION(BlueprintCallable)
+	// void EndCloseWorkerContext();	
 	/* RTSO Marquee selection - End */
+protected:
+
+	/** @brief Checks the given entity, compares with the relevant subsystem to get it's build contexts,
+	 * then updates the widget based on this */
+	void UpdateBuildMenuContexts(const FMassEntityHandle& CurrentEntity) const;
 
 private:
 	/** @brief Calls 'OnEndConversation' with a dummy payload.
@@ -250,6 +273,10 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "RTS|Input")
 	TMap<FGameplayTag, UInputMappingContext*> MappingContexts{};
 
+	/** @brief Selection error for when clicking to select a single entity */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "RTS|Input")
+	double ClickToSelectErrorMin = 350.0; 
+
 protected:
 	/** @brief Main menu widget base class, has a widget stack for supplying different stacked widgets */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Menu|Startscreen")
@@ -264,6 +291,13 @@ protected:
 	/** @brief Instantiated conversation widget */
 	UPROPERTY(VisibleInstanceOnly)
 	URTSOConversationWidget* ConversationWidget = nullptr;
+	
+	/** @brief Build menu widget base class */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	TSubclassOf<UPDBuildWidgetBase> BuildMenuWidgetClass = nullptr;
+	/** @brief Instantiated conversation widget */
+	UPROPERTY(VisibleInstanceOnly)
+	UPDBuildWidgetBase* BuildMenuWidget = nullptr;	
 
 	/** @brief Marquee related hit results, start corner */
 	UPROPERTY(VisibleInstanceOnly)
@@ -311,6 +345,8 @@ protected:
 	 * Space complexity will however be three times in size but even at a selection group of 10.000 entities this is still less than 120KB working memory 
 	 */
 	TMap<int32, TMap<int32, FMassEntityHandle>> MarqueeSelectedHandles{};
+
+	static inline const TArray<int32> EmptyKeys = {};
 };
 
 

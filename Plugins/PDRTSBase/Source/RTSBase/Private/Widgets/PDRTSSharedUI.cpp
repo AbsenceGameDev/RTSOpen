@@ -3,8 +3,10 @@
 #include "PDRTSSharedUI.h"
 
 #include "PDRTSCommon.h"
+#include "Animation/WidgetAnimation.h"
 #include "Components/TextBlock.h"
 #include "Components/Border.h"
+#include "Components/Button.h"
 #include "Components/TileView.h"
 #include "Interfaces/PDRTSBuilderInterface.h"
 
@@ -21,6 +23,7 @@ void UPDBuildableEntry::NativeOnListItemObjectSet(UObject* ListItemObject)
 	DirectParentReference = Item->GetDirectParentReference();
 	ParentMenuContextTag  = Item->GetParentContextTag();
 	BuildableTag          = Item->GetBuildableTag();
+	SetOwningPlayer(DirectParentReference->GetOwningPlayer());
 	
 	// 2. Set data-asset variable
 	TArray<FDataTableRowHandle>& BuildContexts = DirectParentReference->GetCurrentBuildContexts();
@@ -63,44 +66,69 @@ void UPDBuildableEntry::NativeOnListItemObjectSet(UObject* ListItemObject)
 		}
 	}
 	
-	// 3. Bind delegates
-	TextContentBorder->OnMouseMoveEvent.BindDynamic(this, &UPDBuildableEntry::MouseMove); 
-	TextContentBorder->OnMouseButtonDownEvent.BindDynamic(this, &UPDBuildableEntry::MouseButtonDown);
-	TextContentBorder->OnMouseButtonUpEvent.BindDynamic(this, &UPDBuildableEntry::MouseButtonUp);
-	TextContentBorder->OnMouseDoubleClickEvent.BindDynamic(this, &UPDBuildableEntry::MouseDoubleClick);
+	// 3. Clear and Bind delegates
+	Hitbox->OnClicked.Clear();
+	Hitbox->OnClicked.AddDynamic(this, &UPDBuildableEntry::OnClicked);
+
+	Hitbox->OnReleased.Clear();
+	Hitbox->OnReleased.AddDynamic(this, &UPDBuildableEntry::OnReleased);
+	
+	Hitbox->OnHovered.Clear();
+	Hitbox->OnHovered.AddDynamic(this, &UPDBuildableEntry::OnHovered);
+	
+	Hitbox->OnUnhovered.Clear();
+	Hitbox->OnUnhovered.AddDynamic(this, &UPDBuildableEntry::OnUnhovered);
+
+	Hitbox->OnPressed.Clear();
+	Hitbox->OnPressed.AddDynamic(this, &UPDBuildableEntry::OnPressed);
 }
 
-FEventReply UPDBuildableEntry::MouseMove(FGeometry MyGeometry, const FPointerEvent& MouseEvent)
+void UPDBuildableEntry::OnHovered()
 {
-	return FEventReply();/** @todo: write impl.*/
+	UE_LOG(PDLog_RTSBase, Warning, TEXT("UPDBuildableEntry::OnHovered"))
+	/** @todo: write impl.*/
 }
 
-FEventReply UPDBuildableEntry::MouseButtonDown(FGeometry MyGeometry, const FPointerEvent& MouseEvent)
+void UPDBuildableEntry::OnUnhovered()
 {
-	return FEventReply();/** @todo: write impl.*/
+	UE_LOG(PDLog_RTSBase, Warning, TEXT("UPDBuildableEntry::OnUnhovered"))
+	/** @todo: write impl.*/
 }
 
-FEventReply UPDBuildableEntry::MouseButtonUp(FGeometry MyGeometry, const FPointerEvent& MouseEvent)
+void UPDBuildableEntry::OnClicked()
 {
-	FEventReply Reply;
-	APawn* CachedOwner = GetOwningPlayerPawn();
-	if (CachedOwner == nullptr || CachedOwner->GetClass()->ImplementsInterface(UPDRTSBuilderInterface::StaticClass()) == false)
+	UE_LOG(PDLog_RTSBase, Warning, TEXT("UPDBuildableEntry::OnClicked"))
+	/** @todo: write impl.*/
+}
+
+void UPDBuildableEntry::OnReleased()
+{
+	UE_LOG(PDLog_RTSBase, Warning, TEXT("UPDBuildableEntry::OnReleased"))
+	/** @todo: write impl.*/
+}
+
+void UPDBuildableEntry::OnPressed()
+{
+	UE_LOG(PDLog_RTSBase, Warning, TEXT("UPDBuildableEntry::OnPressed"))
+
+	const APawn* CachedOwner = GetOwningPlayer()->GetPawnOrSpectator();
+	if (CachedOwner == nullptr)
 	{
 		/** @todo Log issue to player, @test also write tests for this */
-		Reply.NativeReply = FReply::Unhandled();
-		return Reply; 
+		UE_LOG(PDLog_RTSBase, Error, TEXT("UPDBuildableEntry::OnPressed - Player owning pawn is not set!"))
+		return;
+	}
+	
+	if (CachedOwner->GetClass()->ImplementsInterface(UPDRTSBuilderInterface::StaticClass()) == false)
+	{
+		/** @todo Log issue to player, @test also write tests for this */
+		UE_LOG(PDLog_RTSBase, Error, TEXT("UPDBuildableEntry::OnPressed - Player pawn class does not implement 'PDRTSBuilderInterface' or object has been sliced."))
+		
+		return;
 	}
 
 	// tell DirectParentReference about the clicked button 
-	DirectParentReference->SelectBuildable(BuildableTag);	
-	
-	Reply.NativeReply = FReply::Handled();
-	return Reply;
-}
-
-FEventReply UPDBuildableEntry::MouseDoubleClick(FGeometry MyGeometry, const FPointerEvent& MouseEvent)
-{
-	return FEventReply();/** @todo: write impl.*/
+	DirectParentReference->SelectBuildable(BuildableTag);		
 }
 
 void UPDBuildContextEntry::NativeOnListItemObjectSet(UObject* ListItemObject)
@@ -109,11 +137,13 @@ void UPDBuildContextEntry::NativeOnListItemObjectSet(UObject* ListItemObject)
 
 	const UPDBuildContextWrapper* Item = Cast<UPDBuildContextWrapper>(ListItemObject);
 	if (Item == nullptr) { return; }
+
 	
 	// 1. Read data
 	ContextTitle->SetText(Item->GetBuildContextTitle());
 	SelfContextTag        = Item->GetContextTag();
 	DirectParentReference = Item->GetDirectParentReference();
+	SetOwningPlayer(DirectParentReference->GetOwningPlayer());
 
 	// 2. Set data-asset variable
 	TArray<FDataTableRowHandle>& BuildContexts = DirectParentReference->GetCurrentBuildContexts();
@@ -142,33 +172,71 @@ void UPDBuildContextEntry::NativeOnListItemObjectSet(UObject* ListItemObject)
 			}
 		}
 	}
-	
-	
-	// 3. Bind delegates
-	TextContentBorder->OnMouseMoveEvent.BindDynamic(this, &UPDBuildContextEntry::MouseMove); 
-	TextContentBorder->OnMouseButtonDownEvent.BindDynamic(this, &UPDBuildContextEntry::MouseButtonDown);
-	TextContentBorder->OnMouseButtonUpEvent.BindDynamic(this, &UPDBuildContextEntry::MouseButtonUp);
-	TextContentBorder->OnMouseDoubleClickEvent.BindDynamic(this, &UPDBuildContextEntry::MouseDoubleClick);	
+
+	// 3 Clear and Bind delegates
+	Hitbox->OnClicked.Clear();
+	Hitbox->OnClicked.AddDynamic(this, &UPDBuildContextEntry::OnClicked);
+
+	Hitbox->OnReleased.Clear();
+	Hitbox->OnReleased.AddDynamic(this, &UPDBuildContextEntry::OnReleased);
+
+	Hitbox->OnHovered.Clear();
+	Hitbox->OnHovered.AddDynamic(this, &UPDBuildContextEntry::OnHovered);
+
+	Hitbox->OnUnhovered.Clear();
+	Hitbox->OnUnhovered.AddDynamic(this, &UPDBuildContextEntry::OnUnhovered);
+
+	Hitbox->OnPressed.Clear();
+	Hitbox->OnPressed.AddDynamic(this, &UPDBuildContextEntry::OnPressed);
 }
 
-FEventReply UPDBuildContextEntry::MouseMove(FGeometry MyGeometry, const FPointerEvent& MouseEvent)
+void UPDBuildContextEntry::OnHovered()
 {
-	return FEventReply();/** @todo: write impl.*/
+	UE_LOG(PDLog_RTSBase, Warning, TEXT("UPDBuildContextEntry::OnHovered"))
+	/** @todo: write impl.*/
+}
+void UPDBuildContextEntry::OnUnhovered()
+{
+	UE_LOG(PDLog_RTSBase, Warning, TEXT("UPDBuildContextEntry::OnUnhovered"))
+	
+	/** @todo: write impl.*/
 }
 
-FEventReply UPDBuildContextEntry::MouseButtonDown(FGeometry MyGeometry, const FPointerEvent& MouseEvent)
+void UPDBuildContextEntry::OnClicked()
 {
-	APawn* CachedOwner = GetOwningPlayerPawn();
-	FEventReply Reply;
-	if (CachedOwner == nullptr || CachedOwner->GetClass()->ImplementsInterface(UPDRTSBuilderInterface::StaticClass()) == false)
+	UE_LOG(PDLog_RTSBase, Warning, TEXT("UPDBuildContextEntry::OnClicked"))
+	/** @todo: write impl.*/
+}
+
+void UPDBuildContextEntry::OnReleased()
+{
+	UE_LOG(PDLog_RTSBase, Warning, TEXT("UPDBuildContextEntry::OnReleased"))
+	
+	/** @todo: write impl.*/
+}
+
+void UPDBuildContextEntry::OnPressed()
+{
+	UE_LOG(PDLog_RTSBase, Warning, TEXT("UPDBuildContextEntry::OnPressed"))
+
+	APawn* CachedOwner = GetOwningPlayer()->GetPawnOrSpectator();
+	if (CachedOwner == nullptr)
 	{
 		/** @todo Log issue to player, @test also write tests for this */
-		Reply.NativeReply = FReply::Unhandled();
-		return Reply; 
+		UE_LOG(PDLog_RTSBase, Error, TEXT("UPDBuildContextEntry::OnPressed - Player owning pawn is not set!"))
+		
+		return;
+	}
+	
+	if (CachedOwner->GetClass()->ImplementsInterface(UPDRTSBuilderInterface::StaticClass()) == false)
+	{
+		/** @todo Log issue to player, @test also write tests for this */
+		UE_LOG(PDLog_RTSBase, Error, TEXT("UPDBuildContextEntry::OnPressed - Player pawn class does not implement 'PDRTSBuilderInterface' or object has been sliced."))
+		
+		return;
 	}
 
-	IPDRTSBuilderInterface* AsInterface = Cast<IPDRTSBuilderInterface>(CachedOwner);
-	AsInterface->NewAction(ERTSActionMode::SelectContext, SelfContextTag);
+	IPDRTSBuilderInterface::Execute_NewAction(CachedOwner, ERTSBuildMenuModules::SelectContext, SelfContextTag);
 	
 	// if you hit this ensure´then you've forgotten to add an appropriate parent reference upon spawning the widget 
 	ensure(DirectParentReference != nullptr);
@@ -179,20 +247,7 @@ FEventReply UPDBuildContextEntry::MouseButtonDown(FGeometry MyGeometry, const FP
 	}
 
 	// tell DirectParentReference about the clicked button 
-	DirectParentReference->UpdateSelectedContext(SelfContextTag);
-
-	Reply.NativeReply = FReply::Handled();
-	return Reply;
-}
-
-FEventReply UPDBuildContextEntry::MouseButtonUp(FGeometry MyGeometry, const FPointerEvent& MouseEvent)
-{
-	return FEventReply();/** @todo: write impl.*/
-}
-
-FEventReply UPDBuildContextEntry::MouseDoubleClick(FGeometry MyGeometry, const FPointerEvent& MouseEvent)
-{
-	return FEventReply();/** @todo: write impl.*/
+	DirectParentReference->UpdateSelectedContext(SelfContextTag);	
 }
 
 void UPDBuildWidgetBase::NativeConstruct()
@@ -314,22 +369,22 @@ void UPDBuildWidgetBase::SelectBuildable(const FGameplayTag& NewSelectedBuildabl
 	bool bRequestedBuildableWasValid = false;
 	for (const FDataTableRowHandle& Context : CurrentBuildableContexts)
 	{
-		const FString CtxtStr = FString::Printf(TEXT("UPDBuildWidgetBase(%s, %s)::SelectBuildContext"), *Context.RowName.ToString(), *GetName());
+		const FString CtxtStr = FString::Printf(TEXT("UPDBuildWidgetBase(%s, %s)::SelectBuildable"), *Context.RowName.ToString(), *GetName());
 		FPDBuildContext* LoadedContext = Context.GetRow<FPDBuildContext>(CtxtStr);
-		if (LoadedContext == nullptr || LoadedContext->ContextTag.IsValid()) { continue; }
+		if (LoadedContext == nullptr || LoadedContext->ContextTag.IsValid() == false) { continue; }
 		
 		for (const FDataTableRowHandle& BuildData : LoadedContext->BuildablesData)
 		{
-			FPDBuildable* Buildable = BuildData.GetRow<FPDBuildable>("");
-			if (Buildable == nullptr || Buildable->BuildableTag != NewSelectedBuildable)
+			const FPDBuildable* Buildable = BuildData.GetRow<FPDBuildable>("");
+			if (Buildable == nullptr || (Buildable->BuildableTag != NewSelectedBuildable))
 			{
 				continue;
 			}
 			
 			bRequestedBuildableWasValid = LastSelectedBuildableTag != NewSelectedBuildable;
+			UE_LOG(PDLog_RTSBase, Warning, TEXT("UPDBuildWidgetBase::SelectBuildable -- bRequestedBuildableWasValid: %i"), bRequestedBuildableWasValid)
 			break; 
 		}
-		break;
 	}
 
 	UpdateSelectedBuildable(NewSelectedBuildable, bRequestedBuildableWasValid);
@@ -340,16 +395,18 @@ void UPDBuildWidgetBase::SelectBuildable(const FGameplayTag& NewSelectedBuildabl
 
 void UPDBuildWidgetBase::UpdateSelectedBuildable(const FGameplayTag& RequestToSelectTag, const bool bSelect)
 {
+	UE_LOG(PDLog_RTSBase, Warning, TEXT("UPDBuildWidgetBase::UpdateSelectedBuildable - Buildable Tag (%s)"), *RequestToSelectTag.GetTagName().ToString())
+	
 	// Is it already selected?
-
 	FGameplayTag FinalTagSelection = FGameplayTag::EmptyTag;
 	for (const FDataTableRowHandle& Context : CurrentBuildableContexts)
 	{
-		const FString CtxtStr = FString::Printf(TEXT("UPDBuildWidgetBase(%s, %s)::SelectBuildContext"), *Context.RowName.ToString(), *GetName());
+		const FString CtxtStr = FString::Printf(TEXT("UPDBuildWidgetBase(%s, %s)::UpdateSelectedBuildable"), *Context.RowName.ToString(), *GetName());
 		const FPDBuildContext* LoadedContext = Context.GetRow<FPDBuildContext>(CtxtStr);
 		if (LoadedContext == nullptr || LoadedContext->ContextTag.IsValid() == false)
 		{
-			/** @todo Output to log with warning or error level verbosity if the context or the tag was invalid */ 
+			/** @todo Output to log with warning or error level verbosity if the context or the tag was invalid */
+			UE_LOG(PDLog_RTSBase, Warning, TEXT("UPDBuildWidgetBase::UpdateSelectedBuildable -- Context is null or has invalid flag"))
 			continue;
 		}
 		
@@ -357,9 +414,10 @@ void UPDBuildWidgetBase::UpdateSelectedBuildable(const FGameplayTag& RequestToSe
 		const TArray<UObject*>& ListItems = Buildables->GetListItems();
 		for (UObject* const& Item : ListItems)
 		{
-			const UPDBuildableEntry* AsBuildableEntry = BuildContexts->GetEntryWidgetFromItem<UPDBuildableEntry>(Item);
+			const UPDBuildableEntry* AsBuildableEntry = Buildables->GetEntryWidgetFromItem<UPDBuildableEntry>(Item);
 			if (AsBuildableEntry == nullptr || AsBuildableEntry->IsValidLowLevelFast() == false)
 			{
+				UE_LOG(PDLog_RTSBase, Warning, TEXT("UPDBuildWidgetBase::UpdateSelectedBuildable -- Context(%s) -- AsBuildableEntry: %i"), *LoadedContext->ContextReadableName.ToString(), AsBuildableEntry != nullptr)
 				continue;
 			}
 
@@ -371,18 +429,95 @@ void UPDBuildWidgetBase::UpdateSelectedBuildable(const FGameplayTag& RequestToSe
 			// Selected new tag, if deselection it will not enter this @todo clean things up here
 			if (bShouldSelect && bSelect)
 			{
+				UE_LOG(PDLog_RTSBase, Warning, TEXT("UPDBuildWidgetBase::UpdateSelectedBuildable -- Selecting buildable"))
 				FinalTagSelection = RequestToSelectTag;
 			}
 		}
 	}
 	
 	// This has been checked in mouse input event, if it is called manually it is up to the caller to have checked this beforehand
-	APawn* CachedOwner = GetOwningPlayerPawn();
-	ensure(CachedOwner == nullptr || CachedOwner->GetClass()->ImplementsInterface(UPDRTSBuilderInterface::StaticClass()) == false);
-	
-	IPDRTSBuilderInterface* AsInterface = Cast<IPDRTSBuilderInterface>(CachedOwner);
-	AsInterface->NewAction(ERTSActionMode::SelectBuildable, FinalTagSelection);
+	APawn* CachedOwner = GetOwningPlayer()->GetPawnOrSpectator();
+	if (ensure(CachedOwner != nullptr && CachedOwner->GetClass()->ImplementsInterface(UPDRTSBuilderInterface::StaticClass())))
+	{
+		IPDRTSBuilderInterface::Execute_NewAction(CachedOwner, ERTSBuildMenuModules::SelectBuildable, FinalTagSelection);
+	}
 }
+
+void UPDBuildWidgetBase::SpawnWorkerBuildMenu(const FPDBuildWorker& BuildWorker)
+{
+	FPDBuildContextParam ContextParams;
+	ContextParams.NewBuildableContext = BuildWorker.GrantedContexts;
+
+	AddToViewport();
+	Buildables->SetRenderOpacity(0.0);
+	BuildContexts->SetRenderOpacity(0.0);
+	
+	OverwriteBuildContext(ContextParams);
+	LoadBuildContexts();
+	PlayAnimation(OpenWidget);
+
+	bIsMenuVisible = true;
+}
+
+void UPDBuildWidgetBase::BeginCloseWorkerBuildMenu()
+{
+	if (CloseWidget == nullptr || CloseWidget->IsValidLowLevelFast() == false)
+	{
+		RemoveFromParent();
+		bIsMenuVisible = false;
+		return;
+	}
+	
+	// When animation finished
+	FWidgetAnimationDynamicEvent Delegate;
+	Delegate.BindUFunction(this, TEXT("EndCloseWorkerBuildMenu"));
+	BindToAnimationFinished(CloseWidget, Delegate);
+	PlayAnimation(CloseWidget);
+}
+
+void UPDBuildWidgetBase::EndCloseWorkerBuildMenu()
+{
+	APawn* CachedOwner = GetOwningPlayer()->GetPawnOrSpectator();
+	if (CachedOwner != nullptr && CachedOwner->GetClass()->ImplementsInterface(UPDRTSBuilderInterface::StaticClass()))
+	{
+		IPDRTSBuilderInterface::Execute_NewAction(CachedOwner, ERTSBuildMenuModules::DeselectBuildable, FGameplayTag());
+	}
+
+	
+	bIsMenuVisible = false;
+	RemoveFromParent();
+}
+
+void UPDBuildWidgetBase::OpenWorkerContextMenu()
+{
+	PlayAnimation(OpenContextMenu);	
+}
+
+void UPDBuildWidgetBase::BeginCloseWorkerContext()
+{
+	if (CloseWidget == nullptr || CloseWidget->IsValidLowLevelFast() == false)
+	{
+		RemoveFromParent();
+		return;
+	}
+	
+	// When animation finished
+	FWidgetAnimationDynamicEvent Delegate;
+	Delegate.BindUFunction(this, TEXT("EndCloseWorkerBuildMenu"));
+	BindToAnimationFinished(CloseContextMenu, Delegate);
+	PlayAnimation(CloseContextMenu);
+}
+
+void UPDBuildWidgetBase::EndCloseWorkerContext()
+{
+	APawn* CachedOwner = GetOwningPlayer()->GetPawnOrSpectator();
+	if (CachedOwner != nullptr && CachedOwner->GetClass()->ImplementsInterface(UPDRTSBuilderInterface::StaticClass()))
+	{
+		IPDRTSBuilderInterface::Execute_NewAction(CachedOwner, ERTSBuildMenuModules::DeselectContext, FGameplayTag());
+		IPDRTSBuilderInterface::Execute_NewAction(CachedOwner, ERTSBuildMenuModules::DeselectBuildable, FGameplayTag());
+	}	
+}
+
 
 
 /**

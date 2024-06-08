@@ -53,6 +53,10 @@ struct PDRTSBASE_API FPDMFragment_RTSEntityBase : public FMassFragment
 	UPROPERTY()
 	bool bAction  = false;
 
+	/** @brief The entities entity type, used by downstream systems  */
+	UPROPERTY()
+	FGameplayTag EntityType{TAG_AI_Type_BuilderUnit_Novice};	
+
 	/** @brief Selection state for an entity running this fragment */
 	UPROPERTY()
 	EPDEntitySelectionState SelectionState = EPDEntitySelectionState::ENTITY_UNSET;	
