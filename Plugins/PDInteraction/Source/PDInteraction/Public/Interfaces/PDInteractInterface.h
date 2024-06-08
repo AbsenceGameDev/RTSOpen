@@ -32,6 +32,11 @@ public:
 	double GetMaxInteractionDistance() const;
 	virtual double GetMaxInteractionDistance_Implementation() const;
 
+	/** @brief This function handles telling us if we are able to interact with the object. */
+	UFUNCTION(BlueprintNativeEvent, BlueprintCallable, Category = "Interact|Interface")
+	bool GetCanInteract() const;
+	virtual bool GetCanInteract_Implementation() const;	
+
 	/** @brief This function handles returning a interaction time/duration value. */
 	UFUNCTION(BlueprintNativeEvent, BlueprintCallable, Category = "Interact|Interface")
 	double GetInteractionTime() const;

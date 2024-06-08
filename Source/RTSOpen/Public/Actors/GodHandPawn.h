@@ -7,6 +7,7 @@
 #include "GameplayTagContainer.h"
 #include "InputActionValue.h"
 #include "MassEntityTypes.h"
+#include "RTSOController.h"
 #include "RTSOpenCommon.h"
 #include "Containers/Deque.h"
 #include "GameFramework/Pawn.h"
@@ -138,7 +139,11 @@ public:
 	virtual void ActionWorkerUnit_Triggered_Implementation(const FInputActionValue& Value) override;
 	/** @brief Calls into IRTSOInputInterface::Execute_ActionWorkerUnit_Completed. Reserve for later use */
 	virtual void ActionWorkerUnit_Cancelled_Implementation(const FInputActionValue& Value) override;
+	void ProcessPlaceBuildable(ARTSOController* PC);
+
+	/** @brief Resets data that is otherwise used for viaaully pathing a workers potential walk-path */
 	void ResetPathParameters();
+	
 	/** @brief If we were NOT drawing a marquee: then dispatch ai job to entity, if we had a valid entity.
 	 * If we were drawing a marquee: call MarqueeSelection(EMarqueeSelectionEvent::RELEASEMARQUEE).*/
 	virtual void ActionWorkerUnit_Completed_Implementation(const FInputActionValue& Value) override;
@@ -226,6 +231,10 @@ public:
 	UPROPERTY()
 	AActor* CurrentGhost = nullptr;
 
+	/** @brief The ghost mesh of the currently selected buildable */
+	UPROPERTY()
+	TArray<AActor*> SpawnedBuildings{};
+	
 	/** @brief Fallback comparison value for a closest distance search when the vector was not valid */
 	static inline constexpr double  InvalidDistance{UE_MAX_FLT * UE_MAX_FLT};
 	/** @brief Fallback comparison value for a closest distance search when the vector was not valid */

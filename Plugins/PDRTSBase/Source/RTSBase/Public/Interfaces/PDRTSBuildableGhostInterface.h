@@ -34,6 +34,8 @@ public:
 	{
 	}	
 public:
+	/** @todo no need to serialize, we'll not save ghosts into save-file yet, when we do revisit this and move somewhere more appropriate */
+	bool bIsGhost_noSerialize = false;
 };
 
 

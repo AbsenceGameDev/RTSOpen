@@ -48,7 +48,7 @@ void ARTSOController::BeginPlay()
 {
 	Super::BeginPlay();
 
-	URTSOConversationActorTrackerSubsystem* Tracker =GetWorld()->GetSubsystem<URTSOConversationActorTrackerSubsystem>();
+	URTSOConversationActorTrackerSubsystem* Tracker = GetWorld()->GetSubsystem<URTSOConversationActorTrackerSubsystem>();
 	check(Tracker != nullptr)
 	Tracker->TrackedPlayerControllers.Emplace(this);
 	
@@ -636,6 +636,10 @@ void ARTSOController::MarqueeSelection(EMarqueeSelectionEvent SelectionEvent)
 	
 	switch (SelectionEvent)
 	{
+	case EMarqueeSelectionEvent::ABORT:
+		StartMousePositionMarquee = CurrentMousePositionMarquee = FVector2D{};
+		bIsDrawingMarquee = false;
+		break;
 	case EMarqueeSelectionEvent::STARTMARQUEE:
 		StartMousePositionMarquee = CurrentMousePositionMarquee = ScreenCoordinates;
 		bIsDrawingMarquee = true;

@@ -16,6 +16,11 @@ double IPDInteractInterface::GetMaxInteractionDistance_Implementation() const
 	return DEFAULT_PEROBJECT_MAX_INTERACTION_DISTANCE;
 }
 
+bool IPDInteractInterface::GetCanInteract_Implementation() const
+{
+	return true;
+}
+
 double IPDInteractInterface::GetInteractionTime_Implementation() const
 {
 	return 0.0;

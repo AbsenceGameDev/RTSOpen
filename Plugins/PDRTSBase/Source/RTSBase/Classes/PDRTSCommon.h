@@ -338,13 +338,13 @@ public:
     /** @brief  */
     inline FPDGridCell GetCellIndex(const FVector& LocationToCell) const
     {
-        return FloorVectorC(LocationToCell * UniformCellSize);
+        return FloorVectorC(LocationToCell / UniformCellSize);
     }
 
 	/** @brief  */
 	inline FVector GetCellVector(const FVector& LocationToCell) const
     {
-    	return FloorVectorV(LocationToCell * UniformCellSize);
+    	return FloorVectorV(LocationToCell / UniformCellSize) * UniformCellSize; // Bring it back to proper world space dims
     }	
 
     /** @brief Slow if used often, instead cache a pointer to the subsystem and call it 'GetCellIndex' instead  */
@@ -360,13 +360,28 @@ public:
     {
     	const double CellSize = GEngine->GetEngineSubsystem<UPDHashGridSubsystem>()->UniformCellSize;
     	
-    	return FloorVectorV(LocationToCell / CellSize);
+    	return FloorVectorV(LocationToCell / CellSize) * CellSize; // Bring it back to proper world space dims
     }		
 
 	UPROPERTY()
     double UniformCellSize = 200.0f; 
 };
 
+USTRUCT(Blueprintable)
+struct PDRTSBASE_API FPDRTSBuildableCollisionSettings
+{
+	GENERATED_BODY()
+
+	FPDRTSBuildableCollisionSettings() = default;
+	explicit FPDRTSBuildableCollisionSettings(bool bInIsSet) : bIsSet(bInIsSet) {};
+	
+	bool bIsSet = true;
+
+	UPROPERTY()
+	bool bIsActorCollisionEnabled = true;
+	UPROPERTY()
+	TMap<FName, TEnumAsByte<ECollisionEnabled::Type>>  ComponentCollisionEnabledSettings;
+};
 
 /**
 Business Source License 1.1

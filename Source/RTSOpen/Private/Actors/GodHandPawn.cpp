@@ -51,6 +51,7 @@
 
 /* Engine - Kismet */
 #include "Interfaces/PDRTSBuildableGhostInterface.h"
+#include "Kismet/GameplayStatics.h"
 #include "Kismet/KismetMathLibrary.h"
 #include "Kismet/KismetSystemLibrary.h"
 
@@ -193,8 +194,7 @@ void AGodHandPawn::BuildableGhostTick(float DeltaTime)
 
 	// Calculate stepped position, collision is our source of truth for our location
 	const FVector& TrueLocation = Collision->GetComponentLocation();
-
-	// @todo set up developer settings for UPDDynamicHashGridSubsystem grid size
+	
 	const UPDHashGridSubsystem* HashGridSubsystem = GEngine->GetEngineSubsystem<UPDHashGridSubsystem>();
 	const FVector SteppedLocation = HashGridSubsystem->GetCellVector(TrueLocation);
 	
@@ -218,20 +218,13 @@ void AGodHandPawn::BuildableGhostTick(float DeltaTime)
 	}
 
 	const FVector DeltaLocation = CurrentGhost->GetActorLocation() - SteppedLocation;
-
-
-	// if (DeltaLocation.IsNearlyZero(10.0)) // HashGridSubsystem->UniformCellSize * 0.5f))
-	// {
-	// 	return;
-	// }
+	if (DeltaLocation.IsNearlyZero(10.0)) // HashGridSubsystem->UniformCellSize * 0.5f))
+	{
+		return;
+	}
 	
-	// const FVector WorldSpace =  CurrentGhost->GetActorLocation();	
-	// const FVector InterpLocation = UKismetMathLibrary::VInterpTo(WorldSpace, SteppedLocation, DeltaTime, InstanceSettings.SelectionRescaleSpeed);	
-	CurrentGhost->SetActorLocation(SteppedLocation);
-
 	UE_LOG(PDLog_RTSO, Warning, TEXT("AGodHandPawn::TickGhost -- CurrentGhost->SetActorLocation(SteppedLocation[%f,%f,%f])"), SteppedLocation.X, SteppedLocation.Y, SteppedLocation.Z)
-
-	
+	CurrentGhost->SetActorLocation(SteppedLocation);
 }
 
 void AGodHandPawn::UpdateMagnification()
@@ -430,24 +423,62 @@ void AGodHandPawn::ActionWorkerUnit_Cancelled_Implementation(const FInputActionV
 	IRTSOInputInterface::Execute_ActionWorkerUnit_Completed(this, Value);
 }
 
-//
-// @thoughts: How to handle selected units?
-// - How to deselect them intuitively
-// -- Escape needs to be mapped to menu, so can't be used to de-selecting
-// -- 
-
-void AGodHandPawn::ResetPathParameters()
+void AGodHandPawn::ProcessPlaceBuildable(ARTSOController* PC)
 {
-	InstanceState.bUpdatePathOnTick = false;
-	InstanceState.WorkUnitTargetLocation = FVector::ZeroVector;
-	InstanceState.WorkerUnitActionTarget = nullptr;
+	PC->MarqueeSelection(EMarqueeSelectionEvent::ABORT);
+	
+	ensure(CurrentGhost != nullptr);
+	if (UNLIKELY(CurrentGhost == nullptr))
+	{
+		UE_LOG(PDLog_RTSO, Warning, TEXT("ActionWorkerUnit_Completed -- Place buildable -- CurrentGhost == nullptr -- Exiting function "))
+		return;
+	}
+	const FVector&& GhostLoc = CurrentGhost->GetActorLocation();
+
+	/** TODO Set up some controls to handle the rotation here */
+	FTransform InitialSpawnTransform{FQuat(), GhostLoc, FVector::OneVector};
+	AActor* SpawnedBuildable = GetWorld()->SpawnActorDeferred<AActor>(CurrentBuildableData->ActorToSpawn, InitialSpawnTransform, this);
+	SpawnedBuildable->SetOwner(this);
+	SpawnedBuildings.Emplace_GetRef(SpawnedBuildable);
+
+	AsyncTask(ENamedThreads::GameThread,
+		[&, InSpawnTransform = InitialSpawnTransform, InGhost = CurrentGhost, InSpawnedBuildable = SpawnedBuildable]()
+		{
+			if (InSpawnedBuildable == nullptr || InSpawnedBuildable->IsValidLowLevelFast() == false)
+			{
+				UE_LOG(PDLog_RTSO, Warning, TEXT("ActionWorkerUnit_Completed -- Place buildable -- Class(%s) does nor implement interface(PDRTSBuildableGhostInterface)  -- Exiting function "),  *InSpawnedBuildable->GetClass()->GetName());
+				SpawnedBuildings.Remove(InSpawnedBuildable);
+				return;
+			}
+			
+		    const FVector&& NewGhostLoc = InGhost != nullptr ? InGhost->GetActorLocation() : InSpawnTransform.GetLocation();
+		    const FTransform UpdatedSpawnTransform{FQuat(), NewGhostLoc, FVector::OneVector};
+		    UGameplayStatics::FinishSpawningActor(InSpawnedBuildable, UpdatedSpawnTransform);
+		    if (InSpawnedBuildable->GetClass()->ImplementsInterface(UPDRTSBuildableGhostInterface::StaticClass()))
+		    {
+		        IPDRTSBuildableGhostInterface::Execute_OnSpawnedAsMain(InSpawnedBuildable);
+		    }
+		    else
+		    {
+		        UE_LOG(PDLog_RTSO, Warning, TEXT("ActionWorkerUnit_Completed -- Place buildable -- Class(%s) does nor implement interface(PDRTSBuildableGhostInterface)  -- Exiting function "),  *InSpawnedBuildable->GetClass()->GetName())			
+		    }
+		});
 }
 
+//
+// @thoughts: How to handle selected units?
 void AGodHandPawn::ActionWorkerUnit_Completed_Implementation(const FInputActionValue& Value)
 {
 	// const bool ImmutableMoveInput = Value.Get<bool>();
 	ARTSOController* PC = GetController<ARTSOController>();
 	if (PC == nullptr || PC->IsValidLowLevelFast() == false) { return; }
+
+	// Buildable data takes priority now, but: @todo add priority queue and handel each 'thing' by the order of that queue!
+	if (CurrentBuildableData != nullptr)
+	{
+		ProcessPlaceBuildable(PC);
+		return;
+	}
 
 	if (PC->IsDrawingMarquee())
 	{
@@ -486,7 +517,6 @@ void AGodHandPawn::ActionWorkerUnit_Completed_Implementation(const FInputActionV
 		return;
 	}
 	
-
 	FVector2D ScreenCoordinates;
 	bool bFoundInputType;
 
@@ -518,6 +548,13 @@ void AGodHandPawn::ActionWorkerUnit_Completed_Implementation(const FInputActionV
 	InstanceState.SelectedWorkerUnitHandle = {INDEX_NONE, INDEX_NONE};
 	UE_LOG(PDLog_RTSO, Warning, TEXT("ActionWorkerUnit_Completed -- Clearing selected worker unit "))
 	
+}
+
+void AGodHandPawn::ResetPathParameters()
+{
+	InstanceState.bUpdatePathOnTick = false;
+	InstanceState.WorkUnitTargetLocation = FVector::ZeroVector;
+	InstanceState.WorkerUnitActionTarget = nullptr;
 }
 
 void AGodHandPawn::ActionBuildMode_Implementation(const FInputActionValue& Value)
@@ -630,13 +667,23 @@ AActor* AGodHandPawn::FindClosestInteractableActor() const
 	TArray<AActor*> Overlap;
 	Collision->GetOverlappingActors(Overlap);
 	
-	AActor* ClosestActor = Overlap.IsEmpty() == false ? Overlap[0] : nullptr;
+	AActor* ClosestActor = nullptr;
 	for (AActor* FoundActor : Overlap)
 	{
-		const IPDInteractInterface* AsInterface = Cast<IPDInteractInterface>(FoundActor);
-		if (AsInterface == nullptr) { continue; }
+		if (FoundActor == nullptr || FoundActor->GetClass()->ImplementsInterface(UPDInteractInterface::StaticClass()) == false)
+		{
+			continue;
+		}
+		if (IPDInteractInterface::Execute_GetCanInteract(FoundActor) == false)
+		{
+			continue;
+		}
 
-		// Check type of interactable here, is a special actor unit/character or a world-item
+		if (ClosestActor == nullptr)
+		{
+			ClosestActor = FoundActor;
+			continue;
+		}
 		
 		const float LengthToOldActor = (ClosestActor->GetActorLocation() - Collision->GetComponentLocation()).Length();
 		const float LengthToNewActor = (FoundActor->GetActorLocation() - Collision->GetComponentLocation()).Length();
@@ -900,7 +947,7 @@ void AGodHandPawn::BeginBuild_Implementation(TSubclassOf<AActor> TargetClass, TM
 	InstanceState.SpawnedInteractable = Cast<APDInteractActor>(GetWorld()->SpawnActor(InstanceState.TempSpawnClass, &ActorLocation, &FRotator::ZeroRotator, SpawnInfo));
 	if (InstanceState.SpawnedInteractable == nullptr) { return; }
 
-	// SpawnedInteractable: Placement Mod e
+	// SpawnedInteractable: Placement Mode
 	// SpawnedInteractable->CreateOverlay
 }
 

@@ -29,6 +29,7 @@ enum class EMarqueeSelectionEvent : uint8
 	STARTMARQUEE   UMETA(DisplayName = "Start Marquee"),
 	HOLDMARQUEE    UMETA(DisplayName = "Hold Marquee"),
 	RELEASEMARQUEE UMETA(DisplayName = "Release Marquee"),
+	ABORT          UMETA(DisplayName = "Abort Marquee"),
 };
 
 class UInputMappingContext;

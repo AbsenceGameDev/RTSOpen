@@ -13,9 +13,34 @@ ARTSOInteractableBuildingBase::ARTSOInteractableBuildingBase()
 	JobTag = TAG_AI_Job_WalkToTarget;
 }
 
+void ARTSOInteractableBuildingBase::RefreshStaleSettings_Ghost()
+{
+	if (GhostCollisionSettings.bIsSet == false)
+	{
+		GhostCollisionSettings.bIsSet = true;
+		GhostCollisionSettings.ComponentCollisionEnabledSettings.FindOrAdd(MeshName) = ECollisionEnabled::NoCollision;
+		GhostCollisionSettings.ComponentCollisionEnabledSettings.FindOrAdd(BoxcompName) = ECollisionEnabled::NoCollision;
+		GhostCollisionSettings.bIsActorCollisionEnabled = false;	
+	}
+}
+
+void ARTSOInteractableBuildingBase::RefreshStaleSettings_Main()
+{
+	if (BuildableCollisionSettings.bIsSet == false)
+	{
+		BuildableCollisionSettings.bIsSet = true;
+		BuildableCollisionSettings.ComponentCollisionEnabledSettings.FindOrAdd(MeshName) = Mesh->GetCollisionEnabled();
+		BuildableCollisionSettings.ComponentCollisionEnabledSettings.FindOrAdd(BoxcompName) = Boxcomp->GetCollisionEnabled();
+		BuildableCollisionSettings.bIsActorCollisionEnabled = GetActorEnableCollision();
+	}
+}
+
 void ARTSOInteractableBuildingBase::BeginPlay()
 {
 	Super::BeginPlay();
+
+	RefreshStaleSettings<true>(); // Refresh ghost
+	RefreshStaleSettings<false>(); // Refresh main
 }
 
 FGameplayTagContainer ARTSOInteractableBuildingBase::GetGenericTagContainer_Implementation() const
@@ -23,6 +48,34 @@ FGameplayTagContainer ARTSOInteractableBuildingBase::GetGenericTagContainer_Impl
 	FGameplayTagContainer GeneratedTags;
 	GeneratedTags.AddTag(JobTag);
 	return GeneratedTags;
+}
+
+bool ARTSOInteractableBuildingBase::GetCanInteract_Implementation() const
+{
+	return bIsGhost_noSerialize == false && Super::GetCanInteract_Implementation();
+}
+
+void ARTSOInteractableBuildingBase::OnInteract_Implementation(
+	const FPDInteractionParamsWithCustomHandling& InteractionParams,
+	EPDInteractResult& InteractResult) const
+{
+	Super::OnInteract_Implementation(InteractionParams, InteractResult);
+}
+
+template<bool TIsGhost>
+void ARTSOInteractableBuildingBase::ProcessSpawn()
+{
+	RefreshStaleSettings<TIsGhost>();
+
+	UMaterialInstance* SelectedInstancedMat = TIsGhost ? GhostMat : MainMat;
+	const FPDRTSBuildableCollisionSettings& SelectedSettings = TIsGhost ? GhostCollisionSettings : BuildableCollisionSettings; 
+
+	Mesh->SetMaterial(0, SelectedInstancedMat);
+	Mesh->SetCollisionEnabled(SelectedSettings.ComponentCollisionEnabledSettings.FindRef(MeshName));
+	Boxcomp->SetCollisionEnabled(SelectedSettings.ComponentCollisionEnabledSettings.FindRef(BoxcompName));
+	SetActorEnableCollision(SelectedSettings.bIsActorCollisionEnabled);
+	
+	bIsGhost_noSerialize = TIsGhost;
 }
 
 void ARTSOInteractableBuildingBase::OnSpawnedAsGhost_Implementation()
@@ -37,11 +90,7 @@ void ARTSOInteractableBuildingBase::OnSpawnedAsGhost_Implementation()
 		
 		return;
 	}
-
-	// @todo collision is not disabling, debug tomorrow, am getting too tired right now
-	Mesh->SetMaterial(0, GhostMat);
-	Boxcomp->SetCollisionEnabled(ECollisionEnabled::NoCollision);
-	SetActorEnableCollision(false);
+	ProcessSpawn<true>();
 }
 
 void ARTSOInteractableBuildingBase::OnSpawnedAsMain_Implementation()
@@ -56,8 +105,7 @@ void ARTSOInteractableBuildingBase::OnSpawnedAsMain_Implementation()
 		
 		return;
 	}
-
-	Mesh->SetMaterial(0, MainMat);
+	ProcessSpawn<false>();
 }
 
 void ARTSOInteractableBuildingBase::Tick(float DeltaTime)

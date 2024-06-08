@@ -2,9 +2,17 @@
 #pragma once
 
 #include "CoreMinimal.h"
+#include "PDRTSCommon.h"
 #include "Actors/PDInteractActor.h"
 #include "Interfaces/PDRTSBuildableGhostInterface.h"
 #include "RTSOInteractableBuildingBase.generated.h"
+
+USTRUCT()
+struct FMyStruct
+{
+	GENERATED_BODY()
+	
+};
 
 /**
  * @brief An actor with a job tag tied to it, meant to be used for interactable buildings
@@ -20,6 +28,10 @@ class RTSOPEN_API ARTSOInteractableBuildingBase
 public:
 	/** @brief Sets default job to 'TAG_AI_Job_WalkToTarget' and enables the tickcomponent*/ 
 	ARTSOInteractableBuildingBase();
+	
+	template<bool TIsGhost>
+	void RefreshStaleSettings(){};
+	
 	/** @brief Only calls Super. Reserved for later use  */
 	virtual void Tick(float DeltaTime) override;
 	/** @brief Only calls Super. Reserved for later use  */
@@ -27,12 +39,32 @@ public:
 	
 	/** @brief adds 'JobTag' to a 'FGameplayTagContainer' and returns it */
 	virtual FGameplayTagContainer GetGenericTagContainer_Implementation() const override;
+
+	/* APDInteractActor Interface Start */
+	virtual bool GetCanInteract_Implementation() const override;
+	virtual void OnInteract_Implementation(const FPDInteractionParamsWithCustomHandling& InteractionParams, EPDInteractResult& InteractResult) const override;
+
+	template<bool TIsGhost>
+	void ProcessSpawn();
+	/* APDInteractActor Interface End */
+
 	
 	/* IPDRTSBuildableGhostInterface Interface Start */
 	virtual void OnSpawnedAsGhost_Implementation() override;
 	virtual void OnSpawnedAsMain_Implementation()  override;
 	/* IPDRTSBuildableGhostInterface Interface End */
 
+
+private:
+	void RefreshStaleSettings_Ghost();
+	void RefreshStaleSettings_Main();
+
+public:
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	FPDRTSBuildableCollisionSettings BuildableCollisionSettings{false};
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	FPDRTSBuildableCollisionSettings GhostCollisionSettings{false};
+	
 private:
 	/** @brief JobTag associated with this actor */
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Meta = (AllowPrivateAccess="true"))
@@ -42,9 +74,22 @@ private:
 	UMaterialInstance* MainMat = nullptr;
 
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Meta = (AllowPrivateAccess="true"))
-	UMaterialInstance* GhostMat = nullptr;	
+	UMaterialInstance* GhostMat = nullptr;
+
+	static inline FName BoxcompName = "Boxcomp"; 
+	static inline FName MeshName = "Mesh"; 
 };
 
+template<>
+void inline ARTSOInteractableBuildingBase::RefreshStaleSettings<true>()
+{
+	RefreshStaleSettings_Ghost();
+};
+template<>
+void inline ARTSOInteractableBuildingBase::RefreshStaleSettings<false>()
+{
+	RefreshStaleSettings_Main();
+};
 
 /**
 Business Source License 1.1
