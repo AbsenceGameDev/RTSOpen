@@ -9,6 +9,8 @@
 
 #include "PDRTSCommon.generated.h"
 
+class UNiagaraSystem;
+class UNiagaraEmitter;
 DECLARE_LOG_CATEGORY_CLASS(PDLog_RTSBase, Log, All);
 
 
@@ -57,7 +59,6 @@ enum class EPDVertexAnimSelector : uint8
 	VertexSprint    = 5 UMETA(DisplayName="Sprint"),
 };
 
-/** @todo Write actual support for 'RequiredUnitTypeTags' */
 USTRUCT(BlueprintType, Blueprintable)
 struct PDRTSBASE_API FPDWorkUnitDatum : public FTableRowBase
 {
@@ -78,6 +79,128 @@ struct PDRTSBASE_API FPDWorkUnitDatum : public FTableRowBase
 	uint8 bCanShareJob : 1;
 };
 
+
+//
+// Ghosts
+USTRUCT(Blueprintable)
+struct PDRTSBASE_API FPDRTSBuildableCollisionSettings
+{
+	GENERATED_BODY()
+
+	FPDRTSBuildableCollisionSettings() = default;
+	explicit FPDRTSBuildableCollisionSettings(bool bInIsSet) : bIsSet(bInIsSet) {};
+	
+	bool bIsSet = true;
+
+	UPROPERTY()
+	bool bIsActorCollisionEnabled = true;
+	UPROPERTY()
+	TMap<FName, TEnumAsByte<ECollisionEnabled::Type>>  ComponentCollisionEnabledSettings;
+};
+
+UENUM(Blueprintable)
+enum class EPDRTSGhostTransition
+{
+	ESingleStage UMETA(DisplayName="SingleStage"),
+	EMultipleStages UMETA(DisplayName="MultipleStages"),
+};
+
+UENUM(Blueprintable)
+enum class EPDRTSGhostStageBehaviour
+{
+	EOnStart UMETA(DisplayName="OnStart"),
+	EOnEnd UMETA(DisplayName="OnEnd"),
+};
+
+UCLASS(Blueprintable)
+class UPDRTSGhostStageAsset : public UDataAsset
+{
+	GENERATED_BODY()
+
+public:
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Actor|Ghost|Settings")
+	UStaticMesh* StageGhostMesh = nullptr;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Actor|Ghost|Settings")
+	UNiagaraSystem* StageGhostNiagaraSystem = nullptr;	
+};
+
+USTRUCT(Blueprintable)
+struct PDRTSBASE_API FPDRTSGhostStageData
+{
+	GENERATED_BODY()
+
+public:
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Actor|Ghost|Settings")
+	EPDRTSGhostStageBehaviour StageMesh_ApplyBehaviour = EPDRTSGhostStageBehaviour::EOnStart;	
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Actor|Ghost|Settings")
+	EPDRTSGhostStageBehaviour StageVFX_ApplyBehaviour = EPDRTSGhostStageBehaviour::EOnStart;	
+	
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Actor|Ghost|Settings")
+	UPDRTSGhostStageAsset* StageDA = nullptr;
+
+	/** @brief Potential max duration for a stage, this defines the space between the start stage effects and end stage effects
+	 * @note If set to -1.0, this will not wait for end of stage. if set to 0.0, then this will rely on manual end of stage, this will in many cases be when a resource, or tag, quota has been met */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Actor|Ghost|Settings")
+	double MaxDurationForStage = 0.0; 
+};
+
+USTRUCT(Blueprintable)
+struct FPDRTSGhostDatum : public FTableRowBase
+{
+	GENERATED_BODY()
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Actor|Ghost|Settings")
+	EPDRTSGhostTransition TransitionStageType;
+
+	/** @rief Will be the only stage if TransitionStageType == EPDRTSGhostTransition::ESingleStage, can be left empty for no transition effects */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Actor|Ghost|Settings", Meta = (EditCondition = "TransitionStageType == EPDRTSGhostTransition::ESingleStage", EditConditionHides))
+	FPDRTSGhostStageData SingleStageAsset;
+	
+	/** @rief Will be all stages (and in order) if TransitionStageType == EPDRTSGhostTransition::EMultipleStages, can be left empty for no transition effect */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Actor|Ghost|Settings", Meta = (EditCondition = "TransitionStageType == EPDRTSGhostTransition::EMultipleStages", EditConditionHides))
+	TArray<FPDRTSGhostStageData> MultiStageStageAssets;	
+};
+
+USTRUCT(Blueprintable)
+struct FPDRTSGhostTransitionState
+{
+	GENERATED_BODY()
+
+	/** @rief Will not be used in the datatable, but each buildable with a ghost should have a 'FPDRTSGhostDatum' which reflects   */
+	UPROPERTY(BlueprintReadWrite, Category = "Actor|Ghost|Settings")
+	int32 CurrentStageIdx = 0;	
+};
+
+
+/** @brief Should Place Ghost or Buildable ? */
+/** @brief If Ghost, should the build start immediately or should it have some processing duration? */
+/** @brief ^ If immediately - Then, If no resources, put in waiting queue; when resources: start build  */
+/** @brief ^ If duration    - Then, If no resources, put in waiting queue; when resources: send workers to gather to location  */
+UENUM(Blueprintable)
+enum class EPDRTSGhostSettings
+{
+	Ghost_FireThenForget, /** @brief Immediate Ghost;  If no resources, put in waiting queue; when resources: start build automatically without workers needing to gather any resourced there */
+	Ghost_WaitThenFire,   /** @brief Processing: If no resources, put in waiting queue; when resources: send workers to gather to location */
+	Buildable_FireThenForget, /** @brief Immediate Buildable;  If no resources, put in waiting queue; when resources: build immediately */
+};
+
+/** @brief If Buildable, should building be built immediately or after a timed delay? Costs should be taken from player bank or base? */
+UCLASS(Config = "Game", DefaultConfig)
+class PDRTSBASE_API UPDRTSBuildablePlacementBehaviour : public UDeveloperSettings
+{
+	GENERATED_BODY()
+public:
+
+	UPDRTSBuildablePlacementBehaviour(){}
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	EPDRTSGhostSettings PlacementBehaviour = EPDRTSGhostSettings::Buildable_FireThenForget;
+};
+
+//
+// Buildables
 UCLASS(Blueprintable)
 class PDRTSBASE_API UPDBuildableDataAsset : public UDataAsset
 {
@@ -123,6 +246,10 @@ struct PDRTSBASE_API FPDBuildableData
 	
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "RTSBase|WorkerUnits")
 	UPDBuildableDataAsset* DABuildAsset = nullptr;
+
+	/** @brief The settings data of this buildable's ghost */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "RTSBase|BuildSystem")
+	FPDRTSGhostDatum GhostData{};
 };
 
 USTRUCT(Blueprintable)
@@ -133,23 +260,24 @@ struct PDRTSBASE_API FPDBuildable : public FTableRowBase
 	FPDBuildable() = default;
 
 	/** @brief The tag of this buildable */
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "RTSBase|WorkerUnits")
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "RTSBase|BuildSystem")
 	FGameplayTag BuildableTag{};	
 
 	/** @brief The data of this buildable */
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "RTSBase|WorkerUnits")
-	FPDBuildableData BuildableData{};	
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "RTSBase|BuildSystem")
+	FPDBuildableData BuildableData{};
 };
+
 
 USTRUCT(Blueprintable)
 struct PDRTSBASE_API FPDBuildContextData
 {
 	GENERATED_BODY()
 
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "RTSBase|WorkerUnits")
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "RTSBase|BuildSystem")
 	FText ReadableName{};
 	
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "RTSBase|WorkerUnits")
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "RTSBase|BuildSystem")
 	UPDBuildContextDataAsset* DABuildContextAsset = nullptr;
 };
 
@@ -365,22 +493,6 @@ public:
 
 	UPROPERTY()
     double UniformCellSize = 200.0f; 
-};
-
-USTRUCT(Blueprintable)
-struct PDRTSBASE_API FPDRTSBuildableCollisionSettings
-{
-	GENERATED_BODY()
-
-	FPDRTSBuildableCollisionSettings() = default;
-	explicit FPDRTSBuildableCollisionSettings(bool bInIsSet) : bIsSet(bInIsSet) {};
-	
-	bool bIsSet = true;
-
-	UPROPERTY()
-	bool bIsActorCollisionEnabled = true;
-	UPROPERTY()
-	TMap<FName, TEnumAsByte<ECollisionEnabled::Type>>  ComponentCollisionEnabledSettings;
 };
 
 /**

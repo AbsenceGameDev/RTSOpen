@@ -3,6 +3,32 @@
 #include "PDInventorySubsystem.h"
 
 #include "PDItemCommon.h"
+#include "Components/PDInventoryComponent.h"
+
+void UPDInventorySubsystem::Initialize(FSubsystemCollectionBase& Collection)
+{
+	Super::Initialize(Collection);
+	
+	const UPDInventoryDefinitions* InventoryDefinitions = GetDefault<UPDInventoryDefinitions>();
+
+	for (const TSoftObjectPtr<UDataTable>& TablePath :  InventoryDefinitions->ItemTables)
+	{
+		UDataTable* BuildContextTable = TablePath.LoadSynchronous();
+		if (BuildContextTable == nullptr) { return; }
+		
+		ItemTables.Emplace(BuildContextTable);
+	}
+
+	for (const TSoftObjectPtr<UDataTable>& TablePath :  InventoryDefinitions->RecipeTables)
+	{
+		UDataTable* BuildContextTable = TablePath.LoadSynchronous();
+		if (BuildContextTable == nullptr) { return; }
+		
+		RecipeTables.Emplace(BuildContextTable);
+	}
+
+	ProcessTables();
+}
 
 void UPDInventorySubsystem::ProcessTables()
 {
@@ -56,8 +82,123 @@ void UPDInventorySubsystem::ProcessTables()
 			NameToTagMap.Emplace(Name) = ItemTag;
 			TagToNameMap.Emplace(ItemTag) = Name;
 			TagToTable.Emplace(ItemTag) = Table;
+
+			bHasProcessedTables = true; // todo tally up any errors in the inner loop our outer loop, for now this will do
 		}
 	}
+	
+	for (const UDataTable* Table : RecipeTables)
+	{
+		if (Table == nullptr
+			|| Table->IsValidLowLevelFast() == false
+			|| Table->RowStruct != FPDRecipeList::StaticStruct())
+		{
+			continue;
+		}
+
+		TArray<FPDRecipeList*> Rows;
+		Table->GetAllRows("", Rows);
+		
+		TArray<FName> RowNames = Table->GetRowNames();
+		for (const FName& Name : RowNames)
+		{
+			const FPDRecipeList* DefaultDatum = Table->FindRow<FPDRecipeList>(Name,"");
+			check(DefaultDatum != nullptr) // This should never be nullptr
+
+			const FGameplayTag& RecipeTag = DefaultDatum->RecipeTag;
+
+			if (RecipeTag.IsValid() == false)
+			{
+				FString BuildString = "UPDInventorySubsystem::ProcessTables -- "
+				+ FString::Printf(TEXT("Processing table(%s)"), *Table->GetName()) 
+				+ FString::Printf(TEXT("\n Trying to add recipe on row (%s) Which does not have a valid gameplay tag. Skipping processing entry"), *Name.ToString());
+				UE_LOG(PDLog_Inventory, Error, TEXT("%s"), *BuildString);
+
+				// @todo Write some test cases and some data validation to handle this properly, the logs will do for now  
+				continue;
+			}
+			
+			// @note If duplicates, ignore duplicate and output errors to screen and to log
+			if (TagToTable.Contains(RecipeTag))
+			{
+				const UDataTable* RetrievedTable = TagToTable.FindRef(RecipeTag);
+				
+				FString BuildString = "UPDInventorySubsystem::ProcessTables -- "
+				+ FString::Printf(TEXT("Processing table(%s)"), *Table->GetName()) 
+				+ FString::Printf(TEXT("\n Trying to add recipe tag(%s) which has already been added by previous table(%s)."),
+						*RecipeTag.GetTagName().ToString(), RetrievedTable != nullptr ? *RetrievedTable->GetName() : *FString("INVALID TABLE"));
+				UE_LOG(PDLog_Inventory, Error, TEXT("%s"), *BuildString);
+
+				// @todo Write some test cases and some data validation to handle this properly, the logs will do for now  
+				continue;
+			}
+			
+			TagToRecipeMap.Emplace(DefaultDatum->RecipeTag) = DefaultDatum;
+			NameToTagMap.Emplace(Name) = RecipeTag;
+			TagToNameMap.Emplace(RecipeTag) = Name;
+			TagToTable.Emplace(RecipeTag) = Table;
+			
+			bHasProcessedTables = true; // todo tally up any errors in the inner loop our outer loop, for now this will do
+		}
+	}	
+}
+
+bool UPDInventorySubsystem::CanInventoryAffordItem(
+	FPDItemList& CurrentItemData,
+	const FPDItemDefaultDatum& DefaultItemToConsider,
+	bool bIsCraftingCosts,
+	bool bIsRecurringCosts,
+	const int32 Stage)
+{
+	const TMap<FGameplayTag, FPDItemCosts>& SelectedCosts = bIsCraftingCosts ? DefaultItemToConsider.CraftingCosts : DefaultItemToConsider.UsageCosts;
+
+	bool bCanAfford = false;
+	for (const TTuple<FGameplayTag, FPDItemCosts>& Cost : SelectedCosts)
+	{
+		if (CurrentItemData.ItemToIndexMapping.Contains(Cost.Key) == false) { return false; }
+
+		const int32 ItemIdx = CurrentItemData.ItemToIndexMapping.FindRef(Cost.Key);
+		if (CurrentItemData.Items.IsValidIndex(ItemIdx) == false || (bIsRecurringCosts && Cost.Value.RecurringCostPerPhase.IsValidIndex(Stage) == false))
+		{
+			return false;
+		}
+
+		const int32 SelectedCost = bIsRecurringCosts ? Cost.Value.RecurringCostPerPhase[Stage] : Cost.Value.InitialCost;
+		if (CurrentItemData.Items[ItemIdx].TotalItemCount < SelectedCost) { return false; }
+
+		bCanAfford = true;
+	}
+
+	return bCanAfford;
+}
+
+bool UPDInventorySubsystem::CanInventoryAffordItem(
+	const TMap<FGameplayTag, FPDLightItemDatum>& CurrentItemData,
+	const FPDItemDefaultDatum& DefaultItemToConsider,
+	bool bIsCraftingCosts,
+	bool bIsRecurringCosts,
+	const int32 Stage)
+{
+	const TMap<FGameplayTag, FPDItemCosts>& SelectedCosts = bIsCraftingCosts ? DefaultItemToConsider.CraftingCosts : DefaultItemToConsider.UsageCosts;
+
+	bool bCanAfford = false;
+	for (const TTuple<FGameplayTag, FPDItemCosts>& Cost : SelectedCosts)
+	{
+		if (CurrentItemData.Contains(Cost.Key) == false) { return false; }
+
+		if (bIsRecurringCosts && Cost.Value.RecurringCostPerPhase.IsValidIndex(Stage) == false)
+		{
+			return false;
+		}
+		
+
+		const int32 SelectedCost = bIsRecurringCosts ? Cost.Value.RecurringCostPerPhase[Stage] : Cost.Value.InitialCost;
+		if (CurrentItemData.FindRef(Cost.Key).TotalItemCount < SelectedCost) { return false; }
+
+		bCanAfford = true;
+	}
+
+	return bCanAfford;
 }
 
 const FPDItemDefaultDatum* UPDInventorySubsystem::GetDefaultDatum(const FName& RowName)

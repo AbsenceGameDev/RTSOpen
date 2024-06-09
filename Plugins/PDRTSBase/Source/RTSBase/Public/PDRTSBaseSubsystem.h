@@ -82,13 +82,12 @@ struct FPDEntityOctreeSemantics
 	};
 };
 
-/** @brief Boilerplate Entity namespace, defines an octree sub-class. @todo write some code to scope lock the tree when doing certain function calls. Added come booleans as placeholders in code to remind me */
+/** @brief Boilerplate Entity namespace, defines an octree sub-class. */
 namespace PD::Mass::Entity
 {
 	typedef TOctree2<FPDEntityOctreeCell, FPDEntityOctreeSemantics> UnsafeOctree;
 	
-	/** @brief Safe octree implementation. Crudely avoids data-race conditions.
-	 * @todo re-add the mutex when I have time to debug why it wasn't reliable last time. I have a hint I was locking the data only on one thread but right now this works fine  */
+	/** @brief Safe octree implementation. Crudely avoids data-race conditions.   */
 	class FPDSafeOctree : public UnsafeOctree
 	{
 	public:
@@ -158,6 +157,16 @@ struct FLEntityCompound
 	int32 OwnerID;
 };
 
+USTRUCT()
+struct FPDRTSBuildQueue
+{
+	GENERATED_BODY()
+
+	UPROPERTY()
+	TArray<AActor*> ActorInWorld;
+};
+
+
 /** @brief Subsystem to handle octree size changes and to act as a manager for the entity workers */
 UCLASS()
 class PDRTSBASE_API UPDRTSBaseSubsystem : public UEngineSubsystem
@@ -210,15 +219,27 @@ public:
 	const FPDBuildContext* GetBuildContextEntry(const FGameplayTag& BuildContextTag);
 	/** @brief Returns the default Buildable data via it's Buildable-tag*/
 	const FPDBuildableData* GetBuildableData(const FGameplayTag& BuildableTag);
-
+	const FGameplayTag& GetBuildableTagFromData(const FPDBuildableData* BuildableData);
 	
+	static void ProcessGhostStageDataAsset(const AActor* GhostActor, bool bIsStartOfStage, const FPDRTSGhostStageData& SelectedStageData);
+
+	UFUNCTION(BlueprintCallable, Category = "Actor|Ghost")
+	static void ProcessGhostStage(AActor* GhostActor, const FGameplayTag& BuildableTag, FPDRTSGhostTransitionState& MutableGhostDatum, bool bIsStartOfStage);
+
+	UFUNCTION(BlueprintCallable, Category = "Actor|Ghost")
+	static double GetMaxDurationGhostStage(const FGameplayTag& BuildableTag, FPDRTSGhostTransitionState& MutableGhostDatum);	
+
+	UFUNCTION(BlueprintCallable, Category = "Actor|Ghost")
+	static bool IsPastFinalIndex(const FGameplayTag& BuildableTag, FPDRTSGhostTransitionState& MutableGhostDatum);	
+
+
 	/** @brief Associates and FMassArchetypeHandle with a config asset, so we can retrieve this info back to our save system fast when needed */
 	void AssociateArchetypeWithConfigAsset(const FMassArchetypeHandle& Archetype, const TSoftObjectPtr<UMassEntityConfigAsset>& EntityConfig);
 
 	/** @brief Retrieves the config asset */
 	TSoftObjectPtr<UMassEntityConfigAsset> GetConfigAssetForArchetype(const FMassArchetypeHandle& Archetype);
 
-	void WorldInit(UWorld* World);
+	void WorldInit(const UWorld* World);
 
 	/** @brief Does some portable iso-approved 'hacks' to fetch the all the mass ISM's */
 	static const TArray<TObjectPtr<UInstancedStaticMeshComponent>>& GetMassISMs(const UWorld* InWorld);
@@ -233,9 +254,14 @@ public:
 	UPROPERTY()
 	TArray<UDataTable*> BuildContextTables{};
 
+	/** @brief Build queues per player */
+	UPROPERTY()
+	TMap<int32 /*Player ID*/, FPDRTSBuildQueue> BuildQueues{};	
+
 	TMap<FGameplayTag, const FPDBuildWorker*> GrantedBuildContexts_WorkerTag{};		
 	TMap<FGameplayTag, const FPDBuildContext*> BuildContexts_WTag{};	
 	TMap<FGameplayTag, const FPDBuildableData*> BuildableData_WTag{};	
+	TMap<FPDBuildableData*, FGameplayTag>       BuildableData_WTagReverse{};	
 	
 	/** @brief Selection group navpath map, Keyed by owner ID, valued by selection group navdata container*/
 	UPROPERTY()
@@ -403,6 +429,33 @@ public:
 	FPDOctreeUserQuery OctreeUserQuery{};
 };
 
+UENUM()
+enum class EPDRTSBuildProgressionBehaviour
+{
+	EBuildWaitsForWorkers,
+	EBuildCallsForWorkers,
+};
+
+UENUM()
+enum class EPDRTSBuildCostBehaviour
+{
+	EBuildCostPlayerBank,
+	EBuildCostBaseBank, // may differ from player bank
+	EBuildCostWaitForWorkers,
+};
+
+USTRUCT(Blueprintable)
+struct FPDRTSBuildSystemBehaviours
+{
+	GENERATED_BODY()
+
+	UPROPERTY(Config, EditAnywhere, Category="Visible")
+	EPDRTSBuildProgressionBehaviour Progression = EPDRTSBuildProgressionBehaviour::EBuildCallsForWorkers;
+
+	UPROPERTY(Config, EditAnywhere, Category="Visible")
+	EPDRTSBuildCostBehaviour Cost = EPDRTSBuildCostBehaviour::EBuildCostWaitForWorkers;
+};
+
 /** @brief Subsystem (developer) settings, set the uniform bounds, the default grid cell size and the work tables for the entities to use */
 UCLASS(Config = "Game", DefaultConfig)
 class PDRTSBASE_API UPDRTSSubsystemSettings : public UDeveloperSettings
@@ -413,12 +466,12 @@ public:
 	UPDRTSSubsystemSettings(){}
 
 	/** @brief Uniform bounds for the requested octree */
-	UPROPERTY(Config, EditAnywhere, Category="Visible")
+	UPROPERTY(Config, EditAnywhere, Category="RTS Octree")
 	float OctreeUniformBounds = UE_OLD_WORLD_MAX;
 
 	/** @brief */
 	UPROPERTY(Config, EditAnywhere, Category="Visible")
-	float DefaultCellSize = 40.0;
+	float DefaultOctreeCellSize = 40.0;
 
 	/** @brief Work table soft objects */
 	UPROPERTY(Config, EditAnywhere, Category = "Worker AI Subsystem", Meta = (RequiredAssetDataTags="RowStructure=/Script/PDRTSBase.PDWorkUnitDatum"))
@@ -430,7 +483,11 @@ public:
 
 	/** @brief Build Workers (Worker types and their granted contexts) table soft objects */
 	UPROPERTY(Config, EditAnywhere, Category = "Worker AI Subsystem", Meta = (RequiredAssetDataTags="RowStructure=/Script/PDRTSBase.PDBuildWorker"))
-	TArray<TSoftObjectPtr<UDataTable>> BuildWorkerTables;		
+	TArray<TSoftObjectPtr<UDataTable>> BuildWorkerTables;
+
+	/** @brief Build Workers (Worker types and their granted contexts) table soft objects */
+	UPROPERTY(Config, EditAnywhere, Category="Worker AI Subsystem|Builder|Behaviour")
+	FPDRTSBuildSystemBehaviours DefaultBuildSystemBehaviours{};
 };
 
 /** @brief Entity octree ID, used for observer tracking if IDs has been invalidated */

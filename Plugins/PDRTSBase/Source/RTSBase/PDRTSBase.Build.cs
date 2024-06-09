@@ -28,7 +28,7 @@ public class PDRTSBase : ModuleRules
 		PrivateDependencyModuleNames.AddRange(
 			new string[]
 			{
-				"AIModule", "NavigationSystem", "CoreUObject",
+				"AIModule", "NavigationSystem", "CoreUObject", "Niagara",
 				"Engine", "Slate", "SlateCore", "GameplayTags", 
 				"MassAIBehavior",  "MassCrowd", "AnimToTexture", "RTSOpen"
 				// ... add private dependencies that you statically link with here ...	

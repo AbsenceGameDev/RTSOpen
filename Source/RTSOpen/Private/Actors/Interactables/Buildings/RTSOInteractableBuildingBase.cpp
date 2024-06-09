@@ -2,9 +2,15 @@
 
 #include "Actors/Interactables/Buildings/RTSOInteractableBuildingBase.h"
 
+#include "MassEntitySubsystem.h"
+#include "PDInventorySubsystem.h"
+#include "PDRTSBaseSubsystem.h"
 #include "PDRTSCommon.h"
 #include "RTSOpenCommon.h"
+#include "Actors/GodHandPawn.h"
+#include "AI/Mass/RTSOMassFragments.h"
 #include "Components/BoxComponent.h"
+#include "Components/PDInventoryComponent.h"
 
 ARTSOInteractableBuildingBase::ARTSOInteractableBuildingBase()
 {
@@ -38,9 +44,14 @@ void ARTSOInteractableBuildingBase::RefreshStaleSettings_Main()
 void ARTSOInteractableBuildingBase::BeginPlay()
 {
 	Super::BeginPlay();
-
+	
 	RefreshStaleSettings<true>(); // Refresh ghost
 	RefreshStaleSettings<false>(); // Refresh main
+}
+
+void ARTSOInteractableBuildingBase::BeginDestroy()
+{
+	Super::BeginDestroy();
 }
 
 FGameplayTagContainer ARTSOInteractableBuildingBase::GetGenericTagContainer_Implementation() const
@@ -52,14 +63,131 @@ FGameplayTagContainer ARTSOInteractableBuildingBase::GetGenericTagContainer_Impl
 
 bool ARTSOInteractableBuildingBase::GetCanInteract_Implementation() const
 {
-	return bIsGhost_noSerialize == false && Super::GetCanInteract_Implementation();
+	// don't interact with ghosts via the interaction system, ghost state is meant for visualizing
+	return (bIsGhost_noSerialize == false || bIsPreviewGhost == false) && Super::GetCanInteract_Implementation();
 }
 
 void ARTSOInteractableBuildingBase::OnInteract_Implementation(
 	const FPDInteractionParamsWithCustomHandling& InteractionParams,
 	EPDInteractResult& InteractResult) const
 {
+	// If ghost, we can only supply resources if we have any 
+	if (bIsGhost_noSerialize)
+	{
+		const int32& ImmutableStage = CurrentTransitionState.CurrentStageIdx;
+		const UMassEntitySubsystem& EntitySubsystem = *GetWorld()->GetSubsystem<UMassEntitySubsystem>();
+		const bool bEntityValid = EntitySubsystem.GetEntityManager().IsEntityValid(InteractionParams.InstigatorEntity);
+
+		FRTSOLightInventoryFragment* EntityInv = bEntityValid ? EntitySubsystem.GetEntityManager().GetFragmentDataPtr<FRTSOLightInventoryFragment>(InteractionParams.InstigatorEntity) : nullptr;
+		UPDInventoryComponent* Bank = InteractionParams.InstigatorActor != nullptr ? InteractionParams.InstigatorActor->GetComponentByClass<UPDInventoryComponent>() : nullptr;
+
+		ARTSOInteractableBuildingBase* MutableSelf = (ARTSOInteractableBuildingBase*)this; // this will bite me in the ass
+		// if it enters then it means the stage is finished, 
+		if (MutableSelf->WithdrawRecurringCostFromBankOrEntity(Bank, EntityInv, ImmutableStage))
+		{
+			// Here
+			AsyncTask(ENamedThreads::GameThread,
+				[&]()
+				{
+					// if we are false here, then we have not progressed to the end
+					if (MutableSelf->CurrentStateFinishedProgressing == false && (MutableSelf->RunningStateProgressFunction == false || ImmutableStage == 0))
+					{
+						MutableSelf->Internal_ProgressGhostStage(true, false);
+					}
+				});			
+		}
+		InteractResult = EPDInteractResult::INTERACT_SUCCESS;
+		return;
+	}
+
 	Super::OnInteract_Implementation(InteractionParams, InteractResult);
+}
+
+void ARTSOInteractableBuildingBase::Internal_ProgressGhostStage(const bool bForceProgressThroughStage, const bool bChainAll)
+{
+	CurrentStateFinishedProgressing = false;
+	RunningStateProgressFunction = true;
+
+	const int32 CachedStageIdx = CurrentTransitionState.CurrentStageIdx;
+	
+	const auto CallbackEndOfGhostStage =
+		[&]()
+		{
+			// Second dispatch, called within the first dispatch
+			// Async task, end stage, max duration based solution: 
+			AsyncTask(ENamedThreads::GameThread,
+				[&]()
+				{
+					RunningStateProgressFunction = false;
+
+					// ensure this hasn't been called manually already
+					if (CachedStageIdx != CurrentTransitionState.CurrentStageIdx) { return; }
+
+					UPDRTSBaseSubsystem::ProcessGhostStage(this, InstigatorBuildableTag,  CurrentTransitionState, false);
+					CurrentStateFinishedProgressing = true;
+
+					if (bChainAll && UPDRTSBaseSubsystem::IsPastFinalIndex(InstigatorBuildableTag,CurrentTransitionState) == false)
+					{
+						Internal_ProgressGhostStage(bForceProgressThroughStage, bChainAll);
+					}
+				}
+			);
+		};
+	
+	// start stage, max duration based solution:
+	UPDRTSBaseSubsystem::ProcessGhostStage(this, InstigatorBuildableTag,  CurrentTransitionState, true);
+
+	// Cache to make comparison,
+	// if something finishes the stage before the timer runs out then use this to avoid calling 'ProcessGhostStage' with 'bStateOfStage == false' twice
+	const double MaxDuration = UPDRTSBaseSubsystem::GetMaxDurationGhostStage(InstigatorBuildableTag,  CurrentTransitionState);
+
+	// If duration is approx. 0.0 and not forcing progression, rely on handling/triggering the end of stage manually
+	if (bForceProgressThroughStage == false && MaxDuration < SMALL_NUMBER)
+	{
+		RunningStateProgressFunction = false;
+		return;
+	}
+	
+	// If duration is approx. 0.0 or below, while forcing, call right away
+	if (bForceProgressThroughStage && MaxDuration < SMALL_NUMBER)
+	{
+		CallbackEndOfGhostStage();
+		return;
+	}
+			
+	// If duration is -1, handle right away
+	if (MaxDuration <= (-1.0 + SMALL_NUMBER))
+	{
+		CallbackEndOfGhostStage();
+		return;
+	}
+			
+	FTimerHandle ThrowawayHandle{};
+	const FTimerDelegate Delegate = FTimerDelegate::CreateLambda(CallbackEndOfGhostStage);
+	GetWorld()->GetTimerManager().SetTimer(ThrowawayHandle, Delegate, MaxDuration, false);
+}
+
+void ARTSOInteractableBuildingBase::TransitionFromGhostToMain_Implementation()
+{
+	IPDRTSBuildableGhostInterface::TransitionFromGhostToMain_Implementation();
+
+	IPDRTSBuildableGhostInterface::Execute_ProgressGhostStage(this, true);
+}
+
+void ARTSOInteractableBuildingBase::ProgressGhostStage_Implementation(const bool bChainAll)
+{
+	IPDRTSBuildableGhostInterface::ProgressGhostStage_Implementation(bChainAll);
+
+	AsyncTask(ENamedThreads::GameThread,
+		[&]()
+		{
+			Internal_ProgressGhostStage(false, bChainAll);
+		});
+}
+
+FRTSOBuildableInventories& ARTSOInteractableBuildingBase::ReturnBuildableInventories()
+{
+	return BuildableInventories;
 }
 
 template<bool TIsGhost>
@@ -78,9 +206,175 @@ void ARTSOInteractableBuildingBase::ProcessSpawn()
 	bIsGhost_noSerialize = TIsGhost;
 }
 
-void ARTSOInteractableBuildingBase::OnSpawnedAsGhost_Implementation()
+bool ARTSOInteractableBuildingBase::WithdrawRecurringCostFromBankOrEntity(UPDInventoryComponent* Bank, FRTSOLightInventoryFragment* EntityInv, const int32& ImmutableStage)
 {
-	IPDRTSBuildableGhostInterface::OnSpawnedAsGhost_Implementation();
+	bool bCanAfford = false;
+			
+	UPDInventorySubsystem* InventorySubsystem = GEngine->GetEngineSubsystem<UPDInventorySubsystem>();
+	const UPDRTSBaseSubsystem* RTSSubsystem = GEngine->GetEngineSubsystem<UPDRTSBaseSubsystem>();
+	ensure(InventorySubsystem != nullptr);
+	ensure(RTSSubsystem != nullptr);
+	
+	const FPDItemDefaultDatum* BuildableResourceDatum = InventorySubsystem->GetDefaultDatum(InstigatorBuildableTag);
+	if (BuildableResourceDatum != nullptr)
+	{
+		// Pay the recurring cost
+		if (Bank != nullptr)
+		{
+			// In this context CanInventoryAffordItem returns true only if the full amount is afforded right away
+			bCanAfford = UPDInventorySubsystem::CanInventoryAffordItem(Bank->ItemList, *BuildableResourceDatum, true, true, ImmutableStage);
+			if (bCanAfford)
+			{
+				for (const TTuple<FGameplayTag, FPDItemCosts>& ItemCostsTuple : BuildableResourceDatum->CraftingCosts)
+				{
+					const TArray<int32>& RecurringCostPerPhase = ItemCostsTuple.Value.RecurringCostPerPhase;
+					
+					// Deduct from player
+					Bank->RequestUpdateItem(EPDItemNetOperation::CHANGE, BuildableResourceDatum->ItemTag, -RecurringCostPerPhase[ImmutableStage]);
+
+					// Insert into buildable inv
+					if (ImmutableStage > BuildableInventories.LightInventoriesPerGhostStage.Num())
+					{
+						BuildableInventories.LightInventoriesPerGhostStage.SetNum(ImmutableStage + 1);
+					}
+					BuildableInventories.LightInventoriesPerGhostStage[ImmutableStage].Handler.AddItem(BuildableResourceDatum->ItemTag, RecurringCostPerPhase[ImmutableStage]);
+				}
+			}
+		}
+		else if (EntityInv != nullptr)
+		{
+			// Pay the recurring cost, don't fail if we can't afford all at once, this is meant for incremental progress
+			// bCanAfford = UPDInventorySubsystem::CanInventoryAffordItem(EntityInv->Inner, *BuildableResourceDatum, true, true, ImmutableStage);
+			bCanAfford = true;
+			for (const TTuple<FGameplayTag, FPDItemCosts>& ItemCostsTuple : BuildableResourceDatum->CraftingCosts)
+			{
+				const TArray<int32>& RecurringCostPerPhase = ItemCostsTuple.Value.RecurringCostPerPhase;
+			
+				// Deduct from entity, @note 'AddItems' Clamps to zero so won't offset into negative
+				const int32 CurrentCount = EntityInv->Handler.GetItemCount(ItemCostsTuple.Key);
+				EntityInv->Handler.AddItem(ItemCostsTuple.Key, -RecurringCostPerPhase[ImmutableStage]);
+				
+				// Insert into buildable inv
+				if (ImmutableStage > BuildableInventories.LightInventoriesPerGhostStage.Num())
+				{
+					BuildableInventories.LightInventoriesPerGhostStage.SetNum(ImmutableStage + 1);
+				}
+				FRTSOLightInventoryFragmentHandler& BuildableInvHandler = BuildableInventories.LightInventoriesPerGhostStage[ImmutableStage].Handler;
+				BuildableInvHandler.AddItem(BuildableResourceDatum->ItemTag, CurrentCount);
+
+				// past stage requirements
+				if (BuildableInvHandler.GetItemCount(BuildableResourceDatum->ItemTag) >= RecurringCostPerPhase[ImmutableStage])
+				{
+					bCanAfford = true;
+				}
+
+			}
+		}
+	}
+
+	// 
+	if (bCanAfford == false)
+	{
+		UE_LOG(PDLog_RTSO, Error, TEXT("ARTSOInteractableBuildingBase::ProcessIfWorkersRequired -- Tried withdrawing from player bank but player bank was short on resources needed"))
+		return false;
+	}	
+
+	// @done BuildableInventories keeps track of already received resources, make use of later when loading/saving a buildable to file 
+	return true;
+}
+
+
+void ARTSOInteractableBuildingBase::ProcessIfWorkersRequired()
+{
+	const UPDRTSSubsystemSettings* DefaultSubsystemSetting = GetDefault<UPDRTSSubsystemSettings>();
+	const EPDRTSBuildCostBehaviour BuildCostBehaviour = DefaultSubsystemSetting->DefaultBuildSystemBehaviours.Cost;
+
+	const int32& ImmutableStage = CurrentTransitionState.CurrentStageIdx;
+	
+	const AGodHandPawn* AsGodhand = Cast<AGodHandPawn>(GetOwner());
+
+	UPDInventoryComponent* PlayerBank = AsGodhand->InventoryComponent;
+	switch (BuildCostBehaviour)
+	{
+	case EPDRTSBuildCostBehaviour::EBuildCostPlayerBank:
+		// Withdraw immediately, exit function it fails
+		if (WithdrawRecurringCostFromBankOrEntity(PlayerBank, nullptr, ImmutableStage) == false) { return; }
+		break;
+	case EPDRTSBuildCostBehaviour::EBuildCostBaseBank:
+		// Withdraw immediately, exit function it fails
+		{
+			UPDInventoryComponent* AssignedBaseBank = nullptr; // @todo write some system to handle bases and make us of it here
+			if (WithdrawRecurringCostFromBankOrEntity(AssignedBaseBank,nullptr, ImmutableStage) == false) { return; }
+		}
+		break;
+	case EPDRTSBuildCostBehaviour::EBuildCostWaitForWorkers:
+		// @done Withdraw from workers when they arrive
+		break;
+	}
+
+	// Start the current stage, it's settings decide when effects are applied and if workers should end stage or if it ends automatically
+	IPDRTSBuildableGhostInterface::Execute_ProgressGhostStage(this, false);
+
+	const EPDRTSBuildProgressionBehaviour BuildProgressionBehaviour = DefaultSubsystemSetting->DefaultBuildSystemBehaviours.Progression;
+	switch (BuildProgressionBehaviour)
+	{
+	case EPDRTSBuildProgressionBehaviour::EBuildWaitsForWorkers:
+		// just wait
+		break;
+	case EPDRTSBuildProgressionBehaviour::EBuildCallsForWorkers:
+		// @todo Call any workers, ping every 10 seconds until enough has arrived
+		break;
+	}
+}
+
+void ARTSOInteractableBuildingBase::ProcessIfWorkersNotRequired()
+{
+	const AGodHandPawn* AsGodhand = Cast<AGodHandPawn>(GetOwner());
+	const ARTSOController* PC = AsGodhand != nullptr ? AsGodhand->GetController<ARTSOController>() : nullptr;
+	if (AsGodhand == nullptr || PC == nullptr)
+	{
+		UE_LOG(PDLog_RTSO, Error, TEXT("ARTSOInteractableBuildingBase(%s)::ProcessIfWorkersNotRequired -- No valid owner -- AsGodhand == nullptr || PC == nullptr"), *GetName())
+		return;
+	}
+	
+	UPDInventorySubsystem* InventorySubsystem = GEngine->GetEngineSubsystem<UPDInventorySubsystem>();
+	UPDRTSBaseSubsystem* RTSSubsystem = GEngine->GetEngineSubsystem<UPDRTSBaseSubsystem>();
+	ensure(InventorySubsystem != nullptr);
+	ensure(RTSSubsystem != nullptr);
+	const int32& ImmutableStage = CurrentTransitionState.CurrentStageIdx;
+
+	RTSSubsystem->GetBuildableTagFromData(AsGodhand->CurrentBuildableData);
+	const FPDItemDefaultDatum* BuildableResourceDatum = InventorySubsystem->GetDefaultDatum(RTSSubsystem->GetBuildableTagFromData(AsGodhand->CurrentBuildableData)); // this is backwards, redesign, redesign, redesign!
+	if (BuildableResourceDatum == nullptr)
+	{
+		UE_LOG(PDLog_RTSO, Error, TEXT("ARTSOInteractableBuildingBase::ProcessIfWorkersNotRequired -- Did not find any entry in UPDInventorySubsystem for the given resource/building"))
+		return;
+	}
+
+	/// @note using the 'initial cost' data for complete build
+	const bool bCanAfford = UPDInventorySubsystem::CanInventoryAffordItem(AsGodhand->InventoryComponent->ItemList, *BuildableResourceDatum, true, false, ImmutableStage);
+	if (bCanAfford == false)
+	{
+		UE_LOG(PDLog_RTSO, Warning, TEXT("ARTSOInteractableBuildingBase::ProcessIfWorkersNotRequired -- Could not afford, setting to queue"))
+
+		// @todo Write code that actually handles the build queue in the rts subsystem
+		RTSSubsystem->BuildQueues.FindOrAdd(PC->GetActorID()).ActorInWorld.Emplace(this);
+		return;
+	}
+
+	for (TTuple<FGameplayTag, FPDItemCosts> CraftingCost : BuildableResourceDatum->CraftingCosts)
+	{
+		AsGodhand->InventoryComponent->RequestUpdateItem(EPDItemNetOperation::CHANGE, CraftingCost.Key, -CraftingCost.Value.InitialCost);
+	}
+
+	// Progress from current stage to finish
+	IPDRTSBuildableGhostInterface::Execute_TransitionFromGhostToMain(this);
+}
+
+void ARTSOInteractableBuildingBase::OnSpawnedAsGhost_Implementation(const FGameplayTag& BuildableTag, bool bInIsPreviewGhost, bool bInRequiresWorkersToBuild)
+{
+	IPDRTSBuildableGhostInterface::OnSpawnedAsGhost_Implementation(BuildableTag, bInIsPreviewGhost, bInRequiresWorkersToBuild);
+	InstigatorBuildableTag = BuildableTag;
 
 	// Update material
 	if (GhostMat == nullptr || GhostMat->IsValidLowLevelFast() == false)
@@ -90,12 +384,26 @@ void ARTSOInteractableBuildingBase::OnSpawnedAsGhost_Implementation()
 		
 		return;
 	}
+	
 	ProcessSpawn<true>();
+
+	bIsPreviewGhost = bInIsPreviewGhost;
+	if (bIsPreviewGhost)  { return; };
+	
+	if (bInRequiresWorkersToBuild)
+	{
+		ProcessIfWorkersRequired();
+	}
+	else
+	{
+		ProcessIfWorkersNotRequired();
+	}
 }
 
-void ARTSOInteractableBuildingBase::OnSpawnedAsMain_Implementation()
+void ARTSOInteractableBuildingBase::OnSpawnedAsMain_Implementation(const FGameplayTag& BuildableTag)
 {
-	IPDRTSBuildableGhostInterface::OnSpawnedAsMain_Implementation();
+	IPDRTSBuildableGhostInterface::OnSpawnedAsMain_Implementation(BuildableTag);
+	InstigatorBuildableTag = BuildableTag;
 
 	// Update material
 	if (MainMat == nullptr || MainMat->IsValidLowLevelFast() == false)

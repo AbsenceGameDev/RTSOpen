@@ -78,7 +78,7 @@ struct FPDItemNetDatum : public FFastArraySerializerItem
 	UPROPERTY(BlueprintReadWrite)
 	FGameplayTag ItemTag{};
 
-	/** @brief the last edited stack. @todo revise if needed here or if it should just be a local state on the inventory component */
+	/** @brief the last edited stack.*/
 	UPROPERTY(BlueprintReadWrite)
 	int32 LastEditedStackIndex = INDEX_NONE;
 	

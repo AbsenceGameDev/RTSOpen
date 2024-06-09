@@ -4,21 +4,40 @@
 
 #include "CoreMinimal.h"
 #include "GameplayTagContainer.h"
+#include "Net/PDItemNetDatum.h"
 #include "Subsystems/EngineSubsystem.h"
 #include "PDInventorySubsystem.generated.h"
 
+class UPDInventoryComponent;
+struct FPDRecipeList;
 struct FPDItemDefaultDatum;
 
-/** @brief The inventory subsystem.
- * @todo 1. add a developer settings class and use to assign to 'ItemTables' for processing when the world begins play 
- * @todo 2. Re-parent to inherit from UWorldSubsystem and make any needed code changes to support that */ 
+/** @brief The inventory subsystem. */ 
 UCLASS()
 class PDINVENTORY_API UPDInventorySubsystem : public UEngineSubsystem
 {
 	GENERATED_BODY()
-public:	
+public:
+
+	virtual void Initialize(FSubsystemCollectionBase& Collection) override;
+	
 	/** @brief Processes the tables in 'ItemTables' and fills a number of maps for fast lookups downstream */
 	virtual void ProcessTables();
+
+	/** @brief Checks if the input object can afford the item in question */
+	static bool CanInventoryAffordItem(
+		FPDItemList& CurrentItemData,
+		const FPDItemDefaultDatum& DefaultItemToConsider, 
+		bool bIsCraftingCosts,
+		bool bIsRecurringCosts,
+		const int32 Stage);
+	/** @brief Checks if the input object can afford the item in question */
+	static bool CanInventoryAffordItem(
+		const TMap<FGameplayTag, FPDLightItemDatum>& CurrentItemData,
+		const FPDItemDefaultDatum& DefaultItemToConsider,
+		bool bIsCraftingCosts,
+		bool bIsRecurringCosts,
+		const int32 Stage);
 
 	/** @brief Returns the default datum for a given rowname, if said row has been mapped */
 	const FPDItemDefaultDatum* GetDefaultDatum(const FName& RowName);
@@ -30,6 +49,13 @@ public:
 	UPROPERTY(EditAnywhere, Category = "Inventory Subsystem", Meta = (RequiredAssetDataTags="RowStructure=PDItemDefaultDatum"))
 	TArray<UDataTable*> ItemTables;
 	
+	/** @brief The actual recipe tables. @todo assign via developer settings */
+	UPROPERTY(EditAnywhere, Category = "Inventory Subsystem", Meta = (RequiredAssetDataTags="RowStructure=PDRecipeList"))
+	TArray<UDataTable*> RecipeTables;
+
+	/** @brief Mapping between the given item tag and it's default datum entry in its table */
+	TMap<const FGameplayTag, const FPDRecipeList*> TagToRecipeMap{};
+	
 	/** @brief Mapping between the given item tag and it's default datum entry in its table */
 	TMap<const FGameplayTag, const FPDItemDefaultDatum*> TagToItemMap{};
 	/** @brief Mapping from given item name to it's item tag */
@@ -38,6 +64,24 @@ public:
 	TMap<const FGameplayTag, FName> TagToNameMap{};
 	/** @brief Mapping from the given item tag to the table the entry was parsed from */
 	TMap<const FGameplayTag, const UDataTable*> TagToTable{};
+
+private:
+	bool bHasProcessedTables = false;
+};
+
+UCLASS(Config="Game")
+class PDINVENTORY_API UPDInventoryDefinitions : public UDeveloperSettings
+{
+	GENERATED_BODY()
+public:
+	
+	/** @brief Item table soft objects */
+	UPROPERTY(Config, EditAnywhere, Category = "Inventory Subsystem", Meta = (RequiredAssetDataTags="RowStructure=/Script/PDInventory.PDItemDefaultDatum"))
+	TArray<TSoftObjectPtr<UDataTable>> ItemTables;
+	
+	/** @brief Recipe table soft objects */
+	UPROPERTY(Config, EditAnywhere, Category = "Inventory Subsystem", Meta = (RequiredAssetDataTags="RowStructure=/Script/PDInventory.PDRecipeList"))
+	TArray<TSoftObjectPtr<UDataTable>> RecipeTables;	
 };
 
 /**

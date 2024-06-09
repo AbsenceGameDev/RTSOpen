@@ -162,7 +162,7 @@ void APD_HUD::DrawEntitiesOnMiniMap()
 	TArray<FVector> EntityLocations;
 	WorldOctree.FindElementsWithBoundsTest(QueryBounds, [&](const FPDEntityOctreeCell& Cell)
 	{
-		if (Cell.EntityHandle.Index == INDEX_NONE) { return; }
+		if (Cell.EntityHandle.Index == 0) { return; }
 		const int32 OwnerID = EntityManager.GetFragmentDataPtr<FRTSOFragment_Agent>(Cell.EntityHandle)->OwnerID;
 
 		OverlappingHandles.Emplace(FLEntityCompound{Cell.EntityHandle, Cell.Bounds.Center, OwnerID});

@@ -85,7 +85,7 @@ void URTSOConversationInstance::OnChoiceNodePickedByUser(const FConversationCont
 
 	ARTSOController* ListenerAsController = Cast<ARTSOController>(Context.GetParticipant(TAG_Conversation_Participant_Listener)->Actor);
 
-	// @todo Store selected tags on server
+	// @note Store selected tags on server
 	ARTSOBaseGM* GM = GetWorld() != nullptr ? GetWorld()->GetAuthGameMode<ARTSOBaseGM>() : nullptr;
 	if (GM == nullptr || ListenerAsController == nullptr) { return; }
 	GM->GameSave->PlayersAndConversationTags.FindOrAdd(ListenerAsController->GetActorID()).AppendTags(ChoiceNode->ChoiceTags);
@@ -138,7 +138,7 @@ URTSOConversationInstance* URTSOConversationBPFL::StartConversation(FGameplayTag
 			UConversationContextHelpers::MakeConversationParticipant(Context, Target, TargetTag);
 			UConversationContextHelpers::MakeConversationParticipant(Context, Instigator, InstigatorTag);
 
-			// @todo Generalize nad move out of the game module
+			// @todo Generalize and move out of the game module
 			const int32 ActorID = GEngine->GetEngineSubsystem<UPDRTSBaseSubsystem>()->SharedOwnerIDBackMappings.FindRef(Target);
 			if (ConversationInstance->ChoiceWaitingStateMap.Contains(ActorID) == false)
 			{

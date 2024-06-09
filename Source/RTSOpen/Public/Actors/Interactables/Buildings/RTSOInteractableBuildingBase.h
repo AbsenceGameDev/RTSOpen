@@ -3,16 +3,27 @@
 
 #include "CoreMinimal.h"
 #include "PDRTSCommon.h"
+#include "Actors/GodHandPawn.h"
 #include "Actors/PDInteractActor.h"
+#include "AI/Mass/RTSOMassFragments.h"
+#include "Components/PDInventoryComponent.h"
 #include "Interfaces/PDRTSBuildableGhostInterface.h"
 #include "RTSOInteractableBuildingBase.generated.h"
 
-USTRUCT()
-struct FMyStruct
+struct FRTSOLightInventoryFragment;
+
+USTRUCT(Blueprintable)
+struct FRTSOBuildableInventories
 {
 	GENERATED_BODY()
-	
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	TArray<FRTSOLightInventoryFragment> LightInventoriesPerGhostStage{};
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	FRTSOLightInventoryFragment LightInventoryAsMain{};	
 };
+
 
 /**
  * @brief An actor with a job tag tied to it, meant to be used for interactable buildings
@@ -36,6 +47,7 @@ public:
 	virtual void Tick(float DeltaTime) override;
 	/** @brief Only calls Super. Reserved for later use  */
 	virtual void BeginPlay() override;
+	virtual void BeginDestroy() override;
 	
 	/** @brief adds 'JobTag' to a 'FGameplayTagContainer' and returns it */
 	virtual FGameplayTagContainer GetGenericTagContainer_Implementation() const override;
@@ -43,17 +55,24 @@ public:
 	/* APDInteractActor Interface Start */
 	virtual bool GetCanInteract_Implementation() const override;
 	virtual void OnInteract_Implementation(const FPDInteractionParamsWithCustomHandling& InteractionParams, EPDInteractResult& InteractResult) const override;
-
+	/* APDInteractActor Interface End */
+	
 	template<bool TIsGhost>
 	void ProcessSpawn();
-	/* APDInteractActor Interface End */
+	bool WithdrawRecurringCostFromBankOrEntity(UPDInventoryComponent* Bank, FRTSOLightInventoryFragment* EntityInv, const int32& ImmutableStage);
+	void ProcessIfWorkersRequired();
+	void ProcessIfWorkersNotRequired();
 
 	
 	/* IPDRTSBuildableGhostInterface Interface Start */
-	virtual void OnSpawnedAsGhost_Implementation() override;
-	virtual void OnSpawnedAsMain_Implementation()  override;
+	virtual void OnSpawnedAsGhost_Implementation(const FGameplayTag& BuildableTag, bool bInIsPreviewGhost, bool bInRequiresWorkersToBuild) override;
+	virtual void OnSpawnedAsMain_Implementation(const FGameplayTag& BuildableTag)  override;
+	virtual void TransitionFromGhostToMain_Implementation() override;
+	void Internal_ProgressGhostStage(const bool bForceProgressThroughStage, const bool bChainAll);
+	virtual void ProgressGhostStage_Implementation(const bool bChainAll) override;
 	/* IPDRTSBuildableGhostInterface Interface End */
-
+	
+	virtual FRTSOBuildableInventories& ReturnBuildableInventories();
 
 private:
 	void RefreshStaleSettings_Ghost();
@@ -64,8 +83,14 @@ public:
 	FPDRTSBuildableCollisionSettings BuildableCollisionSettings{false};
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
 	FPDRTSBuildableCollisionSettings GhostCollisionSettings{false};
-	
+
+	bool CurrentStateFinishedProgressing = false;
+	bool RunningStateProgressFunction = true;
+
 private:
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Meta = (AllowPrivateAccess="true"))
+	FRTSOBuildableInventories BuildableInventories{};
+	
 	/** @brief JobTag associated with this actor */
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Meta = (AllowPrivateAccess="true"))
 	FGameplayTag JobTag{};
@@ -75,6 +100,13 @@ private:
 
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Meta = (AllowPrivateAccess="true"))
 	UMaterialInstance* GhostMat = nullptr;
+
+	UPROPERTY(VisibleInstanceOnly, BlueprintReadOnly, Meta = (AllowPrivateAccess="true"))
+	FGameplayTag InstigatorBuildableTag{};
+
+	UPROPERTY(VisibleInstanceOnly, BlueprintReadOnly, Meta = (AllowPrivateAccess="true"))
+	bool bIsPreviewGhost = true; // Default to preview
+	
 
 	static inline FName BoxcompName = "Boxcomp"; 
 	static inline FName MeshName = "Mesh"; 

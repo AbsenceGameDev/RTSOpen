@@ -117,7 +117,7 @@ struct PDRTSBASE_API FPDMFragment_EntityAnimation : public FMassFragment
 /** @brief Invalid MassInt16 vector location. Compared against and then returned as a dummy in failed functions */
 static constexpr FMassInt16Vector InvalidLoc = FMassInt16Vector{};
 /** @brief Invalid FMassEntityHandle. Compared against and then returned as a dummy in failed functions */
-static const FMassEntityHandle InvalidHandle = FMassEntityHandle{INDEX_NONE, INDEX_NONE};
+static const FMassEntityHandle InvalidHandle = FMassEntityHandle{0, 0};
 
 /** @brief Target compound keeps track of the target, either a static location, a given actor and mass-entities*/
 USTRUCT(Blueprintable)
@@ -144,7 +144,7 @@ struct PDRTSBASE_API FPDTargetCompound
 	
 	/** @brief Target (if entity) */
 	UPROPERTY(EditAnywhere)
-	FMassEntityHandle ActionTargetAsEntity = FMassEntityHandle{INDEX_NONE, INDEX_NONE};
+	FMassEntityHandle ActionTargetAsEntity = FMassEntityHandle{0, 0};
 
 	/** @brief Target (if static location) */
 	UPROPERTY(EditAnywhere)

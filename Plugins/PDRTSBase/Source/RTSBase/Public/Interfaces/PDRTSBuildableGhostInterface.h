@@ -4,6 +4,7 @@
 #pragma once
 
 #include "CoreMinimal.h"
+#include "PDRTSCommon.h"
 #include "UObject/Interface.h"
 #include "PDRTSBuildableGhostInterface.generated.h"
 
@@ -22,20 +23,57 @@ class PDRTSBASE_API IPDRTSBuildableGhostInterface
 public:
 	/** @brief */
 	UFUNCTION(BlueprintNativeEvent, CallInEditor, Category = "Actor|Interface|Ghost")
-	void OnSpawnedAsGhost();
-	virtual void OnSpawnedAsGhost_Implementation()
+	void OnSpawnedAsGhost(const FGameplayTag& BuildableTag, bool bIsPreviewGhost, bool bInRequiresWorkersToBuild);
+	virtual void OnSpawnedAsGhost_Implementation(const FGameplayTag& BuildableTag, bool bIsPreviewGhost, bool bInRequiresWorkersToBuild)
 	{
 	}
 
 	/** @brief */
 	UFUNCTION(BlueprintNativeEvent, CallInEditor, Category = "Actor|Interface|Ghost")
-	void OnSpawnedAsMain();
-	virtual void OnSpawnedAsMain_Implementation()
+	void OnSpawnedAsMain(const FGameplayTag& BuildableTag);
+	virtual void OnSpawnedAsMain_Implementation(const FGameplayTag& BuildableTag)
 	{
+	}
+
+	/** @brief */
+	UFUNCTION(BlueprintNativeEvent, CallInEditor, Category = "Actor|Interface|Ghost")
+	void TransitionFromGhostToMain();
+	virtual void TransitionFromGhostToMain_Implementation()
+	{
+		
+	}
+
+	/** @brief */
+	UFUNCTION(BlueprintNativeEvent, CallInEditor, Category = "Actor|Interface|Ghost")
+	void ProgressGhostStage(const bool bChainAll);
+	virtual void ProgressGhostStage_Implementation(const bool bChainAll)
+	{
+		
 	}	
+
+	/** @brief Use to store in savefile and/or server data*/
+	UFUNCTION(BlueprintNativeEvent, BlueprintCallable, CallInEditor, Category = "Actor|Interface|Ghost")
+	int32 GetCurrentGhostStage();
+	virtual int32 GetCurrentGhostStage_Implementation()
+	{
+		return  CurrentTransitionState.CurrentStageIdx;
+	}	
+
+	/** @brief Use to set from savefile and/or server data */
+	UFUNCTION(BlueprintNativeEvent, BlueprintCallable, CallInEditor, Category = "Actor|Interface|Ghost")
+	void SetCurrentGhostStage(int32 NewStage);
+	virtual void SetCurrentGhostStage_Implementation(int32 NewStage)
+	{
+		CurrentTransitionState.CurrentStageIdx = NewStage;
+	}	
+	
 public:
-	/** @todo no need to serialize, we'll not save ghosts into save-file yet, when we do revisit this and move somewhere more appropriate */
+	/** no need to serialize, we'll not save ghosts into save-file yet, when we do revisit this and move somewhere more appropriate */
 	bool bIsGhost_noSerialize = false;
+
+	/** @brief The current state of the ghost
+	 * @note Will serialize manually for now */
+	FPDRTSGhostTransitionState CurrentTransitionState;
 };
 
 

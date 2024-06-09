@@ -168,7 +168,7 @@ public: // Method members
 	UFUNCTION(BlueprintNativeEvent, BlueprintCallable)
 	void LoadEntities();	
 
-	/** @brief Hardcoded auto-save every 60 minutes @todo make configurable */
+	/** @brief Runs configured auto-saver */
 	virtual void TickActor(float DeltaTime, ELevelTick TickType, FActorTickFunction& ThisTickFunction) override;
 	
 public: // Variable members

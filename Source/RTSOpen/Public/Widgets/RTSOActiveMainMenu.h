@@ -147,17 +147,19 @@ public:
 	/** @brief Box that should hold all slots of type URTSOMenuButton. @todo replace with ulistview of slots */
 	UPROPERTY(BlueprintReadWrite, Meta=(BindWidget))
 	class UVerticalBox* InnerBox = nullptr;
-	
+
+	/** @defgroup MenuButtonGroup
+	 *  @todo replace with ulistview of slots */
 	UPROPERTY(BlueprintReadWrite, Meta=(BindWidget))
-	class URTSOMenuButton* Slot0 = nullptr; /**< @brief Self-explanatory. @todo replace with ulistview of slots */
+	class URTSOMenuButton* Slot0 = nullptr; /**< @brief Self-explanatory. @ingroup MenuButtonGroup */
 	UPROPERTY(BlueprintReadWrite, Meta=(BindWidget))
-	class URTSOMenuButton* Slot1 = nullptr; /**< @brief Self-explanatory. @todo replace with ulistview of slots */
+	class URTSOMenuButton* Slot1 = nullptr; /**< @brief Self-explanatory. @ingroup MenuButtonGroup */
 	UPROPERTY(BlueprintReadWrite, Meta=(BindWidget))
-	class URTSOMenuButton* Slot2 = nullptr; /**< @brief Self-explanatory. @todo replace with ulistview of slots */
+	class URTSOMenuButton* Slot2 = nullptr; /**< @brief Self-explanatory. @ingroup MenuButtonGroup */
 	UPROPERTY(BlueprintReadWrite, Meta=(BindWidget))
-	class URTSOMenuButton* Slot3 = nullptr; /**< @brief Self-explanatory. @todo replace with ulistview of slots */
+	class URTSOMenuButton* Slot3 = nullptr; /**< @brief Self-explanatory. @ingroup MenuButtonGroup */
 	UPROPERTY(BlueprintReadWrite, Meta=(BindWidget))
-	class URTSOMenuButton* Slot4 = nullptr; /**< @brief Self-explanatory. @todo replace with ulistview of slots */
+	class URTSOMenuButton* Slot4 = nullptr; /**< @brief Self-explanatory. @ingroup MenuButtonGroup */
 	
 	/** @brief Unused for now, reserve for later use */
 	UPROPERTY()

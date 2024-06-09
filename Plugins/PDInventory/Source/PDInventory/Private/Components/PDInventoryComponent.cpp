@@ -44,13 +44,18 @@ void UPDInventoryComponent::RequestUpdateItem(TEnumAsByte<EPDItemNetOperation> R
 	case CHANGE:
 		ItemList.UpdateItem(const_cast<FGameplayTag&>(ItemTag), Count); // update, applies either addition or subtraction
 		break;
-		default: return; // @todo return error message
+		
+	default:
+		UE_LOG(PDLog_Inventory, Error, TEXT("Called 'UPDInventoryComponent::RequestedUpdateItem', on ItemTag(%s) with an invalid 'RequestedOperation' parameter"), *ItemTag.GetTagName().ToString())
+		return; 
 	}
 	
 	GetOwner()->ForceNetUpdate();
 }
 
-void UPDInventoryComponent::RequestTradeItems(UPDInventoryComponent* Caller, const TMap<FGameplayTag, int32>& OfferedItems,
+void UPDInventoryComponent::RequestTradeItems(
+	UPDInventoryComponent* Caller,
+	const TMap<FGameplayTag, int32>& OfferedItems,
 	const TMap<FGameplayTag, int32>& RequestedItems)
 {
 	if (Caller == nullptr || Caller->IsValidLowLevelFast() == false) { return; }

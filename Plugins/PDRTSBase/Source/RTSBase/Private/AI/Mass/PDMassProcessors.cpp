@@ -611,7 +611,7 @@ void UPDOctreeEntityObserver::Initialize(UObject& Owner)
 {
 	Super::Initialize(Owner);
 	RTSSubsystem = GEngine->GetEngineSubsystem<UPDRTSBaseSubsystem>();
-	ElementCellSize = GetDefault<UPDRTSSubsystemSettings>()->DefaultCellSize;
+	ElementCellSize = GetDefault<UPDRTSSubsystemSettings>()->DefaultOctreeCellSize;
 }
 
 void UPDOctreeEntityObserver::ConfigureQueries()

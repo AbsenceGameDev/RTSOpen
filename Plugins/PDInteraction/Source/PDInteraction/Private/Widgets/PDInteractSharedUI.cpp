@@ -10,7 +10,6 @@
 
 
 /* @todo rewrite the base/element widget as a slate widget instead */
-
 void UPDWInteractable_Base::NativeConstruct()
 {
 	Super::NativeConstruct();

@@ -248,7 +248,7 @@ struct FRTSGodhandState
 	APDInteractActor* SpawnedInteractable = nullptr;
 	
 	/* State(s) - tracked values */	
-	/** @brief Current resource costs @todo replace with a queue of deque, and rename to Pending resource costs? Perhaps we need more information about the job in that case? */
+	/** @brief Current resource costs @todo is ever used? */
 	UPROPERTY(VisibleInstanceOnly, BlueprintReadWrite, Category = "Godhand|State")
 	TMap<FGameplayTag, FPDItemCosts> CurrentResourceCost;
 
@@ -272,7 +272,7 @@ struct FRTSGodhandState
 	
 	/** @brief Currently selected, singular, mass entity. In case we have multiple selected this is often set to an invalid handle as that is handled via selection groups instead */
 	UPROPERTY()
-	FMassEntityHandle SelectedWorkerUnitHandle{INDEX_NONE, INDEX_NONE};
+	FMassEntityHandle SelectedWorkerUnitHandle{0, 0};
 	
 	/* State(s) - Pathing */	
 	/** @brief This flag is set when we start drawing our niagara path, and is unset when we stop. Used to know if it's safe to overwrite certain properties or not */

@@ -3,6 +3,7 @@
 
 #include "CoreMinimal.h"
 #include "MassEntityTypes.h"
+#include "PDItemCommon.h"
 #include "AI/Mass/PDMassFragments.h"
 #include "Net/PDItemNetDatum.h"
 #include "RTSOMassFragments.generated.h"
@@ -46,12 +47,16 @@ struct FRTSOLightInventoryFragmentHandler
 	/** @brief Remove singular item to the fragments item list, using item tag and item count */
 	virtual void RemoveItem(const FGameplayTag& RemoveTag, const int32 Count);
 
+	/** @brief Gets item count, via tag */
+	int32 GetItemCount(const FGameplayTag& Key) const;
+
 	/** @brief Copies the inventory fragment handler. Assigns others inner to our inner */
 	FRTSOLightInventoryFragmentHandler& operator=(const FRTSOLightInventoryFragmentHandler& Other)
 	{
 		this->Inner = Other.Inner;
 		return *this;
 	}
+
 
 private:
 	/** @brief The bound data from the owning fragment. It's a list of items keyed by their itemtag. */	

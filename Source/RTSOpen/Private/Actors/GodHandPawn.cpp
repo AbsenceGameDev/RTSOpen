@@ -126,18 +126,17 @@ void AGodHandPawn::HoverTick(const float DeltaTime)
 		UE_LOG(PDLog_RTSO, Warning, TEXT("HoverTick - Found New Hover Actor"))
 	}
 	
-	const FMassEntityHandle ClosestMeshInstance = FindClosestMassEntity();
-	if (ClosestMeshInstance.Index != INDEX_NONE && InstanceState.SelectedWorkerUnitHandle.Index != ClosestMeshInstance.Index)
+	const FMassEntityHandle ClosestEntity = FindClosestMassEntity();
+	if (ClosestEntity.Index != 0 && InstanceState.SelectedWorkerUnitHandle.Index != ClosestEntity.Index)
 	{
 		// Not functionally relevant, keep here in case we want to put something here
 		UE_LOG(PDLog_RTSO, Warning, TEXT("HoverTick - Found New Unit ISM"))
 	}
 
 	// Dont overwrite in case we are dragging a path from this
-	if (InstanceState.bUpdatePathOnTick == false ) { InstanceState.SelectedWorkerUnitHandle = ClosestMeshInstance; }
+	if (InstanceState.bUpdatePathOnTick == false ) { InstanceState.SelectedWorkerUnitHandle = ClosestEntity; }
 }
 
-// @todo force it to cardinal directions, move to timer 
 void AGodHandPawn::RotationTick(float& DeltaTime)
 {
 	// Not currently in rotation
@@ -157,8 +156,7 @@ void AGodHandPawn::RotationTick(float& DeltaTime)
 		UE_LOG(PDLog_RTSO, Warning, TEXT("AGodHandPawn::RotationTick - Rotation in queue finished"))
 
 		AddActorLocalRotation(FRotator(0, DeltaYaw + InstanceState.CurrentRotationLeft, 0));
-
-		// @todo revise this, this became convoluted fast and needs to be simplified
+		
 		// Is yaw near west/east/north/south but not quite there due to tick inconsistencies? Adjust here if needed
 		constexpr double RotationStep = 90.0;
 		const double Ratio = GetActorRotation().Yaw / RotationStep;
@@ -192,9 +190,8 @@ void AGodHandPawn::BuildableGhostTick(float DeltaTime)
 		return;
 	}
 
-	// Calculate stepped position, collision is our source of truth for our location
+	// Let UPDHashGridSubsystem calculate stepped position, collision is our source of truth for our location
 	const FVector& TrueLocation = Collision->GetComponentLocation();
-	
 	const UPDHashGridSubsystem* HashGridSubsystem = GEngine->GetEngineSubsystem<UPDHashGridSubsystem>();
 	const FVector SteppedLocation = HashGridSubsystem->GetCellVector(TrueLocation);
 	
@@ -211,10 +208,8 @@ void AGodHandPawn::BuildableGhostTick(float DeltaTime)
 
 		if (CurrentGhost->GetClass()->ImplementsInterface(UPDRTSBuildableGhostInterface::StaticClass()))
 		{
-			IPDRTSBuildableGhostInterface::Execute_OnSpawnedAsGhost(CurrentGhost);
+			IPDRTSBuildableGhostInterface::Execute_OnSpawnedAsGhost(CurrentGhost, CurrentBuildableTag, true, false);
 		}
-		
-		// @todo Create and call event to set the mesh visuals to reflect that it's a ghost 
 	}
 
 	const FVector DeltaLocation = CurrentGhost->GetActorLocation() - SteppedLocation;
@@ -258,7 +253,7 @@ void AGodHandPawn::UpdateCursorLocation(float DeltaTime)
 	FVector Extent;
 
 	bool bProcessTargetOrigin = false;
-	const bool bInvalidEntityHandle = InstanceState.SelectedWorkerUnitHandle.Index == INDEX_NONE || EntityManager->IsEntityValid(InstanceState.SelectedWorkerUnitHandle) == false;
+	const bool bInvalidEntityHandle = InstanceState.SelectedWorkerUnitHandle.Index == 0 || EntityManager->IsEntityValid(InstanceState.SelectedWorkerUnitHandle) == false;
 	if ((InstanceState.bUpdatePathOnTick && InstanceState.HoveredActor == nullptr) || (InstanceState.HoveredActor == nullptr && bInvalidEntityHandle))
 	{
 		InstanceState.TargetTransform = Collision->GetComponentTransform();
@@ -374,7 +369,7 @@ void AGodHandPawn::ActionWorkerUnit_Started_Implementation(const FInputActionVal
 	// const bool ImmutableMoveInput = Value.Get<bool>();
 	UE_LOG(PDLog_RTSO, Warning, TEXT("ActionWorkerUnit_Started"))
 	
-	if (InstanceState.SelectedWorkerUnitHandle.Index != INDEX_NONE)
+	if (InstanceState.SelectedWorkerUnitHandle.Index != 0)
 	{
 		if (NS_WorkerPath != nullptr && NC_WorkerPath == nullptr)
 		{
@@ -423,10 +418,8 @@ void AGodHandPawn::ActionWorkerUnit_Cancelled_Implementation(const FInputActionV
 	IRTSOInputInterface::Execute_ActionWorkerUnit_Completed(this, Value);
 }
 
-void AGodHandPawn::ProcessPlaceBuildable(ARTSOController* PC)
+void AGodHandPawn::SpawnFromGhost(bool bBuildable, bool bRequiresWorkersToBuild)
 {
-	PC->MarqueeSelection(EMarqueeSelectionEvent::ABORT);
-	
 	ensure(CurrentGhost != nullptr);
 	if (UNLIKELY(CurrentGhost == nullptr))
 	{
@@ -442,27 +435,56 @@ void AGodHandPawn::ProcessPlaceBuildable(ARTSOController* PC)
 	SpawnedBuildings.Emplace_GetRef(SpawnedBuildable);
 
 	AsyncTask(ENamedThreads::GameThread,
-		[&, InSpawnTransform = InitialSpawnTransform, InGhost = CurrentGhost, InSpawnedBuildable = SpawnedBuildable]()
-		{
-			if (InSpawnedBuildable == nullptr || InSpawnedBuildable->IsValidLowLevelFast() == false)
-			{
-				UE_LOG(PDLog_RTSO, Warning, TEXT("ActionWorkerUnit_Completed -- Place buildable -- Class(%s) does nor implement interface(PDRTSBuildableGhostInterface)  -- Exiting function "),  *InSpawnedBuildable->GetClass()->GetName());
-				SpawnedBuildings.Remove(InSpawnedBuildable);
-				return;
-			}
+	          [&,  InBuildableTag = CurrentBuildableTag , bInBuildable = bBuildable, bInRequiresWorkersToBuild = bRequiresWorkersToBuild ,InSpawnTransform = InitialSpawnTransform, InGhost = CurrentGhost, InSpawnedBuildable = SpawnedBuildable]()
+	          {
+		          if (InSpawnedBuildable == nullptr || InSpawnedBuildable->IsValidLowLevelFast() == false)
+		          {
+			          UE_LOG(PDLog_RTSO, Warning, TEXT("ActionWorkerUnit_Completed -- Place buildable -- Class(%s) does nor implement interface(PDRTSBuildableGhostInterface)  -- Exiting function "),  *InSpawnedBuildable->GetClass()->GetName());
+			          SpawnedBuildings.Remove(InSpawnedBuildable);
+			          return;
+		          }
 			
-		    const FVector&& NewGhostLoc = InGhost != nullptr ? InGhost->GetActorLocation() : InSpawnTransform.GetLocation();
-		    const FTransform UpdatedSpawnTransform{FQuat(), NewGhostLoc, FVector::OneVector};
-		    UGameplayStatics::FinishSpawningActor(InSpawnedBuildable, UpdatedSpawnTransform);
-		    if (InSpawnedBuildable->GetClass()->ImplementsInterface(UPDRTSBuildableGhostInterface::StaticClass()))
-		    {
-		        IPDRTSBuildableGhostInterface::Execute_OnSpawnedAsMain(InSpawnedBuildable);
-		    }
-		    else
-		    {
-		        UE_LOG(PDLog_RTSO, Warning, TEXT("ActionWorkerUnit_Completed -- Place buildable -- Class(%s) does nor implement interface(PDRTSBuildableGhostInterface)  -- Exiting function "),  *InSpawnedBuildable->GetClass()->GetName())			
-		    }
-		});
+		          const FVector&& NewGhostLoc = InGhost != nullptr ? InGhost->GetActorLocation() : InSpawnTransform.GetLocation();
+		          const FTransform UpdatedSpawnTransform{FQuat(), NewGhostLoc, FVector::OneVector};
+		          UGameplayStatics::FinishSpawningActor(InSpawnedBuildable, UpdatedSpawnTransform);
+		          if (InSpawnedBuildable->GetClass()->ImplementsInterface(UPDRTSBuildableGhostInterface::StaticClass()))
+		          {
+		          	if (bInBuildable)
+		          	{
+		          		IPDRTSBuildableGhostInterface::Execute_OnSpawnedAsMain(InSpawnedBuildable, InBuildableTag);
+		          	}
+		          	else
+		          	{
+		          		IPDRTSBuildableGhostInterface::Execute_OnSpawnedAsGhost(InSpawnedBuildable, InBuildableTag, false, bInRequiresWorkersToBuild);
+		          	}
+		          }
+		          else
+		          {
+			          UE_LOG(PDLog_RTSO, Warning, TEXT("ActionWorkerUnit_Completed -- Place buildable -- Class(%s) does nor implement interface(PDRTSBuildableGhostInterface)  -- Exiting function "),  *InSpawnedBuildable->GetClass()->GetName())			
+		          }
+	          });	
+}
+
+void AGodHandPawn::ProcessPlaceBuildable(ARTSOController* PC)
+{
+	PC->MarqueeSelection(EMarqueeSelectionEvent::ABORT);
+
+	const UPDRTSBuildablePlacementBehaviour* DeveloperSettings = GetDefault<UPDRTSBuildablePlacementBehaviour>();
+
+	switch (DeveloperSettings->PlacementBehaviour)
+	{
+	case EPDRTSGhostSettings::Ghost_FireThenForget:
+		SpawnFromGhost(false, true);
+		break;
+	case EPDRTSGhostSettings::Ghost_WaitThenFire:
+		SpawnFromGhost(false, false);
+		break;
+	case EPDRTSGhostSettings::Buildable_FireThenForget:
+		SpawnFromGhost(true);
+		break;
+	default: ;
+	}
+
 }
 
 //
@@ -473,7 +495,7 @@ void AGodHandPawn::ActionWorkerUnit_Completed_Implementation(const FInputActionV
 	ARTSOController* PC = GetController<ARTSOController>();
 	if (PC == nullptr || PC->IsValidLowLevelFast() == false) { return; }
 
-	// Buildable data takes priority now, but: @todo add priority queue and handel each 'thing' by the order of that queue!
+	// Buildable data takes priority now, but: @todo create and action/event PriorityQueue and handle each 'event' by the order of that queue!
 	if (CurrentBuildableData != nullptr)
 	{
 		ProcessPlaceBuildable(PC);
@@ -545,7 +567,7 @@ void AGodHandPawn::ActionWorkerUnit_Completed_Implementation(const FInputActionV
 	
 	if (NC_WorkerPath != nullptr) { NC_WorkerPath->Deactivate(); }
 	InstanceState.bUpdatePathOnTick = false;
-	InstanceState.SelectedWorkerUnitHandle = {INDEX_NONE, INDEX_NONE};
+	InstanceState.SelectedWorkerUnitHandle = {0, 0};
 	UE_LOG(PDLog_RTSO, Warning, TEXT("ActionWorkerUnit_Completed -- Clearing selected worker unit "))
 	
 }
@@ -658,7 +680,7 @@ void AGodHandPawn::ActionChordedBase_Implementation(const FInputActionValue& Val
 FMassEntityHandle AGodHandPawn::OctreeEntityTrace_DEPRECATED(const FVector& StartLocation, const FVector& EndLocation)
 {
 	PRAGMA_DISABLE_DEPRECATION_WARNINGS
-		return FMassEntityHandle{INDEX_NONE,INDEX_NONE};
+		return FMassEntityHandle{0,0};
 	PRAGMA_ENABLE_DEPRECATION_WARNINGS
 }
 
@@ -708,13 +730,13 @@ FMassEntityHandle AGodHandPawn::FindClosestMassEntity() const
 	const TMap<int32, TArray<FLEntityCompound>>* CurrentBuffer = &RTSBaseSubsystem->OctreeUserQuery.CurrentBuffer;
 	if (CurrentBuffer == nullptr || CurrentBuffer->Contains(UPDRTSBaseSubsystem::EPDQueryGroups::QUERY_GROUP_HOVERSELECTION) == false)
 	{
-		return FMassEntityHandle{INDEX_NONE,INDEX_NONE};
+		return FMassEntityHandle{0,0};
 	}
 	
 	const TArray<FLEntityCompound>* QueryBufferData = CurrentBuffer->Find(UPDRTSBaseSubsystem::EPDQueryGroups::QUERY_GROUP_HOVERSELECTION);
 	if (QueryBufferData == nullptr || QueryBufferData->IsEmpty())
 	{
-		return FMassEntityHandle{INDEX_NONE,INDEX_NONE};
+		return FMassEntityHandle{0,0};
 	}
 	const FLEntityCompound& EntityCompound = (*QueryBufferData)[QueryBufferData->Num() - 1];
 
@@ -723,7 +745,7 @@ FMassEntityHandle AGodHandPawn::FindClosestMassEntity() const
 	const FVector DeltaV = Collision->GetComponentLocation() - EntityCompound.Location;
 	if (DeltaV.IsNearlyZero(50.0) == false)
 	{
-		return FMassEntityHandle{INDEX_NONE,INDEX_NONE};
+		return FMassEntityHandle{0,0};
 	}
 	
 	return EntityCompound.EntityHandle; 
@@ -831,15 +853,19 @@ void AGodHandPawn::NewAction_Implementation(ERTSBuildMenuModules ActionMode, FGa
 	{
 	case ERTSBuildMenuModules::SelectBuildable:
 		CurrentBuildableData = RTSSubSystem->GetBuildableData(ActionTag); // If null clear current
+		CurrentBuildableTag = ActionTag; 
 		break;
 	case ERTSBuildMenuModules::SelectContext:
 		CurrentBuildContext = RTSSubSystem->GetBuildContextEntry(ActionTag); // If null clear current
+		CurrentBuildContextTag = ActionTag; 
 		break;
 	case ERTSBuildMenuModules::DeselectBuildable:
 		CurrentBuildableData = nullptr;
+		CurrentBuildableTag = FGameplayTag::EmptyTag; 
 		break;
 	case ERTSBuildMenuModules::DeselectContext:
 		CurrentBuildContext = nullptr;
+		CurrentBuildContextTag = FGameplayTag::EmptyTag; 
 		break;
 	}
 }

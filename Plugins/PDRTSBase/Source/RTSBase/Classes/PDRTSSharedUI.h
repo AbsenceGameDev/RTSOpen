@@ -9,6 +9,7 @@
 #include "Blueprint/UserWidget.h"
 #include "PDRTSSharedUI.generated.h"
 
+struct FPDBuildWorker;
 class UImage;
 class UTextBlock;
 struct FPDBuildContext;

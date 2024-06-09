@@ -12,6 +12,7 @@ public class PDInventory : ModuleRules
 			new string[]
 			{
 				"Core",
+				"DeveloperSettings",
 			}
 		);
 			

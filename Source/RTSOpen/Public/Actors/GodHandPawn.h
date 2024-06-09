@@ -139,9 +139,13 @@ public:
 	virtual void ActionWorkerUnit_Triggered_Implementation(const FInputActionValue& Value) override;
 	/** @brief Calls into IRTSOInputInterface::Execute_ActionWorkerUnit_Completed. Reserve for later use */
 	virtual void ActionWorkerUnit_Cancelled_Implementation(const FInputActionValue& Value) override;
+	
+	/** @brief Spawns a ghost or buildable from a ghost, if ghost then it may need to wait for build times. */
+	void SpawnFromGhost(bool bBuildable, bool bRequiresWorkersToBuild = false);
+	
 	void ProcessPlaceBuildable(ARTSOController* PC);
 
-	/** @brief Resets data that is otherwise used for viaaully pathing a workers potential walk-path */
+	/** @brief Resets data that is otherwise used for visaully pathing a workers potential walk-path */
 	void ResetPathParameters();
 	
 	/** @brief If we were NOT drawing a marquee: then dispatch ai job to entity, if we had a valid entity.
@@ -231,10 +235,12 @@ public:
 	UPROPERTY()
 	AActor* CurrentGhost = nullptr;
 
-	/** @brief The ghost mesh of the currently selected buildable */
+	/** @brief Spawned buildings, may be ghosts or completed buildings */
 	UPROPERTY()
 	TArray<AActor*> SpawnedBuildings{};
-	
+	FGameplayTag CurrentBuildableTag{};
+	FGameplayTag CurrentBuildContextTag{};
+
 	/** @brief Fallback comparison value for a closest distance search when the vector was not valid */
 	static inline constexpr double  InvalidDistance{UE_MAX_FLT * UE_MAX_FLT};
 	/** @brief Fallback comparison value for a closest distance search when the vector was not valid */

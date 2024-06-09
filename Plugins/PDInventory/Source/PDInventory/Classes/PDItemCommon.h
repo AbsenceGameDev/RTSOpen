@@ -36,26 +36,19 @@ struct PDINVENTORY_API FPDItemCosts
 {
 	GENERATED_BODY();
 
-	/** @brief Applies the InitialCost to the given total.
-	 * @return The value of the given total subtracted by the value of the InitialCost.
-	 * @note if bApplyRecurringAtFirst is true then it also applies the recurring cost and subtracts that as-well */
-	int32 ApplyInitialCost(int32 InTotal) const;
-	
-	/** @brief Applies the RecurringCost to the given total.
-	 * @return The value of the given total subtracted by the value of the RecurringCost */
-	int32 ApplyRecurringCost(int32 InTotal) const;
+	FPDItemCosts() : bApplyRecurringAtFirst(false) {};
 
 	/** @brief Costs that will be checked against and deducted only the first usage */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
 	int32 InitialCost = 0;
-
-	/** @brief Costs that will be checked against and deducted each usage */
+	
+	/** @brief Costs that will be checked against and deducted each usage, will wrap around if requested index is higher than array */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
-	int32 RecurringCost = 0;
+	TArray<int32> RecurringCostPerPhase{};	
 
 	/** @brief If true, will apply the recurring cost on the initial usage as-well */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
-	uint8 bApplyRecurringAtFirst = false;	
+	uint8 bApplyRecurringAtFirst : 1; 
 };
 
 /** @brief
@@ -145,6 +138,10 @@ USTRUCT(BlueprintType, Blueprintable)
 struct FPDRecipeList : public FTableRowBase
 {
 	GENERATED_BODY()
+
+	/** @brief Tag associated with this recipe */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	FGameplayTag RecipeTag{};
 	
 	/** @brief Key, Item Tag, Value, links to recipe entry tiers for fetching crafting costs */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Meta = (RowType = "/Script/PDInventory.PDItemDefaultDatum"))

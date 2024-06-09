@@ -268,7 +268,7 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "RTS|Input")
 	class UInputAction* CtrlActionToggleMainMenu = nullptr; /**< @ingroup RTSInputActions*/
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "RTS|Input")
-	class UInputAction* CtrlActionBuildMode = nullptr; /**< @ingroup RTSInputActions @todo @backlog need to finish build mode*/
+	class UInputAction* CtrlActionBuildMode = nullptr; /**< @ingroup RTSInputActions */
 
 	/** @brief Mapping context settings, keyed by FGameplayTags. @todo Set default entries via a developer settings structure */
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "RTS|Input")
@@ -335,9 +335,8 @@ protected:
 	FVector2D StartMousePositionMarquee{};
 	/** @brief Marquee - (Current) screen position */
 	FVector2D CurrentMousePositionMarquee{};
-
-	// @todo add some mapping to selection groups
-	/** @brief Selection groups that have been kotkeyed */
+	
+	/** @brief Selection groups that have been hot-keyed */
 	TSet<int32> HotKeyedSelectionGroups{};	
 	/** @brief All selection groups.
 	 * - Keyed by selection ID.
@@ -352,7 +351,7 @@ protected:
 
 
 /**
- * @brief Scalar modifier passthrough hack. Scales input by a set factor per axis
+ * @brief Scalar modifier pass-through hack. Scales input by a set factor per axis
  */
 UCLASS(NotBlueprintable, MinimalAPI, meta = (DisplayName = "IntegerPassthrough"))
 class UInputModifierIntegerPassthrough : public UInputModifier
@@ -371,7 +370,7 @@ protected:
 	virtual FInputActionValue ModifyRaw_Implementation(const UEnhancedPlayerInput* PlayerInput, FInputActionValue CurrentValue, float DeltaTime) override;
 
 public:
-	/** @brief Passtrhough value, set in mapping context where it makes sense to have multiple numbered keys on an action */
+	/** @brief Pass-through value, set in mapping context where it makes sense to have multiple numbered keys on an action */
 	UPROPERTY(EditInstanceOnly, BlueprintReadWrite, Category=Settings)
 	int32 IntegerPassthrough = INDEX_NONE;
 	

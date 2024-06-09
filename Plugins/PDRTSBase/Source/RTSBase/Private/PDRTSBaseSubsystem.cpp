@@ -9,6 +9,8 @@
 #include "MassVisualizationComponent.h"
 #include "MassVisualizer.h"
 #include "NavigationSystem.h"
+#include "NiagaraComponent.h"
+#include "Interfaces/PDRTSBuildableGhostInterface.h"
 #include "RTSBase/Classes/PDRTSCommon.h"
 
 struct FTransformFragment;
@@ -57,6 +59,7 @@ void UPDRTSBaseSubsystem::ProcessBuildContextTable(const TSoftObjectPtr<UDataTab
 			{
 				FPDBuildable* Buildable = BuildableDatum.GetRow<FPDBuildable>("");
 				BuildableData_WTag.Emplace(Buildable->BuildableTag, &Buildable->BuildableData);
+				BuildableData_WTagReverse.Emplace(&Buildable->BuildableData, Buildable->BuildableTag);
 			}
 			BuildContexts_WTag.Emplace(BuildContext->ContextTag, BuildContext);
 		}
@@ -235,6 +238,171 @@ const FPDBuildableData* UPDRTSBaseSubsystem::GetBuildableData(const FGameplayTag
 	return BuildableData_WTag.Contains(BuildableTag) ? *BuildableData_WTag.Find(BuildableTag) : nullptr;
 }
 
+const FGameplayTag& UPDRTSBaseSubsystem::GetBuildableTagFromData(const FPDBuildableData* BuildableData)
+{
+	return BuildableData_WTagReverse.Contains(BuildableData) ? *BuildableData_WTagReverse.Find(BuildableData) : FGameplayTag::EmptyTag;
+}
+
+void UPDRTSBaseSubsystem::ProcessGhostStageDataAsset(const AActor* GhostActor, const bool bIsStartOfStage, const FPDRTSGhostStageData& SelectedStageData)
+{
+	if (GhostActor == nullptr || GhostActor->IsValidLowLevelFast() == false)
+	{
+		UE_LOG(PDLog_RTSBase, Error, TEXT("UPDRTSBaseSubsystem::ProcessSingleGhostStage() -- GhostActor is invalid"));
+		return;
+	}
+
+	// @todo use interface and allow actor to decide which mesh component they should update, they may have several 
+	// FVector ActorLocation = GhostActor->GetActorLocation();
+	UStaticMeshComponent* ActorMeshComp = GhostActor->GetComponentByClass<UStaticMeshComponent>(); 
+	UNiagaraComponent* NiagaraComp = GhostActor->GetComponentByClass<UNiagaraComponent>();
+
+	if (ActorMeshComp == nullptr)
+	{
+		UE_LOG(PDLog_RTSBase, Error, TEXT("UPDRTSBaseSubsystem::ProcessSingleGhostStage(Actor: %s, Data: %s) -- Found no static mesh component on actor. \n ^ @todo set up interface and call that instead to allow the user to select the mesh component"), *GhostActor->GetName(), SelectedStageData.StageDA != nullptr ? *SelectedStageData.StageDA->GetName() : *FString("N/A"));
+	}
+	if (NiagaraComp == nullptr)
+	{
+		UE_LOG(PDLog_RTSBase, Error, TEXT("UPDRTSBaseSubsystem::ProcessSingleGhostStage(Actor: %s, Data: %s) -- Found no Niagara component on actor. \n ^ @todo set up interface and call that instead to allow the user to select the mesh component "), *GhostActor->GetName(), SelectedStageData.StageDA != nullptr ? *SelectedStageData.StageDA->GetName() : *FString("N/A"));
+	}
+	
+	
+	bool bCanApplyMeshUpdate = false;
+	switch (SelectedStageData.StageMesh_ApplyBehaviour)
+	{
+	case EPDRTSGhostStageBehaviour::EOnStart:
+		bCanApplyMeshUpdate = bIsStartOfStage;
+		break;
+	case EPDRTSGhostStageBehaviour::EOnEnd:
+		bCanApplyMeshUpdate = bIsStartOfStage == false;
+		break;
+	}
+	
+	bool bCanApplyVFX = false;
+	switch (SelectedStageData.StageVFX_ApplyBehaviour)
+	{
+	case EPDRTSGhostStageBehaviour::EOnStart:
+		bCanApplyVFX = bIsStartOfStage;
+		break;
+	case EPDRTSGhostStageBehaviour::EOnEnd:
+		bCanApplyVFX = bIsStartOfStage == false;
+		break;
+	}
+	
+	bCanApplyMeshUpdate &= ActorMeshComp != nullptr;
+	if (bCanApplyMeshUpdate)
+	{
+		// @todo hook some event here where users can control mesh transition by other means 
+		ActorMeshComp->SetStaticMesh(SelectedStageData.StageDA->StageGhostMesh);
+	}
+
+	bCanApplyVFX &= NiagaraComp != nullptr;
+	if (bCanApplyVFX)
+	{
+		// @todo hook some event here where users can control vfx transition by other means 
+		NiagaraComp->SetAsset(SelectedStageData.StageDA->StageGhostNiagaraSystem);
+		NiagaraComp->ActivateSystem(true);
+	}
+}
+
+void UPDRTSBaseSubsystem::ProcessGhostStage(
+	AActor*                     GhostActor,
+	const FGameplayTag&         BuildableTag,
+	FPDRTSGhostTransitionState& MutableGhostDatum,
+	bool                        bIsStartOfStage)
+{
+	const UPDRTSBaseSubsystem* NonStaticSelf = GEngine->GetEngineSubsystem<UPDRTSBaseSubsystem>();
+	
+	if (NonStaticSelf->BuildableData_WTag.Contains(BuildableTag)) { return; }
+	
+	const FPDBuildableData* BuildableData = NonStaticSelf->BuildableData_WTag.FindRef(BuildableTag);
+	const FPDRTSGhostDatum& GhostData = BuildableData->GhostData;
+	switch (GhostData.TransitionStageType)
+	{
+	case EPDRTSGhostTransition::ESingleStage:
+		{
+			ProcessGhostStageDataAsset(GhostActor, bIsStartOfStage, GhostData.SingleStageAsset);
+			if (bIsStartOfStage == false) { MutableGhostDatum.CurrentStageIdx++; }
+
+			if (MutableGhostDatum.CurrentStageIdx > 0)
+			{
+				IPDRTSBuildableGhostInterface::Execute_OnSpawnedAsMain(GhostActor, BuildableTag);
+			}
+		}
+		break;
+	case EPDRTSGhostTransition::EMultipleStages:
+		if (GhostData.MultiStageStageAssets.IsValidIndex(MutableGhostDatum.CurrentStageIdx))
+		{
+			ProcessGhostStageDataAsset(GhostActor, bIsStartOfStage, GhostData.MultiStageStageAssets[MutableGhostDatum.CurrentStageIdx]);
+			if (bIsStartOfStage == false) { MutableGhostDatum.CurrentStageIdx++; }
+
+			if (MutableGhostDatum.CurrentStageIdx > GhostData.MultiStageStageAssets.Num())
+			{
+				IPDRTSBuildableGhostInterface::Execute_OnSpawnedAsMain(GhostActor, BuildableTag);
+			}			
+		}
+		break;
+	default: ;
+	}
+
+}
+
+double UPDRTSBaseSubsystem::GetMaxDurationGhostStage(
+	const FGameplayTag&         BuildableTag,
+	FPDRTSGhostTransitionState& MutableGhostDatum)
+{
+	const UPDRTSBaseSubsystem* NonStaticSelf = GEngine->GetEngineSubsystem<UPDRTSBaseSubsystem>();
+	
+	if (NonStaticSelf->BuildableData_WTag.Contains(BuildableTag)) { return -1.0; }
+	
+	const FPDBuildableData* BuildableData = NonStaticSelf->BuildableData_WTag.FindRef(BuildableTag);
+	const FPDRTSGhostDatum& GhostData = BuildableData->GhostData;
+	switch (GhostData.TransitionStageType)
+	{
+	case EPDRTSGhostTransition::ESingleStage:
+		if (MutableGhostDatum.CurrentStageIdx == 0)
+		{
+			return GhostData.SingleStageAsset.MaxDurationForStage;
+		}
+		break;
+	case EPDRTSGhostTransition::EMultipleStages:
+		if (GhostData.MultiStageStageAssets.IsValidIndex(MutableGhostDatum.CurrentStageIdx))
+		{
+			return GhostData.MultiStageStageAssets[MutableGhostDatum.CurrentStageIdx].MaxDurationForStage;
+		}
+		break;
+	default: ;
+	}
+
+	return -1.0;
+}
+
+bool UPDRTSBaseSubsystem::IsPastFinalIndex(const FGameplayTag& BuildableTag, FPDRTSGhostTransitionState& MutableGhostDatum)
+{
+	const UPDRTSBaseSubsystem* NonStaticSelf = GEngine->GetEngineSubsystem<UPDRTSBaseSubsystem>();
+	if (NonStaticSelf->BuildableData_WTag.Contains(BuildableTag)) { return false; }
+	
+	const FPDBuildableData* BuildableData = NonStaticSelf->BuildableData_WTag.FindRef(BuildableTag);
+	const FPDRTSGhostDatum& GhostData = BuildableData->GhostData;
+	switch (GhostData.TransitionStageType)
+	{
+	case EPDRTSGhostTransition::ESingleStage:
+		if (MutableGhostDatum.CurrentStageIdx > 0)
+		{
+			return true;
+		}
+		break;
+	case EPDRTSGhostTransition::EMultipleStages:
+		if (MutableGhostDatum.CurrentStageIdx >= GhostData.MultiStageStageAssets.Num())
+		{
+			return true;
+		}
+		break;
+	default: ;
+	}
+
+	return false;	
+}
+
 void UPDRTSBaseSubsystem::AssociateArchetypeWithConfigAsset(const FMassArchetypeHandle& Archetype, const TSoftObjectPtr<UMassEntityConfigAsset>& EntityConfig)
 {
 	ConfigAssociations.FindOrAdd(Archetype) = EntityConfig;
@@ -245,7 +413,7 @@ TSoftObjectPtr<UMassEntityConfigAsset> UPDRTSBaseSubsystem::GetConfigAssetForArc
 	return ConfigAssociations.Contains(Archetype) ? *ConfigAssociations.Find(Archetype) : TSoftObjectPtr<UMassEntityConfigAsset>{nullptr};
 }
 
-void UPDRTSBaseSubsystem::WorldInit(UWorld* World)
+void UPDRTSBaseSubsystem::WorldInit(const UWorld* World)
 {
 	check(World)
 	EntityManager = &World->GetSubsystem<UMassEntitySubsystem>()->GetEntityManager();	

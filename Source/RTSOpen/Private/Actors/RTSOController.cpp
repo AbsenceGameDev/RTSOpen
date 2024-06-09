@@ -209,7 +209,7 @@ bool ARTSOController::IsMappingContextActive(const FNativeGameplayTag& ContextTa
 
 bool ARTSOController::IsMappingContextActive(const FGameplayTag& ContextTag)
 {
-	UEnhancedInputLocalPlayerSubsystem* Subsystem = ULocalPlayer::GetSubsystem<UEnhancedInputLocalPlayerSubsystem>(GetLocalPlayer());
+	const UEnhancedInputLocalPlayerSubsystem* Subsystem = ULocalPlayer::GetSubsystem<UEnhancedInputLocalPlayerSubsystem>(GetLocalPlayer());
 	if (Subsystem == nullptr || MappingContexts.Contains(ContextTag) == false)
 	{
 		return false;
@@ -320,7 +320,7 @@ void ARTSOController::ActionAssignSelectionToHotkey_Implementation(const FInputA
 			UE_LOG(PDLog_RTSO, Warning, TEXT("ARTSOController::ActionAssignSelectionToHotkey - Calling 'OnMarqueeSelectionUpdated' : (Head) Requested ID : %i"), CurrentSelectionID);
 			FoundHandleMap.GenerateKeyArray(Keys);
 
-			OnSelectionChange(false); // @todo TEST
+			OnSelectionChange(false); 
 			OnMarqueeSelectionUpdated( ImmutableIndex, Keys);
 		}
 	}
@@ -375,7 +375,7 @@ void ARTSOController::ActionHotkeySelection_Implementation(const FInputActionVal
 		{
 			UE_LOG(PDLog_RTSO, Warning, TEXT("ARTSOController::ActionHotkeySelection - Calling 'OnMarqueeSelectionUpdated' : (Head) Requested ID : %i"), CurrentSelectionID);
 			FoundHandleMap->GenerateKeyArray(Keys);
-			OnSelectionChange(false); // @todo TEST
+			OnSelectionChange(false); 
 			OnMarqueeSelectionUpdated( SelectedGID, Keys);
 		}
 	}
@@ -487,7 +487,6 @@ FInputActionValue UInputModifierIntegerPassthrough::ModifyRaw_Implementation(con
 	
 	if (UNLIKELY(bCanStackNewModifier))
 	{
-		UE_LOG(PDLog_RTSO, Warning, TEXT("UInputModifierIntegerPassthrough::ModifyRaw - Emplacing to the input stack : Val %i"), IntegerPassthrough);
 		InputStackWorkaround->InputStackIntegers.EmplaceLast(IntegerPassthrough);
 
 		if (UNLIKELY(InputStackWorkaround->InputStackIntegers.Num() >= 100))
@@ -501,8 +500,7 @@ FInputActionValue UInputModifierIntegerPassthrough::ModifyRaw_Implementation(con
 		
 
 //
-// Mouse projections and marquee selection, @todo possibly move to controller class
-
+// Mouse projections and marquee selection
 void ARTSOController::ProjectMouseToGroundPlane(FVector2D& ScreenCoordinates, FVector& IntersectionPoint, bool& bFoundInputType) const
 {
 	ProjectMouseToGroundPlane(DedicatedLandscapeTraceChannel, ScreenCoordinates, IntersectionPoint, bFoundInputType);
@@ -610,7 +608,7 @@ void ARTSOController::OnMarqueeSelectionUpdated_Implementation(int32 SelectionGr
 	const TMap<int32, FMassEntityHandle>* CurrentIDGroup = GetImmutableMarqueeSelectionMap().Find(CurrentSelectionID);
 	if (NewSelection.Num() != 1)
 	{
-		UpdateBuildMenuContexts(FMassEntityHandle{INDEX_NONE, INDEX_NONE});
+		UpdateBuildMenuContexts(FMassEntityHandle{0, 0});
 	}
 	else if (NewSelection.Num() == 1 && CurrentIDGroup != nullptr) // Don't do anything if this isn't true
 	{
@@ -833,7 +831,7 @@ void ARTSOController::GetEntitiesOrActorsInMarqueeSelection()
 	TMap<int32, FMassEntityHandle> Handles;
 	WorldOctree.FindElementsWithBoundsTest(QueryBounds, [&](const FPDEntityOctreeCell& Cell)
 	{
-		if (Cell.EntityHandle.Index == INDEX_NONE) { return; } 
+		if (Cell.EntityHandle.Index == 0) { return; } 
 
 		Handles.Emplace(Cell.EntityHandle.Index, Cell.EntityHandle);
 	}, true);
@@ -898,7 +896,7 @@ void ARTSOController::OnSelectionChange(bool bClearSelection)
 				// Processing handled in UPDMProcessor_EntityCosmetics::Execute function
 				PermadevEntityBase->SelectionState = bClearSelection ? EPDEntitySelectionState::ENTITY_NOTSELECTED : EPDEntitySelectionState::ENTITY_SELECTED;
 				PermadevEntityBase->SelectionGroupIndex = SelectionID;
-				PermadevEntityBase->OwnerID = OwnerID.GetID(); // @todo set upon spawning the entities
+				PermadevEntityBase->OwnerID = OwnerID.GetID(); 
 			
 			}, EParallelForFlags::BackgroundPriority);
 	}
@@ -916,7 +914,7 @@ void ARTSOController::UpdateBuildMenuContexts(const FMassEntityHandle& CurrentEn
 		return;
 	}
 
-	const FPDMFragment_RTSEntityBase* RTSBaseFragment = CurrentEntity.Index == INDEX_NONE ? nullptr : EntityManager->GetFragmentDataPtr<FPDMFragment_RTSEntityBase>(CurrentEntity);
+	const FPDMFragment_RTSEntityBase* RTSBaseFragment = CurrentEntity.Index == 0 ? nullptr : EntityManager->GetFragmentDataPtr<FPDMFragment_RTSEntityBase>(CurrentEntity);
 	if (RTSBaseFragment == nullptr)
 	{
 		UE_LOG(PDLog_RTSO, Warning, TEXT("ARTSOController::UpdateBuildMenuContexts -- entity '{%i,%i}' was not valid"), CurrentEntity.Index, CurrentEntity.SerialNumber);

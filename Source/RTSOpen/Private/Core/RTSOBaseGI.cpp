@@ -47,14 +47,9 @@ void URTSOBaseGI::Dispatch_OpenLevel(TSoftObjectPtr<UWorld>& SoftWorldPtr)
 void URTSOBaseGI::OnGMReady()
 {
 	if (bGMReady == false) { return; }
-
-	//
-	// @todo initialize actor spawners?
 	
 	EndTransition();
 	StartTimeOffset = GetWorld()->GetGameState()->GetServerWorldTimeSeconds();
-
-	// CreateWidget();  // @todo Create hud overlay and add to viewport 
 }
 
 void URTSOBaseGI::ShowTransitionWidget_Implementation()
