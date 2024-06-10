@@ -65,7 +65,16 @@ public:
 	virtual void SetCurrentGhostStage_Implementation(int32 NewStage)
 	{
 		CurrentTransitionState.CurrentStageIdx = NewStage;
-	}	
+	}
+
+	/** @brief */
+	UFUNCTION(BlueprintNativeEvent, CallInEditor, Category = "Actor|Interface|Ghost")
+	bool AttemptFinalizeGhost();
+	virtual bool AttemptFinalizeGhost_Implementation()
+	{
+		return true;
+	}
+	
 	
 public:
 	/** no need to serialize, we'll not save ghosts into save-file yet, when we do revisit this and move somewhere more appropriate */

@@ -185,6 +185,52 @@ void ARTSOInteractableBuildingBase::ProgressGhostStage_Implementation(const bool
 		});
 }
 
+bool ARTSOInteractableBuildingBase::AttemptFinalizeGhost_Implementation()
+{
+	const AGodHandPawn* AsGodhand = Cast<AGodHandPawn>(GetOwner());
+	const ARTSOController* PC = AsGodhand != nullptr ? AsGodhand->GetController<ARTSOController>() : nullptr;
+	if (AsGodhand == nullptr || PC == nullptr)
+	{
+		UE_LOG(PDLog_RTSO, Error, TEXT("ARTSOInteractableBuildingBase(%s)::ProcessIfWorkersNotRequired -- No valid owner -- AsGodhand == nullptr || PC == nullptr"), *GetName())
+		return false;
+	}
+	
+	UPDInventorySubsystem* InventorySubsystem = GEngine->GetEngineSubsystem<UPDInventorySubsystem>();
+	UPDRTSBaseSubsystem* RTSSubsystem = GEngine->GetEngineSubsystem<UPDRTSBaseSubsystem>();
+	ensure(InventorySubsystem != nullptr);
+	ensure(RTSSubsystem != nullptr);
+	const int32& ImmutableStage = CurrentTransitionState.CurrentStageIdx;
+
+	RTSSubsystem->GetBuildableTagFromData(AsGodhand->CurrentBuildableData);
+	const FPDItemDefaultDatum* BuildableResourceDatum = InventorySubsystem->GetDefaultDatum(RTSSubsystem->GetBuildableTagFromData(AsGodhand->CurrentBuildableData)); // this is backwards, redesign, redesign, redesign!
+	if (BuildableResourceDatum == nullptr)
+	{
+		UE_LOG(PDLog_RTSO, Error, TEXT("ARTSOInteractableBuildingBase::ProcessIfWorkersNotRequired -- Did not find any entry in UPDInventorySubsystem for the given resource/building"))
+		return false;
+	}
+	
+	/// @note using the 'initial cost' data for complete build
+	const bool bCanAfford = UPDInventorySubsystem::CanInventoryAffordItem(AsGodhand->InventoryComponent->ItemList, *BuildableResourceDatum, true, false, ImmutableStage);
+	if (bCanAfford == false)
+	{
+		UE_LOG(PDLog_RTSO, Warning, TEXT("ARTSOInteractableBuildingBase::ProcessIfWorkersNotRequired -- Could not afford, setting to queue"))
+
+		// FILO
+		RTSSubsystem->BuildQueues.FindOrAdd(PC->GetActorID()).ActorInWorld.EmplaceFirst(this);
+		AsGodhand->InventoryComponent->OnItemUpdated.AddDynamic(AsGodhand, &AGodHandPawn::OnItemUpdate);
+		return false;
+	}
+
+	for (TTuple<FGameplayTag, FPDItemCosts> CraftingCost : BuildableResourceDatum->CraftingCosts)
+	{
+		AsGodhand->InventoryComponent->RequestUpdateItem(EPDItemNetOperation::CHANGE, CraftingCost.Key, -CraftingCost.Value.InitialCost);
+	}
+
+	// Progress from current stage to finish
+	IPDRTSBuildableGhostInterface::Execute_TransitionFromGhostToMain(this);
+	return true;
+}
+
 FRTSOBuildableInventories& ARTSOInteractableBuildingBase::ReturnBuildableInventories()
 {
 	return BuildableInventories;
@@ -291,9 +337,10 @@ void ARTSOInteractableBuildingBase::ProcessIfWorkersRequired()
 
 	const int32& ImmutableStage = CurrentTransitionState.CurrentStageIdx;
 	
-	const AGodHandPawn* AsGodhand = Cast<AGodHandPawn>(GetOwner());
-
-	UPDInventoryComponent* PlayerBank = AsGodhand->InventoryComponent;
+	check(GetOwner() != nullptr) // This function should never be called on a non-owning pawn 
+	UPDInventoryComponent* PlayerBank = GetOwner()->GetComponentByClass<UPDInventoryComponent>();
+	check(PlayerBank != nullptr) // This function should never be called on a pawn that does not have a inventory 
+	
 	switch (BuildCostBehaviour)
 	{
 	case EPDRTSBuildCostBehaviour::EBuildCostPlayerBank:
@@ -314,7 +361,7 @@ void ARTSOInteractableBuildingBase::ProcessIfWorkersRequired()
 
 	// Start the current stage, it's settings decide when effects are applied and if workers should end stage or if it ends automatically
 	IPDRTSBuildableGhostInterface::Execute_ProgressGhostStage(this, false);
-
+	
 	const EPDRTSBuildProgressionBehaviour BuildProgressionBehaviour = DefaultSubsystemSetting->DefaultBuildSystemBehaviours.Progression;
 	switch (BuildProgressionBehaviour)
 	{
@@ -322,13 +369,29 @@ void ARTSOInteractableBuildingBase::ProcessIfWorkersRequired()
 		// just wait
 		break;
 	case EPDRTSBuildProgressionBehaviour::EBuildCallsForWorkers:
-		// @todo Call any workers, ping every 10 seconds until enough has arrived
+		{
+			constexpr double PingInterval = 10.0; // @todo make configurable or use passthrough value
+			const FGameplayTagContainer TagContainer = Execute_GetGenericTagContainer(this);
+			const FGameplayTag SelectedTag = TagContainer.IsEmpty() ? JobTag : TagContainer.IsValidIndex(1) ? TagContainer.GetByIndex(1) : TagContainer.GetByIndex(0);
+			const FPDEntityPingDatum ConstructedDatum = {this, SelectedTag, INDEX_NONE, PingInterval};
+
+			UPDEntityPinger::EnablePingStatic(ConstructedDatum);
+		}
 		break;
 	}
 }
 
 void ARTSOInteractableBuildingBase::ProcessIfWorkersNotRequired()
 {
+	IPDRTSBuildableGhostInterface::Execute_AttemptFinalizeGhost(this);
+}
+
+void ARTSOInteractableBuildingBase::OnBuildingDestroyed_Implementation()
+{
+	UPDRTSBaseSubsystem* RTSSubsystem = GEngine->GetEngineSubsystem<UPDRTSBaseSubsystem>();
+	ensure(RTSSubsystem != nullptr);
+	RTSSubsystem->QueueRemoveFromWorldBuildTree(GetUniqueID());
+
 	const AGodHandPawn* AsGodhand = Cast<AGodHandPawn>(GetOwner());
 	const ARTSOController* PC = AsGodhand != nullptr ? AsGodhand->GetController<ARTSOController>() : nullptr;
 	if (AsGodhand == nullptr || PC == nullptr)
@@ -336,39 +399,6 @@ void ARTSOInteractableBuildingBase::ProcessIfWorkersNotRequired()
 		UE_LOG(PDLog_RTSO, Error, TEXT("ARTSOInteractableBuildingBase(%s)::ProcessIfWorkersNotRequired -- No valid owner -- AsGodhand == nullptr || PC == nullptr"), *GetName())
 		return;
 	}
-	
-	UPDInventorySubsystem* InventorySubsystem = GEngine->GetEngineSubsystem<UPDInventorySubsystem>();
-	UPDRTSBaseSubsystem* RTSSubsystem = GEngine->GetEngineSubsystem<UPDRTSBaseSubsystem>();
-	ensure(InventorySubsystem != nullptr);
-	ensure(RTSSubsystem != nullptr);
-	const int32& ImmutableStage = CurrentTransitionState.CurrentStageIdx;
-
-	RTSSubsystem->GetBuildableTagFromData(AsGodhand->CurrentBuildableData);
-	const FPDItemDefaultDatum* BuildableResourceDatum = InventorySubsystem->GetDefaultDatum(RTSSubsystem->GetBuildableTagFromData(AsGodhand->CurrentBuildableData)); // this is backwards, redesign, redesign, redesign!
-	if (BuildableResourceDatum == nullptr)
-	{
-		UE_LOG(PDLog_RTSO, Error, TEXT("ARTSOInteractableBuildingBase::ProcessIfWorkersNotRequired -- Did not find any entry in UPDInventorySubsystem for the given resource/building"))
-		return;
-	}
-
-	/// @note using the 'initial cost' data for complete build
-	const bool bCanAfford = UPDInventorySubsystem::CanInventoryAffordItem(AsGodhand->InventoryComponent->ItemList, *BuildableResourceDatum, true, false, ImmutableStage);
-	if (bCanAfford == false)
-	{
-		UE_LOG(PDLog_RTSO, Warning, TEXT("ARTSOInteractableBuildingBase::ProcessIfWorkersNotRequired -- Could not afford, setting to queue"))
-
-		// @todo Write code that actually handles the build queue in the rts subsystem
-		RTSSubsystem->BuildQueues.FindOrAdd(PC->GetActorID()).ActorInWorld.Emplace(this);
-		return;
-	}
-
-	for (TTuple<FGameplayTag, FPDItemCosts> CraftingCost : BuildableResourceDatum->CraftingCosts)
-	{
-		AsGodhand->InventoryComponent->RequestUpdateItem(EPDItemNetOperation::CHANGE, CraftingCost.Key, -CraftingCost.Value.InitialCost);
-	}
-
-	// Progress from current stage to finish
-	IPDRTSBuildableGhostInterface::Execute_TransitionFromGhostToMain(this);
 }
 
 void ARTSOInteractableBuildingBase::OnSpawnedAsGhost_Implementation(const FGameplayTag& BuildableTag, bool bInIsPreviewGhost, bool bInRequiresWorkersToBuild)

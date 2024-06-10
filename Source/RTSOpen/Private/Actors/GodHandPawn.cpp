@@ -434,6 +434,10 @@ void AGodHandPawn::SpawnFromGhost(bool bBuildable, bool bRequiresWorkersToBuild)
 	SpawnedBuildable->SetOwner(this);
 	SpawnedBuildings.Emplace_GetRef(SpawnedBuildable);
 
+	UPDRTSBaseSubsystem* RTSSubsystem = GEngine->GetEngineSubsystem<UPDRTSBaseSubsystem>();
+	ensure(RTSSubsystem != nullptr);
+	RTSSubsystem->AddBuildActorArray( IPDRTSBuilderInterface::Execute_GetBuilderID(this), &SpawnedBuildings);
+	
 	AsyncTask(ENamedThreads::GameThread,
 	          [&,  InBuildableTag = CurrentBuildableTag , bInBuildable = bBuildable, bInRequiresWorkersToBuild = bRequiresWorkersToBuild ,InSpawnTransform = InitialSpawnTransform, InGhost = CurrentGhost, InSpawnedBuildable = SpawnedBuildable]()
 	          {
@@ -452,6 +456,9 @@ void AGodHandPawn::SpawnFromGhost(bool bBuildable, bool bRequiresWorkersToBuild)
 		          	if (bInBuildable)
 		          	{
 		          		IPDRTSBuildableGhostInterface::Execute_OnSpawnedAsMain(InSpawnedBuildable, InBuildableTag);
+
+
+		          		
 		          	}
 		          	else
 		          	{
@@ -675,6 +682,49 @@ void AGodHandPawn::ActionChordedBase_Implementation(const FInputActionValue& Val
 {
 }
 
+void AGodHandPawn::OnItemUpdate(const FPDItemNetDatum& BuildableResourceDatum)
+{
+	UPDRTSBaseSubsystem* RTSSubsystem = GEngine->GetEngineSubsystem<UPDRTSBaseSubsystem>();
+	ensure(RTSSubsystem != nullptr);
+
+	// FILO
+	AActor* TryLast = nullptr;
+	TDeque<AActor*>& QueuedBuildablesToBuy = RTSSubsystem->BuildQueues.FindOrAdd(IPDRTSBuilderInterface::GetBuilderID()).ActorInWorld;
+	for (;QueuedBuildablesToBuy.Num() > 0;)
+	{
+		TryLast = QueuedBuildablesToBuy.Last();
+
+		if (TryLast == nullptr)
+		{
+			QueuedBuildablesToBuy.PopLast();
+			continue;
+		}
+		break;
+	}
+
+	// The actors in 'UPDRTSBaseSubsystem::BuildQueues' all implement IPDRTSBuildableGhostInterface
+	if (TryLast != nullptr && IPDRTSBuildableGhostInterface::Execute_AttemptFinalizeGhost(TryLast))
+	{
+		QueuedBuildablesToBuy.PopLast();
+	}
+
+}
+
+int32 AGodHandPawn::GetBuilderID_Implementation()
+{
+	AController* PC = GetController();
+	if (PC == nullptr && CachedActorID == INDEX_NONE)
+	{
+		UE_LOG(PDLog_RTSO, Warning, TEXT("AGodHandPawn(%s)::GetBuilderID() \n PC == nullptr and CachedActorID == INDEX_NONE"));
+		return INDEX_NONE;
+	}
+
+	// If controller has become invalidated temporarily but cached index still remains, just return it so upon reconnection we can hook it back up 
+	const bool bRefreshActorID = PC == nullptr || PC->GetClass() == nullptr || PC->GetClass()->ImplementsInterface(UPDRTSBuilderInterface::StaticClass()) == false;
+	CachedActorID = bRefreshActorID ? IPDRTSBuilderInterface::Execute_GetBuilderID(PC) : CachedActorID;
+	return CachedActorID;
+}
+
 //
 // Utility functions
 FMassEntityHandle AGodHandPawn::OctreeEntityTrace_DEPRECATED(const FVector& StartLocation, const FVector& EndLocation)
@@ -800,12 +850,15 @@ void AGodHandPawn::BeginPlay()
 
 	const double CollisionRadius = Collision->GetScaledSphereRadius(); 
 	const UE::Math::TVector<double> HoverSelectionQueryExtent{ CollisionRadius};
-	const UPDRTSBaseSubsystem::FPDOctreeUserQuery::QBox MinimapQueryBox = UPDRTSBaseSubsystem::FPDOctreeUserQuery::MakeUserQuery(QueryLocation, MinimapQueryExtent);
+	const UPDRTSBaseSubsystem::FPDOctreeUserQuery::QBox MinimapQueryBox        = UPDRTSBaseSubsystem::FPDOctreeUserQuery::MakeUserQuery(QueryLocation, MinimapQueryExtent);
 	const UPDRTSBaseSubsystem::FPDOctreeUserQuery::QBox HoverSelectionQueryBox = UPDRTSBaseSubsystem::FPDOctreeUserQuery::MakeUserQuery(QueryLocation, HoverSelectionQueryExtent);
+	const UPDRTSBaseSubsystem::FPDOctreeUserQuery::QSphere PingSystemQuerySphere  = UPDRTSBaseSubsystem::FPDOctreeUserQuery::MakeUserQuery(QueryLocation, 10000.0); // need to update whn calling, start att 100m however
 	RTSSubSystem->OctreeUserQuery.CreateNewQueryEntry(UPDRTSBaseSubsystem::EPDQueryGroups::QUERY_GROUP_MINIMAP, MinimapQueryBox);
 	RTSSubSystem->OctreeUserQuery.CreateNewQueryEntry(UPDRTSBaseSubsystem::EPDQueryGroups::QUERY_GROUP_HOVERSELECTION, HoverSelectionQueryBox);
+	RTSSubSystem->OctreeBuildSystemEntityQuery.CreateNewQueryEntry(UPDRTSBaseSubsystem::EPDQueryGroups::QUERY_GROUP_BUILDABLE_ACTORS, PingSystemQuerySphere);
 	RTSSubSystem->OctreeUserQuery.CallingUser = this;
-
+	RTSSubSystem->OctreeBuildSystemEntityQuery.CallingUser = this;
+	
 	Collision->OnComponentBeginOverlap.AddDynamic(this, &AGodHandPawn::OnCollisionBeginOverlap);
 	Collision->OnComponentEndOverlap.AddDynamic(this, &AGodHandPawn::OnCollisionEndOverlap);
 	GEngine->GetEngineSubsystem<UPDRTSBaseSubsystem>()->WorldInit(GetWorld());

@@ -28,6 +28,9 @@ class PDRTSBASE_API UPDRTSBaseUnit : public UInstancedStaticMeshComponent
 	GENERATED_UCLASS_BODY()
 
 public:
+
+	virtual void InitializeComponent() override;
+	
 	/** @brief Only calls Super. Reserved for later use */
 	virtual TArray<int32> GetInstancesOverlappingSphere(const FVector& Center, float Radius, bool bSphereInWorldSpace) const override;
 	
@@ -65,6 +68,16 @@ public:
 	/** @brief Assigns the entity manager for the world we are in, so we can refer to it and modify fragments when needed */
 	FORCEINLINE void SetEntityManager(const FMassEntityManager* InEntityManager) { EntityManager = InEntityManager;}
 
+	/** @brief Gets called when a task finished. Resets action state, optionally chains a new action unto it. */
+	void OnTaskFinished(FMassEntityHandle WorkerEntity, const FGameplayTag NewOptionalJobTag = FGameplayTag{}, const FPDTargetCompound& NewOptTarget = Dummy);
+
+	/** @brief Gets The current job of the entity. Will hit check() if entity does not exist or does not have FPDMFragment_Action */
+	const FGameplayTag& GetEntityJobChecked(FMassEntityHandle WorkerEntity) const;
+	/** @brief Gets The current job of the entity. Will return empty tag if entity does not exist or does not have FPDMFragment_Action */
+	const FGameplayTag& GetEntityJob(FMassEntityHandle WorkerEntity) const;
+	/** @return true if entities current job is TAG_AI_Job_Idle, false if entity does not exist or has another job tag */
+	bool IsEntityJobIdle(FMassEntityHandle WorkerEntity) const;
+
 protected:
 	/** @brief Sets collision response channel abd assigns a dummy task. Reserved for later use */
 	virtual void BeginPlay() override;
@@ -72,8 +85,6 @@ protected:
 	/** @brief Sets job to the requested job on the requested entity, only called when approved */
 	void AssignTask(FMassEntityHandle EntityHandle, const FGameplayTag& JobTag, const FPDTargetCompound& OptTarget);
 
-	/** @brief Gets called when a task finished. Does nothing. Reserved for later use. */
-	void OnTaskFinished(FMassEntityHandle WorkerEntity, const FGameplayTag& JobTag);
 
 public:
 	/** @brief Only calls Super. Reserved for later use */
@@ -97,6 +108,8 @@ public:
 
 	/** @brief unused since rewriting the class completely a while back, remove next commit */
 	TSharedPtr<FStreamableHandle> LatestJob_AsyncLoadHandle;
+
+	static inline FPDTargetCompound Dummy{};
 };
 
 /**

@@ -10,7 +10,7 @@ UPDInventoryComponent::UPDInventoryComponent(const FObjectInitializer& ObjectIni
 	SetIsReplicatedByDefault(true);
 	ItemList.SetOwningInventory(this);
 
-	// @todo set polling to 0 times per second to enforce stateful replication
+	// @todo set polling to 0 times per second to enforce stateful replication, do this by setting up a inventory network manager and route all inventory networking calls through it, 1 connection for every x-hundred actors  
 }
 
 void UPDInventoryComponent::GetLifetimeReplicatedProps(TArray<class FLifetimeProperty>& OutLifetimeProps) const
@@ -86,14 +86,13 @@ void UPDInventoryComponent::RequestTradeItems(
 			const int32 Final = FMath::Clamp(Item.Value, 0, TotalItemCount);
 			RequestUpdateItem(EPDItemNetOperation::CHANGE, Item.Key, - Final);
 			Caller->RequestUpdateItem(EPDItemNetOperation::CHANGE, Item.Key, Final);
-				
 		}
 	}	
-	
 }
 
 void UPDInventoryComponent::OnDatumUpdated(FPDItemNetDatum* ItemNetDatum, EPDItemNetOperation Operation)
 {
+	OnItemUpdated.Broadcast(ItemNetDatum != nullptr ? *ItemNetDatum : FPDItemNetDatum{});
 }
 
 bool UPDInventoryComponent::IsAtLastAvailableStack() const

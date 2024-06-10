@@ -37,18 +37,25 @@ public:
 	virtual void NewAction_Implementation(ERTSBuildMenuModules ActionMode, FGameplayTag ActionTag)
 	{
 		// Perform actions
-
 		switch (ActionMode)
 		{
 		case ERTSBuildMenuModules::SelectBuildable:
 			break;
 		case ERTSBuildMenuModules::SelectContext:
 			break;
+		case ERTSBuildMenuModules::DeselectBuildable:
+			break;
+		case ERTSBuildMenuModules::DeselectContext:
+			break;
 		}
 		
 		return;
 	}
-public:
+
+	/** @brief If if logic has already been implemented to generate persistent IDs for players, then implement this and pass it as return */
+	UFUNCTION(BlueprintNativeEvent, CallInEditor, Category = "Action|Interface")
+	int32 GetBuilderID();
+	virtual int32 GetBuilderID_Implementation() { return INDEX_NONE; }
 };
 
 

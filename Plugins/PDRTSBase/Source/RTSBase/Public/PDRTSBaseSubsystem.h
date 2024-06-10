@@ -8,10 +8,12 @@
 #include "MassEntityTypes.h"
 #include "MassArchetypeTypes.h"
 #include "AI/Mass/PDMassFragments.h"
+#include "Containers/Deque.h"
 #include "Engine/StreamableManager.h"
 #include "Subsystems/EngineSubsystem.h"
 #include "PDRTSBaseSubsystem.generated.h"
 
+class UPDRTSBaseUnit;
 class UMassEntitySubsystem;
 
 //
@@ -82,65 +84,189 @@ struct FPDEntityOctreeSemantics
 	};
 };
 
-/** @brief Boilerplate Entity namespace, defines an octree sub-class. */
-namespace PD::Mass::Entity
+struct PDRTSBASE_API FPDActorOctreeCell
 {
-	typedef TOctree2<FPDEntityOctreeCell, FPDEntityOctreeSemantics> UnsafeOctree;
+	/** @brief Tracked Entity */
+	uint32 ActorInstanceID = 0;
+
+	int32 OwnerID = INDEX_NONE;
+
+	TDeque<FMassEntityHandle> IdleUnits; // if we add sharing units and such with teammates this will help
 	
-	/** @brief Safe octree implementation. Crudely avoids data-race conditions.   */
-	class FPDSafeOctree : public UnsafeOctree
+	/** @brief Cell Bounds */
+	FBoxCenterAndExtent Bounds{};
+
+	/** @brief Cell ID */
+	TSharedPtr<FOctreeElementId2> SharedCellID;
+};
+
+
+/** @brief Boilerplate TOctree2 functional structure */
+struct FPDActorOctreeSemantics 
+{
+	/** @brief anonymous enum, won't collide. Tells the octree how many elements we can store per leaf node  */
+	enum { MaxElementsPerLeaf = 128 };
+	/** @brief anonymous enum, won't collide. Tells the octree our minimum limit for inclusive elements per node */
+	enum { MinInclusiveElementsPerNode = 7 };
+	/** @brief anonymous enum, won't collide. Tells the octree how deep our nodes can get */
+	enum { MaxNodeDepth = 12 };
+
+	/** @brief Leaf element allocator */
+	typedef TInlineAllocator<MaxElementsPerLeaf> ElementAllocator;
+
+	/** @brief Returns the bounding box of the give cell */
+	FORCEINLINE static const FBoxCenterAndExtent& GetBoundingBox(const FPDActorOctreeCell& Element)
 	{
-	public:
-		FPDSafeOctree()
-			: UnsafeOctree() {}
-		FPDSafeOctree(const FVector& InOrigin, FVector::FReal InExtent)
-			: UnsafeOctree(InOrigin, InExtent) {}
+		return Element.Bounds;
+	}
 
-		/** @brief Call this when you expect potential data race conditions and you want to prioritize one codepath over another. */
-		void Lock() { bLockedReadInMainThread = true; };
-		/** @brief Call this when you expect potential data race conditions and you want to prioritize one codepath over another. */
-		void Unlock() { bLockedReadInMainThread = false; };
-		/** @brief Call this when you expect potential data race conditions and you want to prioritize one codepath over another. */
-		bool IsLocked() const { return bLockedReadInMainThread; };
-		
-		/** @brief Calls into the inner, the octree, as long as the read access is not locked */
-		template<typename IterateBoundsFunc>
-		inline void FindElementsWithBoundsTest(const FBoxCenterAndExtent& BoxBounds, const IterateBoundsFunc& Func, const bool bShouldLock = false)
-		{
-			if (IsLocked()) { return; }
-			
-			if (bShouldLock) { Lock();}
-			
-			UnsafeOctree::FindElementsWithBoundsTest(BoxBounds, Func);
+	/** @brief Octree Cell comparison */
+	FORCEINLINE static bool AreElementsEqual(const FPDActorOctreeCell& A, const FPDActorOctreeCell& B)
+	{
+		return A.ActorInstanceID == B.ActorInstanceID;
+	}
+	
 
-			if (bShouldLock) { Unlock(); }						
-		}
-
-		/** @brief Calls into the inner, the octree, as long as the read access is not locked */
-		template<typename IterateBoundsFunc>
-		inline void FindFirstElementWithBoundsTest(const FBoxCenterAndExtent& BoxBounds, const IterateBoundsFunc& Func, const bool bShouldLock = false)
-		{
-			if (IsLocked()) { return; }
-			
-			if (bShouldLock) { Lock(); }
-			
-			bool ContinueTraversal = true;
-			UnsafeOctree::FindFirstElementWithBoundsTest(BoxBounds, Func, ContinueTraversal);
-
-			if (bShouldLock) { Unlock(); }			
-		}
-		// FCriticalSection* CriticalSectionMutex = nullptr;
-
-	private:
-		// @todo possibly keep track of how many threads have requested a lock on octree
-
-		/** @brief Actual flag handled by the functions Lock(), Unlock(), IsLocked() */
-		bool bLockedReadInMainThread = false;
+	/** @brief Octree Cell ID assignment */
+	FORCEINLINE static void SetElementId(const FPDActorOctreeCell& Element, FOctreeElementId2 Id)
+	{
+		*Element.SharedCellID = Id;
 	};
+};
+
+/** @brief Boilerplate Entity namespace, defines an octree sub-class. */
+namespace PD::Mass
+{
+	namespace Entity
+	{
+		typedef TOctree2<FPDEntityOctreeCell, FPDEntityOctreeSemantics> UnsafeOctree;
+		
+		/** @note Safe octree implementation removed, avoided data-race conditions by designing access into the octree differently.   */
+		class FPDEntityOctree : public UnsafeOctree
+		{
+		public:
+			FPDEntityOctree()
+				: UnsafeOctree() {}
+			FPDEntityOctree(const FVector& InOrigin, FVector::FReal InExtent)
+				: UnsafeOctree(InOrigin, InExtent) {}
+	
+		private:
+		};
+	}
+
+	namespace Actor
+	{
+		typedef TOctree2<FPDActorOctreeCell, FPDActorOctreeSemantics> UnsafeActorOctree;
+		class FPDActorOctree : public UnsafeActorOctree
+		{
+		public:
+			FPDActorOctree()
+				: UnsafeActorOctree() {}
+			FPDActorOctree(const FVector& InOrigin, FVector::FReal InExtent)
+				: UnsafeActorOctree(InOrigin, InExtent) {}
+	
+		private:
+		};	
+	}	
 
 }
 
 struct FPDWorkUnitDatum;
+
+USTRUCT(Blueprintable)
+struct PDRTSBASE_API FPDEntityPingDatum
+{
+	GENERATED_BODY()
+
+	FPDEntityPingDatum() : FPDEntityPingDatum(0) {};
+private:
+	FPDEntityPingDatum(uint32 InInstanceID);
+public:
+	FPDEntityPingDatum(AActor* InWorldActor, const FGameplayTag& InJobTag);
+	FPDEntityPingDatum(AActor* InWorldActor, const FGameplayTag& InJobTag, int32 InAltOwnerID, double InInterval = 10.0, int32 InMaxCountIntervals = 15);
+	~FPDEntityPingDatum();
+
+	TArray<uint8> ToBytes() const;
+	void FromBytes(const TArray<uint8>&& Bytes);
+
+	void Unsafe_SetOwnerIDFromOwner();
+
+	bool operator==(const FPDEntityPingDatum& OtherDatum) const { return this->InstanceID == OtherDatum.InstanceID; }
+	
+	/** @brief  Instance ID,only visible in instance, get from world actor*/
+	uint32 InstanceID = INDEX_NONE;
+	
+	/** @brief The world actor this ping is calling entities for */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Build|Procedures")
+	AActor* WorldActor = nullptr;
+	
+	/** @brief  job tag associated with this ping */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Build|Procedures")
+	FGameplayTag JobTag{};
+	
+	/** @brief  Owner ID, error if neither supplied and can't be found on WorldActors owner controller*/
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Build|Procedures")
+	int32 OwnerID = INDEX_NONE;
+
+	/** @brief default ping at 10 seconds */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Build|Procedures")
+	double Interval = 10.0;
+
+	/** @brief default ping at 10 seconds */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Build|Procedures")
+	int32 MaxCountIntervals = 15;	
+
+	friend class UPDEntityPinger;
+};
+
+/** @brief Hash the ping data, really just pass through the world-actors UID*/
+inline uint32 GetTypeHash(const FPDEntityPingDatum& PingDatum)
+{
+	if (PingDatum.InstanceID == 0)
+	{
+		uint32 Hash = 0;
+		Hash = HashCombine(Hash, GetTypeHash(PingDatum.JobTag));
+		Hash = HashCombine(Hash, GetTypeHash(PingDatum.WorldActor));
+		return Hash;
+	}
+	
+	return PingDatum.InstanceID;
+}
+
+UCLASS()
+class PDRTSBASE_API UPDEntityPinger : public UEngineSubsystem
+{
+	GENERATED_BODY()
+	
+	UPDEntityPinger() = default;
+	explicit UPDEntityPinger(const FPDEntityPingDatum& PingDatum);
+public:	
+
+	UFUNCTION(BlueprintCallable)
+	TArray<uint8> AddPingDatum(const FPDEntityPingDatum& PingDatum);
+	UFUNCTION(BlueprintCallable)
+	void RemovePingDatum(const FPDEntityPingDatum& PingDatum);
+	UFUNCTION(BlueprintCallable)
+	void RemovePingDatumWithHash(const FPDEntityPingDatum& PingDatum);
+	UFUNCTION(BlueprintCallable)
+	FTimerHandle GetPingHandleCopy(const TArray<uint8>& PingHashBytes);
+	FTimerHandle GetPingHandleCopy(uint32 PingHash);
+	
+	UFUNCTION(BlueprintCallable)
+	TArray<uint8> EnablePing(const FPDEntityPingDatum& PingDatum);
+	UFUNCTION(BlueprintCallable)
+	static TArray<uint8> EnablePingStatic(const FPDEntityPingDatum& PingDatum);
+	UFUNCTION(BlueprintNativeEvent)
+	void Ping(UWorld* World, const FPDEntityPingDatum& PingDatum);
+	UFUNCTION(BlueprintCallable)
+	void DisablePing(const FPDEntityPingDatum& PingDatum);
+	UFUNCTION(BlueprintCallable)
+	static void DisablePingStatic(const FPDEntityPingDatum& PingDatum);
+
+	/** @brief The pings we are managing, at 10k actors to ping we'll still only take up */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Build|Procedures")
+	TMap<FPDEntityPingDatum, FTimerHandle> PingDataAndHandles{};
+};
 
 USTRUCT()
 struct FLEntityCompound
@@ -161,9 +287,8 @@ USTRUCT()
 struct FPDRTSBuildQueue
 {
 	GENERATED_BODY()
-
-	UPROPERTY()
-	TArray<AActor*> ActorInWorld;
+	
+	TDeque<AActor*> ActorInWorld;
 };
 
 
@@ -221,6 +346,15 @@ public:
 	const FPDBuildableData* GetBuildableData(const FGameplayTag& BuildableTag);
 	const FGameplayTag& GetBuildableTagFromData(const FPDBuildableData* BuildableData);
 	
+	
+	void QueueRemoveFromWorldBuildTree(int32 UID);
+	void PassOverDataFromQueue();
+
+	static TArray<FMassEntityHandle> FindIdleEntitiesOfType(TArray<FGameplayTag> EligibleEntityTypes, const AActor* ActorToBuild, int32 OwnerID);
+
+	static UPDRTSBaseSubsystem* Get();
+
+
 	static void ProcessGhostStageDataAsset(const AActor* GhostActor, bool bIsStartOfStage, const FPDRTSGhostStageData& SelectedStageData);
 
 	UFUNCTION(BlueprintCallable, Category = "Actor|Ghost")
@@ -281,6 +415,8 @@ public:
 	/** @brief Map for fast lookups. Keyed by Job-tag, valued by source datatable */
 	TMap<const FGameplayTag, const UDataTable*> TagToTable{};
 
+	TMap<UWorld*, UPDRTSBaseUnit*> WorldToEntityHandler{};
+
 	/** @brief Flag that checks if we have processed the worktables */
 	uint8 bHasProcessedTables = false;
 	/** @brief Counter how many times the ProcessTables() function failed internally  */
@@ -293,9 +429,132 @@ public:
 	const FMassEntityManager* EntityManager = nullptr;
 	/** @brief effectively unused. @todo revise if it still needed. any significant use of it has been removed since prototyping this  */
 	UWorld* TemporaryWorldCache = nullptr;
-	/** @brief The actual octree our worlds and our entities will make use of*/
-	PD::Mass::Entity::FPDSafeOctree WorldOctree;
 
+	/** @brief The actual octree our entities will make use of*/
+	PD::Mass::Entity::FPDEntityOctree WorldEntityOctree;
+	/** @brief The actual octree our buildable actors will make use of*/
+	PD::Mass::Actor::FPDActorOctree WorldBuildActorOctree;
+	TMap<int32 /*UID*/, TSharedPtr<FOctreeElementId2>> ActorsToCells;
+
+	bool bIsProcessingBuildableRemovalQueue = false;
+	TDeque<int32 /*UID*/> RemoveBuildableQueue_FirstBuffer{};  // First  buffer, tells our processor twhihc UIDS to flush and remove their cells
+	TDeque<int32 /*UID*/> RemoveBuildableQueue_SecondBuffer{}; // Second buffer, while processing first buffer, use this so we don't get race conditions
+
+	// @todo move into developer settings
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	int32 UnitPingLimitBuilding = 100; // max 100 eligible units may be pinged
+
+
+	// Move to real struct perhaps
+	struct FPDActorCompound
+	{
+		int32 OwnerID = INDEX_NONE;
+		TArray<AActor*>* WorldActorsPtr;
+		bool operator==(const UPDRTSBaseSubsystem::FPDActorCompound& Other) const
+		{
+			return
+				this->WorldActorsPtr    != nullptr
+				&& Other.WorldActorsPtr != nullptr
+				&& this->OwnerID == Other.OwnerID;
+		}
+	};
+
+	bool bCanEditActorArray = true;
+	TArray<FPDActorCompound> WorldBuildActorArrays{};
+	TArray<FVector> WorldBuildableLocationList{};
+	TMap<int32, int32> IndexToID{};
+	TMap<int32, int32> IDToIndex{};
+	TDeque<int32> QueuedRemovals_BuildablesArrays{};
+	TDeque<TTuple<int32, void*>> QueuedAdditions_BuildablesArrayPointers{};
+
+	TArray<FPDActorCompound>& PrepareMutateBuildableTrackingData()
+	{
+		bCanEditActorArray = false;
+		bIsProcessingBuildableRemovalQueue = true;
+		return WorldBuildActorArrays;
+	};	
+
+	void EndMutateBuildableTrackingData()
+	{
+		bCanEditActorArray = true;
+
+		RemoveBuildableQueue_FirstBuffer.Empty();
+		bIsProcessingBuildableRemovalQueue = false;
+		PassOverDataFromQueue();
+
+		// Processing FILO deque
+		ProcessQueuedAdditionsAndRemovals_BuildablesArrayTracker();
+		return;
+	};	
+
+	void ProcessQueuedAdditionsAndRemovals_BuildablesArrayTracker()
+	{
+		for (int32 Step = QueuedAdditions_BuildablesArrayPointers.Num(); Step > 0;)
+		{
+			const TTuple<int32, void*>& Top = QueuedAdditions_BuildablesArrayPointers.Last();
+			const int32 QueuedOwnerID = Top.Get<0>();
+			TArray<AActor*>* QueuedArrayPtr = static_cast<TArray<AActor*>*>(Top.Get<1>());
+
+			AddBuildActorArray(QueuedOwnerID,  QueuedArrayPtr);
+			QueuedAdditions_BuildablesArrayPointers.PopLast();
+			Step--;
+		}
+
+		for (int32 Step = QueuedRemovals_BuildablesArrays.Num(); Step > 0;)
+		{
+			const int32 QueuedOwnerID = QueuedRemovals_BuildablesArrays.Last();
+			RemoveBuildActorArray(QueuedOwnerID);
+			QueuedRemovals_BuildablesArrays.PopLast();
+			Step--;
+		}		
+	};	
+	
+	void AddBuildActorArray(int32 OwnerID, TArray<AActor*>* OwnerArrayPtr)
+	{
+		if (bCanEditActorArray == false)
+		{
+			QueuedAdditions_BuildablesArrayPointers.EmplaceFirst(TTuple<int32, void*>{OwnerID, OwnerArrayPtr});
+			return;
+		}
+			
+		int32 Idx = WorldBuildActorArrays.AddUnique(FPDActorCompound{OwnerID, OwnerArrayPtr});
+		IndexToID.Emplace(Idx, OwnerID);
+		IDToIndex.Emplace(OwnerID, Idx);
+		
+		// // Iterate WorldBuildActorArrays and put it's entries into WorldBuildableLocationList
+		// WorldBuildableLocationList.EmplaceAt(Idx);
+	};
+
+	void AddBuildActorArray(FPDActorCompound ActorCompound)
+	{
+		if (bCanEditActorArray == false)
+		{
+			QueuedAdditions_BuildablesArrayPointers.EmplaceFirst(TTuple<int32, void*>(ActorCompound.OwnerID, ActorCompound.WorldActorsPtr));
+			return;
+		}
+
+		int32 Idx = WorldBuildActorArrays.AddUnique(ActorCompound);
+		IndexToID.Emplace(Idx, ActorCompound.OwnerID);
+		IDToIndex.Emplace(ActorCompound.OwnerID, Idx);
+
+		// // Iterate WorldBuildActorArrays and put it's entries into WorldBuildableLocationList
+		// WorldBuildableLocationList.EmplaceAt(Idx);
+	};	
+
+	void RemoveBuildActorArray(int32 OwnerID)
+	{
+		if (bCanEditActorArray == false)
+		{
+			QueuedRemovals_BuildablesArrays.EmplaceFirst(OwnerID);
+			return;
+		}
+		
+		if (IDToIndex.Contains(OwnerID) == false) { return; } 
+		
+		WorldBuildActorArrays.RemoveAt(IDToIndex.FindRef(OwnerID));
+	};
+	
+	
 	/** @brief Tracking worlds that has been setup with this WorldOctree.  */
 	TMap<void*, bool> WorldsWithOctrees{};
 	
@@ -314,7 +573,7 @@ public:
 		INVALID_QUERY_GROUP = INDEX_NONE,
 		QUERY_GROUP_MINIMAP = 1,
 		QUERY_GROUP_HOVERSELECTION = 2,
-		QUERY_GROUP_3 = 3,
+		QUERY_GROUP_BUILDABLE_ACTORS = 3,
 		QUERY_GROUP_4 = 4,
 		QUERY_GROUP_X = 20,
 	};
@@ -322,6 +581,7 @@ public:
 	template<typename TDataType>
 	struct TPDQueryBase 
 	{
+		int32 Shape = 0; // 0= Box, 1 Sphere, 2 Ellipsoid? etc..
 		UE::Math::TVector<TDataType> Location = UE::Math::TVector<TDataType>::ZeroVector;
 	};	
 	
@@ -333,14 +593,43 @@ public:
 		struct QBox    : public TPDQueryBase<double> { UE::Math::TVector<double> QuerySizes = UE::Math::TVector<double>::ZeroVector; };
 		struct QSphere : public TPDQueryBase<double> { double QueryRadius = 0.0; };
 
-		static QBox MakeUserQuery(const FVector& Location = UE::Math::TVector<double>::ZeroVector, const FVector& QuerySizes = UE::Math::TVector<double>::OneVector)
+		// @note Alignment is same and they share the same initial memory layout,
+		// @note I'll get away with accessing the inner shape from either or to then resolve the rest to access proper memory space
+		union QShapeSelector
 		{
-			return FPDOctreeUserQuery::QBox{Location, QuerySizes};
+			QShapeSelector() { AsBox = QBox{}; };
+			
+			QBox AsBox;
+			QSphere AsSphere;
+			void Set(const QBox& InAsBox)
+			{
+				AsBox = InAsBox;
+				AsBox.Shape = 0;
+			};
+			void Set(const QSphere& InAsSphere)
+			{
+				AsSphere = InAsSphere;
+				AsSphere.Shape = 1;
+			};
+			
+			TPDQueryBase<double>* Get()
+			{
+				void* This = this;
+				TPDQueryBase<double>* PtrHack = static_cast<TPDQueryBase<double>*>(This);
+				return PtrHack;
+			};
+			
+		};
+		
+
+		static QBox MakeUserQuery(const UE::Math::TVector<double>& Location = UE::Math::TVector<double>::ZeroVector, const FVector& QuerySizes = UE::Math::TVector<double>::OneVector)
+		{
+			return FPDOctreeUserQuery::QBox{0,Location, QuerySizes};
 		}
 
 		static QSphere MakeUserQuery(const UE::Math::TVector<double>& Location = UE::Math::TVector<double>::ZeroVector, const double Radius = 0.0)
 		{
-			return FPDOctreeUserQuery::QSphere{Location, Radius};
+			return FPDOctreeUserQuery::QSphere{1,Location, Radius};
 		}
 
 		static bool IsPointWithinQuery(const UE::Math::TVector<double>& Point, const QBox& Box)
@@ -366,18 +655,47 @@ public:
 		/** Assigns box data */
 		void CreateNewQueryEntry(const int32 Key, const QBox& BoxData)
 		{
-			QueryArchetypes.FindOrAdd(Key, BoxData);
+			QShapeSelector InData;
+			InData.Set(BoxData);
+
+			QueryArchetypes.FindOrAdd(Key, InData);
+			CurrentBuffer.FindOrAdd(Key);
+		}
+
+		void CreateNewQueryEntry(const int32 Key, const QSphere& SphereData)
+		{
+			QShapeSelector InData;
+			InData.Set(SphereData);
+			
+			QueryArchetypes.FindOrAdd(Key, InData);
 			CurrentBuffer.FindOrAdd(Key);
 		}
 
 		void UpdateQueryPosition(const int32 Key, const FVector& NewPos)
 		{
-			QueryArchetypes.FindOrAdd(Key).Location = NewPos;
+			QueryArchetypes.FindOrAdd(Key).Get()->Location = NewPos;
 		}
 		
 		void UpdateQueryOverlapBuffer(const int32 Key, const FVector& ComparePos, const FMassEntityHandle OptionalEntityHandle, const int32 OptionalID)
 		{
-			if (IsPointWithinQuery(ComparePos, QueryArchetypes.FindOrAdd(Key)))
+			bool bIsPointWithinQuery = false;
+
+			QShapeSelector ObjectAsBase = QueryArchetypes.FindOrAdd(Key);
+			TPDQueryBase<double>* BasePtr = ObjectAsBase.Get();
+			switch (ObjectAsBase.Get()->Shape)
+			{
+			case 0: // Box
+				bIsPointWithinQuery = IsPointWithinQuery(ComparePos, *static_cast<QBox*>(BasePtr));
+				break;
+			case 1: // Sphere
+				bIsPointWithinQuery = IsPointWithinQuery(ComparePos, *static_cast<QSphere*>(BasePtr));
+				break;
+			default:
+				break;
+			}
+
+			
+			if (bIsPointWithinQuery)
 			{
 				FLEntityCompound EntityCompound{OptionalEntityHandle, ComparePos, OptionalID};
 				CurrentBuffer.FindOrAdd(Key).Emplace(EntityCompound);
@@ -400,9 +718,30 @@ public:
 
 		void ClearQueryDataAndSettings(int32 Key)
 		{
-			QBox& QueryEntry = QueryArchetypes.FindOrAdd(Key);
-			QueryEntry.Location  = FVector::ZeroVector;
-			QueryEntry.QuerySizes = FVector::OneVector;
+
+			QShapeSelector ObjectAsBase = QueryArchetypes.FindOrAdd(Key);
+			TPDQueryBase<double>* BasePtr = ObjectAsBase.Get();
+			switch (ObjectAsBase.Get()->Shape)
+			{
+			case 0: // Box
+				{
+					QBox& QueryEntry = *static_cast<QBox*>(BasePtr);
+					QueryEntry.Location  = FVector::ZeroVector;
+					QueryEntry.QuerySizes = FVector::OneVector;
+				}
+				break;
+			case 1: // Sphere
+				{
+					QSphere& QueryEntry = *static_cast<QSphere*>(BasePtr);
+					QueryEntry.Location    = FVector::ZeroVector;
+					QueryEntry.QueryRadius = 0.0;
+				}
+				break;
+			default:
+				break;
+			}
+
+			
 
 			ClearQueryBuffer(Key);
 		}
@@ -420,13 +759,14 @@ public:
 			}			
 		}		
 		
-		TMap<int32, QBox> QueryArchetypes;
+		TMap<int32, QShapeSelector> QueryArchetypes;
 		TMap<int32, TArray<FLEntityCompound>> CurrentBuffer;
 
 		AActor* CallingUser = nullptr;
 	};
 
 	FPDOctreeUserQuery OctreeUserQuery{};
+	FPDOctreeUserQuery OctreeBuildSystemEntityQuery{}; // @todo
 };
 
 UENUM()

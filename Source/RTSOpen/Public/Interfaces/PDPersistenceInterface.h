@@ -71,7 +71,8 @@ public:
 			if (ForwardSearch(ExistingIDs, RandomStartingPoint, FoundIdx)) { return FoundIdx; }
 		}
 
-		// Search failed, @todo log error here
+		// Search failed,
+		UE_LOG(LogTemp, Warning, TEXT("FPDPersistentID::GenerateNewPersistentID -- failed search, meaning no spot left for generated IDs"))
 		return FPDPersistentID{INVALID_ID};
 	}
 	

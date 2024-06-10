@@ -15,6 +15,13 @@ UPDRTSBaseUnit::UPDRTSBaseUnit(const FObjectInitializer& ObjectInitializer)
 	PrimaryComponentTick.bCanEverTick = false;
 }
 
+void UPDRTSBaseUnit::InitializeComponent()
+{
+	Super::InitializeComponent();
+	
+	UPDRTSBaseSubsystem::Get()->WorldToEntityHandler.Emplace(GetWorld(), this);
+}
+
 TArray<int32> UPDRTSBaseUnit::GetInstancesOverlappingSphere(const FVector& Center, float Radius, bool bSphereInWorldSpace) const
 {
 	return Super::GetInstancesOverlappingSphere(Center, Radius, bSphereInWorldSpace);
@@ -123,8 +130,51 @@ void UPDRTSBaseUnit::AssignTask(FMassEntityHandle EntityHandle, const FGameplayT
 	// EntityAction->RewardAmount;
 }
 
-void UPDRTSBaseUnit::OnTaskFinished(FMassEntityHandle WorkerEntity, const FGameplayTag& JobTag)
+void UPDRTSBaseUnit::OnTaskFinished(FMassEntityHandle WorkerEntity, const FGameplayTag NewOptionalJobTag, const FPDTargetCompound& NewOptTarget)
 {
+	check(EntityManager->GetFragmentDataPtr<FPDMFragment_Action>(WorkerEntity) != nullptr);
+
+	ActiveJobMap.Remove(WorkerEntity.Index);
+	ActiveTargetMap.Remove(WorkerEntity.Index);
+	
+	FPDMFragment_Action* EntityAction = EntityManager->GetFragmentDataPtr<FPDMFragment_Action>(WorkerEntity);
+	EntityAction->ActionTag = TAG_AI_Job_Idle;
+	EntityAction->OptTargets = FPDTargetCompound{};
+
+	if (NewOptionalJobTag.IsValid() == false) { return; }
+
+	AssignTask(WorkerEntity, NewOptionalJobTag, NewOptTarget); // Chain new task and targets if we want
+}
+
+const FGameplayTag& UPDRTSBaseUnit::GetEntityJobChecked(FMassEntityHandle WorkerEntity) const
+{
+	check(EntityManager->IsEntityValid(WorkerEntity) && EntityManager->GetFragmentDataPtr<FPDMFragment_Action>(WorkerEntity) != nullptr);
+
+	const FPDMFragment_Action* EntityAction = EntityManager->GetFragmentDataPtr<FPDMFragment_Action>(WorkerEntity);
+	return EntityAction->ActionTag; // = TAG_AI_Job_Idle;
+}
+
+const FGameplayTag& UPDRTSBaseUnit::GetEntityJob(FMassEntityHandle WorkerEntity) const
+{
+	if (EntityManager->IsEntityValid(WorkerEntity) == false || EntityManager->GetFragmentDataPtr<FPDMFragment_Action>(WorkerEntity) == nullptr)
+	{
+		return FGameplayTag::EmptyTag;
+	}
+
+	const FPDMFragment_Action* EntityAction = EntityManager->GetFragmentDataPtr<FPDMFragment_Action>(WorkerEntity);
+	return EntityAction->ActionTag; 
+}
+
+bool UPDRTSBaseUnit::IsEntityJobIdle(FMassEntityHandle WorkerEntity) const
+{
+	if (EntityManager->IsEntityValid(WorkerEntity) == false || EntityManager->GetFragmentDataPtr<FPDMFragment_Action>(WorkerEntity) == nullptr)
+	{
+		UE_LOG(PDLog_RTSBase, Warning, TEXT("UPDRTSBaseUnit::IsEntityJobIdle(Ent:%i) -- Invalid eneny or does not have FPDMFragment_Action applied"), WorkerEntity.SerialNumber);
+		return false;
+	}
+
+	const FPDMFragment_Action* EntityAction = EntityManager->GetFragmentDataPtr<FPDMFragment_Action>(WorkerEntity);
+	return EntityAction->ActionTag == TAG_AI_Job_Idle;	
 }
 
 

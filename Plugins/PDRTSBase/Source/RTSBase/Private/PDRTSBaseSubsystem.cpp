@@ -11,6 +11,8 @@
 #include "NavigationSystem.h"
 #include "NiagaraComponent.h"
 #include "Interfaces/PDRTSBuildableGhostInterface.h"
+#include "Interfaces/PDRTSBuilderInterface.h"
+#include "Pawns/PDRTSBaseUnit.h"
 #include "RTSBase/Classes/PDRTSCommon.h"
 
 struct FTransformFragment;
@@ -43,6 +45,212 @@ void UPDRTSBaseSubsystem::Initialize(FSubsystemCollectionBase& Collection)
 }
 
 const TCHAR* StrCtxt_ProcessBuildData = *FString("UPDRTSBaseSubsystem::ProcessBuildContextTable");
+
+FPDEntityPingDatum::FPDEntityPingDatum(uint32 InInstanceID)
+{
+	InstanceID = InInstanceID;
+}
+
+FPDEntityPingDatum::FPDEntityPingDatum(AActor* InWorldActor, const FGameplayTag& InJobTag)
+	: WorldActor(InWorldActor)
+	, JobTag(InJobTag)
+{
+	// World actor or job-tag invalid
+	if ((ensure(WorldActor != nullptr) && ensure(JobTag.IsValid())) == false) { return; }
+
+	// No Owner ID supplied in this ctor, call another ctor which supplies this to avoid this check
+	check(WorldActor->GetOwner<APawn>() == nullptr && WorldActor->GetOwner<AController>() == nullptr);
+
+	InstanceID = WorldActor->GetUniqueID();
+	Unsafe_SetOwnerIDFromOwner();
+}
+
+FPDEntityPingDatum::FPDEntityPingDatum(AActor* InWorldActor, const FGameplayTag& InJobTag, int32 InAltID, double InInterval, int32 InMaxCountIntervals)
+	: WorldActor(InWorldActor)
+	, JobTag(InJobTag)
+	, OwnerID(InAltID)
+	, Interval(InInterval)
+	, MaxCountIntervals(InMaxCountIntervals)
+{
+	// World actor or job-tag invalid
+	if ((ensure(WorldActor != nullptr) && ensure(JobTag.IsValid())) == false) { return; }
+	
+	InstanceID = WorldActor->GetUniqueID();
+	if (WorldActor->GetOwner<APawn>() == nullptr && WorldActor->GetOwner<AController>() == nullptr)
+	{
+		// Log error message
+		return;
+	}
+
+	if (OwnerID != INDEX_NONE) { return; }
+
+	Unsafe_SetOwnerIDFromOwner();	
+}
+
+FPDEntityPingDatum::~FPDEntityPingDatum()
+{
+	WorldActor = nullptr;
+}
+
+#define MASK_BYTE(Value, ByteIdx) (uint8)(((Value) >> (ByteIdx*8)) & 0xffff)
+#define RESTORE_BYTE(Bytes, ByteIdx) ((((uint32)Bytes[ByteIdx]) << (ByteIdx*8)))
+
+TArray<uint8> FPDEntityPingDatum::ToBytes() const
+{
+	const uint32 Bytes = GetTypeHash(*this);
+	TArray<uint8> PingHashBytes = {MASK_BYTE(Bytes, 0), MASK_BYTE(Bytes, 1), MASK_BYTE(Bytes, 2), MASK_BYTE(Bytes, 3)};
+	return PingHashBytes;
+}
+
+void FPDEntityPingDatum::FromBytes(const TArray<uint8>&& Bytes)
+{
+	InstanceID = RESTORE_BYTE(Bytes, 0) | RESTORE_BYTE(Bytes, 1) | RESTORE_BYTE(Bytes, 2) | RESTORE_BYTE(Bytes, 3);
+}
+
+void FPDEntityPingDatum::Unsafe_SetOwnerIDFromOwner()
+{
+	APawn* OwnerPawn = WorldActor->GetOwner<APawn>();
+	AController* OwnerPC = OwnerPawn != nullptr ? OwnerPawn->GetController() : WorldActor->GetOwner<AController>();
+
+	if (OwnerPawn->GetClass()->ImplementsInterface(UPDRTSBuilderInterface::StaticClass()))
+	{
+		OwnerID = IPDRTSBuilderInterface::Execute_GetBuilderID(OwnerPawn);
+	}
+	else if (OwnerPC->GetClass()->ImplementsInterface(UPDRTSBuilderInterface::StaticClass()))
+	{
+		OwnerID = IPDRTSBuilderInterface::Execute_GetBuilderID(OwnerPC);
+	}
+}
+
+UPDEntityPinger::UPDEntityPinger(const FPDEntityPingDatum& PingDatum)
+{
+	PingDataAndHandles.Emplace(PingDatum);
+}
+
+TArray<uint8>  UPDEntityPinger::AddPingDatum(const FPDEntityPingDatum& PingDatum)
+{
+	PingDataAndHandles.Emplace(PingDatum );
+	return PingDatum.ToBytes();
+}
+
+void UPDEntityPinger::RemovePingDatum(const FPDEntityPingDatum& PingDatum)
+{
+	PingDataAndHandles.Remove(PingDatum);
+}
+
+void UPDEntityPinger::RemovePingDatumWithHash(const FPDEntityPingDatum& PingDatum)
+{
+	PingDataAndHandles.RemoveByHash(GetTypeHash(PingDatum), PingDatum);
+}
+
+FTimerHandle UPDEntityPinger::GetPingHandleCopy(const TArray<uint8>& PingHashBytes)
+{
+	FPDEntityPingDatum BuildDatum{0};
+	BuildDatum.FromBytes(std::move(PingHashBytes));
+
+	return GetPingHandleCopy(BuildDatum.InstanceID);
+}
+
+FTimerHandle UPDEntityPinger::GetPingHandleCopy(uint32 PingHash)
+{
+	const FPDEntityPingDatum CompDatum{PingHash};
+
+	if (PingDataAndHandles.ContainsByHash(PingHash, CompDatum))
+	{
+		return FTimerHandle{};
+	}
+	
+	return  *PingDataAndHandles.FindByHash(PingHash, CompDatum);
+}
+
+
+TArray<uint8> UPDEntityPinger::EnablePing(const FPDEntityPingDatum& PingDatum)
+{
+	UWorld* World = PingDatum.WorldActor ? PingDatum.WorldActor->GetWorld() : nullptr;
+	if (World == nullptr)
+	{
+		UE_LOG(PDLog_RTSBase, Error, TEXT("FPDEntityPinger::EnablePing -- World it null or not initialized yet"));
+		return TArray<uint8>{};
+	}
+	if (World->bIsWorldInitialized == false)
+	{
+		UE_LOG(PDLog_RTSBase, Warning, TEXT("FPDEntityPinger::EnablePing -- World is not initialized yet"));
+		return TArray<uint8>{};
+	}
+	
+	FTimerHandle& PingHandleRef = PingDataAndHandles.FindOrAdd(PingDatum);
+	const auto InnerPing =
+		[&]()
+		{
+			if (World == nullptr || World->IsValidLowLevelFast() == false)
+			{
+				return;
+			}
+				
+			Ping(World, PingDatum);
+		};
+
+	const FTimerDelegate OnPingDlgt = FTimerDelegate::CreateLambda(InnerPing);
+
+	World->GetTimerManager().SetTimer(PingHandleRef, OnPingDlgt, PingDatum.Interval, true);
+	return PingDatum.ToBytes();
+}
+
+TArray<uint8> UPDEntityPinger::EnablePingStatic(const FPDEntityPingDatum& PingDatum)
+{
+	return GEngine->GetEngineSubsystem<UPDEntityPinger>()->EnablePing(PingDatum);
+}
+
+void UPDEntityPinger::Ping_Implementation(UWorld* World, const FPDEntityPingDatum& PingDatum)
+{
+	UPDRTSBaseSubsystem* RTSSubsystem = UPDRTSBaseSubsystem::Get();
+	AsyncTask(ENamedThreads::GameThread,
+		[ConstPingDatum = PingDatum, InWorld = World, RTSSubsystem]()
+		{
+			const FGameplayTag EntityTag = TAG_AI_Type_BuilderUnit_Novice ; // @todo, pass into here from somewhere else 
+			TArray<FMassEntityHandle> Handles =
+				UPDRTSBaseSubsystem::FindIdleEntitiesOfType({EntityTag}, ConstPingDatum.WorldActor, ConstPingDatum.OwnerID);
+
+			ParallelFor(Handles.Num(),
+				[InHandles = Handles, InRTSSubsystem = RTSSubsystem, ConstPingDatum, InWorld](const int32 Idx)
+				{
+					const FMassEntityHandle& EntityHandle = InHandles[Idx];
+					if (InRTSSubsystem->EntityManager->IsEntityValid(EntityHandle) == false
+						|| InRTSSubsystem->WorldToEntityHandler.Contains(InWorld) == false)
+					{
+						return;
+					}
+
+					const FPDTargetCompound OptTarget = {InvalidHandle, ConstPingDatum.WorldActor->GetActorLocation(), ConstPingDatum.WorldActor};
+					InRTSSubsystem->WorldToEntityHandler.FindRef(InWorld)->RequestAction(ConstPingDatum.OwnerID, OptTarget, ConstPingDatum.JobTag, EntityHandle);
+				},
+				EParallelForFlags::BackgroundPriority);
+		});
+}
+
+void UPDEntityPinger::DisablePing(const FPDEntityPingDatum& PingDatum)
+{
+	const UWorld* World = PingDatum.WorldActor ? PingDatum.WorldActor->GetWorld() : nullptr;
+	if (World == nullptr)
+	{
+		UE_LOG(PDLog_RTSBase, Error, TEXT("FPDEntityPinger::EnablePing -- World it null or not initialized yet"));
+		return;
+	}
+	if (World->bIsWorldInitialized == false)
+	{
+		UE_LOG(PDLog_RTSBase, Warning, TEXT("FPDEntityPinger::EnablePing -- World is not initialized yet"));
+		return;
+	}
+	
+	FTimerHandle& PingHandleRef = PingDataAndHandles.FindOrAdd(PingDatum);
+	World->GetTimerManager().ClearTimer(PingHandleRef);
+}
+
+void UPDEntityPinger::DisablePingStatic(const FPDEntityPingDatum& PingDatum)
+{
+	GEngine->GetEngineSubsystem<UPDEntityPinger>()->DisablePing(PingDatum);
+}
+
 void UPDRTSBaseSubsystem::ProcessBuildContextTable(const TSoftObjectPtr<UDataTable>& TablePath)
 {
 	UDataTable* BuildContextTable = TablePath.LoadSynchronous();
@@ -120,7 +328,8 @@ void UPDRTSBaseSubsystem::SetupOctreeWithNewWorld(UWorld* NewWorld)
 	EntityManager = &NewWorld->GetSubsystem<UMassEntitySubsystem>()->GetMutableEntityManager();
 	
 	const float UniformBounds = GetDefault<UPDRTSSubsystemSettings>()->OctreeUniformBounds;
-	WorldOctree = PD::Mass::Entity::FPDSafeOctree(FVector::ZeroVector, UniformBounds);
+	WorldEntityOctree = PD::Mass::Entity::FPDEntityOctree(FVector::ZeroVector, UniformBounds);
+	WorldBuildActorOctree = PD::Mass::Actor::FPDActorOctree(FVector::ZeroVector, UniformBounds);
 	WorldsWithOctrees.FindOrAdd(TemporaryWorldCache, true);
 }
 
@@ -241,6 +450,77 @@ const FPDBuildableData* UPDRTSBaseSubsystem::GetBuildableData(const FGameplayTag
 const FGameplayTag& UPDRTSBaseSubsystem::GetBuildableTagFromData(const FPDBuildableData* BuildableData)
 {
 	return BuildableData_WTagReverse.Contains(BuildableData) ? *BuildableData_WTagReverse.Find(BuildableData) : FGameplayTag::EmptyTag;
+}
+
+void UPDRTSBaseSubsystem::QueueRemoveFromWorldBuildTree(int32 UID)
+{
+	// FILO
+
+	if (bIsProcessingBuildableRemovalQueue == false)
+	{
+		RemoveBuildableQueue_FirstBuffer.EmplaceFirst(UID);
+		return;
+	}
+
+	RemoveBuildableQueue_SecondBuffer.EmplaceFirst(UID);
+}
+
+void UPDRTSBaseSubsystem::PassOverDataFromQueue()
+{
+	RemoveBuildableQueue_FirstBuffer = RemoveBuildableQueue_SecondBuffer;
+	RemoveBuildableQueue_SecondBuffer.Empty();
+}
+
+TArray<FMassEntityHandle> UPDRTSBaseSubsystem::FindIdleEntitiesOfType(TArray<FGameplayTag> EligibleEntityTypes, const AActor* ActorToBuild, int32 OwnerID)
+{
+	TArray<FMassEntityHandle> RetArray{};
+
+	if (ensure(ActorToBuild != nullptr) == false)
+	{
+		return RetArray;
+	}
+
+	const UPDRTSBaseSubsystem* RTSBaseSubsystem = Get();
+	const bool bIsBuildableGhost = ActorToBuild->GetClass()->ImplementsInterface(UPDRTSBuildableGhostInterface::StaticClass());
+	if (bIsBuildableGhost == false || RTSBaseSubsystem->WorldToEntityHandler.Contains(ActorToBuild->GetWorld()) == false)
+	{
+		return RetArray;
+	}
+
+	// 1. Get cell of related octree
+	const FPDActorOctreeCell& Cell = RTSBaseSubsystem->WorldBuildActorOctree.GetElementById(*RTSBaseSubsystem->ActorsToCells.FindRef(ActorToBuild->GetUniqueID()).Get());
+	// 2. Iterate that cells entities, pick max 50 that are idle and eligible
+	TDeque<FMassEntityHandle> HandlesCopy = Cell.IdleUnits;
+	for (const FMassEntityHandle& EntityHandle : HandlesCopy)
+	{
+		const UWorld* World = ActorToBuild->GetWorld();
+		if (RTSBaseSubsystem->EntityManager->IsEntityValid(EntityHandle) == false
+			|| RTSBaseSubsystem->WorldToEntityHandler.Contains(World) == false)
+		{
+			continue;
+		}
+
+		for (const FGameplayTag& EligibleType : EligibleEntityTypes)
+		{
+			// 3. Only select those of requested type(s)
+			const FPDMFragment_RTSEntityBase* EntityBase = RTSBaseSubsystem->EntityManager->GetFragmentDataPtr<FPDMFragment_RTSEntityBase>(EntityHandle);
+			if (EntityBase->EntityType != EligibleType) { continue; }
+			
+			RetArray.Emplace(EntityHandle);
+			break;
+		}
+		
+
+	}
+
+	
+	
+	return RetArray;
+}
+
+UPDRTSBaseSubsystem* UPDRTSBaseSubsystem::Get()
+{
+	return GEngine->GetEngineSubsystem<UPDRTSBaseSubsystem>();
 }
 
 void UPDRTSBaseSubsystem::ProcessGhostStageDataAsset(const AActor* GhostActor, const bool bIsStartOfStage, const FPDRTSGhostStageData& SelectedStageData)

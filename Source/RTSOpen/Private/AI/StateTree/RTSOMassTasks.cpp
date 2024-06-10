@@ -23,27 +23,23 @@ bool FRTSOTask_Interact::Link(FStateTreeLinker& Linker)
 
 EStateTreeRunStatus FRTSOTask_Interact::EnterState(FStateTreeExecutionContext& Context, const FStateTreeTransitionResult& Transition) const
 {
+	// const UPDRTSBaseSubsystem& RTSSubsystem = *UPDRTSBaseSubsystem::Get();
+	
 	const FMassStateTreeExecutionContext& MassContext = static_cast<FMassStateTreeExecutionContext&>(Context);
 
-	FInstanceDataType& InstanceData = Context.GetInstanceData(*this);
-	FMassEntityHandle& OtherEntityHandle = InstanceData.PotentialEntityHandle;
-	IPDInteractInterface* OtherInteractable = Cast<IPDInteractInterface>(InstanceData.PotentialInteractableActor);
-	UMassEntitySubsystem& EntitySubsystem = Context.GetExternalData(EntitySubsystemHandle);
-	FRTSOLightInventoryFragment& InventoryFragment = Context.GetExternalData(InventoryHandle);
+	const FInstanceDataType& InstanceData = Context.GetInstanceData(*this);
+	const FMassEntityHandle& OtherEntityHandle = InstanceData.PotentialEntityHandle;
+	const IPDInteractInterface* OtherInteractable = Cast<IPDInteractInterface>(InstanceData.PotentialInteractableActor);
+	const UMassEntitySubsystem& EntitySubsystem = Context.GetExternalData(EntitySubsystemHandle);
+
 	const TArray<TObjectPtr<UInstancedStaticMeshComponent>>& ISMs = UPDRTSBaseSubsystem::GetMassISMs(Context.GetWorld());
-	if (ISMs.IsEmpty()) { return EStateTreeRunStatus::Failed; }
-
+	if (ISMs.IsEmpty() || Cast<UPDRTSBaseUnit>(ISMs[0].Get())) { return EStateTreeRunStatus::Failed; }
+	
 	const FMassEntityManager& EntityManager = EntitySubsystem.GetEntityManager();
-	
-	// @todo move this somewhere more appropriate, possibly have a generic callback whe nan AI job is completed and at that point reset the actiontag and opttargetscompound
-	// Clear job now that it has been performed
-	// For our purposes action fragment should never be nullptr in case the handle itself is valid
 	check(EntityManager.GetFragmentDataPtr<FPDMFragment_Action>(MassContext.GetEntity()) != nullptr);
-	FPDMFragment_Action* EntityAction = EntityManager.GetFragmentDataPtr<FPDMFragment_Action>(MassContext.GetEntity());
-	EntityAction->ActionTag = TAG_AI_Job_Idle;
-	EntityAction->OptTargets = FPDTargetCompound{};
+	UPDRTSBaseUnit* UnitHandler = (UPDRTSBaseUnit*)&ISMs[0];
+	UnitHandler->OnTaskFinished(MassContext.GetEntity()); // Make sure to use this on other tasks
 	
-
 	if (OtherInteractable != nullptr)
 	{
 		// call interact function on interactables

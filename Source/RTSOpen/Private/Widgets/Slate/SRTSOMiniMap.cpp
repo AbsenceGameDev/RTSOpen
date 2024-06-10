@@ -139,8 +139,10 @@ void SRTSOMiniMap::PaintEntitiesOnMiniMap(FSlateWindowElementList& OutDrawElemen
 	// Viewport halfsize
 #if CHAOS_DEBUG_DRAW
 	{
-		FVector BoundsCenter = RTSSubSystem->OctreeUserQuery.QueryArchetypes.Find(UPDRTSBaseSubsystem::EPDQueryGroups::QUERY_GROUP_MINIMAP)->Location;
-		FVector Extent = RTSSubSystem->OctreeUserQuery.QueryArchetypes.Find(UPDRTSBaseSubsystem::EPDQueryGroups::QUERY_GROUP_MINIMAP)->QuerySizes;
+		UPDRTSBaseSubsystem::TPDQueryBase<double>* BaseQueryShape = RTSSubSystem->OctreeUserQuery.QueryArchetypes.Find(
+			UPDRTSBaseSubsystem::EPDQueryGroups::QUERY_GROUP_MINIMAP)->Get();
+		FVector BoundsCenter = BaseQueryShape->Location;
+		FVector Extent = ((UPDRTSBaseSubsystem::FPDOctreeUserQuery::QBox*)BaseQueryShape)->QuerySizes;
 		Chaos::FDebugDrawQueue::GetInstance().DrawDebugBox(BoundsCenter, Extent, FQuat::Identity, FColor::Silver, false, 0, 0, 10.0f);
 		const FVector& TextLocation = BoundsCenter + FVector(0, 0, Extent.Z * 2);
 		Chaos::FDebugDrawQueue::GetInstance().DrawDebugString(TextLocation,FString("Radar Octree Trace"), nullptr, FColor::Yellow, 0, true, 2);

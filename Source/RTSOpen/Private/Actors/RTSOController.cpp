@@ -707,6 +707,12 @@ void ARTSOController::OnEndConversation(const FClientConversationMessagePayload&
 	ConversationWidget->RemoveFromParent();
 }
 
+void ARTSOController::NewAction_Implementation(ERTSBuildMenuModules ActionMode, FGameplayTag ActionTag)
+{
+	if (GetPawn() == nullptr || GetPawn()->GetClass()->ImplementsInterface(UPDRTSBuilderInterface::StaticClass()) == false) { return; }
+	IPDRTSBuilderInterface::Execute_NewAction(GetPawn(), ActionMode, ActionTag);
+}
+
 void ARTSOController::DrawBoxAndTextChaos(const FVector& BoundsCenter, const FQuat& Rotation, const FVector& DebugExtent, const FString& DebugBoxTitle, const FColor LineColour)
 {
 #if CHAOS_DEBUG_DRAW
@@ -774,7 +780,7 @@ void ARTSOController::AdjustMarqueeHitResultsToMinimumHeight(FHitResult& StartHi
 void ARTSOController::GetEntitiesOrActorsInMarqueeSelection()
 {
 	// Viewport halfsize
-	PD::Mass::Entity::FPDSafeOctree& WorldOctree =  GEngine->GetEngineSubsystem<UPDRTSBaseSubsystem>()->WorldOctree;
+	PD::Mass::Entity::FPDEntityOctree& WorldOctree =  GEngine->GetEngineSubsystem<UPDRTSBaseSubsystem>()->WorldEntityOctree;
 
 	FCollisionQueryParams Params;
 	Params.MobilityType = EQueryMobilityType::Static;
@@ -834,7 +840,7 @@ void ARTSOController::GetEntitiesOrActorsInMarqueeSelection()
 		if (Cell.EntityHandle.Index == 0) { return; } 
 
 		Handles.Emplace(Cell.EntityHandle.Index, Cell.EntityHandle);
-	}, true);
+	});
 
 	//
 	CurrentSelectionID = INDEX_NONE;

@@ -9,8 +9,7 @@
 #include "PDInventoryComponent.generated.h"
 
 /** @brief Delegate callback for passing a 'FPDItemNetDatum' reference and possibly operating on it */
-DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FPDOnItemUpdated, FPDItemNetDatum&, UpdatedDatum);
-
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FPDOnItemUpdated, const FPDItemNetDatum&, UpdatedDatum);
 /** @brief A simple value tracking structure. has no functions and only data that other process on */
 USTRUCT(Blueprintable)
 struct FPDValueTracker
@@ -71,6 +70,7 @@ public:
 	/** @brief Called on replicated item count update. For other objects to hook callbacks into */
 	UPROPERTY(BlueprintAssignable)
 	FPDOnItemUpdated OnItemUpdated;
+
 	
 	/** @brief The actual fastarray itemlist */
 	UPROPERTY(Replicated)

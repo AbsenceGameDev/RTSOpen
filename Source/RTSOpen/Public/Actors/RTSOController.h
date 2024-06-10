@@ -15,6 +15,7 @@
 #include "MassEntityTypes.h"
 #include "PDRTSCommon.h"
 #include "GameFramework/PlayerController.h"
+#include "Interfaces/PDRTSBuilderInterface.h"
 #include "RTSOController.generated.h"
 
 class URTSOConversationWidget;
@@ -40,7 +41,10 @@ struct FInputActionValue;
  * @brief The players controller class. This sets up mapping contexts, bindings and such. Expects them to be assigned in a data-BP  
  */
 UCLASS()
-class RTSOPEN_API ARTSOController : public APlayerController, public IRTSOInputInterface
+class RTSOPEN_API ARTSOController
+	: public APlayerController
+	, public IRTSOInputInterface
+	, public IPDRTSBuilderInterface
 {
 	GENERATED_UCLASS_BODY()
 
@@ -174,8 +178,17 @@ class RTSOPEN_API ARTSOController : public APlayerController, public IRTSOInputI
 	UFUNCTION() void OnAdvanceConversation(const FClientConversationMessagePayload& Payload, AActor* PotentialCallbackActor);
 	/** @brief Ends a conversation, reverts all changes regarding camera target and mapping contexts made in 'OnBeginConversation'*/
 	UFUNCTION() void OnEndConversation(const FClientConversationMessagePayload& Payload, AActor* PotentialCallbackActor);
+
 	/** @brief Returns the integer value of the FPDPersistentID 'ActorID', */
 	UFUNCTION(BlueprintCallable) int32 GetActorID() const { return ActorID.GetID(); };
+
+	/* PDRTS Builder Interface - Start */
+	/** @brief Refreshes our pointer to our selected build context or selected buildable data based on the enum, and the tag finds the actual find the entry therein */
+	virtual void NewAction_Implementation(ERTSBuildMenuModules ActionMode, FGameplayTag ActionTag) override;
+	virtual int32 GetBuilderID_Implementation() override { return GetActorID(); };
+	/* PDRTS Builder Interface - End */
+
+	
 	/** @brief Queues a drawcall into chaos' async debug draw queue */
 	static void DrawBoxAndTextChaos(const FVector& BoundsCenter, const FQuat& Rotation, const FVector& DebugExtent, const FString& DebugBoxTitle, FColor LineColour = FColor::Black);
 	/** @brief This function is here to fix a edge-case issue where the marquee volume is affected by large differences in z-height between the start corner and end corner world hitresults*/
@@ -270,7 +283,7 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "RTS|Input")
 	class UInputAction* CtrlActionBuildMode = nullptr; /**< @ingroup RTSInputActions */
 
-	/** @brief Mapping context settings, keyed by FGameplayTags. @todo Set default entries via a developer settings structure */
+	/** @brief Mapping context settings, keyed by FGameplayTags. */
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "RTS|Input")
 	TMap<FGameplayTag, UInputMappingContext*> MappingContexts{};
 
@@ -313,6 +326,7 @@ protected:
 	/** @brief Actors persistent ID, is generated upon beginplay if none already exists in the UPDRTSBaseSubsystem */
 	UPROPERTY(VisibleInstanceOnly)
 	FPDPersistentID ActorID{};
+	
 	/** @brief Currently unused. Last selection ID after updating it, if we need it for rollback purposes */
 	UPROPERTY(VisibleInstanceOnly)
 	int32 RollbackSelectionID = INDEX_NONE;

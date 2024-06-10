@@ -126,7 +126,7 @@ void APD_HUD::DrawEntitiesOnMiniMap()
 	if (RTSOController == nullptr || RTSOController->GetPawn() == nullptr) { return; }
 	
 	// Viewport halfsize
-	PD::Mass::Entity::FPDSafeOctree& WorldOctree =  GEngine->GetEngineSubsystem<UPDRTSBaseSubsystem>()->WorldOctree;
+	PD::Mass::Entity::FPDEntityOctree& WorldOctree =  GEngine->GetEngineSubsystem<UPDRTSBaseSubsystem>()->WorldEntityOctree;
 	
 	static const FVector OffsetCorner_FwdLeft {1,  -1,  0.0};
 	static const FVector OffsetCorner_FwdRight {1,   1,  0.0};
@@ -166,7 +166,7 @@ void APD_HUD::DrawEntitiesOnMiniMap()
 		const int32 OwnerID = EntityManager.GetFragmentDataPtr<FRTSOFragment_Agent>(Cell.EntityHandle)->OwnerID;
 
 		OverlappingHandles.Emplace(FLEntityCompound{Cell.EntityHandle, Cell.Bounds.Center, OwnerID});
-	}, true);
+	});
 
 	
 #if CHAOS_DEBUG_DRAW

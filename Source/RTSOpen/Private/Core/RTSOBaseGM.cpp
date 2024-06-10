@@ -240,8 +240,7 @@ void ARTSOBaseGM::SaveEntities_Implementation()
 	if (EntityManager == nullptr) { return; }
 
 	// 1. get all our entities
-	RTSSubsystem->WorldOctree.Lock();
-	RTSSubsystem->WorldOctree.FindAllElements
+	RTSSubsystem->WorldEntityOctree.FindAllElements
 	(
 		[&](const FPDEntityOctreeCell& Cell)
 		{
@@ -264,9 +263,6 @@ void ARTSOBaseGM::SaveEntities_Implementation()
 			GameSave->EntityUnits.Emplace(UnitDatum);
 		}
 	);
-
-	
-	RTSSubsystem->WorldOctree.Unlock();
 }
 
 //

@@ -62,7 +62,9 @@ public:
 	bool WithdrawRecurringCostFromBankOrEntity(UPDInventoryComponent* Bank, FRTSOLightInventoryFragment* EntityInv, const int32& ImmutableStage);
 	void ProcessIfWorkersRequired();
 	void ProcessIfWorkersNotRequired();
-
+	
+	UFUNCTION(BlueprintNativeEvent, BlueprintCallable, Category = "")
+	void OnBuildingDestroyed();
 	
 	/* IPDRTSBuildableGhostInterface Interface Start */
 	virtual void OnSpawnedAsGhost_Implementation(const FGameplayTag& BuildableTag, bool bInIsPreviewGhost, bool bInRequiresWorkersToBuild) override;
@@ -70,6 +72,7 @@ public:
 	virtual void TransitionFromGhostToMain_Implementation() override;
 	void Internal_ProgressGhostStage(const bool bForceProgressThroughStage, const bool bChainAll);
 	virtual void ProgressGhostStage_Implementation(const bool bChainAll) override;
+	virtual bool AttemptFinalizeGhost_Implementation() override;
 	/* IPDRTSBuildableGhostInterface Interface End */
 	
 	virtual FRTSOBuildableInventories& ReturnBuildableInventories();

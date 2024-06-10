@@ -66,8 +66,11 @@ public:
 	/** @brief Only calls super. Reserved for later use */
 	virtual void OnConstruction(const FTransform& Transform) override;
 
-	/** @brief Only calls super. Reserved for later use */
+	/* PDRTS Builder Interface - Start */
+	/** @brief Refreshes our pointer to our selected build context or selected buildable data based on the enum, and the tag finds the actual find the entry therein */
 	virtual void NewAction_Implementation(ERTSBuildMenuModules ActionMode, FGameplayTag ActionTag) override;
+	virtual int32 GetBuilderID_Implementation() override;
+	/* PDRTS Builder Interface - End */
 
 	/** @brief Retrieves the ISM Agent component from UPDRTSBaseSubsystem and sets its entity manager*/
 	UFUNCTION()
@@ -164,8 +167,12 @@ public:
 	virtual void ActionHotkeySelection_Implementation(const FInputActionValue& Value) override;
 	/** @brief Empty for now. Reserved for later use */
 	virtual void ActionChordedBase_Implementation(const FInputActionValue& Value) override;
+	
 	/* RTSO Input Interface - End */
 
+	/** @brief Empty for now. Reserved for later use */
+	UFUNCTION()
+	void OnItemUpdate(const FPDItemNetDatum& BuildableResourceDatum);
 private:
 	/** @brief Refreshes the niagara effect and updates it's visualized navpath */
 	void RefreshPathingEffects();
@@ -240,6 +247,9 @@ public:
 	TArray<AActor*> SpawnedBuildings{};
 	FGameplayTag CurrentBuildableTag{};
 	FGameplayTag CurrentBuildContextTag{};
+
+	UPROPERTY()
+	int32 CachedActorID;
 
 	/** @brief Fallback comparison value for a closest distance search when the vector was not valid */
 	static inline constexpr double  InvalidDistance{UE_MAX_FLT * UE_MAX_FLT};
