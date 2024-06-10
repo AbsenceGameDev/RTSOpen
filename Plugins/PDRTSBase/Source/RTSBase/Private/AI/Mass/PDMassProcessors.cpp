@@ -642,9 +642,7 @@ void UPDOctreeProcessor::Execute(FMassEntityManager& EntityManager, FMassExecuti
 		{
 			UPDRTSBaseSubsystem* SubSystem = GEngine->GetEngineSubsystem<UPDRTSBaseSubsystem>();
 			PD::Mass::Actor::FPDActorOctree& BuildableOctree = SubSystem->WorldBuildActorOctree;
-			SubSystem->PrepareMutateBuildableTrackingData();
-
-
+			SubSystem->BlockMutationOfBuildableTrackingData();
 			
 			for (const int32 RemoveUID : SubSystem->RemoveBuildableQueue_FirstBuffer)
 			{
@@ -702,7 +700,7 @@ void UPDOctreeProcessor::Execute(FMassEntityManager& EntityManager, FMassExecuti
 					}
 				}
 			}
-			SubSystem->EndMutateBuildableTrackingData();
+			SubSystem->ResumeMutationOfBuildableTrackingData();
 		}
 		);
 

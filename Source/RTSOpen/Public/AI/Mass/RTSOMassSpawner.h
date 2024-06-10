@@ -19,6 +19,7 @@ class RTSOPEN_API ARTSOMassSpawner : public AMassSpawner
 public:
 	virtual void BeginPlay() override;
 
+	/** @brief Processes entity types and stores their entity config paths in the rts subsystem */
 	UFUNCTION()
 	void ProcessEntityTypes();
 

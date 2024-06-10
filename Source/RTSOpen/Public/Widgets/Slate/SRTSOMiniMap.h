@@ -6,16 +6,19 @@
 #include "PDRTSBaseSubsystem.h"
 #include "SRTSOMiniMap.generated.h"
 
+/** @brief  Minimap data-asset, for configuring certain assets being used by the minimap*/
 UCLASS()
 class RTSOPEN_API URTSOMinimapData : public UDataAsset
 {
 	GENERATED_BODY()
 
 public:
+	/** @brief  Arrow texture to be applied for the player in the minimap */
 	UPROPERTY(EditAnywhere, Category = "Minimap")
 	UTexture2D* ArrowTexture = nullptr;
 };
 
+/** @brief  Minimap developer settings, for unified access to the configurable assets being used by the minimap */
 UCLASS(Config = "Game", DefaultConfig)
 class RTSOPEN_API URTSOMinimapDeveloperSettings : public UDeveloperSettings
 {
@@ -30,7 +33,7 @@ public:
 	
 };
 
-
+/** @brief  Minimap Slate widget, Select between radar-style @todo representative style + manual material or texture override */
 class SRTSOMiniMap : public SCompoundWidget
 {
 public:
@@ -51,58 +54,80 @@ public:
 		SLATE_ARGUMENT(URTSOMinimapData*, MiniMapData)
 	SLATE_END_ARGS()
 
+	/** @brief  Constructs the widget and caches relevant data */
 	void Construct(const FArguments& InArgs);
 	
+	/** @brief  Ticks the radar/minimap */
 	virtual void Tick(const FGeometry& AllottedGeometry, const double InCurrentTime, const float InDeltaTime) override;
+	/** @brief  Paints the radar/minimap visuals */
 	virtual int32 OnPaint(const FPaintArgs& Args, const FGeometry& AllottedGeometry, const FSlateRect& MyCullingRect, FSlateWindowElementList& OutDrawElements, int32 LayerId, const FWidgetStyle& InWidgetStyle, bool bParentEnabled) const override;
 
-	//Draw all nearby actors on the minimap
+	/** @brief  Draw all nearby actors on the minimap*/
 	void PaintRadarMiniMap(FSlateWindowElementList& OutDrawElements, const FGeometry& AllottedGeometry, int32 LayerId) const;
 	
-	//Draw all nearby actors on the minimap
+	/** @brief  Draw all nearby actors on the minimap*/
 	void PaintActorsOnMiniMap(FSlateWindowElementList& OutDrawElements, const FGeometry& AllottedGeometry, int32 LayerId) const;
 
-	//Draw nearby entities on the minimap
+	/** @brief  Draw nearby entities on the minimap */
 	void PaintEntitiesOnMiniMap(FSlateWindowElementList& OutDrawElements, const FGeometry& AllottedGeometry, int32 LayerId) const;	
 	
-	// Draw self/local player on minimap
+	/** @brief  Draw self/local player on minimap*/
 	void PaintOwnerOnMiniMap(FSlateWindowElementList& OutDrawElements, const FGeometry& AllottedGeometry, int32 LayerId) const;
 	
-	// Draws the actual radar, defines the visuals of it
+	/** @brief  Draws the actual radar, defines the visuals of it*/
 	void PaintRadar(FSlateWindowElementList& OutDrawElements, const FGeometry& AllottedGeometry, int32 LayerId, FLinearColor Color = FLinearColor::Yellow) const;
 
-	// Returns center screen location where the radar will be displayed
+	/** @brief  Returns center screen location where the radar will be displayed*/
 	FVector2D GetRadarCenter() const;
 
-	// Player world to screen transformation,
+	/** @brief  Player world to screen transformation*/
 	FVector2D WorldToScreen2D(FLEntityCompound& EntityCompound, APawn* OwnerPawn) const;
 	FVector2D WorldToScreen2D(const AActor* ActorToPlace, APawn* OwnerPawn) const;
 	FVector2D WorldToScreen2D(FVector& WorldLocation) const;
 
+	/** @brief  Creates a new slate brush on the fly*/
 	const TSharedPtr<FSlateBrush> MakeRadarBGBrush(double UniformBoxSize) const;
 
 
 public:
+	/** @brief  Cached pointer to the RTS subsystem */
 	UPDRTSBaseSubsystem* RTSSubSystem = nullptr;
+	/** @brief  Start screen location of the minimap (radar) */
 	FVector2D RadarStartLocation = FVector2D(10.f, 10.f);
+	/** @brief  Pixel (uniform) size for the radar  */
 	double RadarSize                  = 200.0;
+	/** @brief  Zoom scaling for the radar */
 	double RadarDistanceScale         = 25.0;
+	/** @brief  Height for the overlap ellipsoid  */
 	double SphereHeight               = 300.0;
+	/** @brief  Radius for the overlap ellipsoid  */
 	double RadarTraceSphereRadius     = 4000.0;
+	/** @brief  Size (uniform)  of generic minimap icons */
 	double GenericMinimapIconRectSize = 3.0;
+	/** @brief  Colour for mission related actors  */
 	FColor MissionColour      {1,1,0};
+	/** @brief  Colour for interactable actors  */
 	FColor InteractableColour {0,1,1};
+	/** @brief  Colour for enemy actors and units  */
 	FColor EnemyColour        {1,0,0};
+	/** @brief  Colour for owned actors and units  */
 	FColor OwnedUnitsColour   {0,1,0};		
+	/** @brief  Colour for friend actors and units  */
 	FColor FriendColour       {0,0,1};
 
+	/** @brief Cached minimap data pointer to retrieve some textures and possibly materials from */
 	URTSOMinimapData* MiniMapData = nullptr;
+	/** @brief Fixed scaling for used textures */
 	const double FixedTextureScale = 0.02;
 	
+	/** @brief Found world actors with our actor trace */
 	TArray<AActor*> OnWorldActors;
+	/** @brief Hit results for our traces */
 	TArray<FHitResult*> Results;
+	/** @brief  Radar Alpha/Opacity */
 	const double Alpha = 1.0;
 
+	/** @brief  Slate instance data to pass inners into certain slate functions */
 	struct SlateInstanceData
 	{
 		const TSharedPtr<FSlateBrush> ConstructedBackgroundBrush = nullptr;
@@ -110,6 +135,7 @@ public:
 		const TSharedPtr<FSlateBrush> GenericIconBrush = nullptr;
 	};
 
+	/** @brief  Current radar slate instance data */
 	SlateInstanceData InstanceData;
 
 };

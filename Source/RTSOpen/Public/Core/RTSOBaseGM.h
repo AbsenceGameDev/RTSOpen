@@ -11,6 +11,7 @@ class ARTSOController;
 class URTSOMainMenuBase;
 class URTSOpenSaveGame;
 
+/** @brief  Load-screen state, are we just ending or in the middle of loading */
 UENUM()
 enum ERTSLoadscreenState
 {
@@ -46,7 +47,6 @@ struct FRTSOAutoSaveSettings
 	 * @note 0 disables the auto-save functionality */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
 	int32 AutoSaveSlots = 10;
-	
 
 	/** @brief Active time, accumulates ticks delta-time and resets upon an auto-save */
 	UPROPERTY(VisibleInstanceOnly, BlueprintReadOnly)
@@ -55,7 +55,6 @@ struct FRTSOAutoSaveSettings
 	/** @brief Calculated time limit as seconds */
 	UPROPERTY(VisibleInstanceOnly, BlueprintReadOnly)
 	double TimeLimitAsSeconds = AutoSaveInterval * 60;
-
 	
 	/** @brief Timer delay handle, to ensure we don't call SaveGame multiple times in a row */
 	FTimerHandle SaveTimerHandle{};
@@ -68,11 +67,13 @@ private:
 };
 
 
+/** @brief Auto save - game user settings, exposed inner struct */
 UCLASS(Blueprintable, BlueprintType)
 class URTSOAutoSaveSettingObject : public UGameUserSettings
 {
 	GENERATED_BODY()
 
+	/** @brief  Users auto save settings */
 	UPROPERTY(VisibleInstanceOnly, BlueprintReadOnly, Meta = (AllowPrivateAccess="true"))
 	FRTSOAutoSaveSettings Inner;
 };
@@ -85,11 +86,12 @@ class RTSOPEN_API ARTSOBaseGM : public AGameModeBase
 {
 	GENERATED_UCLASS_BODY()
 
-public: // Method members
+public:
+	/** @brief  Creates a new savegame object and tells the GI that the GM is ready */
 	virtual void BeginPlay() override;
 	
 	//
-	// Saving/loading
+	// Saving/loading management
 	/** @brief Clears save, possibly reseeds the save, and sets some flags */
 	UFUNCTION(BlueprintNativeEvent, BlueprintCallable)
 	void ClearSave(const bool bRefreshSeed = false);
@@ -171,7 +173,7 @@ public: // Method members
 	/** @brief Runs configured auto-saver */
 	virtual void TickActor(float DeltaTime, ELevelTick TickType, FActorTickFunction& ThisTickFunction) override;
 	
-public: // Variable members
+public:
 	
 	/** @brief Actual game save-data */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)

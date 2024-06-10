@@ -22,6 +22,7 @@ class RTSOPEN_API APD_HUD : public AHUD
 	virtual void DrawHUD() override;
 	
 	/** @brief Draws the selection marquee directly on the hud, gets called in APD_HUD::DrawHUD. */
+	/** @brief Deprecated, moved into slate widget */
 	void DrawRadarMinimap();
 
 	/** @brief Draws the selection marquee directly on the hud, gets called in APD_HUD::DrawHUD. Reads selection/marquee data from the player controller*/
@@ -34,15 +35,19 @@ private:
 	virtual void BeginPlay() override;
 
 	/** @brief Draw all nearby actors on the minimap */
+	/** @brief Deprecated, moved into slate widget */
 	void DrawActorsOnMiniMap();
 
 	/** @brief Draw nearby entities on the minimap */
+	/** @brief Deprecated, moved into slate widget */
 	void DrawEntitiesOnMiniMap();	
 	
 	/** @brief Draw self/local player on minimap */
+	/** @brief Deprecated, moved into slate widget */
 	void DrawOwnerOnMiniMap();
 	
 	/** @brief Draws the actual radar, defines the visuals of it */
+	/** @brief Deprecated, moved into slate widget */
 	void DrawRadar(FLinearColor Color = FLinearColor::Yellow);
 
 	/** @brief Returns center screen location where the radar will be displayed */
@@ -59,48 +64,64 @@ private:
 	FVector2D WorldToScreen2D(FVector& WorldLocation) const;
 public:
 	/** @brief On screen location where the unscaled radar will be placed */
+	/** @brief Deprecated, moved into slate widget */
 	UPROPERTY(EditAnywhere)
 	FVector2D RadarStartLocation = FVector2D(10.f, 10.f);
 
 	/** @brief On screen location where the unscaled radar will be placed */
+	/** @brief Deprecated, moved into slate widget */
 	UPROPERTY(EditAnywhere)
 	double RadarSize = 200.0;
 
+	/** @brief Deprecated, moved into slate widget */
 	UPROPERTY(EditAnywhere, Category = MiniMap2D)
 	double RadarDistanceScale = 25.0;
 
+	/** @brief Deprecated, moved into slate widget */
 	UPROPERTY(EditAnywhere, Category = MiniMap2D)
 	double SphereHeight = 300.0;
 
+	/** @brief Deprecated, moved into slate widget */
 	UPROPERTY(EditAnywhere, Category = MiniMap2D)
 	double RadarTraceSphereRadius = 4000.0;
 
+	/** @brief Deprecated, moved into slate widget */
 	UPROPERTY(EditAnywhere, Category = MiniMap2D)
 	double GenericMinimapIconRectSize = 3.0;
 
+	/** @brief Deprecated, moved into slate widget */
 	UPROPERTY(EditAnywhere, Category = MiniMap2D, DisplayName = "Mission Color")
 	FColor MissionColour {1,1,0};
 	
+	/** @brief Deprecated, moved into slate widget */
 	UPROPERTY(EditAnywhere, Category = MiniMap2D, DisplayName = "Interactable Color")
 	FColor InteractableColour {0,1,1};
 	
+	/** @brief Deprecated, moved into slate widget */
 	UPROPERTY(EditAnywhere, Category = MiniMap2D, DisplayName = "Enemy Color")
 	FColor EnemyColour {1,0,0};
 
+	/** @brief Deprecated, moved into slate widget */
 	UPROPERTY(EditAnywhere, Category = MiniMap2D, DisplayName = "Owned Units Color")
 	FColor OwnedUnitsColour {0,1,0};		
 	
+	/** @brief Deprecated, moved into slate widget */
 	UPROPERTY(EditAnywhere, Category = MiniMap2D, DisplayName = "Friend Color")
 	FColor FriendColour {0,0,1};
 
 private:
+	/** @brief Deprecated, moved into slate widget */
 	UPROPERTY()
 	URTSOMinimapData_Deprecated* MiniMapData = nullptr;
+	/** @brief Deprecated, moved into slate widget */
 	const float FixedTextureScale = 0.02f;
 	
+	/** @brief Deprecated, moved into slate widget */
 	UPROPERTY()
 	TArray<AActor*> OnWorldActors;
+	/** @brief Deprecated, moved into slate widget */
 	TArray<FHitResult*> Results;
+	/** @brief Deprecated, moved into slate widget */
 	const float Alpha = 1.f;
 };
 

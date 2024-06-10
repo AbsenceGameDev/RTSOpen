@@ -6,10 +6,10 @@
 #include "UObject/Interface.h"
 #include "PDPersistenceInterface.generated.h"
 
-// Imagine a static set of all possible server IDs, it would contain 65535 values, * 2 bytes = approx. 130kb
 //
+// Imagine a static set of all possible server IDs, it would contain 65535 values, * 2 bytes = approx. 130kb
 
-/** @brief */
+/** @brief PersistenID subsystem. @todo add functions to pipe connections into */
 UCLASS()
 class UPDPersistentIDSubsystem : public UEngineSubsystem
 {
@@ -158,8 +158,7 @@ class RTSOPEN_API IPDPersistenceInterface
 	GENERATED_BODY()
 
 public:
-	// default impl returns an invalid ID
-	/** @brief */
+	/** @brief default impl returns an invalid ID */
 	virtual FPDPersistentID GetPersistentID() { return FPDPersistentID(); };
 };
 

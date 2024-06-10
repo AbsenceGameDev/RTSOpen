@@ -171,13 +171,12 @@ class URTSInteractWidget : public UCommonActivatableWidget
 	GENERATED_BODY()
 
 public:
-public:
+	/** @brief @todo see note above */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Widget|Base", Meta = (BindWidget))
 	UCommonButtonBase* InteractButton = nullptr;
 };
 
-
-/** @brief Dataasset that holds any uasset we want to default to a given godhand settings entry */
+/** @brief Data-asset that holds any uasset we want to default to a given godhand settings entry */
 UCLASS(BlueprintType, Blueprintable)
 class URTSGodhandDataAsset : public UDataAsset
 {
@@ -188,7 +187,6 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "RTS|Pawn|Cursor|Settings")
 	UCurveFloat* MagnificationCurve = nullptr;
 };
-
 
 /** @brief Settings table row for the godhand pawn */
 USTRUCT(Blueprintable, BlueprintType)
@@ -252,7 +250,6 @@ struct FRTSGodhandState
 	UPROPERTY(VisibleInstanceOnly, BlueprintReadWrite, Category = "Godhand|State")
 	TMap<FGameplayTag, FPDItemCosts> CurrentResourceCost;
 
-
 	/* State(s) - Cursor */	
 	/** @brief Accumulates the current time elapsed and feeds a sinewave with it */
 	UPROPERTY(VisibleInstanceOnly, BlueprintReadOnly, Category = "Godhand|State")
@@ -301,8 +298,6 @@ struct FRTSGodhandState
 	
 	/** @brief Flag used to avoid overwriting the rotation states for a active rotation */
 	bool bIsInRotation = false;
-		
-	
 };
 
 /**

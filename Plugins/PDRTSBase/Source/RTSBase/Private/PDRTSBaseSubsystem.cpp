@@ -455,7 +455,6 @@ const FGameplayTag& UPDRTSBaseSubsystem::GetBuildableTagFromData(const FPDBuilda
 void UPDRTSBaseSubsystem::QueueRemoveFromWorldBuildTree(int32 UID)
 {
 	// FILO
-
 	if (bIsProcessingBuildableRemovalQueue == false)
 	{
 		RemoveBuildableQueue_FirstBuffer.EmplaceFirst(UID);
@@ -587,7 +586,7 @@ void UPDRTSBaseSubsystem::ProcessGhostStageDataAsset(const AActor* GhostActor, c
 void UPDRTSBaseSubsystem::ProcessGhostStage(
 	AActor*                     GhostActor,
 	const FGameplayTag&         BuildableTag,
-	FPDRTSGhostTransitionState& MutableGhostDatum,
+	FPDRTSGhostBuildState& MutableGhostDatum,
 	bool                        bIsStartOfStage)
 {
 	const UPDRTSBaseSubsystem* NonStaticSelf = GEngine->GetEngineSubsystem<UPDRTSBaseSubsystem>();
@@ -628,7 +627,7 @@ void UPDRTSBaseSubsystem::ProcessGhostStage(
 
 double UPDRTSBaseSubsystem::GetMaxDurationGhostStage(
 	const FGameplayTag&         BuildableTag,
-	FPDRTSGhostTransitionState& MutableGhostDatum)
+	FPDRTSGhostBuildState& MutableGhostDatum)
 {
 	const UPDRTSBaseSubsystem* NonStaticSelf = GEngine->GetEngineSubsystem<UPDRTSBaseSubsystem>();
 	
@@ -656,7 +655,7 @@ double UPDRTSBaseSubsystem::GetMaxDurationGhostStage(
 	return -1.0;
 }
 
-bool UPDRTSBaseSubsystem::IsPastFinalIndex(const FGameplayTag& BuildableTag, FPDRTSGhostTransitionState& MutableGhostDatum)
+bool UPDRTSBaseSubsystem::IsPastFinalIndex(const FGameplayTag& BuildableTag, FPDRTSGhostBuildState& MutableGhostDatum)
 {
 	const UPDRTSBaseSubsystem* NonStaticSelf = GEngine->GetEngineSubsystem<UPDRTSBaseSubsystem>();
 	if (NonStaticSelf->BuildableData_WTag.Contains(BuildableTag)) { return false; }

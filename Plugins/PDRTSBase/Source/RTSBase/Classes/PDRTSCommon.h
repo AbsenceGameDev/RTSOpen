@@ -47,7 +47,7 @@ PDRTSBASE_API UE_DECLARE_GAMEPLAY_TAG_EXTERN(TAG_BUILD_ContextMenu_Builder_Advan
 PDRTSBASE_API UE_DECLARE_GAMEPLAY_TAG_EXTERN(TAG_BUILD_ContextMenu_Builder_Expert);
 
 
-/** @brief */
+/** @brief Selector for some standard types of animations, might need to expand */
 UENUM()
 enum class EPDVertexAnimSelector : uint8
 {
@@ -59,6 +59,7 @@ enum class EPDVertexAnimSelector : uint8
 	VertexSprint    = 5 UMETA(DisplayName="Sprint"),
 };
 
+/** @brief Datatable row type. Defines A joh, what unit types can take said job and if it is shareable */
 USTRUCT(BlueprintType, Blueprintable)
 struct PDRTSBASE_API FPDWorkUnitDatum : public FTableRowBase
 {
@@ -82,6 +83,7 @@ struct PDRTSBASE_API FPDWorkUnitDatum : public FTableRowBase
 
 //
 // Ghosts
+/** @brief Settings for a 'ghostable' actor */
 USTRUCT(Blueprintable)
 struct PDRTSBASE_API FPDRTSBuildableCollisionSettings
 {
@@ -90,14 +92,19 @@ struct PDRTSBASE_API FPDRTSBuildableCollisionSettings
 	FPDRTSBuildableCollisionSettings() = default;
 	explicit FPDRTSBuildableCollisionSettings(bool bInIsSet) : bIsSet(bInIsSet) {};
 	
-	bool bIsSet = true;
-
+	/** @brief Is the actor collision enabled on the owning actor, for this context  */
 	UPROPERTY()
 	bool bIsActorCollisionEnabled = true;
+
+	/** @brief Map of collision enable settings, keyed by (component) name  */
 	UPROPERTY()
 	TMap<FName, TEnumAsByte<ECollisionEnabled::Type>>  ComponentCollisionEnabledSettings;
+
+	/** @brief  helps us control when we want to apply the collision settings above */
+	bool bIsSet = false;
 };
 
+/** @brief Ghost transition enum state */
 UENUM(Blueprintable)
 enum class EPDRTSGhostTransition
 {
@@ -105,6 +112,7 @@ enum class EPDRTSGhostTransition
 	EMultipleStages UMETA(DisplayName="MultipleStages"),
 };
 
+/** @brief Ghost transition behaviour enum selector */
 UENUM(Blueprintable)
 enum class EPDRTSGhostStageBehaviour
 {
@@ -112,31 +120,41 @@ enum class EPDRTSGhostStageBehaviour
 	EOnEnd UMETA(DisplayName="OnEnd"),
 };
 
+/** @brief Data-assets for the visual effects of different build stages */
 UCLASS(Blueprintable)
 class UPDRTSGhostStageAsset : public UDataAsset
 {
 	GENERATED_BODY()
 
 public:
-
+	/** @brief Mesh that we should be apply this stage */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Actor|Ghost|Settings")
 	UStaticMesh* StageGhostMesh = nullptr;
 
+	/** @brief Effects that we should be apply this stage */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Actor|Ghost|Settings")
-	UNiagaraSystem* StageGhostNiagaraSystem = nullptr;	
+	UNiagaraSystem* StageGhostNiagaraSystem = nullptr;
+
+	/** @brief Set if we should loop niagara effects until stage is finished */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Actor|Ghost|Settings")
+	bool bLoopNiagara = false;		
 };
 
+/** @brief Per-Stage settings for a ghost */
 USTRUCT(Blueprintable)
 struct PDRTSBASE_API FPDRTSGhostStageData
 {
 	GENERATED_BODY()
 
 public:
+	/** @brief The mesh behaviour we are expecting for this stage, (OnStartStage vs. OnEndStage) */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Actor|Ghost|Settings")
 	EPDRTSGhostStageBehaviour StageMesh_ApplyBehaviour = EPDRTSGhostStageBehaviour::EOnStart;	
+	/** @brief The vfx behaviour we are expecting for this stage, (OnStartStage vs. OnEndStage) */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Actor|Ghost|Settings")
 	EPDRTSGhostStageBehaviour StageVFX_ApplyBehaviour = EPDRTSGhostStageBehaviour::EOnStart;	
 	
+	/** @brief The data-asset for the current stage */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Actor|Ghost|Settings")
 	UPDRTSGhostStageAsset* StageDA = nullptr;
 
@@ -146,11 +164,13 @@ public:
 	double MaxDurationForStage = 0.0; 
 };
 
+/** @brief Stage(s) configuration for a ghost */
 USTRUCT(Blueprintable)
 struct FPDRTSGhostDatum : public FTableRowBase
 {
 	GENERATED_BODY()
 
+	/** @rief Will be the only stage if TransitionStageType == EPDRTSGhostTransition::ESingleStage, can be left empty for no transition effects */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Actor|Ghost|Settings")
 	EPDRTSGhostTransition TransitionStageType;
 
@@ -163,8 +183,9 @@ struct FPDRTSGhostDatum : public FTableRowBase
 	TArray<FPDRTSGhostStageData> MultiStageStageAssets;	
 };
 
+/** @brief Ghost stat for a buildable, currenly only contains the ghost stage */
 USTRUCT(Blueprintable)
-struct FPDRTSGhostTransitionState
+struct FPDRTSGhostBuildState
 {
 	GENERATED_BODY()
 
@@ -195,63 +216,72 @@ public:
 
 	UPDRTSBuildablePlacementBehaviour(){}
 
+	/** @rief Tells us how we want the placement behaviour to be when placing a ghost  */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
 	EPDRTSGhostSettings PlacementBehaviour = EPDRTSGhostSettings::Buildable_FireThenForget;
 };
 
 //
 // Buildables
+/** @rief Buildable data-asset, currently only keeps our widget related data in it  */
 UCLASS(Blueprintable)
 class PDRTSBASE_API UPDBuildableDataAsset : public UDataAsset
 {
 	GENERATED_BODY()
 public:
-	// 1. Image resource
+
+	/** @rief  Texture resource to apply on a buildable button (Does not take priority) */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
 	UTexture2D* Buildable_Texture = nullptr;
 
-	// 2. Material resource
+	/** @rief  Material resource to apply on a buildable button (Takes priority) */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
 	UMaterialInstance* Buildable_MaterialInstance = nullptr;
 	
-	// 3. Audio resource
+	/** @rief  Audio resource to play when clicking a menu-button */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
 	USoundBase* Buildable_AudioLoop = nullptr;
 };
 
+/** @rief Buildable context data-asset, currently only keeps our widget related data in it  */
 UCLASS(Blueprintable)
 class PDRTSBASE_API UPDBuildContextDataAsset : public UDataAsset
 {
 	GENERATED_BODY()
 public:
-	// 1. Image resource
+	/** @rief  Texture resource to apply on a buildable button (Does not take priority) */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
 	UTexture2D* BuildContext_Texture = nullptr;
 
-	// 2. Material resource
+	/** @rief  Material resource to apply on a buildable button (Takes priority) */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
 	UMaterialInstance* BuildContext_MaterialInstance = nullptr;
 };
 
+/** @rief Main Buildable data, no tag associated  */
 USTRUCT(Blueprintable)
 struct PDRTSBASE_API FPDBuildableData
 {
 	GENERATED_BODY()
 
+	/** @brief Not needed, but use to display clearer name, with being set to nothing the name will be tha buildables tag converted to a name */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "RTSBase|WorkerUnits")
 	FText ReadableName{};
 
+	/** @brief Actor class to spawn when placing the buildable */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "RTSBase|WorkerUnits")
 	TSubclassOf<AActor> ActorToSpawn{};
 	
+	/** @brief The buildables data-asset, if not spawned as ghost, or when transitioning from ghost to real building */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "RTSBase|WorkerUnits")
 	UPDBuildableDataAsset* DABuildAsset = nullptr;
 
-	/** @brief The settings data of this buildable's ghost */
+	/** @brief The buildables ghost configurations, keeps stage settings and such  */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "RTSBase|BuildSystem")
 	FPDRTSGhostDatum GhostData{};
 };
 
+/** @rief Actual Buildable row structure, associates tag and it's data with a buildable  */
 USTRUCT(Blueprintable)
 struct PDRTSBASE_API FPDBuildable : public FTableRowBase
 {
@@ -268,19 +298,22 @@ struct PDRTSBASE_API FPDBuildable : public FTableRowBase
 	FPDBuildableData BuildableData{};
 };
 
-
+/** @rief Main Build-context data, no tag associated, keeps a readable name and a data-asset  */
 USTRUCT(Blueprintable)
 struct PDRTSBASE_API FPDBuildContextData
 {
 	GENERATED_BODY()
 
+	/** @brief Not needed, but use to display clearer name, with being set to nothing the name will be tha buildables tag converted to a name */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "RTSBase|BuildSystem")
 	FText ReadableName{};
 	
+	/** @brief The build-context data-asset, only used for widget flair as of now  */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "RTSBase|BuildSystem")
 	UPDBuildContextDataAsset* DABuildContextAsset = nullptr;
 };
 
+/** @rief Actual Build-context row structure, associates tag and it's data with a buildable  */
 USTRUCT(Blueprintable)
 struct PDRTSBASE_API FPDBuildContext : public FTableRowBase
 {
@@ -292,7 +325,7 @@ struct PDRTSBASE_API FPDBuildContext : public FTableRowBase
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "RTSBase|WorkerUnits")
 	FGameplayTag ContextTag{};	
 
-	/** @brief The readable name of this buildable context */
+	/** @brief The readable name of this buildable context, todo, remove, already exists within 'ContextData'  */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "RTSBase|WorkerUnits")
 	FText ContextReadableName{};	
 	
@@ -305,6 +338,7 @@ struct PDRTSBASE_API FPDBuildContext : public FTableRowBase
 	FPDBuildContextData ContextData{};
 };
 
+/** @rief Shared widget flair table row, for setting not specific to a given buildable or build-context but are instead applied as a whole  */
 USTRUCT()
 struct PDRTSBASE_API FPDSharedBuildWidgetFlair : public FTableRowBase
 {
@@ -325,6 +359,7 @@ struct PDRTSBASE_API FPDSharedBuildWidgetFlair : public FTableRowBase
 	FLinearColor NotSelectedBuildableTint = FLinearColor::Blue;	
 };
 
+/** @rief Worker builder definition table row, Defines what entity types are granted which build-contexts  */
 USTRUCT(Blueprintable)
 struct PDRTSBASE_API FPDBuildWorker : public FTableRowBase
 {
@@ -341,19 +376,21 @@ struct PDRTSBASE_API FPDBuildWorker : public FTableRowBase
 	TArray<FDataTableRowHandle> GrantedContexts;	
 };
 
+/** @brief Intvector that we are using a floored and then truncated gridcell
+ *  @note has some functions to check if a given cell is a neighbour in 2d, and/or in 3d, to convert to a floatvector alongside some basic operators overloads */
 USTRUCT()
 struct PDRTSBASE_API FPDGridCell : public FIntVector 
 {
 	GENERATED_BODY()
 	
-	/** @brief */
-	inline FVector ToFloatVector() const
+	/** @brief Converts cell to float-vector  */
+	inline FVector ToFloatVector(const double ScalingFactor = 1.0) const
 	{
 		FVector RetVector;
 		RetVector.X = this->X;
 		RetVector.Y = this->Y;
 		RetVector.Z = this->Z;
-		return RetVector;
+		return RetVector * ScalingFactor;
 	}		
 
 	/** @brief  Compares if cell is neighbour in X and Y */
@@ -370,29 +407,23 @@ struct PDRTSBASE_API FPDGridCell : public FIntVector
 		return IsNeighbour2D(OtherCell) && Delta.Z >= -1 && Delta.Z <= 1 ;
 	}
 
-	/** @brief  */
+	/** @brief this->XYZ must be equal to Other.XYZ */
 	bool operator==(const FPDGridCell & OtherCell) const
 	{
 		return this->X == OtherCell.X
 		    && this->Y == OtherCell.Y
 		    && this->Z == OtherCell.Z;
 	}
-        
-	/** @brief  */
 	FPDGridCell& operator+=(const FPDGridCell& OtherCell) 
 	{
 		*this = *this + OtherCell;
 		return *this;
 	}
-        
-	/** @brief  */
 	FPDGridCell& operator-=(const FPDGridCell & OtherCell) 
 	{
 		*this = *this - OtherCell;
 		return *this;
 	}
-
-	/** @brief  */
 	FPDGridCell operator+(const FPDGridCell & OtherCell) const
 	{
 		FPDGridCell ThisCopy = *this;
@@ -401,8 +432,6 @@ struct PDRTSBASE_API FPDGridCell : public FIntVector
 		ThisCopy.Z += OtherCell.Z;
 		return ThisCopy;
 	}
-	
-	/** @brief  */
 	FPDGridCell operator-(const FPDGridCell& OtherCell) const
 	{
 		FPDGridCell ThisCopy = *this;
@@ -413,6 +442,8 @@ struct PDRTSBASE_API FPDGridCell : public FIntVector
 	}
 };
 
+
+/** @brief Dynamic hash-grid developer settings, default to 200.0 cell size, modify in .ini config or in editor project settings */
 UCLASS(Config = "Game", DefaultConfig)
 class PDRTSBASE_API UPDHashGridDeveloperSettings : public UDeveloperSettings
 {
@@ -427,20 +458,24 @@ public:
 	
 };
 
-/** @brief  */
+/** @brief Dynamic hash-grid sub-system, Manages grid functionality.
+ * @note Loads settings from UPDHashGridDeveloperSettings, and keeps it synced.
+ * @note Has functions generate cell index constructs and apply them, transfer between vector and gridcell. Allows for easy snapping to grid  */
 UCLASS()
 class PDRTSBASE_API UPDHashGridSubsystem : public UEngineSubsystem
 {
 	GENERATED_BODY()
 
 public:
+	/** @brief Loads hashgrid config from developer settings and binds to said developer settings value changes */
 	virtual void Initialize(FSubsystemCollectionBase& Collection) final override;
 
 #if WITH_EDITOR
+	/** @brief Updates 'UniformCellSize'. Function is bound to default UPDHashGridDeveloperSettings OnSettingChanged */
 	void OnDeveloperSettingsChanged(UObject* SettingsToChange, const FPropertyChangedEvent& PropertyEvent);
 #endif
 
-	/** @brief  */
+	/** @brief  Floor vector and return as gridcell index */
     inline static struct FPDGridCell FloorVectorC(const FVector&& LocationToCell)
     {
         return FPDGridCell
@@ -453,6 +488,7 @@ public:
         };
     }
 
+	/** @brief  Floor vector and return as FVector */
 	inline static FVector FloorVectorV(const FVector&& LocationToCell)
     {
     	return FVector
@@ -463,16 +499,17 @@ public:
 		};
     }	
   
-    /** @brief  */
+	/** @brief  Calculate cell index */
     inline FPDGridCell GetCellIndex(const FVector& LocationToCell) const
     {
         return FloorVectorC(LocationToCell / UniformCellSize);
     }
 
-	/** @brief  */
+	/** @brief  Calculate cell-clamped vector */
 	inline FVector GetCellVector(const FVector& LocationToCell) const
     {
-    	return FloorVectorV(LocationToCell / UniformCellSize) * UniformCellSize; // Bring it back to proper world space dims
+    	// Bring it back to proper world space dims by 
+    	return FloorVectorV(LocationToCell / UniformCellSize) * UniformCellSize;
     }	
 
     /** @brief Slow if used often, instead cache a pointer to the subsystem and call it 'GetCellIndex' instead  */
@@ -491,6 +528,7 @@ public:
     	return FloorVectorV(LocationToCell / CellSize) * CellSize; // Bring it back to proper world space dims
     }		
 
+	/** @brief Uniform cell size instance data, value is dictated by the value in the developer settings */
 	UPROPERTY()
     double UniformCellSize = 200.0f; 
 };

@@ -20,7 +20,7 @@ enum ERTSOSaveType
 	LOAD
 };
 
-/** @brief */
+/** @brief Game Menu - Base menu button*/
 UCLASS(Blueprintable)
 class URTSOMenuButton : public UUserWidget
 {
@@ -55,7 +55,7 @@ public:
 	class URTSOMainMenuBase* OwningStack = nullptr;	
 };
 
-/** @brief */
+/** @brief Game Menu - Save dialog*/
 UCLASS(Blueprintable)
 class URTSOSaveGameDialog : public UUserWidget
 {
@@ -107,7 +107,7 @@ public:
 	FRTSOSavegameDelegate SuccessCallback{};
 };
 
-/** @brief */
+/** @brief Game Menu - Save widget*/
 UCLASS(Blueprintable)
 class URTSOMenuWidget_SaveGame : public UCommonActivatableWidget
 {
@@ -166,7 +166,7 @@ public:
 	class URTSOMainMenuBase* OwningStack = nullptr;	
 };
 
-/** @brief */
+/** @brief Game Start Menu base widget*/
 UCLASS(Blueprintable)
 class URTSOMenuWidget : public UCommonActivatableWidget
 {

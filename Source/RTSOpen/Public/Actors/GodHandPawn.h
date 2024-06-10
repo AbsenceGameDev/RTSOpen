@@ -146,6 +146,8 @@ public:
 	/** @brief Spawns a ghost or buildable from a ghost, if ghost then it may need to wait for build times. */
 	void SpawnFromGhost(bool bBuildable, bool bRequiresWorkersToBuild = false);
 	
+	/** @brief Aborts marquee selection and either spawns a ghost or spawns a buildable, based on buildable placement behaviour
+	 * @todo @refactor might have a bug here, look into it when refactoring */
 	void ProcessPlaceBuildable(ARTSOController* PC);
 
 	/** @brief Resets data that is otherwise used for visaully pathing a workers potential walk-path */
@@ -245,9 +247,12 @@ public:
 	/** @brief Spawned buildings, may be ghosts or completed buildings */
 	UPROPERTY()
 	TArray<AActor*> SpawnedBuildings{};
+	/** @brief Currently selected buildable type by tag, will be a ghost until placed, then placement behaviour settings dictate what happens */
 	FGameplayTag CurrentBuildableTag{};
+	/** @brief Currently selected build-context by tag, Reserved */
 	FGameplayTag CurrentBuildContextTag{};
 
+	/** @brief Cached owner ID, to avoid having to call the interface multiple times in fast paths @todo @refactor Set default value*/
 	UPROPERTY()
 	int32 CachedActorID;
 

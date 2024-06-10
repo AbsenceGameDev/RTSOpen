@@ -8,7 +8,7 @@
 
 class URTSOMainMenuBase;
 
-/** @brief */
+/** @brief Main Game Mode, Creates our main menu widget on begin play and replicates a call to the GI that hte GM is ready */
 UCLASS()
 class RTSOPEN_API ARTSOMainMenuGM : public AGameModeBase
 {

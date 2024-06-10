@@ -16,6 +16,9 @@
 class UPDRTSBaseUnit;
 class UMassEntitySubsystem;
 
+/** fwd decl.  */
+struct FPDWorkUnitDatum;
+
 //
 // Legal according to ISO due to explicit template instantiation bypassing access rules: https://eel.is/c++draft/temp.friend
 
@@ -39,7 +42,7 @@ TTagPrivateMember<Tag,x> TTagPrivateMember<Tag,x>::PrivateInstance;
 template<typename TAccessorType, typename TAccessorValue>
 struct TAccessorTypeHandler { typedef TAccessorValue(TAccessorType::*TType); };
 
-/** @brief Octree cell data */
+/** @brief Entity Octree cell data */
 struct PDRTSBASE_API FPDEntityOctreeCell
 {
 	/** @brief Tracked Entity */
@@ -84,14 +87,19 @@ struct FPDEntityOctreeSemantics
 	};
 };
 
+/** @brief Buildable actor Octree cell data */
 struct PDRTSBASE_API FPDActorOctreeCell
 {
 	/** @brief Tracked Entity */
 	uint32 ActorInstanceID = 0;
 
+	/** @brief Tracked Entity Owner */
 	int32 OwnerID = INDEX_NONE;
 
-	TDeque<FMassEntityHandle> IdleUnits; // if we add sharing units and such with teammates this will help
+	/** @brief Found idle units within buildables sphere of inlfluence.
+	 *  @note Sphere of influence is hardcoded for now to be 5 times the buildable actor extent
+	 *  @todo Make sphere of influence fully configurable */
+	TDeque<FMassEntityHandle> IdleUnits;
 	
 	/** @brief Cell Bounds */
 	FBoxCenterAndExtent Bounds{};
@@ -125,7 +133,6 @@ struct FPDActorOctreeSemantics
 	{
 		return A.ActorInstanceID == B.ActorInstanceID;
 	}
-	
 
 	/** @brief Octree Cell ID assignment */
 	FORCEINLINE static void SetElementId(const FPDActorOctreeCell& Element, FOctreeElementId2 Id)
@@ -139,56 +146,51 @@ namespace PD::Mass
 {
 	namespace Entity
 	{
-		typedef TOctree2<FPDEntityOctreeCell, FPDEntityOctreeSemantics> UnsafeOctree;
-		
-		/** @note Safe octree implementation removed, avoided data-race conditions by designing access into the octree differently.   */
-		class FPDEntityOctree : public UnsafeOctree
-		{
-		public:
-			FPDEntityOctree()
-				: UnsafeOctree() {}
-			FPDEntityOctree(const FVector& InOrigin, FVector::FReal InExtent)
-				: UnsafeOctree(InOrigin, InExtent) {}
-	
-		private:
-		};
+		/** Entity octree declaration @todo rename typedef to resolve via ::Octree */
+		typedef TOctree2<FPDEntityOctreeCell, FPDEntityOctreeSemantics> FPDEntityOctree;
 	}
 
 	namespace Actor
 	{
-		typedef TOctree2<FPDActorOctreeCell, FPDActorOctreeSemantics> UnsafeActorOctree;
-		class FPDActorOctree : public UnsafeActorOctree
-		{
-		public:
-			FPDActorOctree()
-				: UnsafeActorOctree() {}
-			FPDActorOctree(const FVector& InOrigin, FVector::FReal InExtent)
-				: UnsafeActorOctree(InOrigin, InExtent) {}
-	
-		private:
-		};	
+		/** Actor octree declaration @todo rename typedef to resolve via ::Octree */		
+		typedef TOctree2<FPDActorOctreeCell, FPDActorOctreeSemantics> FPDActorOctree;
 	}	
 
 }
 
-struct FPDWorkUnitDatum;
 
+/** @brief Settings to fire off a ping into rts subssytem entities.
+ * @note Must be constructed for a valid target actor with a valid ownerID and jobtag, otherwise it will fire off ensures and checks. Will be impossible to miss the potential error */
 USTRUCT(Blueprintable)
 struct PDRTSBASE_API FPDEntityPingDatum
 {
 	GENERATED_BODY()
 
+	/** @brief Base ctor needed by the engine to resolve the generated code properly */
 	FPDEntityPingDatum() : FPDEntityPingDatum(0) {};
 private:
+	/** @brief private ctor, only accessible by friends. I.e. the ping subsystem may access it to create fake datums to get typehash from */
 	FPDEntityPingDatum(uint32 InInstanceID);
 public:
+	/** @brief Ctor with world actor we want to ping from and a jobtag to actually ping */
 	FPDEntityPingDatum(AActor* InWorldActor, const FGameplayTag& InJobTag);
+
+	/** @brief Ctor with world actor we want to ping from and a jobtag to actually ping;
+	 * @param InWorldActor - Requires valid actor
+	 * @param InJobTag - Requires valid job-tag
+	 * @param InAltOwnerID - Optional OwnerID override, if the actor is known to be missing one or we want to target a job on another players buildable
+	 * @param InInterval - Optional ping-interval override, Defaults to 10 second intervals.
+	 * @param InMaxCountIntervals - Optional max ping count, Defaults to 15 times
+	 */
 	FPDEntityPingDatum(AActor* InWorldActor, const FGameplayTag& InJobTag, int32 InAltOwnerID, double InInterval = 10.0, int32 InMaxCountIntervals = 15);
 	~FPDEntityPingDatum();
 
+	/** @brief Converts the uint32 to a BP friendly uint8 array */
 	TArray<uint8> ToBytes() const;
+	/** @brief Converts a BP friendly uint8 array to our inner uint32 */
 	void FromBytes(const TArray<uint8>&& Bytes);
 
+	/** @brief Unsafe and non-checked function to set the ownerID from the owner of 'WorldActor' */
 	void Unsafe_SetOwnerIDFromOwner();
 
 	bool operator==(const FPDEntityPingDatum& OtherDatum) const { return this->InstanceID == OtherDatum.InstanceID; }
@@ -212,7 +214,7 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Build|Procedures")
 	double Interval = 10.0;
 
-	/** @brief default ping at 10 seconds */
+	/** @brief default ping 15 times at most. */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Build|Procedures")
 	int32 MaxCountIntervals = 15;	
 
@@ -222,6 +224,7 @@ public:
 /** @brief Hash the ping data, really just pass through the world-actors UID*/
 inline uint32 GetTypeHash(const FPDEntityPingDatum& PingDatum)
 {
+	/** @brief If out instance ID is set to 0, hash our inners to lessen likelyhood we get collisions */
 	if (PingDatum.InstanceID == 0)
 	{
 		uint32 Hash = 0;
@@ -233,33 +236,51 @@ inline uint32 GetTypeHash(const FPDEntityPingDatum& PingDatum)
 	return PingDatum.InstanceID;
 }
 
+/** @brief EntityPinger subsystem. Handles managing our pings, running async tasks and such */
 UCLASS()
 class PDRTSBASE_API UPDEntityPinger : public UEngineSubsystem
 {
 	GENERATED_BODY()
 	
 	UPDEntityPinger() = default;
+	/** @brief Init with a starting pingdatum if wanted. likely not needed */
 	explicit UPDEntityPinger(const FPDEntityPingDatum& PingDatum);
 public:	
 
+	/** @brief Add a ping-datum to PingDataAndHandles */
 	UFUNCTION(BlueprintCallable)
 	TArray<uint8> AddPingDatum(const FPDEntityPingDatum& PingDatum);
+	/** @brief Removes a ping-datum from PingDataAndHandles */
 	UFUNCTION(BlueprintCallable)
 	void RemovePingDatum(const FPDEntityPingDatum& PingDatum);
+	
+	/** @brief Removes a ping-datum from PingDataAndHandles */
 	UFUNCTION(BlueprintCallable)
 	void RemovePingDatumWithHash(const FPDEntityPingDatum& PingDatum);
+
+	/** @brief Gets a timerhandle related to a ping-datum, found using BP friendly unsigned byte array */
 	UFUNCTION(BlueprintCallable)
 	FTimerHandle GetPingHandleCopy(const TArray<uint8>& PingHashBytes);
+	/** @brief Gets a timerhandle related to a ping-datum, found using unsigned int32, not usable in BP  */
 	FTimerHandle GetPingHandleCopy(uint32 PingHash);
 	
+	/** @brief Adds or overwrites a ping datum and enables the pinging */
 	UFUNCTION(BlueprintCallable)
 	TArray<uint8> EnablePing(const FPDEntityPingDatum& PingDatum);
 	UFUNCTION(BlueprintCallable)
+
+	/** @brief Adds or overwrites a ping datum and enables the pinging, static call */
 	static TArray<uint8> EnablePingStatic(const FPDEntityPingDatum& PingDatum);
+	
+	/** @brief Actual pinging logic, requests new action on idle and eligible entities */
 	UFUNCTION(BlueprintNativeEvent)
 	void Ping(UWorld* World, const FPDEntityPingDatum& PingDatum);
+
+	/** @brief Disables and active ping via its ping datum */
 	UFUNCTION(BlueprintCallable)
 	void DisablePing(const FPDEntityPingDatum& PingDatum);
+	
+	/** @brief Disables and active ping via its ping datum, static call */
 	UFUNCTION(BlueprintCallable)
 	static void DisablePingStatic(const FPDEntityPingDatum& PingDatum);
 
@@ -268,6 +289,8 @@ public:
 	TMap<FPDEntityPingDatum, FTimerHandle> PingDataAndHandles{};
 };
 
+/** @brief Spatial Entity Query compound,
+ * @note For our custom spatial queries against entities we use this compound to store a copy of the handle, location and ownerID */
 USTRUCT()
 struct FLEntityCompound
 {
@@ -275,19 +298,25 @@ struct FLEntityCompound
 
 	bool operator==(const FLEntityCompound& Other) const { return this->EntityHandle == Other.EntityHandle; }
 	
+	/** @brief Queried entity */
 	UPROPERTY()
 	FMassEntityHandle EntityHandle;
+	/** @brief Location when queried */
 	UPROPERTY()
 	FVector Location;
+	/** @brief Entities OwnerID when queried */
 	UPROPERTY()
 	int32 OwnerID;
 };
 
+/** @brief Build queue for builds without build-stages, used when there isn¨t enough resource to buy a buildable when placing it */
 USTRUCT()
-struct FPDRTSBuildQueue
+struct FPDBuildQueue_WNoStageCosts
 {
 	GENERATED_BODY()
 	
+	/** @brief Actors queued to be built, checked when resources update to see if it can be afforded.
+	 *  @note This will continue until the owner can afford teh build or manually removed it from the queue */
 	TDeque<AActor*> ActorInWorld;
 };
 
@@ -298,6 +327,9 @@ class PDRTSBASE_API UPDRTSBaseSubsystem : public UEngineSubsystem
 {
 	GENERATED_BODY()
 public:
+	/** @brief  Static getter for the subsystem, singleton style */
+	static UPDRTSBaseSubsystem* Get();
+
 	void ProcessBuildContextTable(const TSoftObjectPtr<UDataTable>& TablePath);
 	/** @brief Loads the worktables when the subsystem initializes during engine startup, far earlier than any world exists.
 	 * It uses developer settings (UPDRTSSubsystemSettings) to read and write selected worktable paths via config, and or project settings window  
@@ -347,32 +379,36 @@ public:
 	const FGameplayTag& GetBuildableTagFromData(const FPDBuildableData* BuildableData);
 	
 	
+	/** @brief Queue a removal from the buildable octree */
 	void QueueRemoveFromWorldBuildTree(int32 UID);
+	/** @brief Pass data between buffers when access to the first buffer is complete */
 	void PassOverDataFromQueue();
 
+	/** @brief Finding all eligible entities of a given buildable AActor* */
 	static TArray<FMassEntityHandle> FindIdleEntitiesOfType(TArray<FGameplayTag> EligibleEntityTypes, const AActor* ActorToBuild, int32 OwnerID);
 
-	static UPDRTSBaseSubsystem* Get();
-
-
+	/** @brief  Processes the data-asset for a given ghost stage */
 	static void ProcessGhostStageDataAsset(const AActor* GhostActor, bool bIsStartOfStage, const FPDRTSGhostStageData& SelectedStageData);
 
+	/** @brief  Processes a ghost stage: i.e. has it passed checks to increase stage or finish build? */
 	UFUNCTION(BlueprintCallable, Category = "Actor|Ghost")
-	static void ProcessGhostStage(AActor* GhostActor, const FGameplayTag& BuildableTag, FPDRTSGhostTransitionState& MutableGhostDatum, bool bIsStartOfStage);
+	static void ProcessGhostStage(AActor* GhostActor, const FGameplayTag& BuildableTag, FPDRTSGhostBuildState& MutableGhostDatum, bool bIsStartOfStage);
 
+	/** @brief Get the max configured duration for a ghost stage to finish if running automatic stage progression without resources */
 	UFUNCTION(BlueprintCallable, Category = "Actor|Ghost")
-	static double GetMaxDurationGhostStage(const FGameplayTag& BuildableTag, FPDRTSGhostTransitionState& MutableGhostDatum);	
+	static double GetMaxDurationGhostStage(const FGameplayTag& BuildableTag, FPDRTSGhostBuildState& MutableGhostDatum);	
 
+	/** @brief Is the stage past final index (final stage) */
 	UFUNCTION(BlueprintCallable, Category = "Actor|Ghost")
-	static bool IsPastFinalIndex(const FGameplayTag& BuildableTag, FPDRTSGhostTransitionState& MutableGhostDatum);	
-
-
+	static bool IsPastFinalIndex(const FGameplayTag& BuildableTag, FPDRTSGhostBuildState& MutableGhostDatum);	
+	
 	/** @brief Associates and FMassArchetypeHandle with a config asset, so we can retrieve this info back to our save system fast when needed */
 	void AssociateArchetypeWithConfigAsset(const FMassArchetypeHandle& Archetype, const TSoftObjectPtr<UMassEntityConfigAsset>& EntityConfig);
 
 	/** @brief Retrieves the config asset */
 	TSoftObjectPtr<UMassEntityConfigAsset> GetConfigAssetForArchetype(const FMassArchetypeHandle& Archetype);
 
+	/** @brief Caches the worlds entity manager */
 	void WorldInit(const UWorld* World);
 
 	/** @brief Does some portable iso-approved 'hacks' to fetch the all the mass ISM's */
@@ -390,16 +426,20 @@ public:
 
 	/** @brief Build queues per player */
 	UPROPERTY()
-	TMap<int32 /*Player ID*/, FPDRTSBuildQueue> BuildQueues{};	
+	TMap<int32 /*Player ID*/, FPDBuildQueue_WNoStageCosts> BuildQueues{};	
 
+	/** @brief Mapped for fast access. Mapped upon subsystem loading the developer settings 'UPDRTSSubsystemSettings' */
 	TMap<FGameplayTag, const FPDBuildWorker*> GrantedBuildContexts_WorkerTag{};		
+	/** @brief Mapped for fast access. Mapped upon subsystem loading the developer settings 'UPDRTSSubsystemSettings' */
 	TMap<FGameplayTag, const FPDBuildContext*> BuildContexts_WTag{};	
+	/** @brief Mapped for fast access. Mapped upon subsystem loading the developer settings 'UPDRTSSubsystemSettings' */
 	TMap<FGameplayTag, const FPDBuildableData*> BuildableData_WTag{};	
+	/** @brief Mapped for fast access. Mapped upon subsystem loading the developer settings 'UPDRTSSubsystemSettings' */
 	TMap<FPDBuildableData*, FGameplayTag>       BuildableData_WTagReverse{};	
 	
 	/** @brief Selection group navpath map, Keyed by owner ID, valued by selection group navdata container*/
 	UPROPERTY()
-	TMap<int32 /*OwnerID*/, FPDWrappedSelectionGroupNavData> SelectionGroupNavData{};
+	TMap<int32, FPDWrappedSelectionGroupNavData> SelectionGroupNavData{};
 	
 	/** @brief Selection group Dirty data array holding a tuple, each tuple is keyed by the owner ID and has a value of the dirtied selection group index
 	 *  @todo think on a solution which marks which actual data we want to update for the group, but this for now works as a solid enough optimization
@@ -415,6 +455,7 @@ public:
 	/** @brief Map for fast lookups. Keyed by Job-tag, valued by source datatable */
 	TMap<const FGameplayTag, const UDataTable*> TagToTable{};
 
+	/** @brief Maps active entity handlers to their worlds */
 	TMap<UWorld*, UPDRTSBaseUnit*> WorldToEntityHandler{};
 
 	/** @brief Flag that checks if we have processed the worktables */
@@ -443,8 +484,7 @@ public:
 	// @todo move into developer settings
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
 	int32 UnitPingLimitBuilding = 100; // max 100 eligible units may be pinged
-
-
+	
 	// Move to real struct perhaps
 	struct FPDActorCompound
 	{
@@ -459,22 +499,35 @@ public:
 		}
 	};
 
+	/** @brief When false any calls to AddBuildActorArray or RemoveBuildActorArray will resolve into queuing the calls
+	 * @note Sets to false while our UPDOctreeProcessor::Execute is running our auxiliary async task  */
 	bool bCanEditActorArray = true;
+	/** @brief  Actors to build */
 	TArray<FPDActorCompound> WorldBuildActorArrays{};
+	/** @brief  Reserved */
 	TArray<FVector> WorldBuildableLocationList{};
+	/** @brief  Mapping Array index (of 'WorldBuildActorArrays') to owner ID for use in our queued additions & removals  */
 	TMap<int32, int32> IndexToID{};
+	/** @brief  Backmapping OwnerID to arraty index, for use in our queued additions & removals  */
 	TMap<int32, int32> IDToIndex{};
+	/** @brief  Queued removals of user actor arrays, removals requested while our auxiliary asynctask in 'UPDOctreeProcessor::Execute' is iterating 'WorldBuildActorArrays' */
 	TDeque<int32> QueuedRemovals_BuildablesArrays{};
+	/** @brief  Queued additions of user actor arrays, additions requested while our auxiliary asynctask in 'UPDOctreeProcessor::Execute' is iterating 'WorldBuildActorArrays'  */
 	TDeque<TTuple<int32, void*>> QueuedAdditions_BuildablesArrayPointers{};
 
-	TArray<FPDActorCompound>& PrepareMutateBuildableTrackingData()
+	/** @brief Tell the subsystem we won't allow direct changes to WorldBuildActorArrays (Lists of users and their buildable actor arrays),
+	 * and that we might be processing select removals of actual buildables  */
+	TArray<FPDActorCompound>& BlockMutationOfBuildableTrackingData()
 	{
 		bCanEditActorArray = false;
 		bIsProcessingBuildableRemovalQueue = true;
 		return WorldBuildActorArrays;
 	};	
 
-	void EndMutateBuildableTrackingData()
+	/** @brief Tell the subsystem we may resume making direct changes to WorldBuildActorArrays (Lists of users and their buildable actor arrays),
+	 * and that we might be processing select removals of actual buildables.
+	 * Calls PassOverDataFromQueue & ProcessQueuedAdditionsAndRemovals_BuildablesArrayTracker to process any changes requested while it was paused*/
+	void ResumeMutationOfBuildableTrackingData()
 	{
 		bCanEditActorArray = true;
 
@@ -487,6 +540,7 @@ public:
 		return;
 	};	
 
+	/** @brief Processes any added users and pointers to their buildable arrays */
 	void ProcessQueuedAdditionsAndRemovals_BuildablesArrayTracker()
 	{
 		for (int32 Step = QueuedAdditions_BuildablesArrayPointers.Num(); Step > 0;)
@@ -509,6 +563,7 @@ public:
 		}		
 	};	
 	
+	/** @brief Request to add a user and a pointer to their buildable array */
 	void AddBuildActorArray(int32 OwnerID, TArray<AActor*>* OwnerArrayPtr)
 	{
 		if (bCanEditActorArray == false)
@@ -525,6 +580,7 @@ public:
 		// WorldBuildableLocationList.EmplaceAt(Idx);
 	};
 
+	/** @brief Request to add a user and a pointer to their buildable array, via using an FPDActorCompound struct */
 	void AddBuildActorArray(FPDActorCompound ActorCompound)
 	{
 		if (bCanEditActorArray == false)
@@ -541,6 +597,7 @@ public:
 		// WorldBuildableLocationList.EmplaceAt(Idx);
 	};	
 
+	/** @brief Request to remove a user adn their pointer to their buildable array */
 	void RemoveBuildActorArray(int32 OwnerID)
 	{
 		if (bCanEditActorArray == false)
@@ -552,12 +609,16 @@ public:
 		if (IDToIndex.Contains(OwnerID) == false) { return; } 
 		
 		WorldBuildActorArrays.RemoveAt(IDToIndex.FindRef(OwnerID));
+
+		IndexToID.Remove(IDToIndex.FindRef(OwnerID));
+		IDToIndex.Remove(OwnerID);
 	};
 	
 	
 	/** @brief Tracking worlds that has been setup with this WorldOctree.  */
 	TMap<void*, bool> WorldsWithOctrees{};
 	
+	/** @brief Softpaths to entity configs, keyed by the archetype handle. Is set by used by our sub-classed entity spawner */
 	TMap<FMassArchetypeHandle /*Archetype*/, TSoftObjectPtr<UMassEntityConfigAsset> /* EntityConfig */> ConfigAssociations{};
 	
 	/** @brief This will be useful on a server or shared screen environment */
@@ -568,6 +629,7 @@ public:
 	TMap<AActor* /*OwningActor*/, int32 /*OwnerID*/> SharedOwnerIDBackMappings;
 
 
+	/** @brief Query groups */
 	enum EPDQueryGroups : int32
 	{
 		INVALID_QUERY_GROUP = INDEX_NONE,
@@ -578,6 +640,7 @@ public:
 		QUERY_GROUP_X = 20,
 	};
 	
+	/** @brief Query base shape */
 	template<typename TDataType>
 	struct TPDQueryBase 
 	{
@@ -585,12 +648,15 @@ public:
 		UE::Math::TVector<TDataType> Location = UE::Math::TVector<TDataType>::ZeroVector;
 	};	
 	
+	/** @brief Octree user query helpers */
 	using FPDOctreeUserQuery = struct QPDUserQuery_t
 	{
 		QPDUserQuery_t() = default;
 		explicit QPDUserQuery_t(AActor* CallingActor) : CallingUser(CallingActor) { }
 		
+		/** @brief Query Box shape definition */
 		struct QBox    : public TPDQueryBase<double> { UE::Math::TVector<double> QuerySizes = UE::Math::TVector<double>::ZeroVector; };
+		/** @brief Query Sphere shape definition */
 		struct QSphere : public TPDQueryBase<double> { double QueryRadius = 0.0; };
 
 		// @note Alignment is same and they share the same initial memory layout,
@@ -611,48 +677,53 @@ public:
 				AsSphere = InAsSphere;
 				AsSphere.Shape = 1;
 			};
-			
 			TPDQueryBase<double>* Get()
 			{
 				void* This = this;
 				TPDQueryBase<double>* PtrHack = static_cast<TPDQueryBase<double>*>(This);
 				return PtrHack;
 			};
-			
 		};
 		
-
+		/** @brief Makes a user query shape based on input params */
 		static QBox MakeUserQuery(const UE::Math::TVector<double>& Location = UE::Math::TVector<double>::ZeroVector, const FVector& QuerySizes = UE::Math::TVector<double>::OneVector)
 		{
 			return FPDOctreeUserQuery::QBox{0,Location, QuerySizes};
 		}
 
+		/** @brief Makes a user query shape based on input params */
 		static QSphere MakeUserQuery(const UE::Math::TVector<double>& Location = UE::Math::TVector<double>::ZeroVector, const double Radius = 0.0)
 		{
 			return FPDOctreeUserQuery::QSphere{1,Location, Radius};
 		}
 
+		/** @return true - if the given point within the box shape, convert shape to TBox<double> and call IsPointWithinQuery */
 		static bool IsPointWithinQuery(const UE::Math::TVector<double>& Point, const QBox& Box)
 		{
 			const UE::Math::TBox<double> InnerBox{{Box.Location - Box.QuerySizes},{Box.Location + Box.QuerySizes}};
 			return IsPointWithinQuery(Point, InnerBox);
 		}
+
+		/** @return true - if the given point within the sphere shape, convert shape to TSphere<double> and call IsPointWithinQuery  */
 		static bool IsPointWithinQuery(const UE::Math::TVector<double>& Point, const QSphere& Sphere)
 		{
 			const UE::Math::TSphere<double> InnerSphere{Sphere.Location, Sphere.QueryRadius};
 			return IsPointWithinQuery(Point, InnerSphere);
 		}			
 		
+		/** @return true - if the given point within the TBox */
 		static bool IsPointWithinQuery(const UE::Math::TVector<double>& Point, const UE::Math::TBox<double>& Box)
 		{
 			return Box.IsInsideOrOn(Point);
 		}
+
+		/** @return true - if the given point within the TSphere */
 		static bool IsPointWithinQuery(const UE::Math::TVector<double>& Point, const UE::Math::TSphere<double>& Sphere)
 		{
 			return Sphere.IsInside(Point);
 		}
 
-		/** Assigns box data */
+		/** @brief  Creates a new Query Shape (QBox) entry */
 		void CreateNewQueryEntry(const int32 Key, const QBox& BoxData)
 		{
 			QShapeSelector InData;
@@ -662,6 +733,7 @@ public:
 			CurrentBuffer.FindOrAdd(Key);
 		}
 
+		/** @brief  Creates a new Query Shape (QSphere) entry */
 		void CreateNewQueryEntry(const int32 Key, const QSphere& SphereData)
 		{
 			QShapeSelector InData;
@@ -671,11 +743,14 @@ public:
 			CurrentBuffer.FindOrAdd(Key);
 		}
 
+		/** @brief Updates a keyed query position */
 		void UpdateQueryPosition(const int32 Key, const FVector& NewPos)
 		{
 			QueryArchetypes.FindOrAdd(Key).Get()->Location = NewPos;
 		}
 		
+		/** @brief Performs an "overlap" query on a given position, optionally stores an ownerID and entity handle if point is within shape.
+		 * @note Stores the result in a buffer  */
 		void UpdateQueryOverlapBuffer(const int32 Key, const FVector& ComparePos, const FMassEntityHandle OptionalEntityHandle, const int32 OptionalID)
 		{
 			bool bIsPointWithinQuery = false;
@@ -710,12 +785,15 @@ public:
 			}
 		}
 		
+		/** @brief Removes a buffer entry and query archetypes, via key */
 		void RemoveQueryData(const int32 Key)
 		{
 			QueryArchetypes.Remove(Key);
 			CurrentBuffer.Remove(Key);
 		}
 
+		/** @brief Clears buffer entry and resets its query archetypes, via key.
+		 * @note does not remove any key entries */
 		void ClearQueryDataAndSettings(int32 Key)
 		{
 
@@ -741,11 +819,11 @@ public:
 				break;
 			}
 
-			
-
 			ClearQueryBuffer(Key);
 		}
 
+		/** @brief Clears buffer entry, via key.
+		 * @note does not remove any key entry */
 		void ClearQueryBuffer(int32 Key)
 		{
 			// CurrentBuffer.FindOrAdd(Key).Empty();
@@ -759,39 +837,55 @@ public:
 			}			
 		}		
 		
+		/** @brief  Query shape archetypes */
 		TMap<int32, QShapeSelector> QueryArchetypes;
+		/** @brief  User Query buffers */
 		TMap<int32, TArray<FLEntityCompound>> CurrentBuffer;
 
+		/** @brief  User taht will be calling this query structure */
 		AActor* CallingUser = nullptr;
 	};
 
+	/** @brief  (User) Query Shape structure */
 	FPDOctreeUserQuery OctreeUserQuery{};
-	FPDOctreeUserQuery OctreeBuildSystemEntityQuery{}; // @todo
+	/** @brief  (Build system) Query Shape structure. Reserved. @todo @refactor assess if needed */
+	FPDOctreeUserQuery OctreeBuildSystemEntityQuery{}; 
 };
 
+/** @brief Behaviours for how builds should be handled.
+ * Should builds A. wait for workers or B. should it call for workers,
+ * the former will wait for player to dispatch builders, the latter will use the ping system attempt finding some themselves
+ * @todo @refactor wrap these into a namespace
+ */
 UENUM()
 enum class EPDRTSBuildProgressionBehaviour
 {
-	EBuildWaitsForWorkers,
-	EBuildCallsForWorkers,
+	EBuildWaitsForWorkers UMETA(DisplayName="BuildBehaviour::Progress::StandBy"),
+	EBuildCallsForWorkers UMETA(DisplayName="BuildBehaviour::Progress::PingBuilders"),
 };
 
+/** @brief Build cost behaviours */
 UENUM()
 enum class EPDRTSBuildCostBehaviour
 {
-	EBuildCostPlayerBank,
-	EBuildCostBaseBank, // may differ from player bank
-	EBuildCostWaitForWorkers,
+	EBuildCostPlayerBank      UMETA(DisplayName="BuildBehaviour::Cost:PlayerBank"),
+	EBuildCostBaseBank        UMETA(DisplayName="BuildBehaviour::Cost:BaseBank"),  // may differ from player bank
+	EBuildCostWaitForWorkers  UMETA(DisplayName="BuildBehaviour::Cost:StandBy"),
 };
 
+/** @brief Build system behaviour settings
+ * @todo @refactor turn into datatable row type and set up a table for it, replace current default entry in developer settings
+ */
 USTRUCT(Blueprintable)
 struct FPDRTSBuildSystemBehaviours
 {
 	GENERATED_BODY()
 
+	/** @brief BuildBehaviour::Progress */
 	UPROPERTY(Config, EditAnywhere, Category="Visible")
 	EPDRTSBuildProgressionBehaviour Progression = EPDRTSBuildProgressionBehaviour::EBuildCallsForWorkers;
 
+	/** @brief BuildBehaviour::Cost */
 	UPROPERTY(Config, EditAnywhere, Category="Visible")
 	EPDRTSBuildCostBehaviour Cost = EPDRTSBuildCostBehaviour::EBuildCostWaitForWorkers;
 };
@@ -809,7 +903,7 @@ public:
 	UPROPERTY(Config, EditAnywhere, Category="RTS Octree")
 	float OctreeUniformBounds = UE_OLD_WORLD_MAX;
 
-	/** @brief */
+	/** @brief Default cell size if no other sizes are set */
 	UPROPERTY(Config, EditAnywhere, Category="Visible")
 	float DefaultOctreeCellSize = 40.0;
 

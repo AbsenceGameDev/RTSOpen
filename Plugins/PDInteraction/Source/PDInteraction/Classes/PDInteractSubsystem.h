@@ -10,13 +10,13 @@
 #include "Subsystems/EngineSubsystem.h"
 #include "PDInteractSubsystem.generated.h"
 
-/** @brief Wrapper to allow nesting container in a map, sadly TMap<int32,TArray<>> is not viable*/
+/** @brief Wrapper to allow nesting container in a map, sadly TMap<int32,TArray<>> is not viable */
 USTRUCT(BlueprintType, Blueprintable)
 struct FPDArrayListWrapper
 {
 	GENERATED_BODY()
 
-	/** @brief */
+	/** @brief Wrapper of interactable data that we want to save to file */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
 	TArray<FRTSSavedInteractables> ActorInfo{};
 };

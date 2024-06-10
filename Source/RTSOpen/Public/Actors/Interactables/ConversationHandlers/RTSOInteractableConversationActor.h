@@ -26,14 +26,14 @@ class URTSOConversationInstance;
 UENUM()
 enum ERTSOConversationState
 {
-	CurrentStateActive,
-	CurrentStateInactive,
-	CurrentStateCompleted,
-	Invalid,
-	Valid,
+	CurrentStateActive    UMETA(DisplayName="Conversation: Current State Active"),
+	CurrentStateInactive  UMETA(DisplayName="Conversation: Current State Inactive"),
+	CurrentStateCompleted UMETA(DisplayName="Conversation: Current State Completed"),
+	Invalid               UMETA(DisplayName="Conversation: Current State INVALID"),
+	Valid                 UMETA(DisplayName="Conversation: Current State VALID"),
 };
 
-/** @brief */
+/** @brief Conversation rules, used for mission-progression */
 USTRUCT(Blueprintable)
 struct FRTSOConversationRules
 {
@@ -56,7 +56,7 @@ struct FRTSOConversationRules
 	bool bCanRepeatConversation = true;
 };
 
-/** @brief */
+/** @brief Conversation base Settings.  */
 USTRUCT(Blueprintable)
 struct FRTSOConversationMetaProgressionDatum : public FTableRowBase
 {
@@ -71,7 +71,7 @@ struct FRTSOConversationMetaProgressionDatum : public FTableRowBase
 	TArray<FRTSOConversationRules> PhaseRequiredTags;
 };
 
-/** @brief */
+/** @brief Conversation MetaState (MEta in ti context alludes to what binds different conversations together. i.e. Conversation mission state per conversation actor*/
 USTRUCT(Blueprintable)
 struct FRTSOConversationMetaState
 {
@@ -137,7 +137,7 @@ public:
 		const TSubclassOf<UConversationInstance> ConversationInstanceClass);
 };
 
-/** @brief */
+/** @brief Interactable actor that implements our conversation interface */
 UCLASS()
 class RTSOPEN_API ARTSOInteractableConversationActor
 	: public APDInteractActor
@@ -227,7 +227,9 @@ private:
 	UCameraComponent* ConversationCamera = nullptr;	
 };
 
-/** @brief */
+/** @brief Conversation actor tracker subsystem, tracks our active conversations and handles progression (proto-mission system). @
+ * todo 1. Integrate our actual mission system from PDOpenSource and this repo into one singular repo  
+ * todo 2. Move this module into the mission system plugin as it's own module named 'MissionConversation'. The 'MissionConversation' module should depends on the base mission module */
 UCLASS()
 class URTSOConversationActorTrackerSubsystem : public UWorldSubsystem
 {

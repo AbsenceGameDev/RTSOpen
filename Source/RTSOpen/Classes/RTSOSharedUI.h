@@ -11,22 +11,22 @@
 DECLARE_LOG_CATEGORY_CLASS(PDLog_RTSOSharedUI, Log, All);
 
 
-/** @brief */
+/** @brief Mouse event wrapper */
 USTRUCT(Blueprintable)
 struct FRTSOMouseEventDelegateWrapper
 {
 	GENERATED_BODY()
 
-	/** @brief */
+	/** @brief On Move */
 	UPROPERTY(EditAnywhere, Category = "Events", Meta = (IsBindableEvent="True"))
 	UWidget::FOnPointerEvent OnMouseMoveEvent;
-	/** @brief */
+	/** @brief (Btn) Down */
 	UPROPERTY(EditAnywhere, Category = "Events", Meta = (IsBindableEvent="True"))
 	UWidget::FOnPointerEvent OnMouseButtonDownEvent;
-	/** @brief */
+	/** @brief (Btn) Up */
 	UPROPERTY(EditAnywhere, Category = "Events", Meta = (IsBindableEvent="True"))
 	UWidget::FOnPointerEvent OnMouseButtonUpEvent;
-	/** @brief */
+	/** @brief (Btn) Double Click */
 	UPROPERTY(EditAnywhere, Category = "Events", Meta = (IsBindableEvent="True"))
 	UWidget::FOnPointerEvent OnMouseDoubleClickEvent;
 };
@@ -125,10 +125,10 @@ class URTSOConversationSelectionEntry : public UUserWidget, public IUserObjectLi
 	GENERATED_BODY()
 protected:
 	
-	// IUserObjectListEntry
-	/** @brief */
+	/* IUserObjectListEntry Start */
+	/** @brief Sets entry data and binds delegates to our textborder */
 	virtual void NativeOnListItemObjectSet(UObject* ListItemObject) override;
-	// IUserObjectListEntry
+	/* IUserObjectListEntry End */
 
 	/** @brief Calls into 'ParentAsMessageWidget->MouseMove' and returns its event reply results */
 	UFUNCTION() FEventReply MouseMove(FGeometry MyGeometry, const FPointerEvent& MouseEvent);
@@ -160,7 +160,7 @@ protected:
 	UUserWidget* DirectParentReference = nullptr;	
 };
 
-/** @brief */
+/** @brief Conversation message element widget */
 UCLASS(BlueprintType, Blueprintable)
 class URTSOConversationMessageWidget : public UUserWidget
 {
@@ -206,7 +206,7 @@ public:
 	int32 LatestInteractedChoice = INDEX_NONE;
 };
 
-/** @brief */
+/** @brief Conversation base widget */
 UCLASS(BlueprintType, Blueprintable)
 class URTSOConversationWidget : public UUserWidget
 {

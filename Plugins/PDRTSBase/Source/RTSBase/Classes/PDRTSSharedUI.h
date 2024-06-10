@@ -77,7 +77,7 @@ class UPDBuildableWrapper : public UObject
 	GENERATED_BODY()
 public:
 	
-	/** @brief Self-explanatory */
+	/** @brief Used to assign data to the wrapper before it is passed into a list-view and/or tile-view */
 	void AssignData(
 		const FText& InBuildableTitle,
 		const bool bInCanBuild,
@@ -124,7 +124,7 @@ private:
 	/** @brief Assigned by 'AssignData', retrieved by 'GetBuildableTag''. Is passed into a tileview or listview entry upon creation   */
 	UPROPERTY(VisibleInstanceOnly, BlueprintReadOnly, Meta = (ExposeOnSpawn=true, AllowPrivateAccess="true"))
 	FGameplayTag BuildableTag;
-	/** @brief Assigned by 'AssignData', retrieved by 'GetParentContextTag''. Is passed into a tileview or listview entry upon creation   */
+	/** @brief @todo remove and replace usage of 'ParentContextTag', this is duplicate. Replace with usage of 'ParentMenuContextTag' */
 	UPROPERTY(VisibleInstanceOnly, BlueprintReadOnly, Meta = (ExposeOnSpawn=true, AllowPrivateAccess="true"))
 	FGameplayTag ParentContextTag;
 	
@@ -132,33 +132,45 @@ private:
 	UPROPERTY(VisibleInstanceOnly, BlueprintReadWrite, Meta = (ExposeOnSpawn=true, AllowPrivateAccess="true"))
 	class UPDBuildWidgetBase* DirectParentReference = nullptr;
 
+	/** @brief Assigned by 'AssignData', retrieved by 'GetParentContextTag''. Is passed into a tileview or listview entry upon creation   */
+	UPROPERTY(VisibleInstanceOnly, BlueprintReadOnly, Meta = (ExposeOnSpawn=true, AllowPrivateAccess="true"))
 	FGameplayTag ParentMenuContextTag{};
 };
 
+/** @brief Entry widget for a buildable. Used by the build menu class  */
 UCLASS()
 class PDRTSBASE_API UPDBuildableEntry : public UUserWidget, public IUserObjectListEntry
 {
 	GENERATED_BODY()
 public:
 
+	/** @brief  Reads data from a given uobject and sets up delegates, will exit early if it is not derived of type 'UPDBuildableWrapper' */
 	virtual void NativeOnListItemObjectSet(UObject* ListItemObject) override;
 
+	/** @brief Tells DirectParentReference about the clicked button, Logs to error if it fails */
 	UFUNCTION() void OnPressed();
+	/** @brief  Reserved */
 	UFUNCTION() void OnHovered();
+	/** @brief  Reserved */
 	UFUNCTION() void OnUnhovered();
+	/** @brief  Reserved */
 	UFUNCTION() void OnClicked();
+	/** @brief  Reserved */
 	UFUNCTION() void OnReleased();
 
 	/** @brief Border for the 'TextContent' text-block widget.*/
 	UPROPERTY(BlueprintReadWrite, Meta=(BindWidget))
 	class UBorder* TextContentBorder = nullptr;	
 	
+	/** @brief Title to display for the buildable */
 	UPROPERTY(Meta = (BindWidget))
 	UTextBlock* BuildableTitle = nullptr;
 
+	/** @brief Tells us if the button is clickable */
 	UPROPERTY(BlueprintReadWrite)
 	bool bCanBuild = true;
 
+	/** @brief The tag related to the buildable we are representing on the buildable element widget */
 	UPROPERTY(VisibleInstanceOnly, BlueprintReadOnly)
 	FGameplayTag BuildableTag;
 
@@ -170,27 +182,36 @@ public:
 	UPROPERTY(BlueprintReadWrite, Meta = (ExposeOnSpawn=true, AllowPrivateAccess="true"))
 	class UPDBuildWidgetBase* DirectParentReference = nullptr;
 	
+	/** @brief Parent menu (Build context owning the entry) */
 	FGameplayTag ParentMenuContextTag{};
 };
 
+/** @brief Entry widget for a build-context. Used by the build menu class  */
 UCLASS()
 class PDRTSBASE_API UPDBuildContextEntry : public UUserWidget, public IUserObjectListEntry
 {
 	GENERATED_BODY()
 public:
 
+	/** @brief  Reads data from a given uobject and sets up delegates, will exit early if it is not derived of type 'UPDBuildContextWrapper' */
 	virtual void NativeOnListItemObjectSet(UObject* ListItemObject) override;
 
+	/** @brief Tells DirectParentReference about the clicked button, Logs to error if it fails */
 	UFUNCTION() void OnPressed();
+	/** @brief  Reserved */
 	UFUNCTION() void OnHovered();
+	/** @brief  Reserved */
 	UFUNCTION() void OnUnhovered();
+	/** @brief  Reserved */
 	UFUNCTION() void OnClicked();
+	/** @brief  Reserved */
 	UFUNCTION() void OnReleased();
 
 	/** @brief Border for the 'TextContent' text-block widget.*/
 	UPROPERTY(BlueprintReadWrite, Meta=(BindWidget))
 	class UBorder* TextContentBorder = nullptr;	
 	
+	/** @brief  Textblock title for the build-context name */
 	UPROPERTY(Meta = (BindWidget))
 	UTextBlock* ContextTitle = nullptr;
 
@@ -202,24 +223,31 @@ public:
 	UPROPERTY(BlueprintReadWrite, Meta=(BindWidget))
 	class UButton* Hitbox = nullptr;	
 	
+	/** @brief  Tag of context that this widget represents */
 	FGameplayTag SelfContextTag{};
 };
 
+/** @brief  Wrapper struct that allows us to expose rowtype filters */
 USTRUCT(Blueprintable)
 struct FPDBuildContextParam
 {
 	GENERATED_BODY()
 
+	/** @brief  Inner array of build-context handles */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Meta = (RowType = "/Script/PDRTSBase.PDBuildContext"))
 	TArray<FDataTableRowHandle> NewBuildableContext;
 };
 
+/** @brief Build-system main widget.
+ * @note Declares two tileviews and applies the BuildableEntry and BuildContextEntry widget to them.
+ * @note Handles event hooks and loading of context data */
 UCLASS()
 class PDRTSBASE_API UPDBuildWidgetBase : public UUserWidget
 {
 	GENERATED_BODY()
 public:
 
+	/** @brief  Loads the widget flair data */
 	virtual void NativeConstruct() override;
 
 	/** @brief  Overwrites 'CurrentBuildableContext' */
@@ -246,24 +274,34 @@ public:
 	UFUNCTION(BlueprintCallable)
 	virtual const FGameplayTag& GetLastSelectedContextTag() { return LastSelectedContextTag; }
 
+	/** @brief  Update the selected context menu, flushing and loading new buildable data if it is a new context menu. If an already existing menu it will close it */
 	UFUNCTION(BlueprintCallable)
 	void UpdateSelectedContext(const FGameplayTag& RequestToSelectTag);
+	/** @brief  Select a buildable from the buildable list and calls UpdateSelectedBuildable */
 	void SelectBuildable(const FGameplayTag& NewSelectedBuildable);
 
+	/** @brief Dispatched a call to interface IPDRTSBuilderInterface::Execute_NewAction(this) if function succeeds.
+	 *  @note If an already selected buildable entry is selected again it gets de-selected */
 	UFUNCTION(BlueprintCallable)
 	void UpdateSelectedBuildable(const FGameplayTag& RequestToSelectTag, const bool bSelect);
 
+	/** @brief  Spawns the worker build menu and plays it's 'Open' animation*/
 	UFUNCTION(BlueprintCallable)
 	void SpawnWorkerBuildMenu(const FPDBuildWorker& BuildWorker);
+	/** @brief  Closes worker build menu and plays it's 'Close' animation*/
 	UFUNCTION(BlueprintCallable)
 	void BeginCloseWorkerBuildMenu();
+	/** @brief  Finalize closing worker build menu when the 'Close' animation has finished*/
 	UFUNCTION(BlueprintCallable)
 	void EndCloseWorkerBuildMenu();
 
+	/** @brief  Opens the worker build context submenu and plays it's 'Open' animation*/
 	UFUNCTION(BlueprintCallable)
 	void OpenWorkerContextMenu();	
+	/** @brief  Closes worker build context submenu and plays it's 'Close' animation*/
 	UFUNCTION(BlueprintCallable)
 	void BeginCloseWorkerContext();
+	/** @brief  Finalize closing worker build context submenu when the 'Close' animation has finished*/
 	UFUNCTION(BlueprintCallable)
 	void EndCloseWorkerContext();		
 
@@ -287,7 +325,7 @@ public:
 	UPROPERTY(Transient, BlueprintReadWrite, Meta = (BindWidgetAnim))
 	class UWidgetAnimation* OpenContextMenu = nullptr;	
 
-	/** @brief Widget animation to play when closing one a widget context menu  */
+	/** @brief Widget animation to play when closing the current widget context menu  */
 	UPROPERTY(Transient, BlueprintReadWrite, Meta = (BindWidgetAnim))
 	class UWidgetAnimation* CloseContextMenu = nullptr;			
 	
@@ -310,7 +348,9 @@ private:
 	UPROPERTY(VisibleInstanceOnly, BlueprintReadOnly, Meta = (AllowPrivateAccess="true", RowType = "/Script/PDRTSBase.PDBuildContext"))
 	TArray<FDataTableRowHandle> CurrentBuildableContexts;
 
+	/** @brief  Previously selected context-tag*/
 	FGameplayTag LastSelectedContextTag{};
+	/** @brief  Previously selected buildable-tag*/
 	FGameplayTag LastSelectedBuildableTag{};
 };
 

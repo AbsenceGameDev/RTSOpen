@@ -12,14 +12,17 @@
 
 struct FRTSOLightInventoryFragment;
 
+/** @brief Buildable light inv. construct. Keeps inventories for each build state and one for the finished state  */
 USTRUCT(Blueprintable)
 struct FRTSOBuildableInventories
 {
 	GENERATED_BODY()
 
+	/** @brief Ghost, per-stage inventories  */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
 	TArray<FRTSOLightInventoryFragment> LightInventoriesPerGhostStage{};
 
+	/** @brief Main inventory  */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
 	FRTSOLightInventoryFragment LightInventoryAsMain{};	
 };
@@ -40,6 +43,7 @@ public:
 	/** @brief Sets default job to 'TAG_AI_Job_WalkToTarget' and enables the tickcomponent*/ 
 	ARTSOInteractableBuildingBase();
 	
+	/** @brief Template base call  */
 	template<bool TIsGhost>
 	void RefreshStaleSettings(){};
 	
@@ -47,6 +51,7 @@ public:
 	virtual void Tick(float DeltaTime) override;
 	/** @brief Only calls Super. Reserved for later use  */
 	virtual void BeginPlay() override;
+	/** @brief  Calls 'OnBuildingDestroyed' then calls Super::BeginDestroy */
 	virtual void BeginDestroy() override;
 	
 	/** @brief adds 'JobTag' to a 'FGameplayTagContainer' and returns it */
@@ -57,12 +62,20 @@ public:
 	virtual void OnInteract_Implementation(const FPDInteractionParamsWithCustomHandling& InteractionParams, EPDInteractResult& InteractResult) const override;
 	/* APDInteractActor Interface End */
 	
+	/** @brief  Processes a spawn, load settings (and set state) based on being a ghost or not */
 	template<bool TIsGhost>
 	void ProcessSpawn();
+	/** @brief If able, withdraws the recurring cost.
+	 * @param Bank (Optional player inv)
+	 * @param EntityInv (Optional calling entity)
+	 * @param ImmutableStage (Current stage of buildable) */
 	bool WithdrawRecurringCostFromBankOrEntity(UPDInventoryComponent* Bank, FRTSOLightInventoryFragment* EntityInv, const int32& ImmutableStage);
+	/** @brief Handles processing if we require workers to build, requires resource per stages */
 	void ProcessIfWorkersRequired();
+	/** @brief Handles processing if we don't require workers to build. Fast-forwards through stages */
 	void ProcessIfWorkersNotRequired();
 	
+	/** @brief Calls into the RTSSubsystem adn removes the buildable from the tracking octree */
 	UFUNCTION(BlueprintNativeEvent, BlueprintCallable, Category = "")
 	void OnBuildingDestroyed();
 	
@@ -75,22 +88,30 @@ public:
 	virtual bool AttemptFinalizeGhost_Implementation() override;
 	/* IPDRTSBuildableGhostInterface Interface End */
 	
+	/** @brief Returns tbe buildings own light inventory constructs. One for finished stage and one for the ghosts each build stage  */
 	virtual FRTSOBuildableInventories& ReturnBuildableInventories();
 
 private:
+	/** @brief Refreshes ghosts settings, if they have been marked as stale */
 	void RefreshStaleSettings_Ghost();
+	/** @brief Refreshes main buildable settings, if they have been marked as stale */
 	void RefreshStaleSettings_Main();
 
 public:
+	/** @brief Collision settings for complete buildable */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
 	FPDRTSBuildableCollisionSettings BuildableCollisionSettings{false};
+	/** @brief Collision settings for ghost buildable */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
 	FPDRTSBuildableCollisionSettings GhostCollisionSettings{false};
 
+	/** @brief Finished progressing current state */
 	bool CurrentStateFinishedProgressing = false;
+	/** @brief Active progress current state  */
 	bool RunningStateProgressFunction = true;
 
 private:
+	/** @brief light inventory constructs. */
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Meta = (AllowPrivateAccess="true"))
 	FRTSOBuildableInventories BuildableInventories{};
 	
@@ -98,28 +119,35 @@ private:
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Meta = (AllowPrivateAccess="true"))
 	FGameplayTag JobTag{};
 
+	/** @brief Main material, gets set from data-asset */
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Meta = (AllowPrivateAccess="true"))
 	UMaterialInstance* MainMat = nullptr;
 
+	/** @brief Ghost material, gets set from data-asset */
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Meta = (AllowPrivateAccess="true"))
 	UMaterialInstance* GhostMat = nullptr;
 
+	/** @brief What buildable tag spawned us, gets set when spawned */
 	UPROPERTY(VisibleInstanceOnly, BlueprintReadOnly, Meta = (AllowPrivateAccess="true"))
 	FGameplayTag InstigatorBuildableTag{};
 
+	/** @return true if the building a preview ghost, false if it is a placed ghost or not a ghost at all */
 	UPROPERTY(VisibleInstanceOnly, BlueprintReadOnly, Meta = (AllowPrivateAccess="true"))
 	bool bIsPreviewGhost = true; // Default to preview
 	
-
+	/** @return Static name used as selector in BuildableCollisionSettings and GhostCollisionSettings */
 	static inline FName BoxcompName = "Boxcomp"; 
+	/** @return Static name used as selector in BuildableCollisionSettings and GhostCollisionSettings */
 	static inline FName MeshName = "Mesh"; 
 };
 
+/** @brief RefreshStaleSettings<true>(), Calls RefreshStaleSettings_Ghost */
 template<>
 void inline ARTSOInteractableBuildingBase::RefreshStaleSettings<true>()
 {
 	RefreshStaleSettings_Ghost();
 };
+/** @brief RefreshStaleSettings<false>(), Calls RefreshStaleSettings_Main */
 template<>
 void inline ARTSOInteractableBuildingBase::RefreshStaleSettings<false>()
 {

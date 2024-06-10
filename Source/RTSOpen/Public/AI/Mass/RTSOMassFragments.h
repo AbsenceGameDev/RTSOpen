@@ -57,7 +57,6 @@ struct FRTSOLightInventoryFragmentHandler
 		return *this;
 	}
 
-
 private:
 	/** @brief The bound data from the owning fragment. It's a list of items keyed by their itemtag. */	
 	TMap<FGameplayTag, FPDLightItemDatum>& Inner;
@@ -90,7 +89,7 @@ struct FRTSOLightInventoryFragment : public FMassFragment
 	FRTSOLightInventoryFragmentHandler Handler;
 };
 
-/** @brief base and extended classes are unused for now, will likely remove fully. Reserved Subclass */
+/** @brief Base and extended classes are unused for now, will likely remove fully. Reserved Subclass */
 USTRUCT()
 struct RTSOPEN_API FRTSOFragment_SimpleMovement : public FPDMFragment_SimpleMovement
 {
@@ -108,7 +107,10 @@ struct RTSOPEN_API FRTSOFragment_Agent : public FPDMFragment_RTSEntityBase
 	GENERATED_BODY()
 };
 
-/** @brief */
+/**
+ * @brief Base fragment for RTS Agents. Reserved Subclass
+ * @note extended class unused for now, will likely remove
+ */
 USTRUCT()
 struct RTSOPEN_API FRTSOFragment_Animation : public FPDMFragment_EntityAnimation
 {

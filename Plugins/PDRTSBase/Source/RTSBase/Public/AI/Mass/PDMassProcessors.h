@@ -19,13 +19,13 @@ class UMassSignalSubsystem;
 class UNavigationSystemV1;
 class UMassEntitySubsystem;
 
-/** @brief CONTINUE COMMENTS HERE */
+/** @brief Declare processor functions with empty defaults */
 #define DECLARE_PROCESSOR_BODY \
 virtual void Execute(FMassEntityManager& EntityManager, FMassExecutionContext& Context) override; \
 virtual void ConfigureQueries() override; \
 virtual void Initialize(UObject& Owner) override;
 
-/** @brief */
+/** @brief Defines processor functions with empty defaults */
 #define DEFINE_PROCESSOR_EMPTY_DEFAULTS \
 virtual void Execute(FMassEntityManager& EntityManager, FMassExecutionContext& Context) override {}; \
 virtual void ConfigureQueries() override {}; \

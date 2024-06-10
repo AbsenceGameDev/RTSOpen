@@ -20,7 +20,7 @@ struct FPDValueTracker
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
 	int32 Current = INDEX_NONE;	
 
-	/** @brief */
+	/** @brief Previous Valud */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
 	int32 Old = INDEX_NONE;	
 	

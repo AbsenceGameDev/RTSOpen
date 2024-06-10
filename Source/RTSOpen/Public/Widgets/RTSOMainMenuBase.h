@@ -36,7 +36,7 @@ public:
 	/** @brief Adds Load-game widget to the stack and binds to it's load slot buttons */
 	UFUNCTION() void LoadTargetWidget();
 
-	// Fix this, not scalable at all
+	// @todo Fix this, not scalable at all
 	/** @brief Save or load based on value of 'Type' into the given slot as indicated by 'SlotIdx' */
 	UFUNCTION() void SaveOrLoadSlot(TEnumAsByte<ERTSOSaveType> Type, int32 SlotIdx);
 	UFUNCTION() void LoadSlot0() { SaveOrLoadSlot(ERTSOSaveType::LOAD, 0); }; /**< @brief Loads into slot 0, calling into SaveOrLoadSlot */

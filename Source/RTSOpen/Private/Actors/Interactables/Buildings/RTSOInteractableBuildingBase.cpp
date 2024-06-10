@@ -51,6 +51,7 @@ void ARTSOInteractableBuildingBase::BeginPlay()
 
 void ARTSOInteractableBuildingBase::BeginDestroy()
 {
+	OnBuildingDestroyed();
 	Super::BeginDestroy();
 }
 

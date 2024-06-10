@@ -29,6 +29,7 @@ class PDRTSBASE_API UPDRTSBaseUnit : public UInstancedStaticMeshComponent
 
 public:
 
+	/** @brief Registers the unit handler for the world this exists in with the RTSSubsystem */
 	virtual void InitializeComponent() override;
 	
 	/** @brief Only calls Super. Reserved for later use */
@@ -89,11 +90,6 @@ protected:
 public:
 	/** @brief Only calls Super. Reserved for later use */
 	virtual void TickComponent(float DeltaTime, ELevelTick TickType, FActorComponentTickFunction* ThisTickFunction) override;
-
-	// unused since rewriting the class completely a while back, remove next commit
-	// /** @brief */
-	// UPROPERTY(VisibleInstanceOnly, BlueprintReadOnly)
-	// AActor* TargetRef = nullptr;
 	
 	/** @brief Active jobs. Keyed by entity index, valued by job tag */
 	UPROPERTY(VisibleInstanceOnly, BlueprintReadOnly)
@@ -106,9 +102,7 @@ public:
 	/** @brief Cached ptr to the entity manager. */
 	const FMassEntityManager* EntityManager = nullptr;
 
-	/** @brief unused since rewriting the class completely a while back, remove next commit */
-	TSharedPtr<FStreamableHandle> LatestJob_AsyncLoadHandle;
-
+	/** @brief Dummy target compound to return when calling 'GetEntityJob'  */
 	static inline FPDTargetCompound Dummy{};
 };
 

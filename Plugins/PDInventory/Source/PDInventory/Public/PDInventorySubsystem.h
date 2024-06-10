@@ -19,6 +19,7 @@ class PDINVENTORY_API UPDInventorySubsystem : public UEngineSubsystem
 	GENERATED_BODY()
 public:
 
+	/** @brief Finds the developer settings 'UPDInventoryDefinitions' and resolves tables paths from there  */
 	virtual void Initialize(FSubsystemCollectionBase& Collection) override;
 	
 	/** @brief Processes the tables in 'ItemTables' and fills a number of maps for fast lookups downstream */

@@ -82,7 +82,6 @@ public:
 	 * @todo source the progression tags from here and make use of these for the savegame data */
 	UFUNCTION(BlueprintNativeEvent, BlueprintCallable)
 	void RemoveProgressionTagSet(const TSet<FGameplayTag>& TagsToRemove);
-	/** @brief */
 	virtual void RemoveProgressionTagSet_Implementation(const TSet<FGameplayTag>& TagsToRemove)
 	{
 		for (const FGameplayTag& Tag : TagsToRemove)

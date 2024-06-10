@@ -21,21 +21,21 @@ class PDRTSBASE_API IPDRTSBuildableGhostInterface
 	GENERATED_BODY()
 
 public:
-	/** @brief */
+	/** @brief Call when we want to spawn a buildable as a ghost */
 	UFUNCTION(BlueprintNativeEvent, CallInEditor, Category = "Actor|Interface|Ghost")
 	void OnSpawnedAsGhost(const FGameplayTag& BuildableTag, bool bIsPreviewGhost, bool bInRequiresWorkersToBuild);
 	virtual void OnSpawnedAsGhost_Implementation(const FGameplayTag& BuildableTag, bool bIsPreviewGhost, bool bInRequiresWorkersToBuild)
 	{
 	}
 
-	/** @brief */
+	/** @brief Call when we want to spawn a buildable as a completed building */
 	UFUNCTION(BlueprintNativeEvent, CallInEditor, Category = "Actor|Interface|Ghost")
 	void OnSpawnedAsMain(const FGameplayTag& BuildableTag);
 	virtual void OnSpawnedAsMain_Implementation(const FGameplayTag& BuildableTag)
 	{
 	}
 
-	/** @brief */
+	/** @brief Call when we want to transition from the current ghost state to a completed building */
 	UFUNCTION(BlueprintNativeEvent, CallInEditor, Category = "Actor|Interface|Ghost")
 	void TransitionFromGhostToMain();
 	virtual void TransitionFromGhostToMain_Implementation()
@@ -43,7 +43,7 @@ public:
 		
 	}
 
-	/** @brief */
+	/** @brief Call when we want to progress a ghost stage */
 	UFUNCTION(BlueprintNativeEvent, CallInEditor, Category = "Actor|Interface|Ghost")
 	void ProgressGhostStage(const bool bChainAll);
 	virtual void ProgressGhostStage_Implementation(const bool bChainAll)
@@ -67,7 +67,7 @@ public:
 		CurrentTransitionState.CurrentStageIdx = NewStage;
 	}
 
-	/** @brief */
+	/** @brief Call when we want to attempt to manually finalize the current ghost stage */
 	UFUNCTION(BlueprintNativeEvent, CallInEditor, Category = "Actor|Interface|Ghost")
 	bool AttemptFinalizeGhost();
 	virtual bool AttemptFinalizeGhost_Implementation()
@@ -77,12 +77,12 @@ public:
 	
 	
 public:
-	/** no need to serialize, we'll not save ghosts into save-file yet, when we do revisit this and move somewhere more appropriate */
+	/** @brief no need to serialize, we'll not save ghosts into save-file yet, when we do revisit this and move somewhere more appropriate */
 	bool bIsGhost_noSerialize = false;
 
 	/** @brief The current state of the ghost
 	 * @note Will serialize manually for now */
-	FPDRTSGhostTransitionState CurrentTransitionState;
+	FPDRTSGhostBuildState CurrentTransitionState;
 };
 
 

@@ -23,7 +23,7 @@ class UPDBuildWidgetBase;
 // Fwd decl.
 class URTSOInputStackSubsystem;
 
-/** @brief */
+/** @brief 'Marquee selection event' selectors */
 UENUM()
 enum class EMarqueeSelectionEvent : uint8
 {
@@ -185,6 +185,7 @@ class RTSOPEN_API ARTSOController
 	/* PDRTS Builder Interface - Start */
 	/** @brief Refreshes our pointer to our selected build context or selected buildable data based on the enum, and the tag finds the actual find the entry therein */
 	virtual void NewAction_Implementation(ERTSBuildMenuModules ActionMode, FGameplayTag ActionTag) override;
+	/** @brief Pipes through our persistent ActorID to the build system */
 	virtual int32 GetBuilderID_Implementation() override { return GetActorID(); };
 	/* PDRTS Builder Interface - End */
 
@@ -216,20 +217,6 @@ class RTSOPEN_API ARTSOController
 	 * @note Called when a new selection group is created or deselected. */
 	void OnSelectionChange(bool bClearSelection);
 
-	// UFUNCTION(BlueprintCallable)
-	// void SpawnWorkerBuildMenu(const FPDBuildWorker& BuildWorker) const;
-	// UFUNCTION(BlueprintCallable)
-	// void BeginCloseWorkerBuildMenu();
-	// UFUNCTION(BlueprintCallable)
-	// void EndCloseWorkerBuildMenu();
-	//
-	// UFUNCTION(BlueprintCallable)
-	// void OpenWorkerContextMenu() const;	
-	// UFUNCTION(BlueprintCallable)
-	// void BeginCloseWorkerContext();
-	// UFUNCTION(BlueprintCallable)
-	// void EndCloseWorkerContext();	
-	/* RTSO Marquee selection - End */
 protected:
 
 	/** @brief Checks the given entity, compares with the relevant subsystem to get it's build contexts,
@@ -360,6 +347,7 @@ protected:
 	 */
 	TMap<int32, TMap<int32, FMassEntityHandle>> MarqueeSelectedHandles{};
 
+	/** @brief Empty key array, returned as dummy when we can't find a selection group */
 	static inline const TArray<int32> EmptyKeys = {};
 };
 
