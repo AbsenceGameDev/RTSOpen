@@ -120,6 +120,190 @@ struct PDRTSBASE_API FPDWorkUnitDatum : public FTableRowBase
 };
 
 //
+// Handles buckets of a given type with tick intervals, small time complexity, large spatial complexity
+template<typename TBucketType>
+class TBucketTickHandler
+{
+	// Whatever class TBucketType is, it will have to have these members to be able to compile, 
+	// 	double UserInterval = 50.0; // Example: 50 second interval per tick
+	// 	void Execute(...); 
+	// 	int32 TruncatedInverseTickInterval = INDEX_NONE; // Gets calculated in RegisterNewChunkForTicks
+	
+	/** @brief Max Limit of a tick interval 
+	 * @note 100 seconds is excessive but doesn't matter, just something to clamp our timestamp against to offset the tick group properly
+	 * @note 100.0 second ping limit puts our max index at 10 000 (Limit * IntervalScalar),
+	 * @note meaning we have at max 10k ping groups every 100 seconds, we get a resolution of 1 ping group every hundreth of second */
+	static constexpr double HandlerTimeStepLimit = 100.0;
+	static constexpr int32 IntervalScalar = (1.0 / (1.e-2f));
+	static constexpr int32 MaxBucketIndex = HandlerTimeStepLimit * IntervalScalar;
+
+	TArray<TArray<TBucketType>> ChunkTicks;
+	TArray<TBucketType> TickEveryFrame; 
+	
+	/** @brief List of interval groups 
+	 * @note  tops out at 10k indices */
+	TArray<int32> InverseIntervals;
+
+	/** @brief adds the bucket data ptr to all buckets*/
+	void AddToAllTickgroups(TBucketType* BucketData)
+	{
+		TickEveryFrame.AddUnique(BucketData);
+	}
+
+	void RemoveFromAllTickgroups(TBucketType* BucketData)
+	{
+		TickEveryFrame.Remove(BucketData);
+	}	
+
+	void RegisterNewBucketForTicks(TBucketType* BucketData, double StartTime)
+	{	
+		HandleBucketFromTicks<false>(BucketData, StartTime);
+	}
+
+	void DeregisterBucketFromTicks(auto* BucketData)
+	{
+		HandleBucketFromTicks<true>(BucketData, 0.0);
+	}
+
+	template<bool bRemove>
+	void HandleBucketFromTicks(auto* BucketData, float StartTimeIfRegistering)
+	{
+		const double ClampedInterval = FMath::Min(BucketData->UserInterval, HandlerTimeStepLimit);
+
+		// If ClampedInterval is zero, put it in ALL tickgroups
+		if (ClampedInterval <= (1.e-4f))
+		{
+			if constexpr (bRemove) { RemoveFromAllTickgroups(BucketData); }
+			else { AddToAllTickgroups(BucketData); }
+			
+			return;
+		}
+
+		// Find offset from HandlerTimeStepLimit with StartTime
+		const double WholeAndFraction = StartTimeIfRegistering / HandlerTimeStepLimit;
+		const double OnlyFraction = bRemove ?  BucketData->StoredFraction : (WholeAndFraction) - static_cast<int32>(WholeAndFraction);
+
+		// How many times do we need to apply this chunk, how many buckets does it apply to
+		const int32 TotalSteps = HandlerTimeStepLimit / ClampedInterval;
+		for (int32 Step = 0; Step <= TotalSteps; Step++)
+		{
+			// the fraction is our offset
+			const int32 IntervalOffset = (OnlyFraction + (OnlyFraction * Step)) * IntervalScalar;
+
+			// 
+			// Convert to inverse integer, to avoid floating point comparisons when Contains() runs and to avoid removing our ability to match against the timestep properly
+			int32 TruncatedInverseInterval = (ClampedInterval * IntervalScalar) + IntervalOffset;
+
+
+			if constexpr (bRemove)
+			{
+				// 
+				// Remove from bucket if found
+				// Sort into buckets, first find where they are on the timeline by inversing them with epsilon
+				if (InverseIntervals.Contains(TruncatedInverseInterval) == false) { return; }
+
+				// Found exising bucket
+				const int32 TickIdx = InverseIntervals.Find(BucketData->TruncatedInverseTickInterval);
+				ChunkTicks[TickIdx].Remove(BucketData);
+				BucketData->TruncatedInverseTickInterval = INDEX_NONE;
+				
+				return;
+			}
+			else
+			{
+				// 
+				// Sort into buckets, first find where they are on the timeline by inversing them with epsilon
+				if (InverseIntervals.Contains(TruncatedInverseInterval))
+				{
+					// Found exising bucket
+					const int32 TickIdx = InverseIntervals.Find(TruncatedInverseInterval);
+					ChunkTicks[TickIdx].Emplace(BucketData);
+					return;
+				}
+				
+				// Create new bucket
+				TArray<TBucketType*> NewBucket = {BucketData};
+				const int32 NewBucketIdx = ChunkTicks.Emplace(NewBucket);
+				InverseIntervals.EmplaceAt(NewBucketIdx, TruncatedInverseInterval);
+			}
+		}
+
+		if (bRemove == false) { BucketData->StoredFraction = OnlyFraction; }
+	}
+	
+	/** @brief ticks our buckets
+	 * O(1) == If all element are in a single bucket, we get this time complexity
+	 * O(n / BucketCount) == If all buckets are the same size of elements, we get this time complexity
+	 * O(n) == If all buckets are only 1 element size, we get this time complexity */
+	void TickBuckets(float DeltaTime)
+	{
+		// Find offset from HandlerTimeStepLimit with StartTime
+		const double WholeAndFraction = DeltaTime / HandlerTimeStepLimit;
+		const double OnlyFraction = WholeAndFraction - static_cast<int32>(WholeAndFraction);
+
+		// the fraction is our offset
+		const int32 IntervalEntry = OnlyFraction * IntervalScalar; // O(1)
+
+		if (InverseIntervals.Contains(IntervalEntry)) 
+		{
+			// Found exising bucket
+			const int32 TickIdx = InverseIntervals.Find(IntervalEntry);
+			for(auto* ChunkData : ChunkTicks[TickIdx])
+			{
+				ChunkData->Execute();
+			}
+		}
+
+		// Special bucket for things that tick every frame
+		for(auto* ChunkData : TickEveryFrame)
+		{
+			ChunkData->Execute();
+		}
+	}
+};
+
+DECLARE_DELEGATE(FPDTickBucket_SimpleDelegate);
+DECLARE_DYNAMIC_DELEGATE(FPDTickBucket_DynamicDelegate);
+DECLARE_MULTICAST_DELEGATE(FPDTickBucket_MulticastDelegate);
+DECLARE_DYNAMIC_MULTICAST_DELEGATE(FPDTickBucket_DynMulticastDelegate);
+
+class DelegatedBucketTickHandlerBase
+{
+public:
+	virtual ~DelegatedBucketTickHandlerBase() = default;
+
+private:
+	double UserInterval = 50.0; // Example: 50 second interval per tick
+	virtual void Execute(); // { Delegate.Execute(); }; 
+	double StoredFraction = 0.0; // Gets calculated in RegisterNewChunkForTicks
+};
+class Simple_BucketTickHandlerBase final : public DelegatedBucketTickHandlerBase
+{
+	FPDTickBucket_SimpleDelegate Delegate;
+	virtual void Execute() override { Delegate.Execute(); } 
+};
+class Dynamic_BucketTickHandlerBase final : public DelegatedBucketTickHandlerBase
+{
+	FPDTickBucket_DynamicDelegate Delegate;
+	virtual void Execute() override { Delegate.Execute(); } 
+};
+class Multicast_BucketTickHandlerBase final : public DelegatedBucketTickHandlerBase
+{
+	FPDTickBucket_MulticastDelegate Delegate;
+	virtual void Execute() override { Delegate.Broadcast(); } 
+};
+class DynMulticast_BucketTickHandlerBase final : public DelegatedBucketTickHandlerBase
+{
+	FPDTickBucket_DynMulticastDelegate Delegate;
+	virtual void Execute() override { Delegate.Broadcast(); } 
+};
+
+using SimpleDlgt_BucketTickHandler       = TBucketTickHandler<Simple_BucketTickHandlerBase>;
+using DynDlgt_BucketTickHandler          = TBucketTickHandler<Dynamic_BucketTickHandlerBase>;
+using MulticastDlgt_BucketTickHandler    = TBucketTickHandler<Multicast_BucketTickHandlerBase>;
+using DynMulticastDlgt_BucketTickHandler = TBucketTickHandler<DynMulticast_BucketTickHandlerBase>;
+
+//
 // Legal according to ISO due to explicit template instantiation bypassing access rules: https://eel.is/c++draft/temp.friend
 
 // Creates a static data member that will store a of type Tag::TType in which to store the address of a private member.
