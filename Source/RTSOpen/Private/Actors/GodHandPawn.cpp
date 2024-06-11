@@ -50,6 +50,9 @@
 #include "NavigationSystem.h"
 
 /* Engine - Kismet */
+#include "PDBuildCommon.h"
+#include "PDBuilderSubsystem.h"
+#include "PDRTSSharedHashGrid.h"
 #include "Interfaces/PDRTSBuildableGhostInterface.h"
 #include "Kismet/GameplayStatics.h"
 #include "Kismet/KismetMathLibrary.h"
@@ -113,10 +116,10 @@ void AGodHandPawn::TrackUnitMovement()
 void AGodHandPawn::HoverTick(const float DeltaTime)
 {
 	// Update Octree query position for 'QUERY_GROUP_1'
-	UPDRTSBaseSubsystem* RTSSubSystem = GEngine->GetEngineSubsystem<UPDRTSBaseSubsystem>();
+	UPDRTSBaseSubsystem* RTSSubSystem = UPDRTSBaseSubsystem::Get();
 	const FVector& QueryLocation = CursorMesh->GetComponentLocation();
-	RTSSubSystem->OctreeUserQuery.UpdateQueryPosition(UPDRTSBaseSubsystem::EPDQueryGroups::QUERY_GROUP_MINIMAP, QueryLocation);
-	RTSSubSystem->OctreeUserQuery.UpdateQueryPosition(UPDRTSBaseSubsystem::EPDQueryGroups::QUERY_GROUP_HOVERSELECTION, QueryLocation);
+	RTSSubSystem->OctreeUserQuery.UpdateQueryPosition(EPDQueryGroups::QUERY_GROUP_MINIMAP, QueryLocation);
+	RTSSubSystem->OctreeUserQuery.UpdateQueryPosition(EPDQueryGroups::QUERY_GROUP_HOVERSELECTION, QueryLocation);
 	
 	AActor* ClosestActor = FindClosestInteractableActor();
 	// Overwrite HoveredActor if they are not the same
@@ -192,7 +195,7 @@ void AGodHandPawn::BuildableGhostTick(float DeltaTime)
 
 	// Let UPDHashGridSubsystem calculate stepped position, collision is our source of truth for our location
 	const FVector& TrueLocation = Collision->GetComponentLocation();
-	const UPDHashGridSubsystem* HashGridSubsystem = GEngine->GetEngineSubsystem<UPDHashGridSubsystem>();
+	const UPDHashGridSubsystem* HashGridSubsystem = UPDHashGridSubsystem::Get();
 	const FVector SteppedLocation = HashGridSubsystem->GetCellVector(TrueLocation);
 	
 	if (CurrentGhost == nullptr || CurrentGhost->GetClass() != CurrentBuildableData->ActorToSpawn)
@@ -433,10 +436,10 @@ void AGodHandPawn::SpawnFromGhost(bool bBuildable, bool bRequiresWorkersToBuild)
 	AActor* SpawnedBuildable = GetWorld()->SpawnActorDeferred<AActor>(CurrentBuildableData->ActorToSpawn, InitialSpawnTransform, this);
 	SpawnedBuildable->SetOwner(this);
 	SpawnedBuildings.Emplace_GetRef(SpawnedBuildable);
-
-	UPDRTSBaseSubsystem* RTSSubsystem = GEngine->GetEngineSubsystem<UPDRTSBaseSubsystem>();
-	ensure(RTSSubsystem != nullptr);
-	RTSSubsystem->AddBuildActorArray( IPDRTSBuilderInterface::Execute_GetBuilderID(this), &SpawnedBuildings);
+	
+	UPDBuilderSubsystem* BuilderSubsystem = UPDBuilderSubsystem::Get();
+	ensure(BuilderSubsystem != nullptr);
+	BuilderSubsystem->AddBuildActorArray( IPDRTSBuilderInterface::Execute_GetBuilderID(this), &SpawnedBuildings);
 	
 	AsyncTask(ENamedThreads::GameThread,
 	          [&,  InBuildableTag = CurrentBuildableTag , bInBuildable = bBuildable, bInRequiresWorkersToBuild = bRequiresWorkersToBuild ,InSpawnTransform = InitialSpawnTransform, InGhost = CurrentGhost, InSpawnedBuildable = SpawnedBuildable]()
@@ -684,13 +687,13 @@ void AGodHandPawn::ActionChordedBase_Implementation(const FInputActionValue& Val
 
 void AGodHandPawn::OnItemUpdate(const FPDItemNetDatum& BuildableResourceDatum)
 {
-	UPDRTSBaseSubsystem* RTSSubsystem = GEngine->GetEngineSubsystem<UPDRTSBaseSubsystem>();
-	ensure(RTSSubsystem != nullptr);
+	UPDBuilderSubsystem* BuilderSubsystem = UPDBuilderSubsystem::Get();
+	ensure(BuilderSubsystem != nullptr);
 
 	// FILO
 	AActor* TryLast = nullptr;
-	TDeque<AActor*>& QueuedBuildablesToBuy = RTSSubsystem->BuildQueues.FindOrAdd(IPDRTSBuilderInterface::GetBuilderID()).ActorInWorld;
-	for (;QueuedBuildablesToBuy.Num() > 0;)
+	TDeque<AActor*>& QueuedBuildablesToBuy = BuilderSubsystem->BuildQueues.FindOrAdd(IPDRTSBuilderInterface::GetBuilderID()).ActorInWorld;
+	while (QueuedBuildablesToBuy.Num() > 0)
 	{
 		TryLast = QueuedBuildablesToBuy.Last();
 
@@ -776,14 +779,14 @@ const FTransform& AGodHandPawn::GetEntityTransform(const FMassEntityHandle& Hand
 
 FMassEntityHandle AGodHandPawn::FindClosestMassEntity() const
 {
-	const UPDRTSBaseSubsystem* RTSBaseSubsystem = GEngine->GetEngineSubsystem<UPDRTSBaseSubsystem>();
+	const UPDRTSBaseSubsystem* RTSBaseSubsystem = UPDRTSBaseSubsystem::Get();
 	const TMap<int32, TArray<FLEntityCompound>>* CurrentBuffer = &RTSBaseSubsystem->OctreeUserQuery.CurrentBuffer;
-	if (CurrentBuffer == nullptr || CurrentBuffer->Contains(UPDRTSBaseSubsystem::EPDQueryGroups::QUERY_GROUP_HOVERSELECTION) == false)
+	if (CurrentBuffer == nullptr || CurrentBuffer->Contains(EPDQueryGroups::QUERY_GROUP_HOVERSELECTION) == false)
 	{
 		return FMassEntityHandle{0,0};
 	}
 	
-	const TArray<FLEntityCompound>* QueryBufferData = CurrentBuffer->Find(UPDRTSBaseSubsystem::EPDQueryGroups::QUERY_GROUP_HOVERSELECTION);
+	const TArray<FLEntityCompound>* QueryBufferData = CurrentBuffer->Find(EPDQueryGroups::QUERY_GROUP_HOVERSELECTION);
 	if (QueryBufferData == nullptr || QueryBufferData->IsEmpty())
 	{
 		return FMassEntityHandle{0,0};
@@ -843,26 +846,32 @@ void AGodHandPawn::BeginPlay()
 {
 	Super::BeginPlay();
 
-	UPDRTSBaseSubsystem* RTSSubSystem = GEngine->GetEngineSubsystem<UPDRTSBaseSubsystem>();
+	UPDRTSBaseSubsystem* RTSSubSystem = UPDRTSBaseSubsystem::Get();
+	UPDBuilderSubsystem* BuilderSubsystem = UPDBuilderSubsystem::Get();
+	ensure(RTSSubSystem != nullptr);
+	ensure(BuilderSubsystem != nullptr);
+	
 	const FVector& QueryLocation = CursorMesh->GetComponentLocation();
 
 	const UE::Math::TVector<double> MinimapQueryExtent{ 2000.0, 2000.0, 500.0};
 
 	const double CollisionRadius = Collision->GetScaledSphereRadius(); 
 	const UE::Math::TVector<double> HoverSelectionQueryExtent{ CollisionRadius};
-	const UPDRTSBaseSubsystem::FPDOctreeUserQuery::QBox MinimapQueryBox        = UPDRTSBaseSubsystem::FPDOctreeUserQuery::MakeUserQuery(QueryLocation, MinimapQueryExtent);
-	const UPDRTSBaseSubsystem::FPDOctreeUserQuery::QBox HoverSelectionQueryBox = UPDRTSBaseSubsystem::FPDOctreeUserQuery::MakeUserQuery(QueryLocation, HoverSelectionQueryExtent);
-	const UPDRTSBaseSubsystem::FPDOctreeUserQuery::QSphere PingSystemQuerySphere  = UPDRTSBaseSubsystem::FPDOctreeUserQuery::MakeUserQuery(QueryLocation, 10000.0); // need to update whn calling, start att 100m however
-	RTSSubSystem->OctreeUserQuery.CreateNewQueryEntry(UPDRTSBaseSubsystem::EPDQueryGroups::QUERY_GROUP_MINIMAP, MinimapQueryBox);
-	RTSSubSystem->OctreeUserQuery.CreateNewQueryEntry(UPDRTSBaseSubsystem::EPDQueryGroups::QUERY_GROUP_HOVERSELECTION, HoverSelectionQueryBox);
-	RTSSubSystem->OctreeBuildSystemEntityQuery.CreateNewQueryEntry(UPDRTSBaseSubsystem::EPDQueryGroups::QUERY_GROUP_BUILDABLE_ACTORS, PingSystemQuerySphere);
+	const FPDOctreeUserQuery::QBox MinimapQueryBox        = FPDOctreeUserQuery::MakeUserQuery(QueryLocation, MinimapQueryExtent);
+	const FPDOctreeUserQuery::QBox HoverSelectionQueryBox = FPDOctreeUserQuery::MakeUserQuery(QueryLocation, HoverSelectionQueryExtent);
+	const FPDOctreeUserQuery::QSphere PingSystemQuerySphere  = FPDOctreeUserQuery::MakeUserQuery(QueryLocation, 10000.0); // need to update whn calling, start att 100m however
+	RTSSubSystem->OctreeUserQuery.CreateNewQueryEntry(EPDQueryGroups::QUERY_GROUP_MINIMAP, MinimapQueryBox);
+	RTSSubSystem->OctreeUserQuery.CreateNewQueryEntry(EPDQueryGroups::QUERY_GROUP_HOVERSELECTION, HoverSelectionQueryBox);
 	RTSSubSystem->OctreeUserQuery.CallingUser = this;
-	RTSSubSystem->OctreeBuildSystemEntityQuery.CallingUser = this;
+	BuilderSubsystem->OctreeBuildSystemEntityQuery.CreateNewQueryEntry(EPDQueryGroups::QUERY_GROUP_BUILDABLE_ACTORS, PingSystemQuerySphere);
+	BuilderSubsystem->OctreeBuildSystemEntityQuery.CallingUser = this;
 	
 	Collision->OnComponentBeginOverlap.AddDynamic(this, &AGodHandPawn::OnCollisionBeginOverlap);
 	Collision->OnComponentEndOverlap.AddDynamic(this, &AGodHandPawn::OnCollisionEndOverlap);
-	GEngine->GetEngineSubsystem<UPDRTSBaseSubsystem>()->WorldInit(GetWorld());
-	EntityManager = GEngine->GetEngineSubsystem<UPDRTSBaseSubsystem>()->EntityManager;
+
+	UPDRTSBaseSubsystem* RTSSubsystem = UPDRTSBaseSubsystem::Get();
+	RTSSubsystem->WorldInit(GetWorld());
+	EntityManager = RTSSubsystem->EntityManager;
 
 	RefreshSettingsInstance();
 
@@ -901,15 +910,17 @@ void AGodHandPawn::NewAction_Implementation(ERTSBuildMenuModules ActionMode, FGa
 {
 	IPDRTSBuilderInterface::NewAction_Implementation(ActionMode, ActionTag);
 
-	UPDRTSBaseSubsystem* RTSSubSystem = GEngine->GetEngineSubsystem<UPDRTSBaseSubsystem>();
+	UPDBuilderSubsystem* BuilderSubsystem = UPDBuilderSubsystem::Get();
+	ensure(BuilderSubsystem != nullptr);
+	
 	switch (ActionMode)
 	{
 	case ERTSBuildMenuModules::SelectBuildable:
-		CurrentBuildableData = RTSSubSystem->GetBuildableData(ActionTag); // If null clear current
+		CurrentBuildableData = BuilderSubsystem->GetBuildableData(ActionTag); // If null clear current
 		CurrentBuildableTag = ActionTag; 
 		break;
 	case ERTSBuildMenuModules::SelectContext:
-		CurrentBuildContext = RTSSubSystem->GetBuildContextEntry(ActionTag); // If null clear current
+		CurrentBuildContext = BuilderSubsystem->GetBuildContextEntry(ActionTag); // If null clear current
 		CurrentBuildContextTag = ActionTag; 
 		break;
 	case ERTSBuildMenuModules::DeselectBuildable:
@@ -935,7 +946,7 @@ void AGodHandPawn::InitializeISMAgent()
 	}
 	
 	// @todo debug why calling this invalidates the whole octree
-	// GEngine->GetEngineSubsystem<UPDRTSBaseSubsystem>()->SetupOctreeWithNewWorld(GetWorld());
+	// UPDRTSBaseSubsystem::Get()->SetupOctreeWithNewWorld(GetWorld());
 	
 	InstanceState.ISMAgentComponent = Cast<UPDRTSBaseUnit>(UPDRTSBaseSubsystem::GetMassISMs(GetWorld())[0]);
 	check(InstanceState.ISMAgentComponent != nullptr)

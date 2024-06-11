@@ -1,32 +1,31 @@
 ﻿/* @author: Ario Amin @ Permafrost Development. @copyright: Full BSL(1.1) License included at bottom of the file  */
-#include "Actors/RTSOController.h"
-
-// PDRTS
-#include "PDRTSBaseSubsystem.h"
-#include "PDRTSCommon.h"
-
-// PDRTS -- MassAI
-#include "AI/Mass/PDMassFragments.h"
-#include "AI/Mass/PDMassProcessors.h"
 
 // RTSO
+#include "Actors/RTSOController.h"
 #include "Actors/GodHandPawn.h"
 #include "Core/RTSOInputStackSubsystem.h"
 #include "Actors/Interactables/ConversationHandlers/RTSOInteractableConversationActor.h"
 #include "RTSOSharedUI.h"
+
+// PDRTS
+#include "PDRTSBaseSubsystem.h"
+#include "PDRTSCommon.h"
+#include "PDBuilderSubsystem.h"
+#include "PDRTSSharedUI.h"
+
+// PDRTS -- MassAI
+#include "AI/Mass/PDMassFragments.h"
+#include "AI/Mass/PDMassProcessors.h"
 
 // EI
 #include "EnhancedInputComponent.h"
 #include "EnhancedInputSubsystems.h"
 
 #include "NativeGameplayTags.h"
-#include "PDRTSSharedUI.h"
-#include "Animation/WidgetAnimation.h"
 #include "Chaos/DebugDrawQueue.h"
 #include "Components/TileView.h"
 #include "Kismet/KismetMathLibrary.h"
 #include "Misc/CString.h"
-
 
 ARTSOController::ARTSOController(const FObjectInitializer& ObjectInitializer)
 	: Super(ObjectInitializer), bIsDrawingMarquee(0)
@@ -56,8 +55,9 @@ void ARTSOController::BeginPlay()
 	ActivateMappingContext(TAG_CTRL_Ctxt_WorkerUnitMode);
 	
 	// add id-actor mapping	
-	TMap<AActor*, int32>& ActorToIDMap =  GEngine->GetEngineSubsystem<UPDRTSBaseSubsystem>()->SharedOwnerIDBackMappings;
-	TMap<int32, AActor*>& IDToActorMap =  GEngine->GetEngineSubsystem<UPDRTSBaseSubsystem>()->SharedOwnerIDMappings;
+	UPDRTSBaseSubsystem* RTSSubsystem = UPDRTSBaseSubsystem::Get();
+	TMap<AActor*, int32>& ActorToIDMap =  RTSSubsystem->SharedOwnerIDBackMappings;
+	TMap<int32, AActor*>& IDToActorMap =  RTSSubsystem->SharedOwnerIDMappings;
 
 	if (ActorToIDMap.Contains(this) && ActorToIDMap.FindRef(this) != INVALID_ID)
 	{
@@ -94,8 +94,9 @@ void ARTSOController::BeginPlay()
 
 void ARTSOController::EndPlay(const EEndPlayReason::Type EndPlayReason)
 {
-	TMap<AActor*, int32>& ActorToIDMap =  GEngine->GetEngineSubsystem<UPDRTSBaseSubsystem>()->SharedOwnerIDBackMappings;
-	TMap<int32, AActor*>& IDToActorMap =  GEngine->GetEngineSubsystem<UPDRTSBaseSubsystem>()->SharedOwnerIDMappings;
+	UPDRTSBaseSubsystem* RTSSubsystem = UPDRTSBaseSubsystem::Get();
+	TMap<AActor*, int32>& ActorToIDMap =  RTSSubsystem->SharedOwnerIDBackMappings;
+	TMap<int32, AActor*>& IDToActorMap =  RTSSubsystem->SharedOwnerIDMappings;
 
 	// Remove id-actor mapping
 	if (ActorToIDMap.Contains(this))
@@ -780,7 +781,7 @@ void ARTSOController::AdjustMarqueeHitResultsToMinimumHeight(FHitResult& StartHi
 void ARTSOController::GetEntitiesOrActorsInMarqueeSelection()
 {
 	// Viewport halfsize
-	PD::Mass::Entity::FPDEntityOctree& WorldOctree =  GEngine->GetEngineSubsystem<UPDRTSBaseSubsystem>()->WorldEntityOctree;
+	PD::Mass::Entity::Octree& WorldOctree =  UPDRTSBaseSubsystem::Get()->WorldEntityOctree;
 
 	FCollisionQueryParams Params;
 	Params.MobilityType = EQueryMobilityType::Static;
@@ -884,7 +885,7 @@ void ARTSOController::OnSelectionChange(bool bClearSelection)
 	}
 
 	const TMap<int32, FMassEntityHandle>* CurrentIDGroup = GetImmutableMarqueeSelectionMap().Find(CurrentSelectionID);
-	// const TArray<TObjectPtr<UInstancedStaticMeshComponent>>& ISMs = GEngine->GetEngineSubsystem<UPDRTSBaseSubsystem>()->GetMassISMs(PawnAsGodhand->GetWorld());
+	// const TArray<TObjectPtr<UInstancedStaticMeshComponent>>& ISMs = UPDRTSBaseSubsystem::Get()->GetMassISMs(PawnAsGodhand->GetWorld());
 	{
 		TArray<FMassEntityHandle> MarqueeSelectionArray;
 		CurrentIDGroup->GenerateValueArray(MarqueeSelectionArray);
@@ -911,8 +912,9 @@ void ARTSOController::OnSelectionChange(bool bClearSelection)
 void ARTSOController::UpdateBuildMenuContexts(const FMassEntityHandle& CurrentEntity) const
 {
 	check(BuildMenuWidget) // Never kill the build menu while the controller is alive
+	const UPDRTSBaseSubsystem* RTSSubSystem = UPDRTSBaseSubsystem::Get();
+	const UPDBuilderSubsystem* BuilderSubsystem = UPDBuilderSubsystem::Get();
 	
-	const UPDRTSBaseSubsystem* RTSSubSystem = GEngine->GetEngineSubsystem<UPDRTSBaseSubsystem>();
 	const FMassEntityManager* EntityManager = RTSSubSystem->EntityManager;
 	if (EntityManager == nullptr)
 	{
@@ -928,7 +930,7 @@ void ARTSOController::UpdateBuildMenuContexts(const FMassEntityHandle& CurrentEn
 		return;
 	}
 	
-	if (RTSSubSystem->GrantedBuildContexts_WorkerTag.Contains(RTSBaseFragment->EntityType) == false)
+	if (BuilderSubsystem->GrantedBuildContexts_WorkerTag.Contains(RTSBaseFragment->EntityType) == false)
 	{
 		UE_LOG(PDLog_RTSO, Warning, TEXT("ARTSOController::UpdateBuildMenuContexts -- '%s' was not found in UPDRTSBaseSubsystem::GrantedBuildContexts_WorkerTag"), *RTSBaseFragment->EntityType.GetTagName().ToString());
 		BuildMenuWidget->BeginCloseWorkerBuildMenu();
@@ -937,7 +939,7 @@ void ARTSOController::UpdateBuildMenuContexts(const FMassEntityHandle& CurrentEn
 	
 	if (BuildMenuWidget->bIsMenuVisible) { return; }
 	
-	const FPDBuildWorker* BuildWorker = RTSSubSystem->GrantedBuildContexts_WorkerTag.FindRef(RTSBaseFragment->EntityType);
+	const FPDBuildWorker* BuildWorker = BuilderSubsystem->GrantedBuildContexts_WorkerTag.FindRef(RTSBaseFragment->EntityType);
 	check(BuildWorker != nullptr)
 
 	BuildMenuWidget->SpawnWorkerBuildMenu(*BuildWorker);

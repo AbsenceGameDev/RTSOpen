@@ -1,12 +1,169 @@
 ﻿/* @author: Ario Amin @ Permafrost Development. @copyright: Full BSL(1.1) License included at bottom of the file  */
 
+#pragma once
 
-#include "Interfaces/PDPersistenceInterface.h"
+#include "CoreMinimal.h"
+#include "PDRTSSharedHashGrid.generated.h"
 
-UPDPersistentIDSubsystem* UPDPersistentIDSubsystem::Get()
+/** @brief Dynamic hash-grid developer settings, default to 200.0 cell size, modify in .ini config or in editor project settings */
+UCLASS(Config = "Game", DefaultConfig)
+class PDRTSBASE_API UPDHashGridDeveloperSettings : public UDeveloperSettings
 {
-	return GEngine->GetEngineSubsystem<UPDPersistentIDSubsystem>();
-}
+	GENERATED_BODY()
+	
+public:
+	UPDHashGridDeveloperSettings(){}
+	
+	/** @brief Default grid data */
+	UPROPERTY(Config, EditAnywhere, Category = "HashGrid")
+	double UniformCellSize = 200.0f; 
+	
+};
+
+/** @brief Intvector that we are using a floored and then truncated gridcell
+ *  @note has some functions to check if a given cell is a neighbour in 2d, and/or in 3d, to convert to a floatvector alongside some basic operators overloads */
+USTRUCT()
+struct PDRTSBASE_API FPDGridCell : public FIntVector 
+{
+	GENERATED_BODY()
+	
+	/** @brief Converts cell to float-vector  */
+	inline FVector ToFloatVector(const double ScalingFactor = 1.0) const
+	{
+		FVector RetVector;
+		RetVector.X = this->X;
+		RetVector.Y = this->Y;
+		RetVector.Z = this->Z;
+		return RetVector * ScalingFactor;
+	}		
+
+	/** @brief  Compares if cell is neighbour in X and Y */
+	bool IsNeighbour2D(const FPDGridCell& OtherCell) const
+	{
+		const FPDGridCell Delta = OtherCell - *this; 
+		return Delta.X >= -1 && Delta.X <= 1 && Delta.Y >= -1 && Delta.Y <= 1;
+	}
+	
+	/** @brief  Compares if cell is neighbour in X, Y and Z */
+	bool IsNeighbour3D(const FPDGridCell& OtherCell) const
+	{
+		const FPDGridCell Delta = OtherCell - *this; 
+		return IsNeighbour2D(OtherCell) && Delta.Z >= -1 && Delta.Z <= 1 ;
+	}
+
+	/** @brief this->XYZ must be equal to Other.XYZ */
+	bool operator==(const FPDGridCell & OtherCell) const
+	{
+		return this->X == OtherCell.X
+		    && this->Y == OtherCell.Y
+		    && this->Z == OtherCell.Z;
+	}
+	FPDGridCell& operator+=(const FPDGridCell& OtherCell) 
+	{
+		*this = *this + OtherCell;
+		return *this;
+	}
+	FPDGridCell& operator-=(const FPDGridCell & OtherCell) 
+	{
+		*this = *this - OtherCell;
+		return *this;
+	}
+	FPDGridCell operator+(const FPDGridCell & OtherCell) const
+	{
+		FPDGridCell ThisCopy = *this;
+		ThisCopy.X += OtherCell.X;
+		ThisCopy.Y += OtherCell.Y;
+		ThisCopy.Z += OtherCell.Z;
+		return ThisCopy;
+	}
+	FPDGridCell operator-(const FPDGridCell& OtherCell) const
+	{
+		FPDGridCell ThisCopy = *this;
+		ThisCopy.X -= OtherCell.X;
+		ThisCopy.Y -= OtherCell.Y;
+		ThisCopy.Z -= OtherCell.Z;
+		return ThisCopy;
+	}
+};
+
+/** @brief Dynamic hash-grid sub-system, Manages grid functionality.
+ * @note Loads settings from UPDHashGridDeveloperSettings, and keeps it synced.
+ * @note Has functions generate cell index constructs and apply them, transfer between vector and gridcell. Allows for easy snapping to grid  */
+UCLASS()
+class PDRTSBASE_API UPDHashGridSubsystem : public UEngineSubsystem
+{
+	GENERATED_BODY()
+public:
+	/** @brief Shorthand to get the subsystem,
+	 * @note as the engine will instantiate these subsystem earlier than anything will reasonably call Get()  */
+	static UPDHashGridSubsystem* Get();
+	
+	/** @brief Loads hashgrid config from developer settings and binds to said developer settings value changes */
+	virtual void Initialize(FSubsystemCollectionBase& Collection) final override;
+
+#if WITH_EDITOR
+	/** @brief Updates 'UniformCellSize'. Function is bound to default UPDHashGridDeveloperSettings OnSettingChanged */
+	void OnDeveloperSettingsChanged(UObject* SettingsToChange, const FPropertyChangedEvent& PropertyEvent);
+#endif
+
+	/** @brief  Floor vector and return as gridcell index */
+    inline static struct FPDGridCell FloorVectorC(const FVector&& LocationToCell)
+    {
+        return FPDGridCell
+        {
+            {
+				static_cast<int32_t>(FMath::Floor(LocationToCell.X)),
+				static_cast<int32_t>(FMath::Floor(LocationToCell.Y)),
+				static_cast<int32_t>(FMath::Floor(LocationToCell.Z))
+            }
+        };
+    }
+
+	/** @brief  Floor vector and return as FVector */
+	inline static FVector FloorVectorV(const FVector&& LocationToCell)
+    {
+    	return FVector
+		{
+		    FMath::Floor(LocationToCell.X),
+			FMath::Floor(LocationToCell.Y),
+			FMath::Floor(LocationToCell.Z)
+		};
+    }	
+  
+	/** @brief  Calculate cell index */
+    inline FPDGridCell GetCellIndex(const FVector& LocationToCell) const
+    {
+        return FloorVectorC(LocationToCell / UniformCellSize);
+    }
+
+	/** @brief  Calculate cell-clamped vector */
+	inline FVector GetCellVector(const FVector& LocationToCell) const
+    {
+    	// Bring it back to proper world space dims by 
+    	return FloorVectorV(LocationToCell / UniformCellSize) * UniformCellSize;
+    }	
+
+    /** @brief Slow if used often, instead cache a pointer to the subsystem and call it 'GetCellIndex' instead  */
+	static inline FPDGridCell GetCellIndexStatic(const FVector& LocationToCell)
+    {
+    	const double CellSize = UPDHashGridSubsystem::Get()->UniformCellSize;
+    	
+    	return FloorVectorC(LocationToCell / CellSize);
+    }
+
+	/** @brief Slow if used often, instead cache a pointer to the subsystem and call it 'GetCellIndex' instead  */
+	static inline FVector GetCellVectorStatic(const FVector& LocationToCell)
+    {
+    	const double CellSize = UPDHashGridSubsystem::Get()->UniformCellSize;
+    	
+    	return FloorVectorV(LocationToCell / CellSize) * CellSize; // Bring it back to proper world space dims
+    }		
+
+	/** @brief Uniform cell size instance data, value is dictated by the value in the developer settings */
+	UPROPERTY()
+    double UniformCellSize = 200.0f; 
+};
+
 
 /**
 Business Source License 1.1

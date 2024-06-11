@@ -29,7 +29,7 @@ void SRTSOMiniMap::Tick(
 	// Update positions?
 
 	// todo move outside of the tick, some analogue to OnConstruction for slate widgets if there are any
-	RTSSubSystem = GEngine->GetEngineSubsystem<UPDRTSBaseSubsystem>();	
+	RTSSubSystem = UPDRTSBaseSubsystem::Get();	
 }
 
 int32 SRTSOMiniMap::OnPaint(
@@ -62,7 +62,7 @@ void SRTSOMiniMap::PaintRadarMiniMap(FSlateWindowElementList& OutDrawElements, c
 // Move overlap logic out of the actual slate class, perform before of after the onpaint function
 void SRTSOMiniMap::PaintActorsOnMiniMap(FSlateWindowElementList& OutDrawElements, const FGeometry& AllottedGeometry, int32 LayerId) const
 {
-	TArray<FLEntityCompound>* MinimapEntityBuffer = RTSSubSystem->OctreeUserQuery.CurrentBuffer.Find(UPDRTSBaseSubsystem::EPDQueryGroups::QUERY_GROUP_MINIMAP);
+	TArray<FLEntityCompound>* MinimapEntityBuffer = RTSSubSystem->OctreeUserQuery.CurrentBuffer.Find(EPDQueryGroups::QUERY_GROUP_MINIMAP);
 	if (MinimapEntityBuffer == nullptr) { return; }
 	
 	APawn* OwnerPawn = Cast<APawn>(RTSSubSystem->OctreeUserQuery.CallingUser);
@@ -126,7 +126,7 @@ void SRTSOMiniMap::PaintActorsOnMiniMap(FSlateWindowElementList& OutDrawElements
 // @todo move calculations out of the hud, keep cached data the HUD can quickly access during the draw call wittout having to run the octree iteration themselves
 void SRTSOMiniMap::PaintEntitiesOnMiniMap(FSlateWindowElementList& OutDrawElements, const FGeometry& AllottedGeometry, int32 LayerId) const
 {
-	TArray<FLEntityCompound>* MinimapEntityBuffer = RTSSubSystem->OctreeUserQuery.CurrentBuffer.Find(UPDRTSBaseSubsystem::EPDQueryGroups::QUERY_GROUP_MINIMAP);
+	TArray<FLEntityCompound>* MinimapEntityBuffer = RTSSubSystem->OctreeUserQuery.CurrentBuffer.Find(EPDQueryGroups::QUERY_GROUP_MINIMAP);
 	if (MinimapEntityBuffer == nullptr) { return; }
 	
 	APawn* OwnerPawn = Cast<APawn>(RTSSubSystem->OctreeUserQuery.CallingUser);
@@ -139,10 +139,9 @@ void SRTSOMiniMap::PaintEntitiesOnMiniMap(FSlateWindowElementList& OutDrawElemen
 	// Viewport halfsize
 #if CHAOS_DEBUG_DRAW
 	{
-		UPDRTSBaseSubsystem::TPDQueryBase<double>* BaseQueryShape = RTSSubSystem->OctreeUserQuery.QueryArchetypes.Find(
-			UPDRTSBaseSubsystem::EPDQueryGroups::QUERY_GROUP_MINIMAP)->Get();
+		TPDQueryBase<double>* BaseQueryShape = RTSSubSystem->OctreeUserQuery.QueryArchetypes.Find(EPDQueryGroups::QUERY_GROUP_MINIMAP)->Get();
 		FVector BoundsCenter = BaseQueryShape->Location;
-		FVector Extent = ((UPDRTSBaseSubsystem::FPDOctreeUserQuery::QBox*)BaseQueryShape)->QuerySizes;
+		FVector Extent = static_cast<FPDOctreeUserQuery::QBox*>(BaseQueryShape)->QuerySizes;
 		Chaos::FDebugDrawQueue::GetInstance().DrawDebugBox(BoundsCenter, Extent, FQuat::Identity, FColor::Silver, false, 0, 0, 10.0f);
 		const FVector& TextLocation = BoundsCenter + FVector(0, 0, Extent.Z * 2);
 		Chaos::FDebugDrawQueue::GetInstance().DrawDebugString(TextLocation,FString("Radar Octree Trace"), nullptr, FColor::Yellow, 0, true, 2);

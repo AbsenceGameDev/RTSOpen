@@ -7,6 +7,7 @@
 #include "MassCommonTypes.h"
 #include "MassEntityManager.h"
 #include "MassEntityTypes.h"
+#include "PDBuildCommon.h"
 #include "PDRTSCommon.h"
 #include "SmartObjectTypes.h"
 

@@ -35,6 +35,7 @@
 #include "Chaos/DebugDrawQueue.h"
 #include "ChaosLog.h"
 #include "MassCrowdRepresentationSubsystem.h"
+#include "PDBuilderSubsystem.h"
 
 TAutoConsoleVariable<bool> UPDOctreeProcessor::CVarDrawCells(
 	TEXT("Octree.DebugCells"), false,
@@ -368,7 +369,7 @@ void UPDProcessor_MoveTarget::Execute(FMassEntityManager& EntityManager, FMassEx
 		
 		//
 		// Update Shared navpath fragments 
-		UPDRTSBaseSubsystem* RTSSubsystem = GEngine->GetEngineSubsystem<UPDRTSBaseSubsystem>();
+		UPDRTSBaseSubsystem* RTSSubsystem = UPDRTSBaseSubsystem::Get();
 		if (RTSSubsystem != nullptr && RTSSubsystem->DirtySharedData.IsEmpty() == false)
 		{
 			TMap<int32, FPDWrappedSelectionGroupNavData>& NavSelections = RTSSubsystem->SelectionGroupNavData;
@@ -480,7 +481,7 @@ UPDOctreeProcessor::UPDOctreeProcessor()
 
 void UPDOctreeProcessor::DebugDrawCells()
 {
-	const PD::Mass::Entity::FPDEntityOctree& Octree = RTSSubsystem->WorldEntityOctree;
+	const PD::Mass::Entity::Octree& Octree = RTSSubsystem->WorldEntityOctree;
 #if CHAOS_DEBUG_DRAW
 	if (UPDOctreeProcessor::CVarDrawCells.GetValueOnAnyThread())
 	{
@@ -526,7 +527,7 @@ void UPDOctreeProcessor::DebugDrawCells()
 void UPDOctreeProcessor::Initialize(UObject& Owner)
 {
 	Super::Initialize(Owner);
-	RTSSubsystem = GEngine->GetEngineSubsystem<UPDRTSBaseSubsystem>();
+	RTSSubsystem = UPDRTSBaseSubsystem::Get();
 }
 
 void UPDOctreeProcessor::ConfigureQueries()
@@ -542,14 +543,19 @@ void UPDOctreeProcessor::ConfigureQueries()
 
 void UPDOctreeProcessor::Execute(FMassEntityManager& EntityManager, FMassExecutionContext& Context)
 {
+	if (RTSSubsystem == nullptr)
+	{
+		RTSSubsystem = UPDRTSBaseSubsystem::Get();
+	}
+	UPDBuilderSubsystem* BuilderSubsystem = UPDBuilderSubsystem::Get();
+
 	// Clear previous buffer
-	UPDRTSBaseSubsystem* RTSSubSystem = GEngine->GetEngineSubsystem<UPDRTSBaseSubsystem>();
-	RTSSubSystem->OctreeUserQuery.ClearQueryBuffer(UPDRTSBaseSubsystem::EPDQueryGroups::QUERY_GROUP_MINIMAP);
-	RTSSubSystem->OctreeUserQuery.ClearQueryBuffer(UPDRTSBaseSubsystem::EPDQueryGroups::QUERY_GROUP_HOVERSELECTION); // Hover Selection Group
-	RTSSubSystem->OctreeBuildSystemEntityQuery.ClearQueryBuffer(UPDRTSBaseSubsystem::EPDQueryGroups::QUERY_GROUP_BUILDABLE_ACTORS);
+	RTSSubsystem->OctreeUserQuery.ClearQueryBuffer(EPDQueryGroups::QUERY_GROUP_MINIMAP);
+	RTSSubsystem->OctreeUserQuery.ClearQueryBuffer(EPDQueryGroups::QUERY_GROUP_HOVERSELECTION); // Hover Selection Group
+	BuilderSubsystem->OctreeBuildSystemEntityQuery.ClearQueryBuffer(EPDQueryGroups::QUERY_GROUP_BUILDABLE_ACTORS);
 
 	// Clear all tracked cells for now
-	RTSSubSystem->WorldBuildActorOctree.FindAllElements(
+	BuilderSubsystem->WorldBuildActorOctree.FindAllElements(
 		[](const FPDActorOctreeCell& Cell)
 		{
 			const_cast<FPDActorOctreeCell&>(Cell).IdleUnits.Empty();
@@ -557,11 +563,11 @@ void UPDOctreeProcessor::Execute(FMassEntityManager& EntityManager, FMassExecuti
 	
 
 	UpdateOctreeElementsQuery.ForEachEntityChunk(EntityManager, Context,
-		[this, RTSSubSystem](FMassExecutionContext& LambdaContext)
+		[this, BuilderSubsystem](FMassExecutionContext& LambdaContext)
 	{
-		const PD::Mass::Actor::FPDActorOctree& BuildableOctree = RTSSubSystem->WorldBuildActorOctree;
+		const PD::Mass::Actor::Octree& BuildableOctree = BuilderSubsystem->WorldBuildActorOctree;
 		QUICK_SCOPE_CYCLE_COUNTER(STAT_OctreeCellExecution)
-		PD::Mass::Entity::FPDEntityOctree& Octree = RTSSubsystem->WorldEntityOctree;
+		PD::Mass::Entity::Octree& Octree = RTSSubsystem->WorldEntityOctree;
 		const int32 NumEntities = LambdaContext.GetNumEntities();
 
 		TConstFragment<FMassVelocityFragment>& Velocities         = CONSTVIEW(LambdaContext, FMassVelocityFragment);
@@ -591,11 +597,11 @@ void UPDOctreeProcessor::Execute(FMassEntityManager& EntityManager, FMassExecuti
 			
 			
 			const FMassEntityHandle Entity = LambdaContext.GetEntity(EntityListIdx);			
-			RTSSubSystem->OctreeUserQuery.UpdateQueryOverlapBuffer(
-				UPDRTSBaseSubsystem::EPDQueryGroups::QUERY_GROUP_MINIMAP,
+			RTSSubsystem->OctreeUserQuery.UpdateQueryOverlapBuffer(
+				EPDQueryGroups::QUERY_GROUP_MINIMAP,
 				CurrentLocation, Entity, RTSEntity.OwnerID);
-			RTSSubSystem->OctreeUserQuery.UpdateQueryOverlapBuffer(
-				UPDRTSBaseSubsystem::EPDQueryGroups::QUERY_GROUP_HOVERSELECTION,
+			RTSSubsystem->OctreeUserQuery.UpdateQueryOverlapBuffer(
+				EPDQueryGroups::QUERY_GROUP_HOVERSELECTION,
 				CurrentLocation, Entity, RTSEntity.OwnerID);
 
 
@@ -603,7 +609,7 @@ void UPDOctreeProcessor::Execute(FMassEntityManager& EntityManager, FMassExecuti
 			// @todo - Mark idle entities as available in our pool
 			// Bounds test the current entity with the buildable octree's 'area of influence' bounds
 			BuildableOctree.FindElementsWithBoundsTest(CopyCurrentOctreeElement.Bounds,
-				[RTSEntity, UnitAction, Entity , SelectedUserCountLimit = RTSSubSystem->UnitPingLimitBuilding](const FPDActorOctreeCell& Cell)
+				[RTSEntity, UnitAction, Entity , SelectedUserCountLimit = BuilderSubsystem->UnitPingLimitBuilding](const FPDActorOctreeCell& Cell)
 				{
 					const bool bIsSameOwner = Cell.OwnerID == RTSEntity.OwnerID;
 					if (bIsSameOwner && Cell.IdleUnits.Num() < SelectedUserCountLimit) // If same owner, and still room to ping for more units 
@@ -640,18 +646,18 @@ void UPDOctreeProcessor::Execute(FMassEntityManager& EntityManager, FMassExecuti
 	AsyncTask(ENamedThreads::AnyBackgroundHiPriTask,
 		[]()
 		{
-			UPDRTSBaseSubsystem* SubSystem = GEngine->GetEngineSubsystem<UPDRTSBaseSubsystem>();
-			PD::Mass::Actor::FPDActorOctree& BuildableOctree = SubSystem->WorldBuildActorOctree;
-			SubSystem->BlockMutationOfBuildableTrackingData();
+			UPDBuilderSubsystem* BuilderSubsystem = UPDBuilderSubsystem::Get();
+			PD::Mass::Actor::Octree& BuildableOctree = BuilderSubsystem->WorldBuildActorOctree;
+			BuilderSubsystem->BlockMutationOfBuildableTrackingData();
 			
-			for (const int32 RemoveUID : SubSystem->RemoveBuildableQueue_FirstBuffer)
+			for (const int32 RemoveUID : BuilderSubsystem->RemoveBuildableQueue_FirstBuffer)
 			{
-				if (SubSystem->ActorsToCells.Contains(RemoveUID) == false ) { continue; }
-				SubSystem->ActorsToCells[RemoveUID].Reset();
-				SubSystem->ActorsToCells.Remove(RemoveUID);
+				if (BuilderSubsystem->ActorsToCells.Contains(RemoveUID) == false ) { continue; }
+				BuilderSubsystem->ActorsToCells[RemoveUID].Reset();
+				BuilderSubsystem->ActorsToCells.Remove(RemoveUID);
 			}
 
-			for (const UPDRTSBaseSubsystem::FPDActorCompound& ActorCompound : SubSystem->WorldBuildActorArrays)
+			for (const FPDActorCompound& ActorCompound : BuilderSubsystem->WorldBuildActorArrays)
 			{
 				if (ActorCompound.WorldActorsPtr == nullptr) { continue; }
 
@@ -665,7 +671,7 @@ void UPDOctreeProcessor::Execute(FMassEntityManager& EntityManager, FMassExecuti
 						continue;
 					}
 					
-					const TSharedPtr<FOctreeElementId2>* CellSharedID = SubSystem->ActorsToCells.Find(SelectedPlayersBuildable->GetUniqueID());
+					const TSharedPtr<FOctreeElementId2>* CellSharedID = BuilderSubsystem->ActorsToCells.Find(SelectedPlayersBuildable->GetUniqueID());
 					if (UNLIKELY(CellSharedID == nullptr)) // add new cell
 					{
 						FPDActorOctreeCell NewOctreeElement;
@@ -678,7 +684,7 @@ void UPDOctreeProcessor::Execute(FMassEntityManager& EntityManager, FMassExecuti
 						NewOctreeElement.OwnerID = SelectedOwnerID;
 						NewOctreeElement.ActorInstanceID = SelectedPlayersBuildable->GetUniqueID();
 						NewOctreeElement.Bounds = FBoxCenterAndExtent(SelectedPlayersBuildable->GetActorLocation(), Extent * 5); // @todo 'Extent * 5' is a Crude area of influence, fix soon
-						SubSystem->ActorsToCells.FindOrAdd(SelectedPlayersBuildable->GetUniqueID()) = NewOctreeElement.SharedCellID;
+						BuilderSubsystem->ActorsToCells.FindOrAdd(SelectedPlayersBuildable->GetUniqueID()) = NewOctreeElement.SharedCellID;
 
 						BuildableOctree.AddElement(NewOctreeElement);				
 					}
@@ -700,7 +706,7 @@ void UPDOctreeProcessor::Execute(FMassEntityManager& EntityManager, FMassExecuti
 					}
 				}
 			}
-			SubSystem->ResumeMutationOfBuildableTrackingData();
+			BuilderSubsystem->ResumeMutationOfBuildableTrackingData();
 		}
 		);
 
@@ -719,8 +725,8 @@ UPDOctreeEntityObserver::UPDOctreeEntityObserver()
 void UPDOctreeEntityObserver::Initialize(UObject& Owner)
 {
 	Super::Initialize(Owner);
-	RTSSubsystem = GEngine->GetEngineSubsystem<UPDRTSBaseSubsystem>();
-	ElementCellSize = GetDefault<UPDRTSSubsystemSettings>()->DefaultOctreeCellSize;
+	RTSSubsystem = UPDRTSBaseSubsystem::Get();
+	ElementCellSize = GetDefault<UPDOctreeSettings>()->EntityOctreeSettings.DefaultOctreeCellSize;
 }
 
 void UPDOctreeEntityObserver::ConfigureQueries()
@@ -734,7 +740,7 @@ void UPDOctreeEntityObserver::ConfigureQueries()
 
 void UPDOctreeEntityObserver::Execute(FMassEntityManager& EntityManager, FMassExecutionContext& Context)
 {
-	UPDRTSBaseSubsystem* RTSSubSystem = GEngine->GetEngineSubsystem<UPDRTSBaseSubsystem>();
+	UPDRTSBaseSubsystem* RTSSubSystem = UPDRTSBaseSubsystem::Get();
 	
 	EntityQuery.ForEachEntityChunk(EntityManager, Context,
 	[this](FMassExecutionContext& LambdaContext)
@@ -746,7 +752,7 @@ void UPDOctreeEntityObserver::Execute(FMassEntityManager& EntityManager, FMassEx
 
 		const bool bRadiiValid = RadiusFragments.Num() > 0;
 		const int32 EntityCount = LambdaContext.GetNumEntities();
-		PD::Mass::Entity::FPDEntityOctree& Octree = RTSSubsystem->WorldEntityOctree;
+		PD::Mass::Entity::Octree& Octree = RTSSubsystem->WorldEntityOctree;
 		
 		for (int32 Step = 0; Step < EntityCount; ++Step)
 		{
@@ -779,7 +785,7 @@ UPDGridCellDeinitObserver::UPDGridCellDeinitObserver()
 void UPDGridCellDeinitObserver::Initialize(UObject& Owner)
 {
 	Super::Initialize(Owner);
-	RTSSubsystem = GEngine->GetEngineSubsystem<UPDRTSBaseSubsystem>();
+	RTSSubsystem = UPDRTSBaseSubsystem::Get();
 }
 
 void UPDGridCellDeinitObserver::ConfigureQueries()
@@ -790,7 +796,7 @@ void UPDGridCellDeinitObserver::ConfigureQueries()
 
 void UPDGridCellDeinitObserver::Execute(FMassEntityManager& EntityManager, FMassExecutionContext& Context)
 {
-	PD::Mass::Entity::FPDEntityOctree& Octree = RTSSubsystem->WorldEntityOctree;
+	PD::Mass::Entity::Octree& Octree = RTSSubsystem->WorldEntityOctree;
 	EntityQuery.ForEachEntityChunk(EntityManager, Context, [&](FMassExecutionContext& LambdaContext)
 	{
 		const TArrayView<FPDOctreeFragment> CellFragments = LambdaContext.GetMutableFragmentView<FPDOctreeFragment>();
@@ -823,7 +829,7 @@ void UPDCollisionSignalProcessor::Initialize(UObject& Owner)
 {
 	Super::Initialize(Owner);
 
-	RTSSubsystem = GEngine->GetEngineSubsystem<UPDRTSBaseSubsystem>();
+	RTSSubsystem = UPDRTSBaseSubsystem::Get();
 
 	UMassSignalSubsystem* SignalSubsystem = GetWorld()->GetSubsystem<UMassSignalSubsystem>();
 	SubscribeToSignal(*SignalSubsystem, MassSample::Signals::OnEntityHitOther);			

@@ -127,7 +127,7 @@ bool FPDItemList::_Add(FGameplayTag& ItemToUpdate, int32 StackIdx, int32& Amount
 {
 	MARK_PROPERTY_DIRTY_FROM_NAME(UPDInventoryComponent, ItemList, OwningInventory)
 	FPDItemNetDatum& Item = Items[ItemToIndexMapping.FindRef(ItemToUpdate)]; // Stacks;
-	const UPDInventorySubsystem* InvSubsystem = GEngine->GetEngineSubsystem<UPDInventorySubsystem>();
+	const UPDInventorySubsystem* InvSubsystem = UPDInventorySubsystem::Get();
 	check(InvSubsystem != nullptr); // Should never be nullptr
 	
 	int32 ItemsInLastEditedStack = 0;
@@ -179,7 +179,7 @@ bool FPDItemList::_Add(FGameplayTag& ItemToUpdate, int32 StackIdx, int32& Amount
 bool FPDItemList::UpdateItemAtStackIdx(FGameplayTag& ItemToUpdate, int32 StackIdx, int32 AmountToAdd)
 {
 	// @todo when adding an item, map it's tag to array IDX for fast editing of the array after, without having to search for it
-	const UPDInventorySubsystem* InvSubsystem = GEngine->GetEngineSubsystem<UPDInventorySubsystem>();
+	const UPDInventorySubsystem* InvSubsystem = UPDInventorySubsystem::Get();
 	check(InvSubsystem != nullptr); // Should never be nullptr
 
 	if (InvSubsystem->TagToItemMap.Contains(ItemToUpdate) == false)

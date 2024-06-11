@@ -6,6 +6,7 @@
 #include "MassSignalSubsystem.h"
 #include "MassStateTreeExecutionContext.h"
 #include "PDRTSBaseSubsystem.h"
+#include "RTSOpenCommon.h"
 
 #include "StateTreeExecutionContext.h"
 #include "StateTreeLinker.h"
@@ -24,20 +25,20 @@ bool FRTSOTask_Interact::Link(FStateTreeLinker& Linker)
 EStateTreeRunStatus FRTSOTask_Interact::EnterState(FStateTreeExecutionContext& Context, const FStateTreeTransitionResult& Transition) const
 {
 	// const UPDRTSBaseSubsystem& RTSSubsystem = *UPDRTSBaseSubsystem::Get();
-	
+
 	const FMassStateTreeExecutionContext& MassContext = static_cast<FMassStateTreeExecutionContext&>(Context);
 
 	const FInstanceDataType& InstanceData = Context.GetInstanceData(*this);
 	const FMassEntityHandle& OtherEntityHandle = InstanceData.PotentialEntityHandle;
 	const IPDInteractInterface* OtherInteractable = Cast<IPDInteractInterface>(InstanceData.PotentialInteractableActor);
 	const UMassEntitySubsystem& EntitySubsystem = Context.GetExternalData(EntitySubsystemHandle);
-
-	const TArray<TObjectPtr<UInstancedStaticMeshComponent>>& ISMs = UPDRTSBaseSubsystem::GetMassISMs(Context.GetWorld());
-	if (ISMs.IsEmpty() || Cast<UPDRTSBaseUnit>(ISMs[0].Get())) { return EStateTreeRunStatus::Failed; }
+	
+	UPDRTSBaseUnit** UnitHandlerDoublePtr = UPDRTSBaseSubsystem::Get()->WorldToEntityHandler.Find(EntitySubsystem.GetWorld());
+	if (UnitHandlerDoublePtr == nullptr) { return EStateTreeRunStatus::Failed; }
 	
 	const FMassEntityManager& EntityManager = EntitySubsystem.GetEntityManager();
 	check(EntityManager.GetFragmentDataPtr<FPDMFragment_Action>(MassContext.GetEntity()) != nullptr);
-	UPDRTSBaseUnit* UnitHandler = (UPDRTSBaseUnit*)&ISMs[0];
+	UPDRTSBaseUnit* UnitHandler = *UnitHandlerDoublePtr;
 	UnitHandler->OnTaskFinished(MassContext.GetEntity()); // Make sure to use this on other tasks
 	
 	if (OtherInteractable != nullptr)

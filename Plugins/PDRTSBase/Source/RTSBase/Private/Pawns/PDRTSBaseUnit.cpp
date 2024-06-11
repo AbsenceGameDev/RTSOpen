@@ -18,8 +18,6 @@ UPDRTSBaseUnit::UPDRTSBaseUnit(const FObjectInitializer& ObjectInitializer)
 void UPDRTSBaseUnit::InitializeComponent()
 {
 	Super::InitializeComponent();
-	
-	UPDRTSBaseSubsystem::Get()->WorldToEntityHandler.Emplace(GetWorld(), this);
 }
 
 TArray<int32> UPDRTSBaseUnit::GetInstancesOverlappingSphere(const FVector& Center, float Radius, bool bSphereInWorldSpace) const
@@ -52,7 +50,7 @@ void UPDRTSBaseUnit::RequestActionMulti(
 	// // @todo come back to this and finish it within the ned of the week
 	
 	//
-	// UPDRTSBaseSubsystem* RTSSubsystem = GEngine->GetEngineSubsystem<UPDRTSBaseSubsystem>();
+	// UPDRTSBaseSubsystem* RTSSubsystem = UPDRTSBaseSubsystem::Get();
 	// if (RTSSubsystem != nullptr)
 	// {
 	// 	RTSSubsystem->RequestNavpathGenerationForSelectionGroup(SelectionGroup, SelectionCenter, TargetCompound);
@@ -76,7 +74,7 @@ void UPDRTSBaseUnit::RequestActionMulti(
 	const FVector&                        SelectionCenter,
 	int32                                 SelectionGroup)
 {
-	UPDRTSBaseSubsystem* RTSSubsystem = GEngine->GetEngineSubsystem<UPDRTSBaseSubsystem>();
+	UPDRTSBaseSubsystem* RTSSubsystem = UPDRTSBaseSubsystem::Get();
 	if (RTSSubsystem != nullptr)
 	{
 		RTSSubsystem->RequestNavpathGenerationForSelectionGroup(CallingOwnerID, SelectionGroup, SelectionCenter, TargetCompound);
@@ -95,7 +93,10 @@ void UPDRTSBaseUnit::BeginPlay()
 	Super::BeginPlay();
 
 	SetCollisionResponseToChannel(ECollisionChannel::ECC_GameTraceChannel14, ECR_Block);
-	
+
+	UPDRTSBaseSubsystem::Get()->WorldToEntityHandler.Emplace(GetWorld(), this);
+	EntityManager = UPDRTSBaseSubsystem::Get()->EntityManager;
+
 	//
 	// Switch job?
 	AssignTask(FMassEntityHandle{0,0}, TAG_AI_Job_Idle, EmptyCompound);
@@ -104,7 +105,7 @@ void UPDRTSBaseUnit::BeginPlay()
 
 void UPDRTSBaseUnit::AssignTask(FMassEntityHandle EntityHandle, const FGameplayTag& JobTag, const FPDTargetCompound& OptTarget)
 {
-	UPDRTSBaseSubsystem* RTSSubsystem = GEngine->GetEngineSubsystem<UPDRTSBaseSubsystem>();
+	UPDRTSBaseSubsystem* RTSSubsystem = UPDRTSBaseSubsystem::Get();
 	if (RTSSubsystem == nullptr) { return; }
 
 	const FPDWorkUnitDatum* WorkUnitDatum = RTSSubsystem->GetWorkEntry(JobTag);
@@ -133,7 +134,7 @@ void UPDRTSBaseUnit::AssignTask(FMassEntityHandle EntityHandle, const FGameplayT
 void UPDRTSBaseUnit::OnTaskFinished(FMassEntityHandle WorkerEntity, const FGameplayTag NewOptionalJobTag, const FPDTargetCompound& NewOptTarget)
 {
 	check(EntityManager->GetFragmentDataPtr<FPDMFragment_Action>(WorkerEntity) != nullptr);
-
+	
 	ActiveJobMap.Remove(WorkerEntity.Index);
 	ActiveTargetMap.Remove(WorkerEntity.Index);
 	

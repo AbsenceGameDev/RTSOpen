@@ -176,10 +176,10 @@ void ARTSOBaseGM::SavePlayerState_Implementation(ARTSOController* PlayerControll
 void ARTSOBaseGM::SaveInteractables_Implementation()
 {
 	check(GameSave != nullptr)
-	check(GEngine->GetEngineSubsystem<UPDInteractSubsystem>() != nullptr)
+	check(UPDInteractSubsystem::Get() != nullptr)
 	GameSave->Interactables.Empty();
 
-	FPDArrayListWrapper& SaveInfo = *GEngine->GetEngineSubsystem<UPDInteractSubsystem>()->WorldInteractables.Find(GetWorld());
+	FPDArrayListWrapper& SaveInfo = *UPDInteractSubsystem::Get()->WorldInteractables.Find(GetWorld());
 	for (FRTSSavedInteractables& _Actor: SaveInfo.ActorInfo)
 	{
 		// Update class if needed
@@ -206,7 +206,7 @@ void ARTSOBaseGM::SaveAllItems_Implementation()
 {
 	check(GameSave != nullptr)
 	
-	TMap<int32, AActor*>& IDToActorMap =  GEngine->GetEngineSubsystem<UPDRTSBaseSubsystem>()->SharedOwnerIDMappings;
+	TMap<int32, AActor*>& IDToActorMap =  UPDRTSBaseSubsystem::Get()->SharedOwnerIDMappings;
 	TMap<int32 /*ID*/, FRTSSavedItems> AccumulatedItems{};
 	for (const TTuple<int32 /*PersistentID*/, AActor* >& ItemDataEntry : IDToActorMap)
 	{
@@ -235,7 +235,7 @@ void ARTSOBaseGM::SaveEntities_Implementation()
 {
 	check(GameSave != nullptr)
 
-	UPDRTSBaseSubsystem* RTSSubsystem = GEngine->GetEngineSubsystem<UPDRTSBaseSubsystem>();
+	UPDRTSBaseSubsystem* RTSSubsystem = UPDRTSBaseSubsystem::Get();
 	const FMassEntityManager* EntityManager = RTSSubsystem != nullptr ? RTSSubsystem->EntityManager : nullptr; 
 	if (EntityManager == nullptr) { return; }
 
@@ -344,8 +344,8 @@ void ARTSOBaseGM::LoadInteractables_Implementation()
 
 void ARTSOBaseGM::LoadResources_Implementation(const TMap<int32, FRTSSavedItems>& DataRef)
 {
-	// TMap<AActor*, int32>& ActorToIDMap =  GEngine->GetEngineSubsystem<UPDRTSBaseSubsystem>()->SharedOwnerIDBackMappings;
-	TMap<int32, AActor*>& IDToActorMap =  GEngine->GetEngineSubsystem<UPDRTSBaseSubsystem>()->SharedOwnerIDMappings;
+	// TMap<AActor*, int32>& ActorToIDMap =  UPDRTSBaseSubsystem::Get()->SharedOwnerIDBackMappings;
+	TMap<int32, AActor*>& IDToActorMap =  UPDRTSBaseSubsystem::Get()->SharedOwnerIDMappings;
 
 	TArray<TTuple<UPDInventoryComponent*, const FRTSSavedItems& /*SavedItems*/>> InventoriesToUpdate;
 	
@@ -388,7 +388,7 @@ void ARTSOBaseGM::LoadEntities_Implementation()
 {
 	check(GameSave != nullptr)
 
-	UPDRTSBaseSubsystem* RTSSubsystem = GEngine->GetEngineSubsystem<UPDRTSBaseSubsystem>();
+	UPDRTSBaseSubsystem* RTSSubsystem = UPDRTSBaseSubsystem::Get();
 	const FMassEntityManager* EntityManager = RTSSubsystem != nullptr ? RTSSubsystem->EntityManager : nullptr;
 	UMassSpawnerSubsystem* SpawnerSystem = UWorld::GetSubsystem<UMassSpawnerSubsystem>(GetWorld());
 	if (EntityManager == nullptr) { return; }

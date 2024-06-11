@@ -1,8 +1,9 @@
 ﻿/* @author: Ario Amin @ Permafrost Development. @copyright: Full BSL(1.1) License included at bottom of the file  */
 
 #include "PDRTSSharedUI.h"
-
 #include "PDRTSCommon.h"
+#include "PDBuildCommon.h"
+
 #include "Animation/WidgetAnimation.h"
 #include "Components/TextBlock.h"
 #include "Components/Border.h"

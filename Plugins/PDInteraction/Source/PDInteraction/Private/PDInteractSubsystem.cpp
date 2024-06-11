@@ -5,6 +5,11 @@
 #include "PDInteractCommon.h"
 #include "Interfaces/PDInteractInterface.h"
 
+UPDInteractSubsystem* UPDInteractSubsystem::Get()
+{
+	return GEngine->GetEngineSubsystem<UPDInteractSubsystem>();
+}
+
 void UPDInteractSubsystem::RegisterWorldInteractable_Implementation(UWorld* SelectedWorld, AActor* SelectedInteractable)
 {
 	check(SelectedWorld != nullptr)

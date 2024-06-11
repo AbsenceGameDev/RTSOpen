@@ -1,19 +1,37 @@
 ﻿/* @author: Ario Amin @ Permafrost Development. @copyright: Full BSL(1.1) License included at bottom of the file  */
 
-#include "PDRTSCommon.h"
+#include "PDRTSSharedHashGrid.h"
 
-/** Define the gameplay "AI.Jobs." tags */
-UE_DEFINE_GAMEPLAY_TAG(TAG_AI_Job_Idle, "AI.Jobs.Idle");
-UE_DEFINE_GAMEPLAY_TAG(TAG_AI_Job_WalkToTarget, "AI.Jobs.WalkToTarget");
-UE_DEFINE_GAMEPLAY_TAG(TAG_AI_Job_GenericInteract, "AI.Jobs.GenericInteract");
-UE_DEFINE_GAMEPLAY_TAG(TAG_AI_Job_GatherResource, "AI.Jobs.GatherResource");
+UPDHashGridSubsystem* UPDHashGridSubsystem::Get()
+{
+	return GEngine->GetEngineSubsystem<UPDHashGridSubsystem>();
+}
 
-/** Define the gameplay "CTRL.Ctxt." tags */
-UE_DEFINE_GAMEPLAY_TAG(TAG_CTRL_Ctxt_BaseInput, "CTRL.Ctxt.BaseInput");
-UE_DEFINE_GAMEPLAY_TAG(TAG_CTRL_Ctxt_DragMove, "CTRL.Ctxt.DragMove");
-UE_DEFINE_GAMEPLAY_TAG(TAG_CTRL_Ctxt_WorkerUnitMode, "CTRL.Ctxt.WorkerUnitMode");
-UE_DEFINE_GAMEPLAY_TAG(TAG_CTRL_Ctxt_BuildMode, "CTRL.Ctxt.BuildMode");
-UE_DEFINE_GAMEPLAY_TAG(TAG_CTRL_Ctxt_ConversationMode, "CTRL.Ctxt.ConversationMode");
+void UPDHashGridSubsystem::Initialize(FSubsystemCollectionBase& Collection)
+{
+	Super::Initialize(Collection);
+
+	UniformCellSize = GetDefault<UPDHashGridDeveloperSettings>()->UniformCellSize;
+
+#if WITH_EDITOR
+	GetMutableDefault<UPDHashGridDeveloperSettings>()->OnSettingChanged().AddLambda(
+		[&](UObject* SettingsToChange, FPropertyChangedEvent& PropertyEvent)
+		{
+			OnDeveloperSettingsChanged(SettingsToChange,PropertyEvent);
+		});	
+#endif // WITH_EDITOR
+}
+
+#if WITH_EDITOR
+void UPDHashGridSubsystem::OnDeveloperSettingsChanged(UObject* SettingsToChange, const FPropertyChangedEvent& PropertyEvent)
+{
+	const UPDHashGridDeveloperSettings* AsSettings = Cast<UPDHashGridDeveloperSettings>(SettingsToChange);
+	if (AsSettings == nullptr) { return; }
+	
+	UniformCellSize = AsSettings->UniformCellSize;
+}
+#endif // WITH_EDITOR
+
 
 
 /**

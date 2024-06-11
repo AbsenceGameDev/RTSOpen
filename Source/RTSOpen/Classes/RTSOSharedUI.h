@@ -166,6 +166,7 @@ class URTSOConversationMessageWidget : public UUserWidget
 {
 	GENERATED_BODY()
 public:
+	
 	/** @brief Returns an event reply @return Always 'Handled' event reply */
 	UFUNCTION(BlueprintNativeEvent) FEventReply MouseMove(int32 ChoiceIdx, FGeometry MyGeometry, const FPointerEvent& MouseEvent);
 	/** @brief Stores 'ChoiceIdx' into 'LatestInteractedChoice' @return Always 'Handled' event reply */

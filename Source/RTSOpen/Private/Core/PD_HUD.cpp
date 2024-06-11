@@ -6,7 +6,6 @@
 #include "PDRTSBaseSubsystem.h"
 #include "RTSOpenCommon.h"
 #include "Actors/GodHandPawn.h"
-#include "Engine/Canvas.h"
 #include "Actors/RTSOController.h"
 #include "AI/Mass/RTSOMassFragments.h"
 #include "Chaos/DebugDrawQueue.h"
@@ -126,7 +125,7 @@ void APD_HUD::DrawEntitiesOnMiniMap()
 	if (RTSOController == nullptr || RTSOController->GetPawn() == nullptr) { return; }
 	
 	// Viewport halfsize
-	PD::Mass::Entity::FPDEntityOctree& WorldOctree =  GEngine->GetEngineSubsystem<UPDRTSBaseSubsystem>()->WorldEntityOctree;
+	PD::Mass::Entity::Octree& WorldOctree =  UPDRTSBaseSubsystem::Get()->WorldEntityOctree;
 	
 	static const FVector OffsetCorner_FwdLeft {1,  -1,  0.0};
 	static const FVector OffsetCorner_FwdRight {1,   1,  0.0};

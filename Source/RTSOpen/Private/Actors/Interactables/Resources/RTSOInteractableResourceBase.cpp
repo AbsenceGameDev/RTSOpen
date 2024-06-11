@@ -65,7 +65,7 @@ void ARTSOInteractableResourceBase::OnInteract_Implementation(const FPDInteracti
 		}
 	}
 
-	UPDInventorySubsystem* InvSubsystem = GEngine->GetEngineSubsystem<UPDInventorySubsystem>();
+	UPDInventorySubsystem* InvSubsystem = UPDInventorySubsystem::Get();
 	check(InvSubsystem != nullptr)
 
 	for (const TPair<FGameplayTag, int32 /*count*/>& ResourceReward : LinkedItemResources)

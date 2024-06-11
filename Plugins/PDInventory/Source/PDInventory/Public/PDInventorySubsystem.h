@@ -18,6 +18,9 @@ class PDINVENTORY_API UPDInventorySubsystem : public UEngineSubsystem
 {
 	GENERATED_BODY()
 public:
+	/** @brief Shorthand to get the subsystem,
+	 * @note as the engine will instantiate these subsystem earlier than anything will reasonably call Get()  */
+	static UPDInventorySubsystem* Get();
 
 	/** @brief Finds the developer settings 'UPDInventoryDefinitions' and resolves tables paths from there  */
 	virtual void Initialize(FSubsystemCollectionBase& Collection) override;

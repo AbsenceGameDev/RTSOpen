@@ -6,21 +6,17 @@
 #include "Interfaces/PDPersistenceInterface.h"
 #include "Widgets/RTSOMainMenuBase.h"
 
-#include "Blueprint/UserWidget.h"
-#include "Blueprint/IUserObjectListEntry.h"
-
 #include "ConversationTypes.h"
 #include "GameplayTagContainer.h"
 #include "InputModifiers.h"
 #include "MassEntityTypes.h"
-#include "PDRTSCommon.h"
 #include "GameFramework/PlayerController.h"
 #include "Interfaces/PDRTSBuilderInterface.h"
 #include "RTSOController.generated.h"
 
+// Fwd decl.
 class URTSOConversationWidget;
 class UPDBuildWidgetBase;
-// Fwd decl.
 class URTSOInputStackSubsystem;
 
 /** @brief 'Marquee selection event' selectors */

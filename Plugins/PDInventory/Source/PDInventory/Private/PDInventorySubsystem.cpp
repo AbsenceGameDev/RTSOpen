@@ -5,6 +5,11 @@
 #include "PDItemCommon.h"
 #include "Components/PDInventoryComponent.h"
 
+UPDInventorySubsystem* UPDInventorySubsystem::Get()
+{
+	return GEngine->GetEngineSubsystem<UPDInventorySubsystem>();
+}
+
 void UPDInventorySubsystem::Initialize(FSubsystemCollectionBase& Collection)
 {
 	Super::Initialize(Collection);

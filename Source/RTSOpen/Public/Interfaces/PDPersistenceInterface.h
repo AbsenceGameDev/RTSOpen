@@ -14,8 +14,11 @@ UCLASS()
 class UPDPersistentIDSubsystem : public UEngineSubsystem
 {
 	GENERATED_BODY()
-
 public:
+	/** @brief Shorthand to get the subsystem,
+	 * @note as the engine will instantiate these subsystem earlier than anything will reasonably call Get()  */
+	static UPDPersistentIDSubsystem* Get();
+	
 	/** @brief Persistent IDs tracked by the subsystem */
 	UPROPERTY()
 	TSet<int32> TrackedPersistentIDs;
@@ -44,7 +47,7 @@ public:
 	/** @brief Generates a new persistent ID. Compares with the tracked persistent ID list in 'UPDPersistentIDSubsystem' to ensure no collisions */
 	static FPDPersistentID GenerateNewPersistentID()
 	{
-		TSet<int32>& ExistingIDs = GEngine->GetEngineSubsystem<UPDPersistentIDSubsystem>()->TrackedPersistentIDs;
+		const TSet<int32>& ExistingIDs = UPDPersistentIDSubsystem::Get()->TrackedPersistentIDs;
 		if (ExistingIDs.Num() > UINT32_MAX)
 		{
 			// Too many in the set, log as a warning and return invalid ID
@@ -104,7 +107,7 @@ private:
 	static bool ReverseSearch(const TSet<int32>& ExistingIDs, const int64 RandomStartingPoint, FPDPersistentID& Value)
 	{
 		if (ExistingIDs.IsEmpty()) { Value = RandomStartingPoint; return true; }
-		TSet<int32>& MutableExistingIDs = GEngine->GetEngineSubsystem<UPDPersistentIDSubsystem>()->TrackedPersistentIDs;
+		TSet<int32>& MutableExistingIDs = UPDPersistentIDSubsystem::Get()->TrackedPersistentIDs;
 
 		// relies on uintwrapping
 		for (FPDPersistentID Step = RandomStartingPoint; Step != UINT32_MAX ;)
@@ -124,7 +127,7 @@ private:
 	static bool ForwardSearch(const TSet<int32>& ExistingIDs, const int64 RandomStartingPoint, FPDPersistentID& Value)
 	{
 		if (ExistingIDs.IsEmpty()) { Value = RandomStartingPoint; return true; }
-		TSet<int32>& MutableExistingIDs = GEngine->GetEngineSubsystem<UPDPersistentIDSubsystem>()->TrackedPersistentIDs;
+		TSet<int32>& MutableExistingIDs = UPDPersistentIDSubsystem::Get()->TrackedPersistentIDs;
 		
 		for (FPDPersistentID Step = RandomStartingPoint; Step < UINT32_MAX;)
 		{

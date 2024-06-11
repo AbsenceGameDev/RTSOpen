@@ -1,20 +1,76 @@
 ﻿/* @author: Ario Amin @ Permafrost Development. @copyright: Full BSL(1.1) License included at bottom of the file  */
 
+#include "PDRTSSharedOctree.h"
 #include "PDRTSCommon.h"
 
-/** Define the gameplay "AI.Jobs." tags */
-UE_DEFINE_GAMEPLAY_TAG(TAG_AI_Job_Idle, "AI.Jobs.Idle");
-UE_DEFINE_GAMEPLAY_TAG(TAG_AI_Job_WalkToTarget, "AI.Jobs.WalkToTarget");
-UE_DEFINE_GAMEPLAY_TAG(TAG_AI_Job_GenericInteract, "AI.Jobs.GenericInteract");
-UE_DEFINE_GAMEPLAY_TAG(TAG_AI_Job_GatherResource, "AI.Jobs.GatherResource");
 
-/** Define the gameplay "CTRL.Ctxt." tags */
-UE_DEFINE_GAMEPLAY_TAG(TAG_CTRL_Ctxt_BaseInput, "CTRL.Ctxt.BaseInput");
-UE_DEFINE_GAMEPLAY_TAG(TAG_CTRL_Ctxt_DragMove, "CTRL.Ctxt.DragMove");
-UE_DEFINE_GAMEPLAY_TAG(TAG_CTRL_Ctxt_WorkerUnitMode, "CTRL.Ctxt.WorkerUnitMode");
-UE_DEFINE_GAMEPLAY_TAG(TAG_CTRL_Ctxt_BuildMode, "CTRL.Ctxt.BuildMode");
-UE_DEFINE_GAMEPLAY_TAG(TAG_CTRL_Ctxt_ConversationMode, "CTRL.Ctxt.ConversationMode");
+void PD::Mass::FOctreeBase::SetupOctree()
+{
+	SetupOctreeWithNewWorld(TemporaryWorldCache);
+}
 
+bool PD::Mass::FOctreeBase::SetupOctreeWithNewWorld(UWorld* NewWorld)
+{
+	if (WorldsWithOctrees.Contains(NewWorld))
+	{
+		return false;
+	}
+		
+	static const FString BuildString = "UPDRTSBaseSubsystem::SetupOctreeWithNewWorld";
+	// UE_LOG(PDLog_RTSBase, Log, TEXT("%s"), *BuildString);
+	
+	if (NewWorld == nullptr || NewWorld->IsInitialized() == false)
+	{
+		if (NewWorld != nullptr
+			&& NewWorld->IsValidLowLevelFast()
+			&& NewWorld->bIsTearingDown == false
+			&& NewWorld != TemporaryWorldCache)
+		{
+			WorldsWithOctrees.FindOrAdd(NewWorld, false);
+			TemporaryWorldCache = NewWorld;
+		} // Cache as it is being initialized
+
+		if (DispatchOctreeGeneration.IsBound())
+		{
+			DispatchOctreeGeneration.Execute();
+		}
+		else
+		{
+			// @todo log message
+		}
+		
+		return false;
+	}
+
+	
+	WorldsWithOctrees.FindOrAdd(TemporaryWorldCache, true);
+
+	return true;
+}
+
+bool PD::Mass::Actor::Octree::SetupOctreeWithNewWorld(UWorld* NewWorld)
+{
+	const bool bWasSetup = FOctreeBase::SetupOctreeWithNewWorld(NewWorld);
+
+	if (bWasSetup)
+	{
+		const float UniformBounds = GetDefault<UPDOctreeSettings>()->ActorOctreeSettings.OctreeUniformBounds;
+		*this = PD::Mass::Actor::Octree(FVector::ZeroVector, UniformBounds);
+	}
+	return bWasSetup;
+}
+
+bool PD::Mass::Entity::Octree::SetupOctreeWithNewWorld(UWorld* NewWorld)
+{
+	const bool bWasSetup = FOctreeBase::SetupOctreeWithNewWorld(NewWorld);
+
+	if (bWasSetup)
+	{
+		const float UniformBounds = GetDefault<UPDOctreeSettings>()->EntityOctreeSettings.OctreeUniformBounds;
+		*this = PD::Mass::Entity::Octree(FVector::ZeroVector, UniformBounds);
+	}
+	return bWasSetup;
+}
 
 /**
 Business Source License 1.1

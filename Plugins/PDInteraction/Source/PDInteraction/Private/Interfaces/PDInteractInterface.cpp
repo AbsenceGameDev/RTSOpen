@@ -42,9 +42,9 @@ void IPDInteractInterface::RegisterWorldInteractable_Implementation(UWorld* Sele
 	check(SelectedInteractable != nullptr)
 	check(Cast<IPDInteractInterface>(SelectedInteractable) != nullptr)
 	check(GEngine != nullptr)
-	check(GEngine->GetEngineSubsystem<UPDInteractSubsystem>() != nullptr)
+	check(UPDInteractSubsystem::Get() != nullptr)
 
-	IPDWorldManagementInterface::Execute_RegisterWorldInteractable(GEngine->GetEngineSubsystem<UPDInteractSubsystem>(), SelectedWorld, SelectedInteractable);
+	IPDWorldManagementInterface::Execute_RegisterWorldInteractable(UPDInteractSubsystem::Get(), SelectedWorld, SelectedInteractable);
 	bHasBeenRegisteredWithCurrentWorld = true;
 }
 

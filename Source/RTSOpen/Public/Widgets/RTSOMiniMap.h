@@ -15,7 +15,8 @@ class RTSOPEN_API URTSOMiniMap : public UWidget
 {
 public:
 	GENERATED_BODY()
-
+	
+	virtual TSharedRef<SWidget> RebuildWidget() override;
 	virtual void OnWidgetRebuilt() override;
 	
 	TSharedPtr<SRTSOMiniMap> SlateMiniMap = nullptr;

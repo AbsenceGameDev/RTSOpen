@@ -2,21 +2,24 @@
 
 #include "Actors/Interactables/ConversationHandlers/RTSOInteractableConversationActor.h"
 
+#include "Kismet/KismetSystemLibrary.h"
+
 #include "ConversationContext.h"
 #include "ConversationInstance.h"
 #include "ConversationChoiceNode.h"
-#include "ConversationLibrary.h"
 #include "ConversationSettings.h"
 #include "ConversationParticipantComponent.h"
-#include "MassEntitySubsystem.h"
-#include "PDConversationCommons.h"
-#include "PDRTSBaseSubsystem.h"
-#include "Actors/RTSOController.h"
-#include "AI/Mass/PDMassFragments.h"
+
 #include "Camera/CameraComponent.h"
+
+#include "MassEntitySubsystem.h"
+#include "PDRTSBaseSubsystem.h"
+#include "AI/Mass/PDMassFragments.h"
+#include "PDConversationCommons.h"
+#include "Actors/RTSOController.h"
+
 #include "Core/RTSOBaseGM.h"
 #include "Interfaces/RTSOConversationInterface.h"
-#include "Kismet/KismetSystemLibrary.h"
 
 /** Declaring the "Conversation.Entry" gameplay tags. to be defined in an object-file
  * @todo move to a 'conversation commons' file which I need to create */
@@ -66,7 +69,7 @@ void URTSOConversationInstance::PauseConversationAndSendClientChoices(
 	const ARTSOController* ListenerAsController = ListenerAsPawn != nullptr ?
 		ListenerAsPawn->GetController<ARTSOController>() : Cast<ARTSOController>(ListenerActor);
 	
-	const int32 ActorID =  GEngine->GetEngineSubsystem<UPDRTSBaseSubsystem>()->SharedOwnerIDBackMappings.FindRef(ListenerAsController);
+	const int32 ActorID =  UPDRTSBaseSubsystem::Get()->SharedOwnerIDBackMappings.FindRef(ListenerAsController);
 	if (ChoiceWaitingStateMap.Contains(ActorID) == false || OnBegin_WaitChoicesDelegateMap.Contains(ActorID) == false)
 	{
 		UE_LOG(PDLog_RTSOInteract, Warning, TEXT("URTSOConversationInstance::PauseConversationAndSendClientChoices -- fail"));
@@ -97,8 +100,7 @@ void URTSOConversationBPFL::RequestToAdvance(UPDConversationInstance* Conversati
 {
 	if(Conversation == nullptr || ConversationParticipantComponent == nullptr) { return; }
 
-	const int32 ActorID =
-		GEngine->GetEngineSubsystem<UPDRTSBaseSubsystem>()->SharedOwnerIDBackMappings
+	const int32 ActorID = UPDRTSBaseSubsystem::Get()->SharedOwnerIDBackMappings
 		.FindRef(ConversationParticipantComponent->GetParticipantActor(TAG_Conversation_Participant_Listener));
 
 	if (Conversation->ChoiceWaitingStateMap.Contains(ActorID))
@@ -139,7 +141,7 @@ URTSOConversationInstance* URTSOConversationBPFL::StartConversation(FGameplayTag
 			UConversationContextHelpers::MakeConversationParticipant(Context, Instigator, InstigatorTag);
 
 			// @todo Generalize and move out of the game module
-			const int32 ActorID = GEngine->GetEngineSubsystem<UPDRTSBaseSubsystem>()->SharedOwnerIDBackMappings.FindRef(Target);
+			const int32 ActorID = UPDRTSBaseSubsystem::Get()->SharedOwnerIDBackMappings.FindRef(Target);
 			if (ConversationInstance->ChoiceWaitingStateMap.Contains(ActorID) == false)
 			{
 				ConversationInstance->ChoiceWaitingStateMap.Add(ActorID) = false;
@@ -222,7 +224,7 @@ void ARTSOInteractableConversationActor::OnInteract_Implementation(
 	
 	if (InstanceDataPtr == nullptr || InteractionParams.InteractionPercent <= .85) { return; }
 
-	const TMap<int32, AActor*>& IDToActorMap =  GEngine->GetEngineSubsystem<UPDRTSBaseSubsystem>()->SharedOwnerIDMappings;
+	const TMap<int32, AActor*>& IDToActorMap =  UPDRTSBaseSubsystem::Get()->SharedOwnerIDMappings;
 	const UMassEntitySubsystem& EntitySubsystem = *GetWorld()->GetSubsystem<UMassEntitySubsystem>();
 	const FPDMFragment_RTSEntityBase* EntityBase = EntitySubsystem.GetEntityManager().GetFragmentDataPtr<FPDMFragment_RTSEntityBase>(InteractionParams.InstigatorEntity);
 
@@ -271,7 +273,7 @@ void ARTSOInteractableConversationActor::OnInteract_Implementation(
 			URTSOConversationInstance::StaticClass()));
 	if (InstanceDataPtr->ActiveConversationInstance == nullptr) { return; }
 	
-	const int32 ActorID =  GEngine->GetEngineSubsystem<UPDRTSBaseSubsystem>()->SharedOwnerIDBackMappings.FindRef(AsCallingController);
+	const int32 ActorID =  UPDRTSBaseSubsystem::Get()->SharedOwnerIDBackMappings.FindRef(AsCallingController);
 	InstanceDataPtr->ActiveConversationInstance->ServerRefreshConversationChoices();
 	if (InstanceDataPtr->ActiveConversationInstance->ChoiceWaitingStateMap.FindRef(ActorID))
 	{
@@ -309,7 +311,7 @@ void ARTSOInteractableConversationActor::BeginWaitingForChoices_Implementation(i
 	// bug: some engine bug causing participant component to always fail returning TAG_Conversation_Participant_Listener even though it was set in the same frame
 	// workaround, use the PDRTSBaseSubsystem id mappings and add an ID parameter to find the proper controller 
 	//ParticipantComponent->GetParticipantActor(TAG_Conversation_Participant_Listener));
-	const TMap<int32, AActor*>& IDToActorMap =  GEngine->GetEngineSubsystem<UPDRTSBaseSubsystem>()->SharedOwnerIDMappings;
+	const TMap<int32, AActor*>& IDToActorMap =  UPDRTSBaseSubsystem::Get()->SharedOwnerIDMappings;
 	ARTSOController* ListenerAsController = Cast<ARTSOController>(IDToActorMap.FindRef(ActorID));
 
 	if (ListenerAsController->IsMappingContextActive(TAG_CTRL_Ctxt_ConversationMode) == false)

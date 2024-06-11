@@ -3,9 +3,11 @@
 #include "Actors/Interactables/Buildings/RTSOInteractableBuildingBase.h"
 
 #include "MassEntitySubsystem.h"
+#include "PDBuildCommon.h"
+#include "PDBuilderSubsystem.h"
 #include "PDInventorySubsystem.h"
-#include "PDRTSBaseSubsystem.h"
 #include "PDRTSCommon.h"
+#include "PDRTSPingerSubsystem.h"
 #include "RTSOpenCommon.h"
 #include "Actors/GodHandPawn.h"
 #include "AI/Mass/RTSOMassFragments.h"
@@ -124,10 +126,10 @@ void ARTSOInteractableBuildingBase::Internal_ProgressGhostStage(const bool bForc
 					// ensure this hasn't been called manually already
 					if (CachedStageIdx != CurrentTransitionState.CurrentStageIdx) { return; }
 
-					UPDRTSBaseSubsystem::ProcessGhostStage(this, InstigatorBuildableTag,  CurrentTransitionState, false);
+					UPDBuilderSubsystem::ProcessGhostStage(this, InstigatorBuildableTag,  CurrentTransitionState, false);
 					CurrentStateFinishedProgressing = true;
 
-					if (bChainAll && UPDRTSBaseSubsystem::IsPastFinalIndex(InstigatorBuildableTag,CurrentTransitionState) == false)
+					if (bChainAll && UPDBuilderSubsystem::IsPastFinalIndex(InstigatorBuildableTag,CurrentTransitionState) == false)
 					{
 						Internal_ProgressGhostStage(bForceProgressThroughStage, bChainAll);
 					}
@@ -136,11 +138,11 @@ void ARTSOInteractableBuildingBase::Internal_ProgressGhostStage(const bool bForc
 		};
 	
 	// start stage, max duration based solution:
-	UPDRTSBaseSubsystem::ProcessGhostStage(this, InstigatorBuildableTag,  CurrentTransitionState, true);
+	UPDBuilderSubsystem::ProcessGhostStage(this, InstigatorBuildableTag,  CurrentTransitionState, true);
 
 	// Cache to make comparison,
 	// if something finishes the stage before the timer runs out then use this to avoid calling 'ProcessGhostStage' with 'bStateOfStage == false' twice
-	const double MaxDuration = UPDRTSBaseSubsystem::GetMaxDurationGhostStage(InstigatorBuildableTag,  CurrentTransitionState);
+	const double MaxDuration = UPDBuilderSubsystem::GetMaxDurationGhostStage(InstigatorBuildableTag,  CurrentTransitionState);
 
 	// If duration is approx. 0.0 and not forcing progression, rely on handling/triggering the end of stage manually
 	if (bForceProgressThroughStage == false && MaxDuration < SMALL_NUMBER)
@@ -196,14 +198,14 @@ bool ARTSOInteractableBuildingBase::AttemptFinalizeGhost_Implementation()
 		return false;
 	}
 	
-	UPDInventorySubsystem* InventorySubsystem = GEngine->GetEngineSubsystem<UPDInventorySubsystem>();
-	UPDRTSBaseSubsystem* RTSSubsystem = GEngine->GetEngineSubsystem<UPDRTSBaseSubsystem>();
+	UPDInventorySubsystem* InventorySubsystem = UPDInventorySubsystem::Get();
+	UPDBuilderSubsystem* BuilderSubsystem = UPDBuilderSubsystem::Get();
 	ensure(InventorySubsystem != nullptr);
-	ensure(RTSSubsystem != nullptr);
+	ensure(BuilderSubsystem != nullptr);
 	const int32& ImmutableStage = CurrentTransitionState.CurrentStageIdx;
 
-	RTSSubsystem->GetBuildableTagFromData(AsGodhand->CurrentBuildableData);
-	const FPDItemDefaultDatum* BuildableResourceDatum = InventorySubsystem->GetDefaultDatum(RTSSubsystem->GetBuildableTagFromData(AsGodhand->CurrentBuildableData)); // this is backwards, redesign, redesign, redesign!
+	BuilderSubsystem->GetBuildableTagFromData(AsGodhand->CurrentBuildableData);
+	const FPDItemDefaultDatum* BuildableResourceDatum = InventorySubsystem->GetDefaultDatum(BuilderSubsystem->GetBuildableTagFromData(AsGodhand->CurrentBuildableData)); // this is backwards, redesign, redesign, redesign!
 	if (BuildableResourceDatum == nullptr)
 	{
 		UE_LOG(PDLog_RTSO, Error, TEXT("ARTSOInteractableBuildingBase::ProcessIfWorkersNotRequired -- Did not find any entry in UPDInventorySubsystem for the given resource/building"))
@@ -217,7 +219,7 @@ bool ARTSOInteractableBuildingBase::AttemptFinalizeGhost_Implementation()
 		UE_LOG(PDLog_RTSO, Warning, TEXT("ARTSOInteractableBuildingBase::ProcessIfWorkersNotRequired -- Could not afford, setting to queue"))
 
 		// FILO
-		RTSSubsystem->BuildQueues.FindOrAdd(PC->GetActorID()).ActorInWorld.EmplaceFirst(this);
+		BuilderSubsystem->BuildQueues.FindOrAdd(PC->GetActorID()).ActorInWorld.EmplaceFirst(this);
 		AsGodhand->InventoryComponent->OnItemUpdated.AddDynamic(AsGodhand, &AGodHandPawn::OnItemUpdate);
 		return false;
 	}
@@ -257,10 +259,8 @@ bool ARTSOInteractableBuildingBase::WithdrawRecurringCostFromBankOrEntity(UPDInv
 {
 	bool bCanAfford = false;
 			
-	UPDInventorySubsystem* InventorySubsystem = GEngine->GetEngineSubsystem<UPDInventorySubsystem>();
-	const UPDRTSBaseSubsystem* RTSSubsystem = GEngine->GetEngineSubsystem<UPDRTSBaseSubsystem>();
+	UPDInventorySubsystem* InventorySubsystem = UPDInventorySubsystem::Get();
 	ensure(InventorySubsystem != nullptr);
-	ensure(RTSSubsystem != nullptr);
 	
 	const FPDItemDefaultDatum* BuildableResourceDatum = InventorySubsystem->GetDefaultDatum(InstigatorBuildableTag);
 	if (BuildableResourceDatum != nullptr)
@@ -330,11 +330,10 @@ bool ARTSOInteractableBuildingBase::WithdrawRecurringCostFromBankOrEntity(UPDInv
 	return true;
 }
 
-
 void ARTSOInteractableBuildingBase::ProcessIfWorkersRequired()
 {
-	const UPDRTSSubsystemSettings* DefaultSubsystemSetting = GetDefault<UPDRTSSubsystemSettings>();
-	const EPDRTSBuildCostBehaviour BuildCostBehaviour = DefaultSubsystemSetting->DefaultBuildSystemBehaviours.Cost;
+	const UPDBuilderSubsystemSettings* DefaultSubsystemSetting = GetDefault<UPDBuilderSubsystemSettings>();
+	const PD::Build::Behaviour::Cost BuildCostBehaviour = DefaultSubsystemSetting->DefaultBuildSystemBehaviours.Cost;
 
 	const int32& ImmutableStage = CurrentTransitionState.CurrentStageIdx;
 	
@@ -344,18 +343,18 @@ void ARTSOInteractableBuildingBase::ProcessIfWorkersRequired()
 	
 	switch (BuildCostBehaviour)
 	{
-	case EPDRTSBuildCostBehaviour::EBuildCostPlayerBank:
+	case PD::Build::Behaviour::Cost::EPlayerBank:
 		// Withdraw immediately, exit function it fails
 		if (WithdrawRecurringCostFromBankOrEntity(PlayerBank, nullptr, ImmutableStage) == false) { return; }
 		break;
-	case EPDRTSBuildCostBehaviour::EBuildCostBaseBank:
+	case PD::Build::Behaviour::Cost::EBaseBank:
 		// Withdraw immediately, exit function it fails
 		{
 			UPDInventoryComponent* AssignedBaseBank = nullptr; // @todo write some system to handle bases and make us of it here
 			if (WithdrawRecurringCostFromBankOrEntity(AssignedBaseBank,nullptr, ImmutableStage) == false) { return; }
 		}
 		break;
-	case EPDRTSBuildCostBehaviour::EBuildCostWaitForWorkers:
+	case PD::Build::Behaviour::Cost::EStandBy:
 		// @done Withdraw from workers when they arrive
 		break;
 	}
@@ -363,13 +362,13 @@ void ARTSOInteractableBuildingBase::ProcessIfWorkersRequired()
 	// Start the current stage, it's settings decide when effects are applied and if workers should end stage or if it ends automatically
 	IPDRTSBuildableGhostInterface::Execute_ProgressGhostStage(this, false);
 	
-	const EPDRTSBuildProgressionBehaviour BuildProgressionBehaviour = DefaultSubsystemSetting->DefaultBuildSystemBehaviours.Progression;
+	const PD::Build::Behaviour::Progress BuildProgressionBehaviour = DefaultSubsystemSetting->DefaultBuildSystemBehaviours.Progression;
 	switch (BuildProgressionBehaviour)
 	{
-	case EPDRTSBuildProgressionBehaviour::EBuildWaitsForWorkers:
+	case PD::Build::Behaviour::Progress::EStandBy:
 		// just wait
 		break;
-	case EPDRTSBuildProgressionBehaviour::EBuildCallsForWorkers:
+	case PD::Build::Behaviour::Progress::ECallForWorkers:
 		{
 			constexpr double PingInterval = 10.0; // @todo make configurable or use passthrough value
 			const FGameplayTagContainer TagContainer = Execute_GetGenericTagContainer(this);
@@ -389,9 +388,9 @@ void ARTSOInteractableBuildingBase::ProcessIfWorkersNotRequired()
 
 void ARTSOInteractableBuildingBase::OnBuildingDestroyed_Implementation()
 {
-	UPDRTSBaseSubsystem* RTSSubsystem = GEngine->GetEngineSubsystem<UPDRTSBaseSubsystem>();
-	ensure(RTSSubsystem != nullptr);
-	RTSSubsystem->QueueRemoveFromWorldBuildTree(GetUniqueID());
+	UPDBuilderSubsystem* BuilderSubsystem = UPDBuilderSubsystem::Get();
+	ensure(BuilderSubsystem != nullptr);
+	BuilderSubsystem->QueueRemoveFromWorldBuildTree(GetUniqueID());
 
 	const AGodHandPawn* AsGodhand = Cast<AGodHandPawn>(GetOwner());
 	const ARTSOController* PC = AsGodhand != nullptr ? AsGodhand->GetController<ARTSOController>() : nullptr;

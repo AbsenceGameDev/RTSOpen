@@ -26,7 +26,11 @@ UCLASS(BlueprintType, Blueprintable)
 class PDINTERACTION_API UPDInteractSubsystem : public UEngineSubsystem, public IPDWorldManagementInterface
 {
 	GENERATED_BODY()
-public:	
+public:
+	/** @brief Shorthand to get the subsystem,
+	 * @note as the engine will instantiate these subsystem earlier than anything will reasonably call Get()  */
+	static UPDInteractSubsystem* Get();
+	
 	/** @brief Register an interactable in the world. APDInteractableActor does this by default in the base class */
 	virtual void RegisterWorldInteractable_Implementation(UWorld* SelectedWorld, AActor* SelectedInteractable) override;
 

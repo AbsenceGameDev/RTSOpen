@@ -2,7 +2,6 @@
 #pragma once
 
 #include "CoreMinimal.h"
-#include "MassEntityTypes.h"
 #include "PDRTSBaseSubsystem.h"
 #include "GameFramework/HUD.h"
 #include "Engine/DeveloperSettings.h"

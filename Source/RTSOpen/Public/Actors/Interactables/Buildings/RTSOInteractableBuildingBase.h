@@ -2,6 +2,7 @@
 #pragma once
 
 #include "CoreMinimal.h"
+#include "PDBuildCommon.h"
 #include "PDRTSCommon.h"
 #include "Actors/GodHandPawn.h"
 #include "Actors/PDInteractActor.h"

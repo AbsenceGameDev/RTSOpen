@@ -3,6 +3,11 @@
 
 #include "Widgets/Slate/SRTSOMiniMap.h"
 
+TSharedRef<SWidget> URTSOMiniMap::RebuildWidget()
+{
+	return Super::RebuildWidget();
+}
+
 void URTSOMiniMap::OnWidgetRebuilt()
 {
 	if (SlateMiniMap != nullptr)

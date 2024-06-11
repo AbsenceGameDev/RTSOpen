@@ -22,7 +22,7 @@ void ARTSOMassSpawner::ProcessEntityTypes()
 	if (GetWorld() == nullptr) { return; }
 	UE_LOG(PDLog_RTSO, Warning, TEXT("ARTSOMassSpawner::ProcessEntityTypes"))
 
-	UPDRTSBaseSubsystem* RTSSubsystem = GEngine->GetEngineSubsystem<UPDRTSBaseSubsystem>();
+	UPDRTSBaseSubsystem* RTSSubsystem = UPDRTSBaseSubsystem::Get();
 	const FMassEntityManager* EntityManager = RTSSubsystem != nullptr ? RTSSubsystem->EntityManager : nullptr;
 	const UMassSpawnerSubsystem* SpawnerSystem = UWorld::GetSubsystem<UMassSpawnerSubsystem>(GetWorld());
 	if (EntityManager == nullptr) { return; }
