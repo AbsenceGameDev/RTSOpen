@@ -16,6 +16,232 @@ UE_DEFINE_GAMEPLAY_TAG(TAG_CTRL_Ctxt_BuildMode, "CTRL.Ctxt.BuildMode");
 UE_DEFINE_GAMEPLAY_TAG(TAG_CTRL_Ctxt_ConversationMode, "CTRL.Ctxt.ConversationMode");
 
 
+
+template<typename TBucketType>
+MOpaquePImpl(TBucketTickHandler<TBucketType>)
+{
+	/** @brief Adds or removes our bucket to our tick array */
+	template<bool bRemove>
+	void HandleBucketFromTicks(TBucketType* BucketData, float StartTimeIfRegistering);
+	
+	/** @brief Max Limit of a tick interval : 100.0 (seconds)
+	 * @note 100 seconds is excessive but doesn't matter, just something to clamp our timestamp against to offset the tick group properly
+	 * @note 100.0 second ping limit puts our max index at 10 000 (Limit * IntervalScalar),
+	 * @note meaning we have at max 10k ping groups every 100 seconds, we get a resolution of 1 ping group every hundredth of a second */
+	static constexpr double HandlerTimeStepLimit = 100.0;
+
+	double TimeAccumulation = 0;
+
+	/** @brief Max Limit of a tick interval : (1.0 / (1.e-2f) */	
+	static constexpr int32 IntervalScalar = (1.0 / (1.e-2f));
+	/** @brief Max bucket index : HandlerTimeStepLimit * IntervalScalar */	
+	static constexpr int32 MaxBucketIndex = HandlerTimeStepLimit * IntervalScalar;
+
+	/** @brief List of tickgroup buckets */
+	TArray<TArray<TBucketType*>> BucketTicks;
+	/** @brief Special bucket that gets ticked every frame */
+	TArray<TBucketType*> TickEveryFrame; 
+	
+	/** @brief List of interval groups 
+	 * @note  tops out at 10k indices (this is MaxBucketIndex) */
+	TArray<int32> InverseIntervals;
+
+	/** @brief Cached value of last processed tick index */	
+	int32 LastProcessedTickIndex = INDEX_NONE; 
+	
+};
+
+template <typename TBucketType>
+TBucketTickHandler<TBucketType>* TBucketTickHandler<TBucketType>::CreateHandler()
+{
+	PImpl* Handler = new PImpl;
+	// Handler->Initialize();
+	return Handler;
+}
+
+template <typename TBucketType>
+void TBucketTickHandler<TBucketType>::DestroyHandler()
+{
+	// Self->Terminate();	
+	delete Self.Ptr();	
+}
+
+
+template<typename TBucketType>
+void TBucketTickHandler<TBucketType>::AddToAllTickgroups(TBucketType* BucketData)
+{
+	Self->TickEveryFrame.AddUnique(BucketData);
+}
+
+template<typename TBucketType>
+void TBucketTickHandler<TBucketType>::RemoveFromAllTickgroups(TBucketType* BucketData)
+{
+	Self->TickEveryFrame.Remove(BucketData);	
+}
+
+template<typename TBucketType>
+void TBucketTickHandler<TBucketType>::RegisterNewBucketForTicks(TBucketType* BucketData, double StartTime)
+{
+	Self->HandleBucketFromTicks<false>(BucketData, StartTime);
+}
+
+template<typename TBucketType>
+void TBucketTickHandler<TBucketType>::DeregisterBucketFromTicks(TBucketType* BucketData)
+{
+	Self->HandleBucketFromTicks<true>(BucketData, 0.0);
+}
+
+template<typename TBucketType>
+void TBucketTickHandler<TBucketType>::TickBuckets(float DeltaTime)
+{
+	Self->TimeAccumulation += DeltaTime;
+	
+	// Find offset from HandlerTimeStepLimit with StartTime
+	const double WholeAndFraction = Self->TimeAccumulation / TBucketTickHandler::PImpl::HandlerTimeStepLimit;
+	const double OnlyFraction = WholeAndFraction - static_cast<int32>(WholeAndFraction);
+
+	// the fraction is our offset
+	const int32 IntervalEntry = OnlyFraction * TBucketTickHandler::PImpl::IntervalScalar; 
+	const int32 LastIdx       = Self->InverseIntervals.Last();
+
+	if (Self->InverseIntervals.Contains(IntervalEntry)) 
+	{
+		// Found exising bucket
+		const int32 TickIdx = Self->InverseIntervals.Find(IntervalEntry);
+		const int32 IdxDelta = Self->LastProcessedTickIndex == INDEX_NONE ? TickIdx : TickIdx - Self->LastProcessedTickIndex;
+			
+		// @todo if true the nwe have missed 'IdxDelta - 1' amount of tick groups 
+		// @todo handle wrapping when TickIndex has wrapped around but LastProcessesTickIndex is still at the end
+
+		TArray<double> AccumulatedTimings;
+		TArray<TBucketType*> FoundEntries;
+		TArray<bool> SkipAccumulation; // if only found in the first entry, skip accumulating
+			
+		for (int32 Step = 0; Step < IdxDelta;)
+		{
+			// We step Backwards from previous and find all unique bucket entries, @note this might get hairy fast
+			const int32 ReversingTickIndex = TickIdx - Step;
+			for(const TBucketType& BucketData : Self->BucketTicks[ReversingTickIndex])
+			{
+				const int32 EntryIdx = FoundEntries.AddUnique(&BucketData); // this will be slow on cramped buckets, think on how to avoid this
+				if (AccumulatedTimings.IsValidIndex(EntryIdx))
+				{
+					AccumulatedTimings[EntryIdx] += BucketData.UserInterval;
+					SkipAccumulation[EntryIdx] = false;
+				}
+				else
+				{
+					// find the missing time here, at our first encountered missing step of any given bucketentry
+					const double MissingTime =
+						static_cast<double>(IntervalEntry - Self->InverseIntervals[ReversingTickIndex]) / static_cast<double>(TBucketTickHandler::PImpl::IntervalScalar);
+					
+					
+					AccumulatedTimings.EmplaceAt(EntryIdx, BucketData.UserInterval + MissingTime);
+
+					bool bShouldSkip = ReversingTickIndex == TickIdx;
+					BucketData.LastTickOffset =
+						bShouldSkip
+					? (FMath::IsNearlyZero(BucketData.LastTickOffset) == false
+						? BucketData.LastTickOffset
+						: 0.0)
+					: MissingTime;
+					
+					SkipAccumulation.EmplaceAt(EntryIdx, bShouldSkip);
+				}
+			
+			}
+			++Step;
+		}
+
+		// Steps our bucket (and potentially our missed bucket entries from previous buckets) and fires their tick with the proper accumulated (missed time) 
+		const int32 FoundEntryLimit = FoundEntries.Num();
+		for (int32 Step = 0; Step < FoundEntryLimit; )
+		{
+			TBucketType* CurrentBucketEntry = FoundEntries[Step];
+			double AccumulatedTick = SkipAccumulation[Step]
+				? CurrentBucketEntry->UserInterval - CurrentBucketEntry->LastTickOffset // This is our potential offset when we have fastforwarded a missing tick group
+				: AccumulatedTimings[Step];
+			CurrentBucketEntry->LastTickOffset = 0.0; // always clear after using it, this 
+			
+			CurrentBucketEntry->Execute(AccumulatedTick); 
+			Step++;
+		}
+		Self->LastProcessedTickIndex = TickIdx;
+	}
+
+	// Special bucket for things that tick every frame
+	for(TBucketType* ChunkData : Self->TickEveryFrame)
+	{
+		ChunkData->Execute(DeltaTime);
+	}
+}
+template <typename TBucketType>
+template <bool bRemove>
+void TBucketTickHandler<TBucketType>::PImpl::HandleBucketFromTicks(TBucketType* BucketData, float StartTimeIfRegistering)
+{
+	const double ClampedInterval = FMath::Min(BucketData->UserInterval, TBucketTickHandler::PImpl::HandlerTimeStepLimit);
+
+	// If ClampedInterval is zero, put it in ALL tickgroups
+	if (ClampedInterval <= (1.e-4f))
+	{
+		if constexpr (bRemove) { RemoveFromAllTickgroups<TBucketType>(BucketData); }
+		else { AddToAllTickgroups<TBucketType>(BucketData); }
+		
+		return;
+	}
+
+	// Find offset from HandlerTimeStepLimit with StartTime
+	const double WholeAndFraction = StartTimeIfRegistering / TBucketTickHandler::PImpl::HandlerTimeStepLimit;
+	const double OnlyFraction = bRemove ?  BucketData->StoredFraction : (WholeAndFraction) - static_cast<int32>(WholeAndFraction);
+
+	// How many times do we need to apply this chunk, how many buckets does it apply to
+	const int32 TotalSteps = TBucketTickHandler::PImpl::HandlerTimeStepLimit / ClampedInterval;
+	for (int32 Step = 0; Step <= TotalSteps; Step++)
+	{
+		// the fraction is our offset
+		const int32 IntervalOffset = (OnlyFraction + (OnlyFraction * Step)) * TBucketTickHandler::PImpl::IntervalScalar;
+
+		// 
+		// Convert to inverse integer, to avoid floating point comparisons when Contains() runs and to avoid removing our ability to match against the timestep properly
+		int32 TruncatedInverseInterval = (ClampedInterval * TBucketTickHandler::PImpl::IntervalScalar) + IntervalOffset;
+
+
+		if constexpr (bRemove)
+		{
+			// 
+			// Remove from bucket if found
+			// Sort into buckets, first find where they are on the timeline by inversing them with epsilon
+			if (InverseIntervals.Contains(TruncatedInverseInterval) == false) { return; }
+
+			// Found exising bucket
+			const int32 TickIdx = InverseIntervals.Find(BucketData->TruncatedInverseTickInterval);
+			BucketTicks[TickIdx].Remove(BucketData);
+			BucketData->TruncatedInverseTickInterval = INDEX_NONE;
+			
+			return;
+		}
+		else
+		{
+			// 
+			// Sort into buckets, first find where they are on the timeline by inversing them with epsilon
+			if (InverseIntervals.Contains(TruncatedInverseInterval))
+			{
+				// Found exising bucket
+				const int32 TickIdx = InverseIntervals.Find(TruncatedInverseInterval);
+				BucketTicks[TickIdx].Emplace(BucketData);
+				return;
+			}
+			
+			// Create new bucket
+			TArray<TBucketType*> NewBucket = {BucketData};
+			const int32 NewBucketIdx = BucketTicks.Emplace(NewBucket);
+			InverseIntervals.EmplaceAt(NewBucketIdx, TruncatedInverseInterval);
+		}
+	}
+
+	if (bRemove == false) { BucketData->StoredFraction = OnlyFraction; }
+}
+
 /**
 Business Source License 1.1
 
