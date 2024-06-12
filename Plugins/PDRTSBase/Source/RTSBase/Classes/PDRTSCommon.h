@@ -161,7 +161,7 @@ public:
 		const double OnlyFraction = WholeAndFraction - static_cast<int32>(WholeAndFraction);
 
 		// the fraction is our offset
-		const int32 IntervalEntry = OnlyFraction * IntervalScalar; // O(1)
+		const int32 IntervalEntry = OnlyFraction * IntervalScalar; 
 
 		if (InverseIntervals.Contains(IntervalEntry)) 
 		{

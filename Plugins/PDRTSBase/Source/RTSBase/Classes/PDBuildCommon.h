@@ -32,26 +32,31 @@ PDRTSBASE_API UE_DECLARE_GAMEPLAY_TAG_EXTERN(TAG_BUILD_ContextMenu_Builder_Advan
 PDRTSBASE_API UE_DECLARE_GAMEPLAY_TAG_EXTERN(TAG_BUILD_ContextMenu_Builder_Expert);
 
 /** @brief Behaviours for how builds should be handled.
- * Should builds A. wait for workers or B. should it call for workers,
+ * Should builds A. Start right away, B. wait for workers or C. should it call for workers,
  * the former will wait for player to dispatch builders, the latter will use the ping system attempt finding some themselves
- * @todo @refactor wrap these into a namespace
  */
-
-// EPDRTSBuildProgressionBehaviour
-
 UENUM()
 enum class PDBuildBehaviourProgress
 {
+	EImmediate      UMETA(DisplayName="BuildBehaviour::Progress::Immediate"),
 	EStandBy        UMETA(DisplayName="BuildBehaviour::Progress::StandBy"),
 	ECallForWorkers UMETA(DisplayName="BuildBehaviour::Progress::PingBuilders"),
 };
 
+/** @brief Behaviours for how build costs should work.
+ * Should builds
+ * A. Withdraw from player bank,
+ * B. Withdraw from associate base's bank 
+ * C. wait for workers to bring resources
+ * D. be completely free, skirting past any resource requirements set for the buildable?
+ */
 UENUM()
 enum class PDBuildBehaviourCost
 {
-	EPlayerBank UMETA(DisplayName="PD::Build::Behaviour::Cost:PlayerBank"),
-	EBaseBank   UMETA(DisplayName="PD::Build::Behaviour::Cost:BaseBank"),  // may differ from player bank
-	EStandBy    UMETA(DisplayName="PD::Build::Behaviour::Cost:StandBy"),
+	EPlayerBank UMETA(DisplayName="PD::Build::Behaviour::Cost::PlayerBank"),
+	EBaseBank   UMETA(DisplayName="PD::Build::Behaviour::Cost::BaseBank"),  // may differ from player bank
+	EStandBy    UMETA(DisplayName="PD::Build::Behaviour::Cost::StandBy"),
+	EFree       UMETA(DisplayName="PD::Build::Behaviour::Cost::Free"),
 };	
 
 namespace PD::Build::Behaviour
@@ -77,7 +82,6 @@ enum class EPDRTSGhostStageBehaviour
 	EOnEnd UMETA(DisplayName="OnEnd"),
 };
 
-// @todo make use of this
 namespace PD::Build::Ghost::Behaviour
 {
 	using Transition = EPDRTSGhostTransition;
@@ -206,32 +210,18 @@ struct FPDRTSGhostBuildState
 	int32 CurrentStageIdx = 0;	
 };
 
-
-/** @brief Should Place Ghost or Buildable ? */
-/** @brief If Ghost, should the build start immediately or should it have some processing duration? */
-/** @brief ^ If immediately - Then, If no resources, put in waiting queue; when resources: start build  */
-/** @brief ^ If duration    - Then, If no resources, put in waiting queue; when resources: send workers to gather to location  */
+/** @brief Should Move camera or not upon placing a ghost ? */
 UENUM(Blueprintable)
-enum class EPDRTSGhostSettings
+enum class EPDRTSBuildCameraBehaviour
 {
-	Ghost_FireThenForget, /** @brief Immediate Ghost;  If no resources, put in waiting queue; when resources: start build automatically without workers needing to gather any resourced there */
-	Ghost_WaitThenFire,   /** @brief Processing: If no resources, put in waiting queue; when resources: send workers to gather to location */
-	Buildable_FireThenForget, /** @brief Immediate Buildable;  If no resources, put in waiting queue; when resources: build immediately */
+	Placement_SmoothInterp, /** @brief Immediate Ghost;  If no resources, put in waiting queue; when resources: start build automatically without workers needing to gather any resourced there */
+	Place_NoCameraMovement,   /** @brief Processing: If no resources, put in waiting queue; when resources: send workers to gather to location */
 };
 
-/** @brief If Buildable, should building be built immediately or after a timed delay? Costs should be taken from player bank or base? */
-UCLASS(Config = "Game", DefaultConfig)
-class PDRTSBASE_API UPDRTSBuildablePlacementBehaviour : public UDeveloperSettings
+namespace PD::Build::Behaviour
 {
-	GENERATED_BODY()
-public:
-
-	UPDRTSBuildablePlacementBehaviour(){}
-
-	/** @rief Tells us how we want the placement behaviour to be when placing a ghost  */
-	UPROPERTY(EditAnywhere, BlueprintReadWrite)
-	EPDRTSGhostSettings PlacementBehaviour = EPDRTSGhostSettings::Buildable_FireThenForget;
-};
+	using Camera = EPDRTSBuildCameraBehaviour;
+}
 
 //
 // Buildables
@@ -403,7 +393,11 @@ struct FPDRTSBuildSystemBehaviours
 
 	/** @brief BuildBehaviour::Cost */
 	UPROPERTY(Config, EditAnywhere, Category="Visible")
-	PDBuildBehaviourCost Cost = PD::Build::Behaviour::Cost::EStandBy;
+	PDBuildBehaviourCost Cost = PD::Build::Behaviour::Cost::EFree;
+
+	/** @rief Tells us how we want the camera behaviour to be when placing a ghost  */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	EPDRTSBuildCameraBehaviour CameraBehaviour = PD::Build::Behaviour::Camera::Place_NoCameraMovement;	
 };
 
 

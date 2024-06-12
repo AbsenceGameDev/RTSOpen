@@ -211,8 +211,10 @@ struct FRTSGodhandSettings : public FTableRowBase
 	double SelectionRescaleSpeed = 8.0;
 	/** @brief This controls how fast the godhand rotates when using the rotate keys */
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Godhand|Settings")
-	double RotationRateModifier = 75.0;	
-	
+	double RotationRateModifier = 75.0;
+	/** @brief This controls how fast the godhand moves to a new buildable camera target */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Godhand|Settings")
+	double CameraTargetInterpSpeed = 3.0;	
 };
 
 /** @brief State struct for the godhand pawn */
@@ -236,19 +238,6 @@ struct FRTSGodhandState
 	/** @brief This value is assigned from the inputvalue of the 'ActionMagnify' input action */
 	UPROPERTY(VisibleInstanceOnly, BlueprintReadWrite, Category = "Godhand|State")
 	double MagnificationStrength = 0.01;	
-	
-	/* State(s) - tracked interactables*/
-	/** @brief This gets set by a call to 'AGodHandPawn::BeginBuild()' . @todo finish impl. */
-	UPROPERTY(VisibleInstanceOnly, BlueprintReadWrite, Category = "Godhand|State")
-	TSubclassOf<AActor> TempSpawnClass;
-	/** @brief If 'AGodHandPawn::BeginBuild()' manages to spawn an interactable it gets cached here. @todo finish impl. */
-	UPROPERTY(VisibleInstanceOnly, BlueprintReadWrite, Category = "Godhand|State")
-	APDInteractActor* SpawnedInteractable = nullptr;
-	
-	/* State(s) - tracked values */	
-	/** @brief Current resource costs @todo is ever used? */
-	UPROPERTY(VisibleInstanceOnly, BlueprintReadWrite, Category = "Godhand|State")
-	TMap<FGameplayTag, FPDItemCosts> CurrentResourceCost;
 
 	/* State(s) - Cursor */	
 	/** @brief Accumulates the current time elapsed and feeds a sinewave with it */

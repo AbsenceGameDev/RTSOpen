@@ -65,6 +65,12 @@
 void AGodHandPawn::Tick(float DeltaTime)
 {
 	Super::Tick(DeltaTime);
+
+	if (CameraInterpTarget != nullptr)
+	{
+		CameraInterpTick(DeltaTime);
+		return;
+	}
 	
 	TrackMovement(DeltaTime);
 	HoverTick(DeltaTime);
@@ -78,6 +84,38 @@ void AGodHandPawn::Tick(float DeltaTime)
 	}
 	
 }
+
+void AGodHandPawn::CameraInterpTick(float DeltaTime)
+{
+	const FVector InterpVector = UKismetMathLibrary::VInterpTo(
+			GetActorLocation(),
+			CameraInterpTarget->GetActorLocation(),
+			DeltaTime,
+			InstanceSettings.CameraTargetInterpSpeed);
+	SetActorLocation(InterpVector);
+
+	constexpr double OneMetreTolerance = 100.0;
+	
+	const FVector DeltaV = GetActorLocation() - CameraInterpTarget->GetActorLocation();
+	if (DeltaV.IsNearlyZero(OneMetreTolerance)) { CameraInterpTarget = nullptr; }
+}
+
+/*
+AController* PC = GetController();
+	if (PC == nullptr) { return; }
+	
+	const FVector InterpVector = UKismetMathLibrary::VInterpTo(
+			PC->K2_GetActorLocation(),
+			CameraInterpTarget->GetActorLocation(),
+			DeltaTime,
+			InstanceSettings.CameraTargetInterpSpeed);
+	PC->ClientSetLocation(InterpVector, PC->GetControlRotation());
+
+	constexpr double OneMetreTolerance = 100.0;
+	
+	const FVector DeltaV = PC->K2_GetActorLocation() - CameraInterpTarget->GetActorLocation();
+	if (DeltaV.IsNearlyZero(OneMetreTolerance)) { CameraInterpTarget = nullptr; }
+ */
 
 void AGodHandPawn::TrackMovement(float DeltaTime)
 {
@@ -442,59 +480,76 @@ void AGodHandPawn::SpawnFromGhost(bool bBuildable, bool bRequiresWorkersToBuild)
 	BuilderSubsystem->AddBuildActorArray( IPDRTSBuilderInterface::Execute_GetBuilderID(this), &SpawnedBuildings);
 	
 	AsyncTask(ENamedThreads::GameThread,
-	          [&,  InBuildableTag = CurrentBuildableTag , bInBuildable = bBuildable, bInRequiresWorkersToBuild = bRequiresWorkersToBuild ,InSpawnTransform = InitialSpawnTransform, InGhost = CurrentGhost, InSpawnedBuildable = SpawnedBuildable]()
-	          {
-		          if (InSpawnedBuildable == nullptr || InSpawnedBuildable->IsValidLowLevelFast() == false)
-		          {
-			          UE_LOG(PDLog_RTSO, Warning, TEXT("ActionWorkerUnit_Completed -- Place buildable -- Class(%s) does nor implement interface(PDRTSBuildableGhostInterface)  -- Exiting function "),  *InSpawnedBuildable->GetClass()->GetName());
-			          SpawnedBuildings.Remove(InSpawnedBuildable);
-			          return;
-		          }
-			
-		          const FVector&& NewGhostLoc = InGhost != nullptr ? InGhost->GetActorLocation() : InSpawnTransform.GetLocation();
-		          const FTransform UpdatedSpawnTransform{FQuat(), NewGhostLoc, FVector::OneVector};
-		          UGameplayStatics::FinishSpawningActor(InSpawnedBuildable, UpdatedSpawnTransform);
-		          if (InSpawnedBuildable->GetClass()->ImplementsInterface(UPDRTSBuildableGhostInterface::StaticClass()))
-		          {
-		          	if (bInBuildable)
-		          	{
-		          		IPDRTSBuildableGhostInterface::Execute_OnSpawnedAsMain(InSpawnedBuildable, InBuildableTag);
+	[&,  InBuildableTag = CurrentBuildableTag , bInBuildable = bBuildable, bInRequiresWorkersToBuild = bRequiresWorkersToBuild ,InSpawnTransform = InitialSpawnTransform, InGhost = CurrentGhost, InSpawnedBuildable = SpawnedBuildable]()
+	{
+		if (InSpawnedBuildable == nullptr || InSpawnedBuildable->IsValidLowLevelFast() == false)
+		{
+			UE_LOG(PDLog_RTSO, Warning, TEXT("ActionWorkerUnit_Completed -- Place buildable -- Class(%s) does nor implement interface(PDRTSBuildableGhostInterface)  -- Exiting function "),  *InSpawnedBuildable->GetClass()->GetName());
+			SpawnedBuildings.Remove(InSpawnedBuildable);
+			return;
+		}
+		const FVector&& NewGhostLoc = InGhost != nullptr ? InGhost->GetActorLocation() : InSpawnTransform.GetLocation();
+		const FTransform UpdatedSpawnTransform{FQuat(), NewGhostLoc, FVector::OneVector};
+		UGameplayStatics::FinishSpawningActor(InSpawnedBuildable, UpdatedSpawnTransform);
+		if (InSpawnedBuildable->GetClass()->ImplementsInterface(UPDRTSBuildableGhostInterface::StaticClass()))
+		{
+			if (bInBuildable)
+			{
+				IPDRTSBuildableGhostInterface::Execute_OnSpawnedAsMain(InSpawnedBuildable, InBuildableTag);
 
-
-		          		
-		          	}
-		          	else
-		          	{
-		          		IPDRTSBuildableGhostInterface::Execute_OnSpawnedAsGhost(InSpawnedBuildable, InBuildableTag, false, bInRequiresWorkersToBuild);
-		          	}
-		          }
-		          else
-		          {
-			          UE_LOG(PDLog_RTSO, Warning, TEXT("ActionWorkerUnit_Completed -- Place buildable -- Class(%s) does nor implement interface(PDRTSBuildableGhostInterface)  -- Exiting function "),  *InSpawnedBuildable->GetClass()->GetName())			
-		          }
-	          });	
+				
+				const UPDBuilderSubsystemSettings* BuilderSettings = GetDefault<UPDBuilderSubsystemSettings>();
+				switch (BuilderSettings->DefaultBuildSystemBehaviours.CameraBehaviour)
+				{
+				case EPDRTSBuildCameraBehaviour::Placement_SmoothInterp:
+					// CameraInterpTarget
+					CameraInterpTarget = InSpawnedBuildable;
+					
+					break;
+				case EPDRTSBuildCameraBehaviour::Place_NoCameraMovement:
+					// Do nothing
+					break;
+				}				
+			}
+			else
+			{
+				IPDRTSBuildableGhostInterface::Execute_OnSpawnedAsGhost(InSpawnedBuildable, InBuildableTag, false, bInRequiresWorkersToBuild);
+			}
+		}
+		else
+		{
+			UE_LOG(PDLog_RTSO, Warning, TEXT("ActionWorkerUnit_Completed -- Place buildable -- Class(%s) does nor implement interface(PDRTSBuildableGhostInterface)  -- Exiting function "),  *InSpawnedBuildable->GetClass()->GetName())			
+		}
+	});	
 }
 
 void AGodHandPawn::ProcessPlaceBuildable(ARTSOController* PC)
 {
 	PC->MarqueeSelection(EMarqueeSelectionEvent::ABORT);
 
-	const UPDRTSBuildablePlacementBehaviour* DeveloperSettings = GetDefault<UPDRTSBuildablePlacementBehaviour>();
+	const UPDBuilderSubsystemSettings* DeveloperSettings = GetDefault<UPDBuilderSubsystemSettings>();
 
-	switch (DeveloperSettings->PlacementBehaviour)
+	const PD::Build::Behaviour::Cost     CostBehaviour     = DeveloperSettings->DefaultBuildSystemBehaviours.Cost;
+	const PD::Build::Behaviour::Progress ProgressBehaviour = DeveloperSettings->DefaultBuildSystemBehaviours.Progression;
+	
+	const bool NonImmediate_SpawnGhost  = CostBehaviour != PD::Build::Behaviour::Cost::EFree && ProgressBehaviour != PD::Build::Behaviour::Progress::EImmediate;
+	const bool Immediate_SpawnGhost     = (CostBehaviour != PD::Build::Behaviour::Cost::EFree && ProgressBehaviour == PD::Build::Behaviour::Progress::EImmediate)
+	                                    || CostBehaviour == PD::Build::Behaviour::Cost::EFree && ProgressBehaviour != PD::Build::Behaviour::Progress::EImmediate;
+	
+	const bool Immediate_SpawnBuildable = CostBehaviour == PD::Build::Behaviour::Cost::EFree && ProgressBehaviour == PD::Build::Behaviour::Progress::EImmediate;
+
+	if (NonImmediate_SpawnGhost)
 	{
-	case EPDRTSGhostSettings::Ghost_FireThenForget:
 		SpawnFromGhost(false, true);
-		break;
-	case EPDRTSGhostSettings::Ghost_WaitThenFire:
-		SpawnFromGhost(false, false);
-		break;
-	case EPDRTSGhostSettings::Buildable_FireThenForget:
-		SpawnFromGhost(true);
-		break;
-	default: ;
 	}
-
+	else if (Immediate_SpawnGhost)
+	{
+		SpawnFromGhost(false, false);
+	}
+	else if (Immediate_SpawnBuildable)
+	{
+		SpawnFromGhost(true);
+	}
 }
 
 //
@@ -1011,34 +1066,6 @@ void AGodHandPawn::NotifyActorEndOverlap(AActor* OtherActor)
 	Super::NotifyActorEndOverlap(OtherActor);
 
 	ActorEndOverlapValidation();
-}
-
-void AGodHandPawn::BeginBuild_Implementation(TSubclassOf<AActor> TargetClass, TMap<FGameplayTag, FPDItemCosts>& ResourceCost)
-{
-	InstanceState.TempSpawnClass = TargetClass;
-	InstanceState.CurrentResourceCost = ResourceCost;
-
-	if (GetWorld() == nullptr
-		|| InstanceState.SpawnedInteractable == nullptr
-		|| InstanceState.SpawnedInteractable->IsValidLowLevelFast() == false)
-	{
-		return;
-	}
-	InstanceState.SpawnedInteractable->Destroy(true);
-
-	FActorSpawnParameters SpawnInfo;
-	SpawnInfo.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AlwaysSpawn;
-	SpawnInfo.TransformScaleMethod = ESpawnActorScaleMethod::SelectDefaultAtRuntime;
-	SpawnInfo.Owner = this;
-	SpawnInfo.Instigator = this;
-	SpawnInfo.bDeferConstruction = false;
-
-	const FVector ActorLocation = GetActorLocation();
-	InstanceState.SpawnedInteractable = Cast<APDInteractActor>(GetWorld()->SpawnActor(InstanceState.TempSpawnClass, &ActorLocation, &FRotator::ZeroRotator, SpawnInfo));
-	if (InstanceState.SpawnedInteractable == nullptr) { return; }
-
-	// SpawnedInteractable: Placement Mode
-	// SpawnedInteractable->CreateOverlay
 }
 
 /**

@@ -345,17 +345,26 @@ void ARTSOInteractableBuildingBase::ProcessIfWorkersRequired()
 	{
 	case PD::Build::Behaviour::Cost::EPlayerBank:
 		// Withdraw immediately, exit function it fails
-		if (WithdrawRecurringCostFromBankOrEntity(PlayerBank, nullptr, ImmutableStage) == false) { return; }
+		if (WithdrawRecurringCostFromBankOrEntity(PlayerBank, nullptr, ImmutableStage) == false)
+		{
+			return;
+		}
 		break;
 	case PD::Build::Behaviour::Cost::EBaseBank:
 		// Withdraw immediately, exit function it fails
 		{
 			UPDInventoryComponent* AssignedBaseBank = nullptr; // @todo write some system to handle bases and make us of it here
-			if (WithdrawRecurringCostFromBankOrEntity(AssignedBaseBank,nullptr, ImmutableStage) == false) { return; }
+			if (WithdrawRecurringCostFromBankOrEntity(AssignedBaseBank,nullptr, ImmutableStage) == false)
+			{
+				return;
+			}
 		}
 		break;
 	case PD::Build::Behaviour::Cost::EStandBy:
 		// @done Withdraw from workers when they arrive
+		break;
+		
+	case PDBuildBehaviourCost::EFree:
 		break;
 	}
 
@@ -365,6 +374,7 @@ void ARTSOInteractableBuildingBase::ProcessIfWorkersRequired()
 	const PD::Build::Behaviour::Progress BuildProgressionBehaviour = DefaultSubsystemSetting->DefaultBuildSystemBehaviours.Progression;
 	switch (BuildProgressionBehaviour)
 	{
+	case PDBuildBehaviourProgress::EImmediate: // Immediate does not matter in this function, if immediate it will not hit this function
 	case PD::Build::Behaviour::Progress::EStandBy:
 		// just wait
 		break;

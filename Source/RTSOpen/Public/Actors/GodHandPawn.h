@@ -40,9 +40,13 @@ public:
 	 * the interact component, the inventory component, the movement component and lastly the participant component */
 	AGodHandPawn();
 
+	
 	/** @brief Calls 'TrackMovement(), HoverTick(), RotationTick()'
 	 * and if bUpdatePathOnTick is true then call RefreshPathingEffects()*/
 	virtual void Tick(float DeltaTime) override;
+
+	/** @brief If we have a CameraInterpTarget then move towards that as first priority, when reached clear the target */
+	void CameraInterpTick(float DeltaTime);
 
 	/** @brief Rotates towards the requested direction, rotates in 90 degree increments, snaps to worlds cardinal directions*/
 	void RotationTick(float& DeltaTime);
@@ -120,11 +124,7 @@ public:
 	const FTransform& GetEntityTransform(const FMassEntityHandle& Handle) const;
 	/** @brief Calls 'FindClosestMassEntity()' and 'FindClosestInteractableActor()' */
 	void HoverTick(float DeltaTime);
-
-	/** @brief Spawns an interactable. @todo backlog build system */
-	UFUNCTION(BlueprintNativeEvent, BlueprintCallable)
-	void BeginBuild(TSubclassOf<AActor> TargetClass, TMap<FGameplayTag /*Resource tag*/, FPDItemCosts>& ResourceCost);
-
+	
 	/* RTSO Input Interface - Start */
 	/** @brief Adds movement input to the input vector scaled by 100 */
 	virtual void ActionMove_Implementation(const FInputActionValue& Value) override;
@@ -255,6 +255,10 @@ public:
 	/** @brief Cached owner ID, to avoid having to call the interface multiple times in fast paths @todo @refactor Set default value*/
 	UPROPERTY()
 	int32 CachedActorID;
+
+	/** @brief Camera interpolation target */
+	UPROPERTY()
+	AActor* CameraInterpTarget = nullptr;
 
 	/** @brief Fallback comparison value for a closest distance search when the vector was not valid */
 	static inline constexpr double  InvalidDistance{UE_MAX_FLT * UE_MAX_FLT};
