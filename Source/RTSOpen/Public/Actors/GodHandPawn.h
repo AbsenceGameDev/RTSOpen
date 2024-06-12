@@ -259,6 +259,9 @@ public:
 	/** @brief Camera interpolation target */
 	UPROPERTY()
 	AActor* CameraInterpTarget = nullptr;
+	
+	/** @brief Flag to tell us when we just have placed a buildable, @todo @efactor move somewhere more appropriate */
+	bool bJustPlacedBuildable = false;
 
 	/** @brief Fallback comparison value for a closest distance search when the vector was not valid */
 	static inline constexpr double  InvalidDistance{UE_MAX_FLT * UE_MAX_FLT};

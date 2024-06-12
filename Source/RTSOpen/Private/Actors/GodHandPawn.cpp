@@ -100,23 +100,6 @@ void AGodHandPawn::CameraInterpTick(float DeltaTime)
 	if (DeltaV.IsNearlyZero(OneMetreTolerance)) { CameraInterpTarget = nullptr; }
 }
 
-/*
-AController* PC = GetController();
-	if (PC == nullptr) { return; }
-	
-	const FVector InterpVector = UKismetMathLibrary::VInterpTo(
-			PC->K2_GetActorLocation(),
-			CameraInterpTarget->GetActorLocation(),
-			DeltaTime,
-			InstanceSettings.CameraTargetInterpSpeed);
-	PC->ClientSetLocation(InterpVector, PC->GetControlRotation());
-
-	constexpr double OneMetreTolerance = 100.0;
-	
-	const FVector DeltaV = PC->K2_GetActorLocation() - CameraInterpTarget->GetActorLocation();
-	if (DeltaV.IsNearlyZero(OneMetreTolerance)) { CameraInterpTarget = nullptr; }
- */
-
 void AGodHandPawn::TrackMovement(float DeltaTime)
 {
 	const ARTSOController* PC = GetController<ARTSOController>();
@@ -253,13 +236,19 @@ void AGodHandPawn::BuildableGhostTick(float DeltaTime)
 		}
 	}
 
+	// Previously hidden ghost unhidden
+	if (CurrentGhost->IsHidden())
+	{
+		CurrentGhost->SetActorHiddenInGame(false);
+	}
+
 	const FVector DeltaLocation = CurrentGhost->GetActorLocation() - SteppedLocation;
 	if (DeltaLocation.IsNearlyZero(10.0)) // HashGridSubsystem->UniformCellSize * 0.5f))
 	{
 		return;
 	}
 	
-	UE_LOG(PDLog_RTSO, Warning, TEXT("AGodHandPawn::TickGhost -- CurrentGhost->SetActorLocation(SteppedLocation[%f,%f,%f])"), SteppedLocation.X, SteppedLocation.Y, SteppedLocation.Z)
+	UE_LOG(PDLog_RTSO, Verbose, TEXT("AGodHandPawn::TickGhost -- CurrentGhost->SetActorLocation(SteppedLocation[%f,%f,%f])"), SteppedLocation.X, SteppedLocation.Y, SteppedLocation.Z)
 	CurrentGhost->SetActorLocation(SteppedLocation);
 }
 
@@ -362,6 +351,8 @@ void AGodHandPawn::RefreshPathingEffects()
 void AGodHandPawn::ActionMove_Implementation(const FInputActionValue& Value)
 {
 	const FVector2D& ImmutableMoveInput = Value.Get<FVector2D>();
+
+	if (CameraInterpTarget != nullptr) { return; } // Don't allow moving around while we are moving the player to our interp target 
 	
 	AddMovementInput(GetActorForwardVector(), ImmutableMoveInput.Y * 100);
 	AddMovementInput(GetActorRightVector(), ImmutableMoveInput.X * 100);	
@@ -426,23 +417,32 @@ void AGodHandPawn::ActionWorkerUnit_Started_Implementation(const FInputActionVal
 		return;
 	}
 
+
+
 	ARTSOController* PC = GetController<ARTSOController>();
 	if (PC != nullptr)
 	{
+		// Buildable data takes priority now, but: @todo create and action/event PriorityQueue and handle each 'event' by the order of that queue!
+		if (CurrentBuildableData != nullptr)
+		{
+			ProcessPlaceBuildable(PC);
+			bJustPlacedBuildable = true;
+			return;
+		}
+		
 		PC->MarqueeSelection(EMarqueeSelectionEvent::STARTMARQUEE);
-	}	
-	
-	
-	// else
-	// AddMappingContext(GetController<APlayerController>(), TAG_CTRL_Ctxt_DragMove);
+	}
 }
 
 void AGodHandPawn::ActionWorkerUnit_Triggered_Implementation(const FInputActionValue& Value)
 {
+	if (bJustPlacedBuildable) { return; }
+	
 	// const bool ImmutableMoveInput = Value.Get<bool>(); 
 
 	// @todo write class to throttle output in functions that run at high rate
 	// UE_LOG(PDLog_RTSO, Warning, TEXT("ActionWorkerUnit_Triggered"))
+
 
 	ARTSOController* PC = GetController<ARTSOController>();
 	if (PC != nullptr && PC->IsDrawingMarquee())
@@ -455,6 +455,14 @@ void AGodHandPawn::ActionWorkerUnit_Triggered_Implementation(const FInputActionV
 
 void AGodHandPawn::ActionWorkerUnit_Cancelled_Implementation(const FInputActionValue& Value)
 {
+	if (bJustPlacedBuildable)
+	{
+		bJustPlacedBuildable = false;
+		return;
+	}
+
+	
+	
 	UE_LOG(PDLog_RTSO, Warning, TEXT("ActionWorkerUnit_Cancelled"))
 	IRTSOInputInterface::Execute_ActionWorkerUnit_Completed(this, Value);
 }
@@ -464,7 +472,7 @@ void AGodHandPawn::SpawnFromGhost(bool bBuildable, bool bRequiresWorkersToBuild)
 	ensure(CurrentGhost != nullptr);
 	if (UNLIKELY(CurrentGhost == nullptr))
 	{
-		UE_LOG(PDLog_RTSO, Warning, TEXT("ActionWorkerUnit_Completed -- Place buildable -- CurrentGhost == nullptr -- Exiting function "))
+		UE_LOG(PDLog_RTSO, Warning, TEXT("Spawn From Ghost -- Place buildable -- CurrentGhost == nullptr -- Exiting function "))
 		return;
 	}
 	const FVector&& GhostLoc = CurrentGhost->GetActorLocation();
@@ -484,7 +492,7 @@ void AGodHandPawn::SpawnFromGhost(bool bBuildable, bool bRequiresWorkersToBuild)
 	{
 		if (InSpawnedBuildable == nullptr || InSpawnedBuildable->IsValidLowLevelFast() == false)
 		{
-			UE_LOG(PDLog_RTSO, Warning, TEXT("ActionWorkerUnit_Completed -- Place buildable -- Class(%s) does nor implement interface(PDRTSBuildableGhostInterface)  -- Exiting function "),  *InSpawnedBuildable->GetClass()->GetName());
+			UE_LOG(PDLog_RTSO, Warning, TEXT("Spawn From Ghost -- Lambda -- Place buildable -- Class(%s) does nor implement interface(PDRTSBuildableGhostInterface)  -- Exiting function "),  *InSpawnedBuildable->GetClass()->GetName());
 			SpawnedBuildings.Remove(InSpawnedBuildable);
 			return;
 		}
@@ -518,7 +526,7 @@ void AGodHandPawn::SpawnFromGhost(bool bBuildable, bool bRequiresWorkersToBuild)
 		}
 		else
 		{
-			UE_LOG(PDLog_RTSO, Warning, TEXT("ActionWorkerUnit_Completed -- Place buildable -- Class(%s) does nor implement interface(PDRTSBuildableGhostInterface)  -- Exiting function "),  *InSpawnedBuildable->GetClass()->GetName())			
+			UE_LOG(PDLog_RTSO, Warning, TEXT("Spawn from Ghost -- Place buildable -- Class(%s) does nor implement interface(PDRTSBuildableGhostInterface)  -- Exiting function "),  *InSpawnedBuildable->GetClass()->GetName())			
 		}
 	});	
 }
@@ -561,9 +569,9 @@ void AGodHandPawn::ActionWorkerUnit_Completed_Implementation(const FInputActionV
 	if (PC == nullptr || PC->IsValidLowLevelFast() == false) { return; }
 
 	// Buildable data takes priority now, but: @todo create and action/event PriorityQueue and handle each 'event' by the order of that queue!
-	if (CurrentBuildableData != nullptr)
+	if (bJustPlacedBuildable)
 	{
-		ProcessPlaceBuildable(PC);
+		bJustPlacedBuildable = true;
 		return;
 	}
 
@@ -901,33 +909,37 @@ void AGodHandPawn::BeginPlay()
 {
 	Super::BeginPlay();
 
+	Collision->OnComponentBeginOverlap.AddDynamic(this, &AGodHandPawn::OnCollisionBeginOverlap);
+	Collision->OnComponentEndOverlap.AddDynamic(this, &AGodHandPawn::OnCollisionEndOverlap);
+
 	UPDRTSBaseSubsystem* RTSSubSystem = UPDRTSBaseSubsystem::Get();
 	UPDBuilderSubsystem* BuilderSubsystem = UPDBuilderSubsystem::Get();
 	ensure(RTSSubSystem != nullptr);
 	ensure(BuilderSubsystem != nullptr);
-	
+
+	// Starting query data
 	const FVector& QueryLocation = CursorMesh->GetComponentLocation();
-
 	const UE::Math::TVector<double> MinimapQueryExtent{ 2000.0, 2000.0, 500.0};
-
 	const double CollisionRadius = Collision->GetScaledSphereRadius(); 
 	const UE::Math::TVector<double> HoverSelectionQueryExtent{ CollisionRadius};
+
+	// Query shapes
 	const FPDOctreeUserQuery::QBox MinimapQueryBox        = FPDOctreeUserQuery::MakeUserQuery(QueryLocation, MinimapQueryExtent);
 	const FPDOctreeUserQuery::QBox HoverSelectionQueryBox = FPDOctreeUserQuery::MakeUserQuery(QueryLocation, HoverSelectionQueryExtent);
 	const FPDOctreeUserQuery::QSphere PingSystemQuerySphere  = FPDOctreeUserQuery::MakeUserQuery(QueryLocation, 10000.0); // need to update whn calling, start att 100m however
+
+	// RTS Subsystem initialized
 	RTSSubSystem->OctreeUserQuery.CreateNewQueryEntry(EPDQueryGroups::QUERY_GROUP_MINIMAP, MinimapQueryBox);
 	RTSSubSystem->OctreeUserQuery.CreateNewQueryEntry(EPDQueryGroups::QUERY_GROUP_HOVERSELECTION, HoverSelectionQueryBox);
 	RTSSubSystem->OctreeUserQuery.CallingUser = this;
+	RTSSubSystem->WorldInit(GetWorld());
+	EntityManager = RTSSubSystem->EntityManager;
+	
+	// Builder Subsystem initialized
 	BuilderSubsystem->OctreeBuildSystemEntityQuery.CreateNewQueryEntry(EPDQueryGroups::QUERY_GROUP_BUILDABLE_ACTORS, PingSystemQuerySphere);
 	BuilderSubsystem->OctreeBuildSystemEntityQuery.CallingUser = this;
+	BuilderSubsystem->WorldInit(GetWorld());
 	
-	Collision->OnComponentBeginOverlap.AddDynamic(this, &AGodHandPawn::OnCollisionBeginOverlap);
-	Collision->OnComponentEndOverlap.AddDynamic(this, &AGodHandPawn::OnCollisionEndOverlap);
-
-	UPDRTSBaseSubsystem* RTSSubsystem = UPDRTSBaseSubsystem::Get();
-	RTSSubsystem->WorldInit(GetWorld());
-	EntityManager = RTSSubsystem->EntityManager;
-
 	RefreshSettingsInstance();
 
 	UpdateMagnification();
@@ -972,19 +984,23 @@ void AGodHandPawn::NewAction_Implementation(ERTSBuildMenuModules ActionMode, FGa
 	{
 	case ERTSBuildMenuModules::SelectBuildable:
 		CurrentBuildableData = BuilderSubsystem->GetBuildableData(ActionTag); // If null clear current
-		CurrentBuildableTag = ActionTag; 
+		CurrentBuildableTag = ActionTag;
+		UE_LOG(PDLog_RTSO, Warning, TEXT("AGodHandPawn::NewAction - Selected Buildable"))
 		break;
 	case ERTSBuildMenuModules::SelectContext:
 		CurrentBuildContext = BuilderSubsystem->GetBuildContextEntry(ActionTag); // If null clear current
 		CurrentBuildContextTag = ActionTag; 
+		UE_LOG(PDLog_RTSO, Warning, TEXT("AGodHandPawn::NewAction - Selected BuildContext"))
 		break;
 	case ERTSBuildMenuModules::DeselectBuildable:
 		CurrentBuildableData = nullptr;
 		CurrentBuildableTag = FGameplayTag::EmptyTag; 
+		UE_LOG(PDLog_RTSO, Warning, TEXT("AGodHandPawn::NewAction - Deelected Buildable"))
 		break;
 	case ERTSBuildMenuModules::DeselectContext:
 		CurrentBuildContext = nullptr;
 		CurrentBuildContextTag = FGameplayTag::EmptyTag; 
+		UE_LOG(PDLog_RTSO, Warning, TEXT("AGodHandPawn::NewAction - Deselected BuildContext"))
 		break;
 	}
 }

@@ -263,6 +263,8 @@ bool UPDBuilderSubsystem::IsPastFinalIndex(const FGameplayTag& BuildableTag, FPD
 void UPDBuilderSubsystem::WorldInit(const UWorld* World)
 {
 	check(World);
+	WorldBuildActorArrays.Empty();
+	WorldBuildableLocationList.Empty();
 }
 
 void UPDBuilderSubsystem::OnDeveloperSettingsChanged(UObject* SettingsToChange, FPropertyChangedEvent& PropertyEvent)

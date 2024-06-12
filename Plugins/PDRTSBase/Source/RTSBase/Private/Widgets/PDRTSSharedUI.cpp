@@ -86,31 +86,31 @@ void UPDBuildableEntry::NativeOnListItemObjectSet(UObject* ListItemObject)
 
 void UPDBuildableEntry::OnHovered()
 {
-	UE_LOG(PDLog_RTSBase, Warning, TEXT("UPDBuildableEntry::OnHovered"))
+	UE_LOG(PDLog_RTSBase, Verbose, TEXT("UPDBuildableEntry::OnHovered"))
 	/** @todo: write impl.*/
 }
 
 void UPDBuildableEntry::OnUnhovered()
 {
-	UE_LOG(PDLog_RTSBase, Warning, TEXT("UPDBuildableEntry::OnUnhovered"))
+	UE_LOG(PDLog_RTSBase, Verbose, TEXT("UPDBuildableEntry::OnUnhovered"))
 	/** @todo: write impl.*/
 }
 
 void UPDBuildableEntry::OnClicked()
 {
-	UE_LOG(PDLog_RTSBase, Warning, TEXT("UPDBuildableEntry::OnClicked"))
+	UE_LOG(PDLog_RTSBase, Verbose, TEXT("UPDBuildableEntry::OnClicked"))
 	/** @todo: write impl.*/
 }
 
 void UPDBuildableEntry::OnReleased()
 {
-	UE_LOG(PDLog_RTSBase, Warning, TEXT("UPDBuildableEntry::OnReleased"))
+	UE_LOG(PDLog_RTSBase, Verbose, TEXT("UPDBuildableEntry::OnReleased"))
 	/** @todo: write impl.*/
 }
 
 void UPDBuildableEntry::OnPressed()
 {
-	UE_LOG(PDLog_RTSBase, Warning, TEXT("UPDBuildableEntry::OnPressed"))
+	UE_LOG(PDLog_RTSBase, Verbose, TEXT("UPDBuildableEntry::OnPressed"))
 
 	const APawn* CachedOwner = GetOwningPlayer()->GetPawnOrSpectator();
 	if (CachedOwner == nullptr)
@@ -193,32 +193,32 @@ void UPDBuildContextEntry::NativeOnListItemObjectSet(UObject* ListItemObject)
 
 void UPDBuildContextEntry::OnHovered()
 {
-	UE_LOG(PDLog_RTSBase, Warning, TEXT("UPDBuildContextEntry::OnHovered"))
+	UE_LOG(PDLog_RTSBase, Verbose, TEXT("UPDBuildContextEntry::OnHovered"))
 	/** @todo: write impl.*/
 }
 void UPDBuildContextEntry::OnUnhovered()
 {
-	UE_LOG(PDLog_RTSBase, Warning, TEXT("UPDBuildContextEntry::OnUnhovered"))
+	UE_LOG(PDLog_RTSBase, Verbose, TEXT("UPDBuildContextEntry::OnUnhovered"))
 	
 	/** @todo: write impl.*/
 }
 
 void UPDBuildContextEntry::OnClicked()
 {
-	UE_LOG(PDLog_RTSBase, Warning, TEXT("UPDBuildContextEntry::OnClicked"))
+	UE_LOG(PDLog_RTSBase, Verbose, TEXT("UPDBuildContextEntry::OnClicked"))
 	/** @todo: write impl.*/
 }
 
 void UPDBuildContextEntry::OnReleased()
 {
-	UE_LOG(PDLog_RTSBase, Warning, TEXT("UPDBuildContextEntry::OnReleased"))
+	UE_LOG(PDLog_RTSBase, Verbose, TEXT("UPDBuildContextEntry::OnReleased"))
 	
 	/** @todo: write impl.*/
 }
 
 void UPDBuildContextEntry::OnPressed()
 {
-	UE_LOG(PDLog_RTSBase, Warning, TEXT("UPDBuildContextEntry::OnPressed"))
+	UE_LOG(PDLog_RTSBase, Verbose, TEXT("UPDBuildContextEntry::OnPressed"))
 
 	APawn* CachedOwner = GetOwningPlayer()->GetPawnOrSpectator();
 	if (CachedOwner == nullptr)
@@ -297,10 +297,10 @@ void UPDBuildWidgetBase::LoadBuildContexts()
 	}
 	
 	SelectedContextTag = bLastSelectedContextStillValid ? LastSelectedContextTag : SelectedContextTag;
-	SelectBuildContext(SelectedContextTag);
+	SelectBuildContext(SelectedContextTag, true);
 }
 
-void UPDBuildWidgetBase::SelectBuildContext(const FGameplayTag& NewSelectedContext)
+void UPDBuildWidgetBase::SelectBuildContext(const FGameplayTag& NewSelectedContext, const bool bWasDeselected)
 {
 	bool bRequestedContextWasValid = false;
 	for (const FDataTableRowHandle& Context : CurrentBuildableContexts)
@@ -312,6 +312,8 @@ void UPDBuildWidgetBase::SelectBuildContext(const FGameplayTag& NewSelectedConte
 		bRequestedContextWasValid = true;
 		
 		Buildables->ClearListItems();
+		if (bWasDeselected) { return; }
+		
 		for (const FDataTableRowHandle& BuildData : LoadedContext->BuildablesData)
 		{
 			const FPDBuildable* Buildable = BuildData.GetRow<FPDBuildable>("UPDBuildWidgetBase::SelectBuildContext -- @todo write log message");
@@ -335,9 +337,10 @@ void UPDBuildWidgetBase::SelectBuildContext(const FGameplayTag& NewSelectedConte
 void UPDBuildWidgetBase::UpdateSelectedContext(const FGameplayTag& RequestToSelectTag)
 {
 	// Is it already selected?
+	bool bWasContextSelected = false;
 	for (const FDataTableRowHandle& Context : CurrentBuildableContexts)
 	{
-		const FString CtxtStr = FString::Printf(TEXT("UPDBuildWidgetBase(%s, %s)::SelectBuildContext"), *Context.RowName.ToString(), *GetName());
+		const FString CtxtStr = FString::Printf(TEXT("UPDBuildWidgetBase(%s, %s)::UpdateSelectedContext"), *Context.RowName.ToString(), *GetName());
 		const FPDBuildContext* LoadedContext = Context.GetRow<FPDBuildContext>(CtxtStr);
 		if (LoadedContext == nullptr || LoadedContext->ContextTag.IsValid() == false)
 		{
@@ -349,20 +352,33 @@ void UPDBuildWidgetBase::UpdateSelectedContext(const FGameplayTag& RequestToSele
 		const TArray<UObject*>& ListItems = BuildContexts->GetListItems();
 		for (UObject* const& Item : ListItems)
 		{
-			const UPDBuildContextEntry* AsContextEntry = BuildContexts->GetEntryWidgetFromItem<UPDBuildContextEntry>(Item);
+			UPDBuildContextEntry* AsContextEntry = BuildContexts->GetEntryWidgetFromItem<UPDBuildContextEntry>(Item);
 			if (AsContextEntry == nullptr || AsContextEntry->IsValidLowLevelFast() == false)
 			{
 				continue;
 			}
-
-			const bool bShouldSelect = (RequestToSelectTag == AsContextEntry->SelfContextTag);
+			
+			// Selected new tag, @todo clean things up here
 			FSlateBrush& Brush = AsContextEntry->TextContentBorder->Background;
-			Brush.TintColor = bShouldSelect ? FSlateColor(SelectedWidgetFlair->SelectedContextTint) : FSlateColor(SelectedWidgetFlair->NotSelectedContextTint);
-			AsContextEntry->TextContentBorder->SetBrush(Brush);	
+			const FString& ContextEntryString = AsContextEntry->SelfContextTag.GetTagName().ToString();
+			const bool bShouldSelect = (RequestToSelectTag == AsContextEntry->SelfContextTag) && AsContextEntry->bIsSelected == false;
+			if (bShouldSelect)
+			{
+				UE_LOG(PDLog_RTSBase, Verbose, TEXT("UPDBuildWidgetBase::UpdateSelectedContext -- Selecting context(%s)"), *ContextEntryString)
+				Brush.TintColor = FSlateColor(SelectedWidgetFlair->SelectedContextTint);
+				bWasContextSelected = AsContextEntry->bIsSelected = true;
+			}
+			else // Deselecting any entries we had selected before // @todo redesign this slightly ,as we only need to know the previously selected entry, we should cache it so we can skip this loop
+			{
+				UE_LOG(PDLog_RTSBase, Verbose, TEXT("UPDBuildWidgetBase::UpdateSelectedContext -- Deselecting context(%s)"), *ContextEntryString)				
+				Brush.TintColor = FSlateColor(SelectedWidgetFlair->NotSelectedContextTint);
+				bWasContextSelected = AsContextEntry->bIsSelected = false;
+			}
+			AsContextEntry->TextContentBorder->SetBrush(Brush);
 		}
 	}
 	
-	SelectBuildContext(RequestToSelectTag);
+	SelectBuildContext(RequestToSelectTag, bWasContextSelected == false);
 }
 
 void UPDBuildWidgetBase::SelectBuildable(const FGameplayTag& NewSelectedBuildable)
@@ -381,9 +397,26 @@ void UPDBuildWidgetBase::SelectBuildable(const FGameplayTag& NewSelectedBuildabl
 			{
 				continue;
 			}
+
+			// @todo nasty inner search, will need to @todo @refactor
+			const TArray<UObject*>& ListItems = Buildables->GetListItems();
+			bool bWasAlreadyDeselected = false;
+			for (UObject* const& Item : ListItems)
+			{
+				const UPDBuildableEntry* AsBuildableEntry = Buildables->GetEntryWidgetFromItem<UPDBuildableEntry>(Item);
+				if (AsBuildableEntry == nullptr || AsBuildableEntry->IsValidLowLevelFast() == false)
+				{
+					UE_LOG(PDLog_RTSBase, Verbose, TEXT("UPDBuildWidgetBase::UpdateSelectedBuildable -- Context(%s) -- AsBuildableEntry: %i"), *LoadedContext->ContextReadableName.ToString(), AsBuildableEntry != nullptr)
+					continue;
+				}
+				if (AsBuildableEntry->BuildableTag == NewSelectedBuildable )
+				{
+					bWasAlreadyDeselected = AsBuildableEntry->bIsSelected != true;
+				}
+			}
 			
-			bRequestedBuildableWasValid = LastSelectedBuildableTag != NewSelectedBuildable;
-			UE_LOG(PDLog_RTSBase, Warning, TEXT("UPDBuildWidgetBase::SelectBuildable -- bRequestedBuildableWasValid: %i"), bRequestedBuildableWasValid)
+			bRequestedBuildableWasValid = LastSelectedBuildableTag != NewSelectedBuildable || bWasAlreadyDeselected;
+			UE_LOG(PDLog_RTSBase, Verbose, TEXT("UPDBuildWidgetBase::SelectBuildable -- bRequestedBuildableWasValid: %i"), bRequestedBuildableWasValid)
 			break; 
 		}
 	}
@@ -394,12 +427,13 @@ void UPDBuildWidgetBase::SelectBuildable(const FGameplayTag& NewSelectedBuildabl
 	LastSelectedBuildableTag = bRequestedBuildableWasValid ? NewSelectedBuildable : LastSelectedBuildableTag;
 }
 
-void UPDBuildWidgetBase::UpdateSelectedBuildable(const FGameplayTag& RequestToSelectTag, const bool bSelect)
+void UPDBuildWidgetBase::UpdateSelectedBuildable(const FGameplayTag& RequestToSelectTag, const bool bRequestedBuildableWasValid)
 {
-	UE_LOG(PDLog_RTSBase, Warning, TEXT("UPDBuildWidgetBase::UpdateSelectedBuildable - Buildable Tag (%s)"), *RequestToSelectTag.GetTagName().ToString())
+	UE_LOG(PDLog_RTSBase, Verbose, TEXT("UPDBuildWidgetBase::UpdateSelectedBuildable - Buildable Tag (%s)"), *RequestToSelectTag.GetTagName().ToString())
 	
 	// Is it already selected?
 	FGameplayTag FinalTagSelection = FGameplayTag::EmptyTag;
+	ERTSBuildMenuModules SelectedAction = ERTSBuildMenuModules::DeselectBuildable;
 	for (const FDataTableRowHandle& Context : CurrentBuildableContexts)
 	{
 		const FString CtxtStr = FString::Printf(TEXT("UPDBuildWidgetBase(%s, %s)::UpdateSelectedBuildable"), *Context.RowName.ToString(), *GetName());
@@ -413,26 +447,36 @@ void UPDBuildWidgetBase::UpdateSelectedBuildable(const FGameplayTag& RequestToSe
 		
 		// Resets any previous selected tints
 		const TArray<UObject*>& ListItems = Buildables->GetListItems();
+		bool bWasSelected = false;
 		for (UObject* const& Item : ListItems)
 		{
-			const UPDBuildableEntry* AsBuildableEntry = Buildables->GetEntryWidgetFromItem<UPDBuildableEntry>(Item);
+			UPDBuildableEntry* AsBuildableEntry = Buildables->GetEntryWidgetFromItem<UPDBuildableEntry>(Item);
 			if (AsBuildableEntry == nullptr || AsBuildableEntry->IsValidLowLevelFast() == false)
 			{
 				UE_LOG(PDLog_RTSBase, Warning, TEXT("UPDBuildWidgetBase::UpdateSelectedBuildable -- Context(%s) -- AsBuildableEntry: %i"), *LoadedContext->ContextReadableName.ToString(), AsBuildableEntry != nullptr)
 				continue;
 			}
 
-			const bool bShouldSelect = (RequestToSelectTag == AsBuildableEntry->BuildableTag);
+			bWasSelected = bRequestedBuildableWasValid && (RequestToSelectTag == AsBuildableEntry->BuildableTag);
 			FSlateBrush& Brush = AsBuildableEntry->TextContentBorder->Background;
-			Brush.TintColor = bShouldSelect && bSelect ? FSlateColor(SelectedWidgetFlair->SelectedBuildableTint) : FSlateColor(SelectedWidgetFlair->NotSelectedBuildableTint);
-			AsBuildableEntry->TextContentBorder->SetBrush(Brush);
+			Brush.TintColor = FSlateColor(SelectedWidgetFlair->NotSelectedBuildableTint);
 
 			// Selected new tag, if deselection it will not enter this @todo clean things up here
-			if (bShouldSelect && bSelect)
+			if (bWasSelected)
 			{
-				UE_LOG(PDLog_RTSBase, Warning, TEXT("UPDBuildWidgetBase::UpdateSelectedBuildable -- Selecting buildable"))
+				UE_LOG(PDLog_RTSBase, Verbose, TEXT("UPDBuildWidgetBase::UpdateSelectedBuildable -- Selecting buildable(%s)"), *AsBuildableEntry->BuildableTag.GetTagName().ToString())
 				FinalTagSelection = RequestToSelectTag;
+				SelectedAction = ERTSBuildMenuModules::SelectBuildable;
+				Brush.TintColor = FSlateColor(SelectedWidgetFlair->SelectedBuildableTint);
+				AsBuildableEntry->bIsSelected = true;
 			}
+			else
+			{
+				UE_LOG(PDLog_RTSBase, Verbose, TEXT("UPDBuildWidgetBase::UpdateSelectedBuildable -- Deselecting buildable(%s)"), *AsBuildableEntry->BuildableTag.GetTagName().ToString())				
+				AsBuildableEntry->bIsSelected = false;
+			}
+			
+			AsBuildableEntry->TextContentBorder->SetBrush(Brush);
 		}
 	}
 	
@@ -440,7 +484,7 @@ void UPDBuildWidgetBase::UpdateSelectedBuildable(const FGameplayTag& RequestToSe
 	APawn* CachedOwner = GetOwningPlayer()->GetPawnOrSpectator();
 	if (ensure(CachedOwner != nullptr && CachedOwner->GetClass()->ImplementsInterface(UPDRTSBuilderInterface::StaticClass())))
 	{
-		IPDRTSBuilderInterface::Execute_NewAction(CachedOwner, ERTSBuildMenuModules::SelectBuildable, FinalTagSelection);
+		IPDRTSBuilderInterface::Execute_NewAction(CachedOwner, SelectedAction, FinalTagSelection);
 	}
 }
 

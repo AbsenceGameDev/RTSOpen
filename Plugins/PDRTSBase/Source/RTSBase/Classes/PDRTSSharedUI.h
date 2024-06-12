@@ -170,6 +170,10 @@ public:
 	UPROPERTY(BlueprintReadWrite)
 	bool bCanBuild = true;
 
+	/** @brief Tells us if the button is clickable */
+	UPROPERTY(BlueprintReadWrite)
+	bool bIsSelected = false;
+	
 	/** @brief The tag related to the buildable we are representing on the buildable element widget */
 	UPROPERTY(VisibleInstanceOnly, BlueprintReadOnly)
 	FGameplayTag BuildableTag;
@@ -225,6 +229,9 @@ public:
 	
 	/** @brief  Tag of context that this widget represents */
 	FGameplayTag SelfContextTag{};
+
+	/** @brief Flag to tell us our selection state */
+	bool bIsSelected = false;
 };
 
 /** @brief  Wrapper struct that allows us to expose rowtype filters */
@@ -260,7 +267,7 @@ public:
 	
 	/** @brief  Selects the given context and loads its data into the widget, given that it is part of the CurrentBuildableContexts array */
 	UFUNCTION(BlueprintCallable)
-	virtual void SelectBuildContext(const FGameplayTag& NewSelectedContext);
+	virtual void SelectBuildContext(const FGameplayTag& NewSelectedContext, const bool bWasDeselected);
 	
 	/** @return 'CurrentBuildableContext' */
 	UFUNCTION(BlueprintCallable)
@@ -283,7 +290,7 @@ public:
 	/** @brief Dispatched a call to interface IPDRTSBuilderInterface::Execute_NewAction(this) if function succeeds.
 	 *  @note If an already selected buildable entry is selected again it gets de-selected */
 	UFUNCTION(BlueprintCallable)
-	void UpdateSelectedBuildable(const FGameplayTag& RequestToSelectTag, const bool bSelect);
+	void UpdateSelectedBuildable(const FGameplayTag& RequestToSelectTag, const bool bRequestedBuildableWasValid);
 
 	/** @brief  Spawns the worker build menu and plays it's 'Open' animation*/
 	UFUNCTION(BlueprintCallable)
