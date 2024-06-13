@@ -239,6 +239,10 @@ struct FRTSGodhandState
 	UPROPERTY(VisibleInstanceOnly, BlueprintReadWrite, Category = "Godhand|State")
 	double MagnificationStrength = 0.01;	
 
+	/** @brief This value is assigned from the inputvalue of the 'ActionMagnify' input action, in case we are rotating a held object */
+	UPROPERTY(VisibleInstanceOnly, BlueprintReadWrite, Category = "Godhand|State")
+	double ScrollAccumulator = 0.0;	
+
 	/* State(s) - Cursor */	
 	/** @brief Accumulates the current time elapsed and feeds a sinewave with it */
 	UPROPERTY(VisibleInstanceOnly, BlueprintReadOnly, Category = "Godhand|State")

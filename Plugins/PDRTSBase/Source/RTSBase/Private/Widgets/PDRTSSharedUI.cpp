@@ -312,7 +312,16 @@ void UPDBuildWidgetBase::SelectBuildContext(const FGameplayTag& NewSelectedConte
 		bRequestedContextWasValid = true;
 		
 		Buildables->ClearListItems();
-		if (bWasDeselected) { return; }
+		if (bWasDeselected) // deselecting a category should intuitively deselect any selected entry
+		{
+			APawn* CachedOwner = GetOwningPlayer()->GetPawnOrSpectator();
+			if (ensure(CachedOwner != nullptr && CachedOwner->GetClass()->ImplementsInterface(UPDRTSBuilderInterface::StaticClass())))
+			{
+				IPDRTSBuilderInterface::Execute_NewAction(CachedOwner, ERTSBuildMenuModules::DeselectBuildable, FGameplayTag::EmptyTag);
+			}
+			
+			return;
+		}
 		
 		for (const FDataTableRowHandle& BuildData : LoadedContext->BuildablesData)
 		{

@@ -50,6 +50,7 @@
 #include "NavigationSystem.h"
 
 /* Engine - Kismet */
+#include "EnhancedInputSubsystems.h"
 #include "PDBuildCommon.h"
 #include "PDBuilderSubsystem.h"
 #include "PDRTSSharedHashGrid.h"
@@ -243,7 +244,7 @@ void AGodHandPawn::BuildableGhostTick(float DeltaTime)
 	}
 
 	const FVector DeltaLocation = CurrentGhost->GetActorLocation() - SteppedLocation;
-	if (DeltaLocation.IsNearlyZero(10.0)) // HashGridSubsystem->UniformCellSize * 0.5f))
+	if (DeltaLocation.IsNearlyZero(HashGridSubsystem->UniformCellSize * 0.5f))
 	{
 		return;
 	}
@@ -361,6 +362,35 @@ void AGodHandPawn::ActionMove_Implementation(const FInputActionValue& Value)
 void AGodHandPawn::ActionMagnify_Implementation(const FInputActionValue& Value)
 {
 	const float ImmutableMoveInput = Value.Get<float>();
+
+	const ARTSOController* PC = GetController<ARTSOController>();
+	if (PC == nullptr) { return; }
+	
+	const UEnhancedInputLocalPlayerSubsystem* InputSubsystem = ULocalPlayer::GetSubsystem<UEnhancedInputLocalPlayerSubsystem>(PC->GetLocalPlayer());
+	const bool bIsChordActive = InputSubsystem->GetPlayerInput()->GetActionValue(PC->CtrlActionChordedBase).Get<bool>();
+	if (bIsChordActive && CurrentBuildableData != nullptr && CurrentGhost != nullptr) 
+	{
+		// Rotate ghost @todo make this configurable, so ghost rotation is NOT tied to the scrolling or magnify key
+
+		InstanceState.ScrollAccumulator += ImmutableMoveInput;
+		if (FMath::Abs(InstanceState.ScrollAccumulator) > 1)
+		{
+			const int32 TruncatedAccumulator = InstanceState.ScrollAccumulator * 4.0;
+			const float Fraction  = (InstanceState.ScrollAccumulator - TruncatedAccumulator);
+
+			const bool bAboveZero = Fraction >= SMALL_NUMBER;
+			const int32 Direction = 1*(bAboveZero == false) - 1*(bAboveZero);
+			
+			const FRotator DeltaRot = FRotator(0,90 * Direction,0);
+			CurrentGhost->AddActorWorldRotation(DeltaRot);
+			InstanceState.ScrollAccumulator = 0;
+		}
+		
+		return; 
+	}
+	
+	
+	
 	InstanceState.MagnificationStrength = ImmutableMoveInput;
 	UpdateMagnification();
 }
@@ -476,9 +506,10 @@ void AGodHandPawn::SpawnFromGhost(bool bBuildable, bool bRequiresWorkersToBuild)
 		return;
 	}
 	const FVector&& GhostLoc = CurrentGhost->GetActorLocation();
+	const FQuat&& GhostRot = CurrentGhost->GetActorRotation().Quaternion();
 
 	/** TODO Set up some controls to handle the rotation here */
-	FTransform InitialSpawnTransform{FQuat(), GhostLoc, FVector::OneVector};
+	FTransform InitialSpawnTransform{GhostRot, GhostLoc, FVector::OneVector};
 	AActor* SpawnedBuildable = GetWorld()->SpawnActorDeferred<AActor>(CurrentBuildableData->ActorToSpawn, InitialSpawnTransform, this);
 	SpawnedBuildable->SetOwner(this);
 	SpawnedBuildings.Emplace_GetRef(SpawnedBuildable);
@@ -497,14 +528,14 @@ void AGodHandPawn::SpawnFromGhost(bool bBuildable, bool bRequiresWorkersToBuild)
 			return;
 		}
 		const FVector&& NewGhostLoc = InGhost != nullptr ? InGhost->GetActorLocation() : InSpawnTransform.GetLocation();
-		const FTransform UpdatedSpawnTransform{FQuat(), NewGhostLoc, FVector::OneVector};
+		const FQuat&& NewGhostRot = InGhost != nullptr ? InGhost->GetActorRotation().Quaternion() : InSpawnTransform.GetRotation();
+		const FTransform UpdatedSpawnTransform{NewGhostRot, NewGhostLoc, FVector::OneVector};
 		UGameplayStatics::FinishSpawningActor(InSpawnedBuildable, UpdatedSpawnTransform);
 		if (InSpawnedBuildable->GetClass()->ImplementsInterface(UPDRTSBuildableGhostInterface::StaticClass()))
 		{
 			if (bInBuildable)
 			{
 				IPDRTSBuildableGhostInterface::Execute_OnSpawnedAsMain(InSpawnedBuildable, InBuildableTag);
-
 				
 				const UPDBuilderSubsystemSettings* BuilderSettings = GetDefault<UPDBuilderSubsystemSettings>();
 				switch (BuilderSettings->DefaultBuildSystemBehaviours.CameraBehaviour)
