@@ -70,6 +70,10 @@ public:
 	/** @brief Only calls super. Reserved for later use */
 	virtual void OnConstruction(const FTransform& Transform) override;
 
+	/** @brief Only calls super. Reserved for later use */
+	UFUNCTION(BlueprintImplementableEvent)
+	void FireAction(FGameplayTag ActionTag);
+	
 	/* PDRTS Builder Interface - Start */
 	/** @brief Refreshes our pointer to our selected build context or selected buildable data based on the enum, and the tag finds the actual find the entry therein */
 	virtual void NewAction_Implementation(ERTSBuildMenuModules ActionMode, FGameplayTag ActionTag) override;
@@ -134,6 +138,7 @@ public:
 	virtual void ActionRotate_Implementation(const FInputActionValue& Value) override;
 	/** @brief Drags and moves the viewport, currently unused / unset input */
 	virtual void ActionDragMove_Implementation(const FInputActionValue& Value) override;
+	bool ClickPotentialBuildable(ARTSOController* PC);
 
 	/** @brief If a valid mass entity or target actor hovered then update niagara effect, otherwise initiate drawing a marquee.*/
 	virtual void ActionWorkerUnit_Started_Implementation(const FInputActionValue& Value) override;
@@ -263,6 +268,18 @@ public:
 	/** @brief Flag to tell us when we just have placed a buildable, @todo @efactor move somewhere more appropriate */
 	bool bJustPlacedBuildable = false;
 
+	
+	/** @brief  */
+	UPROPERTY()
+	int32 HitValidBuildableCounter = 0;
+	/** @brief  */
+	UPROPERTY()
+	float TimeBetweenClicks = 0.0;	
+	/** @brief  */
+	UPROPERTY()
+	AActor* LastClickedBuildable = nullptr;
+
+	
 	/** @brief Fallback comparison value for a closest distance search when the vector was not valid */
 	static inline constexpr double  InvalidDistance{UE_MAX_FLT * UE_MAX_FLT};
 	/** @brief Fallback comparison value for a closest distance search when the vector was not valid */

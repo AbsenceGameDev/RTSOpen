@@ -89,7 +89,13 @@ void ARTSOController::BeginPlay()
 	{
 		BuildMenuWidget = NewObject<UPDBuildWidgetBase>(this, BuildMenuWidgetClass);
 		BuildMenuWidget->SetOwningPlayer(this);
-	}	
+	}
+	
+	if (BuildableActionsWidgetClass->IsValidLowLevelFast())
+	{
+		BuildableActionsWidget = NewObject<UPDBuildingActionsWidgetBase>(this, BuildableActionsWidgetClass);
+		BuildableActionsWidget->SetOwningPlayer(this);
+	}
 }
 
 void ARTSOController::EndPlay(const EEndPlayReason::Type EndPlayReason)
@@ -137,8 +143,6 @@ void ARTSOController::SetupInputComponent()
 	AsEnhancedInput->BindAction(CtrlActionChordedBase, ETriggerEvent::Completed, this, &ARTSOController::ActionChordedBase_Implementation);
 	AsEnhancedInput->BindAction(CtrlActionToggleMainMenu, ETriggerEvent::Completed, this, &ARTSOController::ActionToggleMainMenu_Implementation);
 	
-
-
 	AsEnhancedInput->BindAction(CtrlActionBuildMode, ETriggerEvent::Triggered, this, &ARTSOController::ActionBuildMode_Implementation);		
 }
 
@@ -272,6 +276,8 @@ void ARTSOController::ActionClearSelection_Implementation(const FInputActionValu
 	OnSelectionChange(true);
 	MarqueeSelectedHandles.Remove(CurrentSelectionID);
 	OnMarqueeSelectionUpdated(CurrentSelectionID, EmptyKeys);
+
+	BuildableActionsWidget->SetNewWorldActor(nullptr, FPDBuildable{});
 	
 	if (GetPawn() == nullptr || GetPawn()->GetClass()->ImplementsInterface(URTSOInputInterface::StaticClass()) == false) { return; }
 	IRTSOInputInterface::Execute_ActionClearSelection(GetPawn(), Value);	
@@ -279,19 +285,48 @@ void ARTSOController::ActionClearSelection_Implementation(const FInputActionValu
 
 void ARTSOController::ActionMoveSelection_Implementation(const FInputActionValue& Value)
 {
-	if (MarqueeSelectedHandles.IsEmpty()
-		|| GetPawn() == nullptr
-		|| GetPawn()->GetClass()->ImplementsInterface(URTSOInputInterface::StaticClass()) == false)
+	if (GetPawn() == nullptr || GetPawn()->GetClass()->ImplementsInterface(URTSOInputInterface::StaticClass()) == false)
 	{
 		const FString BuildString = FString::Printf(TEXT("ARTSOController(%s)::ActionMoveSelection -- "), *GetName())
-		+ FString::Printf(TEXT("\n MarqueeSelectedHandles.Num: %i, GetPawn(): %i"), MarqueeSelectedHandles.Num(), GetPawn() != nullptr);
-		UE_LOG(PDLog_RTSO, Warning, TEXT("%s"), *BuildString);
-		
-		return;
+		+ FString::Printf(TEXT("\n GetPawn(): %i"), GetPawn() != nullptr);
+		UE_LOG(PDLog_RTSO, Warning, TEXT("%s"), *BuildString);		
 	}
+
+	// Checked in the pawn now
+	// if (MarqueeSelectedHandles.IsEmpty())
+	// {
+	// 	const FString BuildString = FString::Printf(TEXT("ARTSOController(%s)::ActionMoveSelection -- "), *GetName())
+	// 	+ FString::Printf(TEXT("\n MarqueeSelectedHandles.Num: %i"), MarqueeSelectedHandles.Num());
+	// 	UE_LOG(PDLog_RTSO, Warning, TEXT("%s"), *BuildString);
+	// 	
+	// 	return;
+	// }
 	
 	IRTSOInputInterface::Execute_ActionMoveSelection(GetPawn(), Value);
 }
+
+void ARTSOController::ProcessPotentialBuildableMenu(const AActor* HoveredActor) const
+{
+	bool bValidBuildable = false;
+	const FPDBuildable* BuildableEntry = nullptr;
+		
+	if (HoveredActor != nullptr)
+	{
+		BuildableEntry = UPDBuilderSubsystem::GetBuildableFromClassStatic(HoveredActor->GetClass());
+		if (BuildableEntry != nullptr) { bValidBuildable = true; }
+	}
+
+	if (bValidBuildable)
+	{
+		BuildMenuWidget->BeginCloseWorkerContext();
+		BuildableActionsWidget->SetNewWorldActor(HoveredActor, *BuildableEntry);
+	}
+	else
+	{
+		BuildableActionsWidget->SetNewWorldActor(nullptr, FPDBuildable{});
+	}
+}
+
 
 void ARTSOController::ActionAssignSelectionToHotkey_Implementation(const FInputActionValue& Value)
 {
@@ -324,6 +359,9 @@ void ARTSOController::ActionAssignSelectionToHotkey_Implementation(const FInputA
 			OnSelectionChange(false); 
 			OnMarqueeSelectionUpdated( ImmutableIndex, Keys);
 		}
+
+		//  @todo clean this up, this is a mess 
+		BuildableActionsWidget->SetNewWorldActor(nullptr, FPDBuildable{});
 	}
 	else // ID does not exist, remove from hotkey and 
 	{
@@ -617,7 +655,7 @@ void ARTSOController::OnMarqueeSelectionUpdated_Implementation(int32 SelectionGr
 	}	
 }
 
-void ARTSOController::MarqueeSelection(EMarqueeSelectionEvent SelectionEvent)
+FVector2D ARTSOController::GetMouseScreenCoords() const
 {
 	// Viewport halfsize
 	
@@ -631,7 +669,12 @@ void ARTSOController::MarqueeSelection(EMarqueeSelectionEvent SelectionEvent)
 	float LocX = 0, LocY = 0;
 	const bool bFoundInputType = GetMousePosition(LocX, LocY);
 	const FVector2D Coords2D{LocX, LocY};
-	const FVector2D ScreenCoordinates = bFoundInputType ? Coords2D : Size2D;
+	return bFoundInputType ? Coords2D : Size2D;
+}
+
+void ARTSOController::MarqueeSelection(EMarqueeSelectionEvent SelectionEvent)
+{
+	const FVector2D ScreenCoordinates = GetMouseScreenCoords();
 	
 	switch (SelectionEvent)
 	{
@@ -942,7 +985,8 @@ void ARTSOController::UpdateBuildMenuContexts(const FMassEntityHandle& CurrentEn
 	const FPDBuildWorker* BuildWorker = BuilderSubsystem->GrantedBuildContexts_WorkerTag.FindRef(RTSBaseFragment->EntityType);
 	check(BuildWorker != nullptr)
 
-	BuildMenuWidget->SpawnWorkerBuildMenu(*BuildWorker);
+	BuildableActionsWidget->BeginCloseActionContext(); // close previous menu for buildables action lists
+	BuildMenuWidget->SpawnWorkerBuildMenu(*BuildWorker); // spawn new menu for worker contexts
 }
 
 

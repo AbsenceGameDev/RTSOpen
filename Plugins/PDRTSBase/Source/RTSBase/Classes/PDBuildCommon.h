@@ -31,6 +31,21 @@ PDRTSBASE_API UE_DECLARE_GAMEPLAY_TAG_EXTERN(TAG_BUILD_ContextMenu_Builder_Inter
 PDRTSBASE_API UE_DECLARE_GAMEPLAY_TAG_EXTERN(TAG_BUILD_ContextMenu_Builder_Advanced);
 PDRTSBASE_API UE_DECLARE_GAMEPLAY_TAG_EXTERN(TAG_BUILD_ContextMenu_Builder_Expert);
 
+/** Declaring the "BUILD.Actions." gameplay tags. to be defined in an object-file */
+PDRTSBASE_API UE_DECLARE_GAMEPLAY_TAG_EXTERN(TAG_BUILD_Actions_DestroyBuilding);
+PDRTSBASE_API UE_DECLARE_GAMEPLAY_TAG_EXTERN(TAG_BUILD_Actions_SpawnWorker0);
+PDRTSBASE_API UE_DECLARE_GAMEPLAY_TAG_EXTERN(TAG_BUILD_Actions_SpawnWorker1);
+PDRTSBASE_API UE_DECLARE_GAMEPLAY_TAG_EXTERN(TAG_BUILD_Actions_SpawnSoldier0);
+PDRTSBASE_API UE_DECLARE_GAMEPLAY_TAG_EXTERN(TAG_BUILD_Actions_SpawnSoldier1);
+
+PDRTSBASE_API UE_DECLARE_GAMEPLAY_TAG_EXTERN(TAG_BUILD_ActionContext_WorkerHut0);
+PDRTSBASE_API UE_DECLARE_GAMEPLAY_TAG_EXTERN(TAG_BUILD_ActionContext_WorkerHut1);
+PDRTSBASE_API UE_DECLARE_GAMEPLAY_TAG_EXTERN(TAG_BUILD_ActionContext_Barracks0);
+PDRTSBASE_API UE_DECLARE_GAMEPLAY_TAG_EXTERN(TAG_BUILD_ActionContext_Barracks1);
+
+
+
+
 /** @brief Behaviours for how builds should be handled.
  * Should builds A. Start right away, B. wait for workers or C. should it call for workers,
  * the former will wait for player to dispatch builders, the latter will use the ping system attempt finding some themselves
@@ -68,7 +83,7 @@ namespace PD::Build::Behaviour
 
 /** @brief Ghost transition enum state */
 UENUM(Blueprintable)
-enum class EPDRTSGhostTransition
+enum EPDRTSGhostTransition
 {
 	ESingleStage UMETA(DisplayName="SingleStage"),
 	EMultipleStages UMETA(DisplayName="MultipleStages"),
@@ -115,7 +130,7 @@ struct FPDBuildQueue_WNoStageCosts
 
 //
 // Ghosts
-/** @brief Settings for a 'ghostable' actor */
+/** @brief Settings for a 'ghost-able' actor */
 USTRUCT(Blueprintable)
 struct PDRTSBASE_API FPDRTSBuildableCollisionSettings
 {
@@ -172,7 +187,7 @@ public:
 	
 	/** @brief The data-asset for the current stage */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Actor|Ghost|Settings")
-	UPDRTSGhostStageAsset* StageDA = nullptr;
+	class UPDRTSGhostStageAsset* StageDA = nullptr;
 
 	/** @brief Potential max duration for a stage, this defines the space between the start stage effects and end stage effects
 	 * @note If set to -1.0, this will not wait for end of stage. if set to 0.0, then this will rely on manual end of stage, this will in many cases be when a resource, or tag, quota has been met */
@@ -182,24 +197,18 @@ public:
 
 /** @brief Stage(s) configuration for a ghost */
 USTRUCT(Blueprintable)
-struct FPDRTSGhostDatum : public FTableRowBase
+struct FPDRTSGhostDatum
 {
 	GENERATED_BODY()
-
-	/** @rief Will be the only stage if TransitionStageType == EPDRTSGhostTransition::ESingleStage, can be left empty for no transition effects */
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Actor|Ghost|Settings")
-	EPDRTSGhostTransition TransitionStageType;
-
-	/** @rief Will be the only stage if TransitionStageType == EPDRTSGhostTransition::ESingleStage, can be left empty for no transition effects */
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Actor|Ghost|Settings", Meta = (EditCondition = "TransitionStageType == EPDRTSGhostTransition::ESingleStage", EditConditionHides))
-	FPDRTSGhostStageData SingleStageAsset;
+	
+	FPDRTSGhostDatum() = default;
 	
 	/** @rief Will be all stages (and in order) if TransitionStageType == EPDRTSGhostTransition::EMultipleStages, can be left empty for no transition effect */
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Actor|Ghost|Settings", Meta = (EditCondition = "TransitionStageType == EPDRTSGhostTransition::EMultipleStages", EditConditionHides))
-	TArray<FPDRTSGhostStageData> MultiStageStageAssets;	
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Actor|Ghost|Settings")
+	TArray<FPDRTSGhostStageData> StageAssets {FPDRTSGhostStageData{}};	
 };
 
-/** @brief Ghost stat for a buildable, currenly only contains the ghost stage */
+/** @brief Ghost stat for a buildable, currently only contains the ghost stage */
 USTRUCT(Blueprintable)
 struct FPDRTSGhostBuildState
 {
@@ -231,6 +240,7 @@ class PDRTSBASE_API UPDBuildableDataAsset : public UDataAsset
 {
 	GENERATED_BODY()
 public:
+	UPDBuildableDataAsset() = default;
 
 	/** @rief  Texture resource to apply on a buildable button (Does not take priority) */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
@@ -276,14 +286,69 @@ struct PDRTSBASE_API FPDBuildableData
 	
 	/** @brief The buildables data-asset, if not spawned as ghost, or when transitioning from ghost to real building */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "RTSBase|WorkerUnits")
-	UPDBuildableDataAsset* DABuildAsset = nullptr;
+	class UPDBuildableDataAsset* DABuildAsset = nullptr;
 
 	/** @brief The buildables ghost configurations, keeps stage settings and such  */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "RTSBase|BuildSystem")
 	FPDRTSGhostDatum GhostData{};
 };
 
-/** @rief Actual Buildable row structure, associates tag and it's data with a buildable  */
+USTRUCT(Blueprintable)
+struct PDRTSBASE_API FPDBuildContextData
+{
+	GENERATED_BODY()
+
+	/** @brief Not needed, but use to display clearer name, with being set to nothing the name will be tha buildables tag converted to a name */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "RTSBase|BuildSystem")
+	FText ReadableName{};
+	
+	/** @brief The build-context data-asset, only used for widget flair as of now  */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "RTSBase|BuildSystem")
+	UPDBuildContextDataAsset* DABuildContextAsset = nullptr;
+};
+
+USTRUCT(Blueprintable)
+struct PDRTSBASE_API FPDBuildAction : public FTableRowBase
+{
+	GENERATED_BODY()
+
+	FPDBuildAction() = default;
+	
+	/** @brief The tag of this action */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "RTSBase|WorkerUnits")
+	FGameplayTag ActionTag{};	
+
+	/** @brief Not needed, but use to display clearer name, with being set to nothing the name will be tha buildables tag converted to a name */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "RTSBase|WorkerUnits")
+	FText ReadableName{};
+	
+	/** @brief The buildables data-asset, if not spawned as ghost, or when transitioning from ghost to real building */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "RTSBase|WorkerUnits")
+	UPDBuildableDataAsset* DABuildAsset = nullptr;
+};
+
+USTRUCT(Blueprintable)
+struct PDRTSBASE_API FPDBuildActionContext : public FTableRowBase
+{
+	GENERATED_BODY()
+
+	FPDBuildActionContext() = default;
+	
+	/** @brief The tag of this action */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "RTSBase|WorkerUnits")
+	FGameplayTag ContextTag{};	
+
+	/** @brief The resource data of buildables this context provides */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "RTSBase|WorkerUnits", Meta = (RowType = "/Script/PDRTSBase.PDBuildAction"))
+	TArray<FDataTableRowHandle> ActionData{};
+	
+	/** @brief The readable name of this buildable context, todo, remove, already exists within 'ContextData'  */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "RTSBase|WorkerUnits")
+	FPDBuildContextData ContextData{};
+};
+
+
+/** @brief Actual Buildable row structure, associates tag and it's data with a buildable  */
 USTRUCT(Blueprintable)
 struct PDRTSBASE_API FPDBuildable : public FTableRowBase
 {
@@ -298,21 +363,40 @@ struct PDRTSBASE_API FPDBuildable : public FTableRowBase
 	/** @brief The data of this buildable */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "RTSBase|BuildSystem")
 	FPDBuildableData BuildableData{};
+
+	/** @brief The actions granted to this buildable when it has been built */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "RTSBase|BuildSystem", Meta = (RowType = "/Script/PDRTSBase.PDBuildActionContext"))
+	TArray<FDataTableRowHandle> ActionContextHandles{};	
 };
 
-/** @rief Main Build-context data, no tag associated, keeps a readable name and a data-asset  */
+
+/** @brief Actual Buildable row structure, associates tag and it's data with a buildable  */
 USTRUCT(Blueprintable)
-struct PDRTSBASE_API FPDBuildContextData
+struct PDRTSBASE_API FPDTEST : public FTableRowBase
 {
 	GENERATED_BODY()
 
+	FPDTEST() = default;
+
+	/** @brief The tag of this buildable */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "RTSBase|BuildSystem")
+	FGameplayTag BuildableTag{};	
+
 	/** @brief Not needed, but use to display clearer name, with being set to nothing the name will be tha buildables tag converted to a name */
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "RTSBase|BuildSystem")
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "RTSBase|WorkerUnits")
 	FText ReadableName{};
+
+	/** @brief Actor class to spawn when placing the buildable */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "RTSBase|WorkerUnits")
+	TSubclassOf<AActor> ActorToSpawn{};
 	
-	/** @brief The build-context data-asset, only used for widget flair as of now  */
+	/** @brief The buildables data-asset, if not spawned as ghost, or when transitioning from ghost to real building */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "RTSBase|WorkerUnits")
+	class UPDBuildableDataAsset* DABuildAsset = nullptr;
+
+	/** @brief The buildables ghost configurations, keeps stage settings and such  */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "RTSBase|BuildSystem")
-	UPDBuildContextDataAsset* DABuildContextAsset = nullptr;
+	FPDRTSGhostDatum GhostData{};
 };
 
 /** @rief Actual Build-context row structure, associates tag and it's data with a buildable  */
@@ -346,6 +430,8 @@ struct PDRTSBASE_API FPDSharedBuildWidgetFlair : public FTableRowBase
 {
 	GENERATED_BODY()
 
+	FPDSharedBuildWidgetFlair() = default;
+	
 	/** @brief Tint when context is selected */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)	
 	FLinearColor SelectedContextTint = FLinearColor::Gray; 
@@ -418,6 +504,10 @@ public:
 	UPROPERTY(Config, EditAnywhere, Category = "Worker AI Subsystem", Meta = (RequiredAssetDataTags="RowStructure=/Script/PDRTSBase.PDBuildWorker"))
 	TArray<TSoftObjectPtr<UDataTable>> BuildWorkerTables;
 
+	/** @brief Build Workers (Worker types and their granted contexts) table soft objects */
+	UPROPERTY(Config, EditAnywhere, Category = "Worker AI Subsystem", Meta = (RequiredAssetDataTags="RowStructure=/Script/PDRTSBase.PDBuildActionContext"))
+	TArray<TSoftObjectPtr<UDataTable>> BuildActionContextTables;
+	
 	/** @brief Build Workers (Worker types and their granted contexts) table soft objects */
 	UPROPERTY(Config, EditAnywhere, Category="Worker AI Subsystem|Builder|Behaviour")
 	FPDRTSBuildSystemBehaviours DefaultBuildSystemBehaviours{};

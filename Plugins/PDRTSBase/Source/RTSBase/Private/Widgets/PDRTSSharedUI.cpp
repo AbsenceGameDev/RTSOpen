@@ -287,9 +287,9 @@ void UPDBuildWidgetBase::LoadBuildContexts()
 		FText SelectedName = LoadedContext->ContextReadableName.IsEmpty() ?
 			FText::FromName(LoadedContext->ContextTag.GetTagName()) : LoadedContext->ContextReadableName;
 
-		TArray<FDataTableRowHandle>& InnerBuildableTags = LoadedContext->BuildablesData; 
+		TArray<FDataTableRowHandle>& InnerBuildableHandles = LoadedContext->BuildablesData; 
 		
-		DataWrapper->AssignData(SelectedName, LoadedContext->ContextTag, InnerBuildableTags, this);
+		DataWrapper->AssignData(SelectedName, LoadedContext->ContextTag, InnerBuildableHandles, this);
 		BuildContexts->AddItem(DataWrapper);
 		
 		SelectedContextTag = SelectedContextTag.IsValid() == false ? LoadedContext->ContextTag : SelectedContextTag;
@@ -415,7 +415,7 @@ void UPDBuildWidgetBase::SelectBuildable(const FGameplayTag& NewSelectedBuildabl
 				const UPDBuildableEntry* AsBuildableEntry = Buildables->GetEntryWidgetFromItem<UPDBuildableEntry>(Item);
 				if (AsBuildableEntry == nullptr || AsBuildableEntry->IsValidLowLevelFast() == false)
 				{
-					UE_LOG(PDLog_RTSBase, Verbose, TEXT("UPDBuildWidgetBase::UpdateSelectedBuildable -- Context(%s) -- AsBuildableEntry: %i"), *LoadedContext->ContextReadableName.ToString(), AsBuildableEntry != nullptr)
+					UE_LOG(PDLog_RTSBase, Verbose, TEXT("UPDBuildWidgetBase::SelectBuildable -- Context(%s) -- AsBuildableEntry: %i"), *LoadedContext->ContextReadableName.ToString(), AsBuildableEntry != nullptr)
 					continue;
 				}
 				if (AsBuildableEntry->BuildableTag == NewSelectedBuildable )
@@ -536,7 +536,6 @@ void UPDBuildWidgetBase::EndCloseWorkerBuildMenu()
 	{
 		IPDRTSBuilderInterface::Execute_NewAction(CachedOwner, ERTSBuildMenuModules::DeselectBuildable, FGameplayTag());
 	}
-
 	
 	bIsMenuVisible = false;
 	RemoveFromParent();
@@ -572,6 +571,548 @@ void UPDBuildWidgetBase::EndCloseWorkerContext()
 	}	
 }
 
+//
+// Buildable Actions -- Actions granted to a buildable, (buildable ghosts will possibly have fewer actions, aborting the build for example, or none at all)
+void UPDBuildableActionEntry::NativeOnListItemObjectSet(UObject* ListItemObject)
+{
+	IUserObjectListEntry::NativeOnListItemObjectSet(ListItemObject);
+
+	const UPDBuildableActionWrapper* Item = Cast<UPDBuildableActionWrapper>(ListItemObject);
+	if (Item == nullptr) { return; }
+	
+	// 1. Read data
+	ActionTitle->SetText(Item->GetBuildableTitle());
+	bCanBuild             = Item->GetCanBuild();
+	DirectParentReference = Item->GetDirectParentReference();
+	ParentMenuContextTag  = Item->GetParentContextTag();
+	ActionTag             = Item->GetActionTag();
+	SetOwningPlayer(DirectParentReference->GetOwningPlayer());
+	
+	// 2. Set data-asset variable
+	TArray<FDataTableRowHandle>& BuildContexts = DirectParentReference->GetCurrentActionContexts();
+	for (const FDataTableRowHandle& Context : BuildContexts)
+	{
+		const FString CtxtStr = FString::Printf(TEXT("UPDBuildWidgetBase(%s, %s)::SelectBuildContext"), *Context.RowName.ToString(), *GetName());
+		const FPDBuildContext* LoadedContext = Context.GetRow<FPDBuildContext>(CtxtStr);
+		if (LoadedContext == nullptr || LoadedContext->ContextTag.IsValid() == false || LoadedContext->ContextTag != ParentMenuContextTag)
+		{
+			/** @todo Output to log with warning or error level verbosity if the context or the tag was invalid */ 
+			continue;
+		}
+
+		const UPDBuildableDataAsset* BuildDataAsset = nullptr;
+		const TArray<FDataTableRowHandle>& BuildablesData = LoadedContext->BuildablesData;
+		for (const FDataTableRowHandle& BuildableData : BuildablesData)
+		{
+			const FPDBuildable* Buildable = BuildableData.GetRow<FPDBuildable>("");
+			if (Buildable == nullptr || Buildable->BuildableTag != ActionTag)
+			{
+				continue;
+			}
+			
+			BuildDataAsset = Buildable->BuildableData.DABuildAsset;
+			break;
+		}
+		
+		if (BuildDataAsset != nullptr)
+		{
+			UMaterialInstance* MatInst = BuildDataAsset->Buildable_MaterialInstance;
+			UTexture2D* Tex = BuildDataAsset->Buildable_Texture;
+			if (MatInst != nullptr)
+			{
+				TextContentBorder->SetBrushFromMaterial(MatInst);
+			}
+			else if (Tex != nullptr) // Fallback to texture
+			{
+				TextContentBorder->SetBrushFromTexture(Tex);
+			}
+		}
+	}
+	
+	// 3. Clear and Bind delegates
+	Hitbox->OnClicked.Clear();
+	Hitbox->OnClicked.AddDynamic(this, &UPDBuildableActionEntry::OnClicked);
+
+	Hitbox->OnReleased.Clear();
+	Hitbox->OnReleased.AddDynamic(this, &UPDBuildableActionEntry::OnReleased);
+	
+	Hitbox->OnHovered.Clear();
+	Hitbox->OnHovered.AddDynamic(this, &UPDBuildableActionEntry::OnHovered);
+	
+	Hitbox->OnUnhovered.Clear();
+	Hitbox->OnUnhovered.AddDynamic(this, &UPDBuildableActionEntry::OnUnhovered);
+
+	Hitbox->OnPressed.Clear();
+	Hitbox->OnPressed.AddDynamic(this, &UPDBuildableActionEntry::OnPressed);
+	
+}
+
+void UPDBuildableActionEntry::OnPressed()
+{
+	UE_LOG(PDLog_RTSBase, Verbose, TEXT("UPDBuildableActionEntry::OnPressed"))
+	/** @todo: write impl.  OnPress/OnClick decides the action*/
+
+
+
+
+
+	
+}
+
+void UPDBuildableActionEntry::OnHovered()
+{
+	UE_LOG(PDLog_RTSBase, Verbose, TEXT("UPDBuildableActionEntry::OnHovered"))
+	/** @todo: write impl.*/	
+}
+
+void UPDBuildableActionEntry::OnUnhovered()
+{
+	UE_LOG(PDLog_RTSBase, Verbose, TEXT("UPDBuildableActionEntry::OnUnhovered"))
+	/** @todo: write impl.*/	
+}
+
+void UPDBuildableActionEntry::OnClicked()
+{
+	UE_LOG(PDLog_RTSBase, Verbose, TEXT("UPDBuildableActionEntry::OnClicked"))
+	/** @todo: write impl.*/	
+}
+
+void UPDBuildableActionEntry::OnReleased()
+{
+	UE_LOG(PDLog_RTSBase, Verbose, TEXT("UPDBuildableActionEntry::OnReleased"))
+	/** @todo: write impl.*/		
+}
+
+void UPDBuildActionContextEntry::NativeOnListItemObjectSet(UObject* ListItemObject)
+{
+	IUserObjectListEntry::NativeOnListItemObjectSet(ListItemObject);
+
+
+	const UPDBuildActionContextWrapper* Item = Cast<UPDBuildActionContextWrapper>(ListItemObject);
+	if (Item == nullptr) { return; }
+
+	
+	// 1. Read data
+	ContextTitle->SetText(Item->GetBuildContextTitle());
+	SelfContextTag        = Item->GetContextTag();
+	DirectParentReference = Item->GetDirectParentReference();
+	SetOwningPlayer(DirectParentReference->GetOwningPlayer());
+
+	// 2. Set data-asset variable
+	TArray<FDataTableRowHandle>& BuildContexts = DirectParentReference->GetCurrentActionContexts();
+	for (const FDataTableRowHandle& Context : BuildContexts)
+	{
+		const FString CtxtStr = FString::Printf(TEXT("UPDBuildWidgetBase(%s, %s)::SelectBuildContext"), *Context.RowName.ToString(), *GetName());
+		const FPDBuildContext* LoadedContext = Context.GetRow<FPDBuildContext>(CtxtStr);
+		if (LoadedContext == nullptr || LoadedContext->ContextTag.IsValid() == false)
+		{
+			/** @todo Output to log with warning or error level verbosity if the context or the tag was invalid */ 
+			continue;
+		}
+
+		const UPDBuildContextDataAsset* BuildDataAsset = LoadedContext->ContextData.DABuildContextAsset;
+		if (BuildDataAsset != nullptr)
+		{
+			UMaterialInstance* MatInst = BuildDataAsset->BuildContext_MaterialInstance;
+			UTexture2D* Tex = BuildDataAsset->BuildContext_Texture;
+			if (MatInst != nullptr)
+			{
+				TextContentBorder->SetBrushFromMaterial(MatInst);
+			}
+			else if (Tex != nullptr) // Fallback to texture
+			{
+				TextContentBorder->SetBrushFromTexture(Tex);
+			}
+		}
+	}
+
+	// 3 Clear and Bind delegates
+	Hitbox->OnClicked.Clear();
+	Hitbox->OnClicked.AddDynamic(this, &UPDBuildActionContextEntry::OnClicked);
+
+	Hitbox->OnReleased.Clear();
+	Hitbox->OnReleased.AddDynamic(this, &UPDBuildActionContextEntry::OnReleased);
+
+	Hitbox->OnHovered.Clear();
+	Hitbox->OnHovered.AddDynamic(this, &UPDBuildActionContextEntry::OnHovered);
+
+	Hitbox->OnUnhovered.Clear();
+	Hitbox->OnUnhovered.AddDynamic(this, &UPDBuildActionContextEntry::OnUnhovered);
+
+	Hitbox->OnPressed.Clear();
+	Hitbox->OnPressed.AddDynamic(this, &UPDBuildActionContextEntry::OnPressed);	
+}
+
+void UPDBuildActionContextEntry::OnPressed()
+{
+	UE_LOG(PDLog_RTSBase, Verbose, TEXT("UPDBuildActionContextEntry::OnPressed"))
+	/** @todo: write impl.  OnPress/OnClick decides the action*/
+
+
+
+
+
+	
+}
+
+void UPDBuildActionContextEntry::OnHovered()
+{
+	UE_LOG(PDLog_RTSBase, Verbose, TEXT("UPDBuildActionContextEntry::OnHovered"))
+	/** @todo: write impl.*/
+}
+
+void UPDBuildActionContextEntry::OnUnhovered()
+{
+	UE_LOG(PDLog_RTSBase, Verbose, TEXT("UPDBuildActionContextEntry::OnUnhovered"))
+	/** @todo: write impl.*/	
+}
+
+void UPDBuildActionContextEntry::OnClicked()
+{
+	UE_LOG(PDLog_RTSBase, Verbose, TEXT("UPDBuildActionContextEntry::OnClicked"))
+	/** @todo: write impl.*/
+}
+
+void UPDBuildActionContextEntry::OnReleased()
+{
+	UE_LOG(PDLog_RTSBase, Verbose, TEXT("UPDBuildActionContextEntry::OnReleased"))
+	/** @todo: write impl.*/	
+}
+
+
+//
+//
+//
+//
+// buildables action menu, the menu that shows when selecting a buildable
+
+void UPDBuildingActionsWidgetBase::NativeConstruct()
+{
+	Super::NativeConstruct();
+}
+
+void UPDBuildingActionsWidgetBase::OverwriteActionContext(const FPDBuildActionContextParam& NewRowParams)
+{
+	CurrentActionContextHandles = NewRowParams.NewBuildActionContexts;
+}
+
+void UPDBuildingActionsWidgetBase::LoadActionContexts()
+{
+	// Build the context menu entries (Category)
+	ActionContexts->ClearListItems();
+
+	FGameplayTag SelectedContextTag = FGameplayTag::EmptyTag;
+	bool bLastSelectedContextStillValid = false;
+	for (const FDataTableRowHandle& Context : CurrentActionContextHandles)
+	{
+		const FString CtxtStr = FString::Printf(TEXT("UPDBuildWidgetBase(%s, %s)::SelectBuildContext"), *Context.RowName.ToString(), *GetName());
+		FPDBuildActionContext* LoadedContext = Context.GetRow<FPDBuildActionContext>(CtxtStr);
+		if (LoadedContext == nullptr || LoadedContext->ContextTag.IsValid() == false)
+		{
+			/** @todo Output to log with warning or error level verbosity if the context or the tag was invalid */ 
+			continue;
+		}
+		
+		UPDBuildActionContextWrapper* DataWrapper = NewObject<UPDBuildActionContextWrapper>(this, UPDBuildActionContextWrapper::StaticClass());		
+
+		FText SelectedName = LoadedContext->ContextData.ReadableName.IsEmpty() ?
+			FText::FromName(LoadedContext->ContextTag.GetTagName()) : LoadedContext->ContextData.ReadableName;
+
+		TArray<FDataTableRowHandle>& InnerBuildableHandles = LoadedContext->ActionData; 
+		
+		DataWrapper->AssignData(SelectedName, LoadedContext->ContextTag, InnerBuildableHandles, this);
+		ActionContexts->AddItem(DataWrapper);
+		
+		SelectedContextTag = SelectedContextTag.IsValid() == false ? LoadedContext->ContextTag : SelectedContextTag;
+		bLastSelectedContextStillValid &= LastSelectedActionContextTag == LoadedContext->ContextTag;
+	}
+	
+	SelectedContextTag = bLastSelectedContextStillValid ? LastSelectedActionContextTag : SelectedContextTag;
+	SelectActionContext(SelectedContextTag, true);	
+}
+
+void UPDBuildingActionsWidgetBase::SelectActionContext(const FGameplayTag& NewSelectedContext, const bool bWasDeselected)
+{
+	bool bRequestedContextWasValid = false;
+	for (const FDataTableRowHandle& Context : CurrentActionContextHandles)
+	{
+		const FString CtxtStr = FString::Printf(TEXT("UPDBuildWidgetBase(%s, %s)::SelectBuildContext"), *Context.RowName.ToString(), *GetName());
+		FPDBuildActionContext* LoadedContext = Context.GetRow<FPDBuildActionContext>(CtxtStr);
+		if (LoadedContext == nullptr || LoadedContext->ContextTag != NewSelectedContext) { continue; }
+
+		bRequestedContextWasValid = true;
+		
+		Actions->ClearListItems();
+		if (bWasDeselected) // deselecting a category should intuitively deselect any selected entry
+		{
+			APawn* CachedOwner = GetOwningPlayer()->GetPawnOrSpectator();
+			if (ensure(CachedOwner != nullptr && CachedOwner->GetClass()->ImplementsInterface(UPDRTSBuilderInterface::StaticClass())))
+			{
+				IPDRTSBuilderInterface::Execute_NewAction(CachedOwner, ERTSBuildMenuModules::DeselectBuildableActionContext, FGameplayTag::EmptyTag);
+			}
+			
+			return;
+		}
+		
+		for (const FDataTableRowHandle& ActionDatum : LoadedContext->ActionData)
+		{
+			const FPDBuildAction* Action = ActionDatum.GetRow<FPDBuildAction>("UPDBuildWidgetBase::SelectBuildContext -- @todo write log message");
+			if (Action == nullptr) { continue; }
+
+			UPDBuildableActionWrapper* DataWrapper = NewObject<UPDBuildableActionWrapper>(this, UPDBuildableActionWrapper::StaticClass());
+			
+			FGameplayTag ActionTag = Action->ActionTag;
+
+			constexpr bool bCanBuild = true; // @todo extrapolate bCanBuild based on available resources and such, possibly control via a virtual function and define in game module
+			DataWrapper->AssignData(Action->ReadableName, bCanBuild, ActionTag, LoadedContext->ContextTag, this);
+			Actions->AddItem(DataWrapper);
+		}
+		break;
+	}
+	
+	LastSelectedActionContextTag = bRequestedContextWasValid ? NewSelectedContext : LastSelectedActionContextTag;	
+}
+
+void UPDBuildingActionsWidgetBase::UpdateSelectedActionContext(const FGameplayTag& RequestToSelectTag)
+{
+	// Is it already selected?
+	bool bWasContextSelected = false;
+	for (const FDataTableRowHandle& Context : CurrentActionContextHandles)
+	{
+		const FString CtxtStr = FString::Printf(TEXT("UPDBuildWidgetBase(%s, %s)::UpdateSelectedContext"), *Context.RowName.ToString(), *GetName());
+		const FPDBuildActionContext* LoadedContext = Context.GetRow<FPDBuildActionContext>(CtxtStr);
+		if (LoadedContext == nullptr || LoadedContext->ContextTag.IsValid() == false)
+		{
+			/** @todo Output to log with warning or error level verbosity if the context or the tag was invalid */ 
+			continue;
+		}
+		
+		// Resets any previous selected tints
+		const TArray<UObject*>& ListItems = ActionContexts->GetListItems();
+		for (UObject* const& Item : ListItems)
+		{
+			UPDBuildActionContextEntry* AsContextEntry = ActionContexts->GetEntryWidgetFromItem<UPDBuildActionContextEntry>(Item);
+			if (AsContextEntry == nullptr || AsContextEntry->IsValidLowLevelFast() == false)
+			{
+				continue;
+			}
+			
+			// Selected new tag, @todo clean things up here
+			FSlateBrush& Brush = AsContextEntry->TextContentBorder->Background;
+			const FString& ContextEntryString = AsContextEntry->SelfContextTag.GetTagName().ToString();
+			const bool bShouldSelect = (RequestToSelectTag == AsContextEntry->SelfContextTag) && AsContextEntry->bIsSelected == false;
+			if (bShouldSelect)
+			{
+				UE_LOG(PDLog_RTSBase, Verbose, TEXT("UPDBuildWidgetBase::UpdateSelectedContext -- Selecting context(%s)"), *ContextEntryString)
+				Brush.TintColor = FSlateColor(SelectedWidgetFlair->SelectedContextTint);
+				bWasContextSelected = AsContextEntry->bIsSelected = true;
+			}
+			else // Deselecting any entries we had selected before // @todo redesign this slightly ,as we only need to know the previously selected entry, we should cache it so we can skip this loop
+			{
+				UE_LOG(PDLog_RTSBase, Verbose, TEXT("UPDBuildWidgetBase::UpdateSelectedContext -- Deselecting context(%s)"), *ContextEntryString)				
+				Brush.TintColor = FSlateColor(SelectedWidgetFlair->NotSelectedContextTint);
+				bWasContextSelected = AsContextEntry->bIsSelected = false;
+			}
+			AsContextEntry->TextContentBorder->SetBrush(Brush);
+		}
+	}
+	
+	SelectActionContext(RequestToSelectTag, bWasContextSelected == false);	
+}
+
+void UPDBuildingActionsWidgetBase::SelectAction(const FGameplayTag& NewSelectedBuildable)
+{
+	bool bRequestedBuildableWasValid = false;
+	for (const FDataTableRowHandle& Context : CurrentActionContextHandles)
+	{
+		const FString CtxtStr = FString::Printf(TEXT("UPDBuildWidgetBase(%s, %s)::SelectBuildable"), *Context.RowName.ToString(), *GetName());
+		FPDBuildActionContext* LoadedContext = Context.GetRow<FPDBuildActionContext>(CtxtStr);
+		if (LoadedContext == nullptr || LoadedContext->ContextTag.IsValid() == false) { continue; }
+		
+		for (const FDataTableRowHandle& ActionDatum : LoadedContext->ActionData)
+		{
+			const FPDBuildable* Buildable = ActionDatum.GetRow<FPDBuildable>("");
+			if (Buildable == nullptr || (Buildable->BuildableTag != NewSelectedBuildable))
+			{
+				continue;
+			}
+
+			// @todo nasty inner search, will need to @todo @refactor
+			const TArray<UObject*>& ListItems = Actions->GetListItems();
+			bool bWasAlreadyDeselected = false;
+			for (UObject* const& Item : ListItems)
+			{
+				const UPDBuildableActionEntry* AsBuildableEntry = Actions->GetEntryWidgetFromItem<UPDBuildableActionEntry>(Item);
+				if (AsBuildableEntry == nullptr || AsBuildableEntry->IsValidLowLevelFast() == false)
+				{
+					UE_LOG(PDLog_RTSBase, Verbose, TEXT("UPDBuildWidgetBase::UpdateSelectedBuildable -- Context(%s) -- AsBuildableEntry: %i"), *LoadedContext->ContextData.ReadableName.ToString(), AsBuildableEntry != nullptr)
+					continue;
+				}
+				if (AsBuildableEntry->ActionTag == NewSelectedBuildable )
+				{
+					bWasAlreadyDeselected = AsBuildableEntry->bIsSelected != true;
+				}
+			}
+			
+			bRequestedBuildableWasValid = LastSelectedActionTag != NewSelectedBuildable || bWasAlreadyDeselected;
+			UE_LOG(PDLog_RTSBase, Verbose, TEXT("UPDBuildWidgetBase::SelectBuildable -- bRequestedBuildableWasValid: %i"), bRequestedBuildableWasValid)
+			break; 
+		}
+	}
+
+	UpdateSelectedAction(NewSelectedBuildable, bRequestedBuildableWasValid);
+
+	// set after updating tag
+	LastSelectedActionTag = bRequestedBuildableWasValid ? NewSelectedBuildable : LastSelectedActionTag;	
+}
+
+void UPDBuildingActionsWidgetBase::UpdateSelectedAction(const FGameplayTag& RequestToSelectTag, const bool bRequestedBuildableWasValid)
+{
+	UE_LOG(PDLog_RTSBase, Verbose, TEXT("UPDBuildWidgetBase::UpdateSelectedBuildable - Buildable Tag (%s)"), *RequestToSelectTag.GetTagName().ToString())
+	
+	// Is it already selected?
+	FGameplayTag FinalTagSelection = FGameplayTag::EmptyTag;
+	ERTSBuildMenuModules SelectedAction = ERTSBuildMenuModules::DoNothing;
+	for (const FDataTableRowHandle& Context : CurrentActionContextHandles)
+	{
+		const FString CtxtStr = FString::Printf(TEXT("UPDBuildWidgetBase(%s, %s)::UpdateSelectedBuildable"), *Context.RowName.ToString(), *GetName());
+		const FPDBuildActionContext* LoadedContext = Context.GetRow<FPDBuildActionContext>(CtxtStr);
+		if (LoadedContext == nullptr || LoadedContext->ContextTag.IsValid() == false)
+		{
+			/** @todo Output to log with warning or error level verbosity if the context or the tag was invalid */
+			UE_LOG(PDLog_RTSBase, Warning, TEXT("UPDBuildWidgetBase::UpdateSelectedBuildable -- Context is null or has invalid flag"))
+			continue;
+		}
+		
+		// Resets any previous selected tints
+		const TArray<UObject*>& ListItems = Actions->GetListItems();
+		bool bWasSelected = false;
+		for (UObject* const& Item : ListItems)
+		{
+			UPDBuildableActionEntry* AsBuildableActionEntry = Actions->GetEntryWidgetFromItem<UPDBuildableActionEntry>(Item);
+			if (AsBuildableActionEntry == nullptr || AsBuildableActionEntry->IsValidLowLevelFast() == false)
+			{
+				UE_LOG(PDLog_RTSBase, Warning, TEXT("UPDBuildWidgetBase::UpdateSelectedBuildable -- Context(%s) -- AsBuildableEntry: %i"), *LoadedContext->ContextData.ReadableName.ToString(), AsBuildableActionEntry != nullptr)
+				continue;
+			}
+
+			bWasSelected = bRequestedBuildableWasValid && (RequestToSelectTag == AsBuildableActionEntry->ActionTag);
+			FSlateBrush& Brush = AsBuildableActionEntry->TextContentBorder->Background;
+			Brush.TintColor = FSlateColor(SelectedWidgetFlair->NotSelectedBuildableTint);
+
+			// Selected new tag, if deselection it will not enter this @todo clean things up here
+			if (bWasSelected)
+			{
+				UE_LOG(PDLog_RTSBase, Verbose, TEXT("UPDBuildWidgetBase::UpdateSelectedBuildable -- Selecting buildable(%s)"), *AsBuildableActionEntry->ActionTag.GetTagName().ToString())
+				FinalTagSelection = RequestToSelectTag;
+				SelectedAction = ERTSBuildMenuModules::FireBuildableAction;
+				Brush.TintColor = FSlateColor(SelectedWidgetFlair->SelectedBuildableTint);
+				AsBuildableActionEntry->bIsSelected = true;
+			}
+			else
+			{
+				UE_LOG(PDLog_RTSBase, Verbose, TEXT("UPDBuildWidgetBase::UpdateSelectedBuildable -- Deselecting buildable(%s)"), *AsBuildableActionEntry->ActionTag.GetTagName().ToString())				
+				AsBuildableActionEntry->bIsSelected = false;
+			}
+			
+			AsBuildableActionEntry->TextContentBorder->SetBrush(Brush);
+		}
+	}
+	
+	// This has been checked in mouse input event, if it is called manually it is up to the caller to have checked this beforehand
+	APawn* CachedOwner = GetOwningPlayer()->GetPawnOrSpectator();
+	if (ensure(CachedOwner != nullptr && CachedOwner->GetClass()->ImplementsInterface(UPDRTSBuilderInterface::StaticClass())))
+	{
+		IPDRTSBuilderInterface::Execute_NewAction(CachedOwner, SelectedAction, FinalTagSelection);
+	}	
+}
+
+void UPDBuildingActionsWidgetBase::SpawnBuildableActionMenu(const FPDBuildable& BuildableToSourceActionsFrom)
+{
+	FPDBuildActionContextParam ContextParams;
+	ContextParams.NewBuildActionContexts = BuildableToSourceActionsFrom.ActionContextHandles;
+
+	AddToViewport();
+	Actions->SetRenderOpacity(0.0);
+	ActionContexts->SetRenderOpacity(0.0);
+	
+	OverwriteActionContext(ContextParams);
+	LoadActionContexts();
+	PlayAnimation(OpenWidget);
+
+	bIsMenuVisible = true;	
+}
+
+void UPDBuildingActionsWidgetBase::BeginCloseBuildableActionMenu()
+{
+	if (CloseWidget == nullptr || CloseWidget->IsValidLowLevelFast() == false)
+	{
+		RemoveFromParent();
+		bIsMenuVisible = false;
+		return;
+	}
+	
+	// When animation finished
+	FWidgetAnimationDynamicEvent Delegate;
+	Delegate.BindUFunction(this, TEXT("EndCloseBuildableActionMenu"));
+	BindToAnimationFinished(CloseWidget, Delegate);
+	PlayAnimation(CloseWidget);	
+}
+
+void UPDBuildingActionsWidgetBase::EndCloseBuildableActionMenu()
+{
+	APawn* CachedOwner = GetOwningPlayer()->GetPawnOrSpectator();
+	if (CachedOwner != nullptr && CachedOwner->GetClass()->ImplementsInterface(UPDRTSBuilderInterface::StaticClass()))
+	{
+		IPDRTSBuilderInterface::Execute_NewAction(CachedOwner, ERTSBuildMenuModules::DoNothing, FGameplayTag());
+	}
+	
+	bIsMenuVisible = false;
+	RemoveFromParent();	
+}
+
+void UPDBuildingActionsWidgetBase::OpenActionContextMenu()
+{
+	PlayAnimation(OpenContextMenu);	
+}
+
+void UPDBuildingActionsWidgetBase::BeginCloseActionContext()
+{
+	if (CloseWidget == nullptr || CloseWidget->IsValidLowLevelFast() == false)
+	{
+		RemoveFromParent();
+		return;
+	}
+	
+	// When animation finished
+	FWidgetAnimationDynamicEvent Delegate;
+	Delegate.BindUFunction(this, TEXT("EndCloseActionContext"));
+	BindToAnimationFinished(CloseContextMenu, Delegate);
+	PlayAnimation(CloseContextMenu);
+}
+
+void UPDBuildingActionsWidgetBase::EndCloseActionContext()
+{
+	APawn* CachedOwner = GetOwningPlayer()->GetPawnOrSpectator();
+	if (CachedOwner != nullptr && CachedOwner->GetClass()->ImplementsInterface(UPDRTSBuilderInterface::StaticClass()))
+	{
+		IPDRTSBuilderInterface::Execute_NewAction(CachedOwner, ERTSBuildMenuModules::DeselectBuildableActionContext, FGameplayTag());
+		// IPDRTSBuilderInterface::Execute_NewAction(CachedOwner, ERTSBuildMenuModules::DeselectBuildable, FGameplayTag());
+	}		
+}
+
+void UPDBuildingActionsWidgetBase::SetNewWorldActor(AActor* NewWorldActor, const FPDBuildable& BuildableToSourceActionsFrom)
+{
+	CurrentWorldActor = NewWorldActor;
+	// @todo remove or add actions contexts here
+	
+	if (CurrentWorldActor == nullptr || BuildableToSourceActionsFrom.BuildableTag.IsValid() == false)
+	{
+		BeginCloseBuildableActionMenu();
+		return;
+	}
+	SpawnBuildableActionMenu(BuildableToSourceActionsFrom);
+}
 
 
 /**

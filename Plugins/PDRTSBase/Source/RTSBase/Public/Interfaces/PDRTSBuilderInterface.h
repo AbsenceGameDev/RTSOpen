@@ -14,7 +14,11 @@ enum class ERTSBuildMenuModules : uint8
 	SelectBuildable,
 	SelectContext,
 	DeselectBuildable,
-	DeselectContext
+	DeselectContext, 
+	SelectBuildableActionContext,    // Context of actions granted to a buildable  
+	DeselectBuildableActionContext,  // Context of actions granted to a buildable  
+	FireBuildableAction,             // Actions granted to a buildable 
+	DoNothing,                       // Do nothing 
 };
 
 
@@ -46,6 +50,15 @@ public:
 		case ERTSBuildMenuModules::DeselectBuildable:
 			break;
 		case ERTSBuildMenuModules::DeselectContext:
+			break;
+
+		case ERTSBuildMenuModules::SelectBuildableActionContext:
+			break;
+		case ERTSBuildMenuModules::DeselectBuildableActionContext:
+			break;			
+		case ERTSBuildMenuModules::FireBuildableAction:
+			break;
+		case ERTSBuildMenuModules::DoNothing:
 			break;
 		}
 		

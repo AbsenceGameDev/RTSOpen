@@ -20,6 +20,19 @@ UE_DEFINE_GAMEPLAY_TAG(TAG_BUILD_ContextMenu_Builder_Advanced, "BUILD.ContextMen
 UE_DEFINE_GAMEPLAY_TAG(TAG_BUILD_ContextMenu_Builder_Expert, "BUILD.ContextMenu.Builder.Expert");
 
 
+/** Declaring the "BUILD.Actions." gameplay tags. to be defined in an object-file */
+UE_DEFINE_GAMEPLAY_TAG(TAG_BUILD_Actions_DestroyBuilding, "BUILD.Action.Destroy");
+UE_DEFINE_GAMEPLAY_TAG(TAG_BUILD_Actions_SpawnWorker0, "BUILD.Action.SpawnWorker0");
+UE_DEFINE_GAMEPLAY_TAG(TAG_BUILD_Actions_SpawnWorker1, "BUILD.Action.SpawnWorker1");
+UE_DEFINE_GAMEPLAY_TAG(TAG_BUILD_Actions_SpawnSoldier0, "BUILD.Action.SpawnSoldier0");
+UE_DEFINE_GAMEPLAY_TAG(TAG_BUILD_Actions_SpawnSoldier1, "BUILD.Action.SpawnSoldier1");
+
+UE_DEFINE_GAMEPLAY_TAG(TAG_BUILD_ActionContext_WorkerHut0, "BUILD.ActionContext.WorkerHut0");
+UE_DEFINE_GAMEPLAY_TAG(TAG_BUILD_ActionContext_WorkerHut1, "BUILD.ActionContext.WorkerHut1");
+UE_DEFINE_GAMEPLAY_TAG(TAG_BUILD_ActionContext_Barracks0, "BUILD.ActionContext.Barracks0");
+UE_DEFINE_GAMEPLAY_TAG(TAG_BUILD_ActionContext_Barracks1, "BUILD.ActionContext.Barracks1");
+
+
 /**
 Business Source License 1.1
 

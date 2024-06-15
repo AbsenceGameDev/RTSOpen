@@ -54,6 +54,7 @@
 #include "PDBuildCommon.h"
 #include "PDBuilderSubsystem.h"
 #include "PDRTSSharedHashGrid.h"
+#include "PDRTSSharedUI.h"
 #include "Interfaces/PDRTSBuildableGhostInterface.h"
 #include "Kismet/GameplayStatics.h"
 #include "Kismet/KismetMathLibrary.h"
@@ -426,6 +427,65 @@ void AGodHandPawn::ActionDragMove_Implementation(const FInputActionValue& Value)
 	TrackUnitMovement();
 }
 
+// todo Refactor
+bool AGodHandPawn::ClickPotentialBuildable(ARTSOController* PC)
+{
+	// trace to
+	FCollisionQueryParams Params;
+	Params.MobilityType = EQueryMobilityType::Static;
+	Params.AddIgnoredActors(TArray<AActor*>{PC, this});
+	const FVector2D ScreenCoordinates = PC->GetMouseScreenCoords();
+
+	FHitResult HitResult{};
+	PC->GetHitResultAtScreenPosition(ScreenCoordinates, ECC_Visibility, Params, HitResult);
+	AActor* HitActor = HitResult.GetActor();
+
+	// Poor mans double click @todo refactor
+	const bool bHitValidBuildable = HitActor != nullptr && UPDBuilderSubsystem::GetBuildableFromClassStatic(HitActor->GetClass()) != nullptr;
+	if (bHitValidBuildable)
+	{
+		const bool bClickedSameActor = LastClickedBuildable == HitActor;
+		HitValidBuildableCounter = bClickedSameActor == false ? 0 : HitValidBuildableCounter;
+		
+		if (HitValidBuildableCounter < 1)
+		{
+			TimeBetweenClicks = GetWorld()->TimeSeconds;
+			
+			LastClickedBuildable = HitActor;
+			HitValidBuildableCounter++;
+			return true;
+		}
+		if (HitValidBuildableCounter >= 1)
+		{
+			TimeBetweenClicks = GetWorld()->TimeSeconds - TimeBetweenClicks;
+
+			if (TimeBetweenClicks > 1.0f)
+			{
+				HitValidBuildableCounter = 0;
+				return false;
+			}
+
+			PC->ProcessPotentialBuildableMenu(HitActor);
+			return true;
+		}
+	}
+
+
+	if (bHitValidBuildable && HitValidBuildableCounter < 1)
+	{
+		LastClickedBuildable = HitActor;
+		HitValidBuildableCounter++;
+		return true;
+	}
+	if (bHitValidBuildable && HitValidBuildableCounter >= 1)
+	{
+		HitValidBuildableCounter = 0;
+		PC->ProcessPotentialBuildableMenu(HitActor);
+		return true;
+	}
+	return false;
+}
+
 void AGodHandPawn::ActionWorkerUnit_Started_Implementation(const FInputActionValue& Value)
 {
 	// const bool ImmutableMoveInput = Value.Get<bool>();
@@ -459,6 +519,10 @@ void AGodHandPawn::ActionWorkerUnit_Started_Implementation(const FInputActionVal
 			bJustPlacedBuildable = true;
 			return;
 		}
+
+		
+		// todo Refactor
+		if (ClickPotentialBuildable(PC)) { return; }			
 		
 		PC->MarqueeSelection(EMarqueeSelectionEvent::STARTMARQUEE);
 	}
@@ -490,8 +554,6 @@ void AGodHandPawn::ActionWorkerUnit_Cancelled_Implementation(const FInputActionV
 		bJustPlacedBuildable = false;
 		return;
 	}
-
-	
 	
 	UE_LOG(PDLog_RTSO, Warning, TEXT("ActionWorkerUnit_Cancelled"))
 	IRTSOInputInterface::Execute_ActionWorkerUnit_Completed(this, Value);
@@ -508,7 +570,6 @@ void AGodHandPawn::SpawnFromGhost(bool bBuildable, bool bRequiresWorkersToBuild)
 	const FVector&& GhostLoc = CurrentGhost->GetActorLocation();
 	const FQuat&& GhostRot = CurrentGhost->GetActorRotation().Quaternion();
 
-	/** TODO Set up some controls to handle the rotation here */
 	FTransform InitialSpawnTransform{GhostRot, GhostLoc, FVector::OneVector};
 	AActor* SpawnedBuildable = GetWorld()->SpawnActorDeferred<AActor>(CurrentBuildableData->ActorToSpawn, InitialSpawnTransform, this);
 	SpawnedBuildable->SetOwner(this);
@@ -708,8 +769,10 @@ void AGodHandPawn::ActionMoveSelection_Implementation(const FInputActionValue& V
 	const int32 CurrentGroupID = PC->GetCurrentGroupID();
 	if (PC->GetImmutableMarqueeSelectionMap().Contains(CurrentGroupID) == false)
 	{
+		PC->ProcessPotentialBuildableMenu(InstanceState.HoveredActor);
 		return;
 	}
+	PC->GetBuildableActionsWidget()->SetNewWorldActor(nullptr, FPDBuildable{});
 	
 	const TArray<TObjectPtr<UInstancedStaticMeshComponent>>& ISMs = UPDRTSBaseSubsystem::GetMassISMs(GetWorld());
 	if (ISMs.IsEmpty() || Cast<UPDRTSBaseUnit>(ISMs[0]) == nullptr)
@@ -812,7 +875,7 @@ int32 AGodHandPawn::GetBuilderID_Implementation()
 	AController* PC = GetController();
 	if (PC == nullptr && CachedActorID == INDEX_NONE)
 	{
-		UE_LOG(PDLog_RTSO, Warning, TEXT("AGodHandPawn(%s)::GetBuilderID() \n PC == nullptr and CachedActorID == INDEX_NONE"));
+		UE_LOG(PDLog_RTSO, Warning, TEXT("AGodHandPawn(%s)::GetBuilderID() \n PC == nullptr and CachedActorID == INDEX_NONE"), *GetName());
 		return INDEX_NONE;
 	}
 
@@ -1033,6 +1096,71 @@ void AGodHandPawn::NewAction_Implementation(ERTSBuildMenuModules ActionMode, FGa
 		CurrentBuildContextTag = FGameplayTag::EmptyTag; 
 		UE_LOG(PDLog_RTSO, Warning, TEXT("AGodHandPawn::NewAction - Deselected BuildContext"))
 		break;
+
+		
+	case ERTSBuildMenuModules::SelectBuildableActionContext:
+		{
+			// todo: write impl.
+			const FPDBuildActionContext** BuildActionContext = BuilderSubsystem->GrantedActionContexts_KeyedByBuildableTag.Find(ActionTag);
+			if (BuildActionContext == nullptr) { break; }
+			
+			break;
+		}
+	case ERTSBuildMenuModules::DeselectBuildableActionContext:
+		{
+			// todo impl
+			BuilderSubsystem->GrantedActionContexts_KeyedByBuildableTag;
+			break;
+		}	
+	case ERTSBuildMenuModules::FireBuildableAction:
+		{
+			// todo: review impl.
+			const FPDBuildAction** FoundActionData = BuilderSubsystem->ActionData_WTag.Find(ActionTag);
+			if (FoundActionData == nullptr) { break; }
+
+			if (ActionTag == TAG_BUILD_Actions_DestroyBuilding)
+			{
+				//
+				// todo make configurable to have and 'accept dialog' here, so if wanted it is not easy to accidentally destroy a building?
+				//
+				
+				const ARTSOController* PC = GetController<ARTSOController>();
+				if (PC == nullptr) { break; }
+
+				PC->GetBuildableActionsWidget()->CurrentWorldActor->Destroy();
+				break;
+			}
+
+			if (ActionTag == TAG_BUILD_Actions_SpawnWorker0)
+			{
+				// todo impl.
+				break;
+			}
+			if (ActionTag == TAG_BUILD_Actions_SpawnWorker1)
+			{
+				// todo impl.
+				break;
+			}
+			if (ActionTag == TAG_BUILD_Actions_SpawnSoldier0)
+			{
+				// todo impl.
+				break;
+			}
+			if (ActionTag == TAG_BUILD_Actions_SpawnSoldier1)
+			{
+				// todo impl.
+				break;
+			}				
+
+			FireAction(ActionTag);
+		}
+		break;
+	case ERTSBuildMenuModules::DoNothing:
+		{
+			// todo impl.
+			BuilderSubsystem->GrantedActionContexts_KeyedByBuildableTag;
+			break;
+		}
 	}
 }
 

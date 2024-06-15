@@ -35,6 +35,8 @@ public:
 
 	/** @brief Returns the default build context data via it's BuildContext-tag*/
 	const FPDBuildContext* GetBuildContextEntry(const FGameplayTag& BuildContextTag);
+	const FPDBuildable* GetBuildableFromClass(TSubclassOf<AActor> Class);
+	static const FPDBuildable* GetBuildableFromClassStatic(TSubclassOf<AActor> Class);
 	/** @brief Returns the default Buildable data via it's Buildable-tag*/
 	const FPDBuildableData* GetBuildableData(const FGameplayTag& BuildableTag);
 	const FGameplayTag& GetBuildableTagFromData(const FPDBuildableData* BuildableData);
@@ -96,14 +98,23 @@ public:
 	TMap<int32 /*Player ID*/, FPDBuildQueue_WNoStageCosts> BuildQueues{};	
 
 	/** @brief Mapped for fast access. Mapped upon subsystem loading the developer settings 'UPDRTSSubsystemSettings' */
-	TMap<FGameplayTag, const FPDBuildWorker*> GrantedBuildContexts_WorkerTag{};		
+	TMap<FGameplayTag, const FPDBuildWorker*> GrantedBuildContexts_WorkerTag{};
+	/** @brief Mapped for fast access. Mapped upon subsystem loading the developer settings 'UPDRTSSubsystemSettings' */
+	TMap<FGameplayTag, const FPDBuildActionContext*> GrantedActionContexts_KeyedByBuildableTag{};
+	/** @brief Mapped for fast access. Mapped upon subsystem loading the developer settings 'UPDRTSSubsystemSettings' */
+	TMap<FGameplayTag, const FPDBuildAction*> ActionData_WTag{};	
+	
 	/** @brief Mapped for fast access. Mapped upon subsystem loading the developer settings 'UPDRTSSubsystemSettings' */
 	TMap<FGameplayTag, const FPDBuildContext*> BuildContexts_WTag{};	
 	/** @brief Mapped for fast access. Mapped upon subsystem loading the developer settings 'UPDRTSSubsystemSettings' */
-	TMap<FGameplayTag, const FPDBuildableData*> BuildableData_WTag{};	
+	TMap<FGameplayTag, const FPDBuildableData*> BuildableData_WTag{};
+	/** @brief Mapped for fast access. Mapped upon subsystem loading the developer settings 'UPDRTSSubsystemSettings' */
+	TMap<UClass*, const FPDBuildable*> Buildable_WClass{};	
+	
 	/** @brief Mapped for fast access. Mapped upon subsystem loading the developer settings 'UPDRTSSubsystemSettings' */
 	TMap<FPDBuildableData*, FGameplayTag>       BuildableData_WTagReverse{};	
 
+	
 	/** @brief The actual octree our buildable actors will make use of*/
 	PD::Mass::Actor::Octree WorldBuildActorOctree;
 	TMap<int32 /*UID*/, TSharedPtr<FOctreeElementId2>> ActorsToCells;

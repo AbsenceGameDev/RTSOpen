@@ -86,6 +86,7 @@ class RTSOPEN_API ARTSOController
 	virtual void ActionBuildMode_Implementation(const FInputActionValue& Value) override; /**<@ingroup RTSOInputInterface */
 	virtual void ActionClearSelection_Implementation(const FInputActionValue& Value) override; /**<@ingroup RTSOInputInterface */
 	virtual void ActionMoveSelection_Implementation(const FInputActionValue& Value) override; /**<@ingroup RTSOInputInterface */
+	void ProcessPotentialBuildableMenu(const AActor* HoveredActor) const;
 
 	/** @brief Assigns the currently selected group of entities to a selection-group */
 	virtual void ActionAssignSelectionToHotkey_Implementation(const FInputActionValue& Value) override;
@@ -162,6 +163,7 @@ class RTSOPEN_API ARTSOController
 	 * @param  NewSelection is an array of MassEntity indices pointing to the entities queried from the octree */
 	UFUNCTION(BlueprintNativeEvent) void OnMarqueeSelectionUpdated(int32 SelectionGroup, const TArray<int32>& NewSelection) const;
 
+	FVector2D GetMouseScreenCoords() const;
 	/** @brief Marquee drawing/selection logic */
 	UFUNCTION(BlueprintCallable) void MarqueeSelection(EMarqueeSelectionEvent SelectionEvent);
 	
@@ -208,6 +210,9 @@ class RTSOPEN_API ARTSOController
 	UFUNCTION() FHitResult GetLatestCenterHitResult() { return LatestCenterHitResult;};
 	/** @brief Marquee related hit results, end corner */
 	UFUNCTION() FHitResult GetLatestEndHitResult()    { return LatestEndHitResult;};	
+
+
+	UFUNCTION() UPDBuildingActionsWidgetBase* GetBuildableActionsWidget() const { return BuildableActionsWidget; }
 	
 	/** @brief Dispatches a sync 'parallellfor' that updates 'FPDMFragment_RTSEntityBase' fragments for all entities in the current selection group 
 	 * @note Called when a new selection group is created or deselected. */
@@ -294,8 +299,16 @@ protected:
 	TSubclassOf<UPDBuildWidgetBase> BuildMenuWidgetClass = nullptr;
 	/** @brief Instantiated conversation widget */
 	UPROPERTY(VisibleInstanceOnly)
-	UPDBuildWidgetBase* BuildMenuWidget = nullptr;	
+	UPDBuildWidgetBase* BuildMenuWidget = nullptr;
 
+	/** @brief Build menu widget base class */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	TSubclassOf<UPDBuildingActionsWidgetBase> BuildableActionsWidgetClass = nullptr;
+	/** @brief Instantiated conversation widget */
+	UPROPERTY(VisibleInstanceOnly, Getter)
+	UPDBuildingActionsWidgetBase* BuildableActionsWidget = nullptr;
+
+	
 	/** @brief Marquee related hit results, start corner */
 	UPROPERTY(VisibleInstanceOnly)
 	FHitResult LatestStartHitResult{};

@@ -18,7 +18,12 @@ void UPDBuilderSubsystem::Initialize(FSubsystemCollectionBase& Collection)
 	for (const TSoftObjectPtr<UDataTable>& TablePath : GetDefault<UPDBuilderSubsystemSettings>()->BuildWorkerTables)
 	{
 		ProcessBuildContextTable(TablePath);
-	}		
+	}
+
+	for (const TSoftObjectPtr<UDataTable>& TablePath : GetDefault<UPDBuilderSubsystemSettings>()->BuildActionContextTables)
+	{
+		ProcessBuildContextTable(TablePath);
+	}
 
 	GetMutableDefault<UPDBuilderSubsystemSettings>()->OnSettingChanged().AddLambda(
 		[&](UObject* SettingsToChange, FPropertyChangedEvent& PropertyEvent)
@@ -46,6 +51,8 @@ void UPDBuilderSubsystem::ProcessBuildContextTable(const TSoftObjectPtr<UDataTab
 				FPDBuildable* Buildable = BuildableDatum.GetRow<FPDBuildable>("");
 				BuildableData_WTag.Emplace(Buildable->BuildableTag, &Buildable->BuildableData);
 				BuildableData_WTagReverse.Emplace(&Buildable->BuildableData, Buildable->BuildableTag);
+
+				Buildable_WClass.Emplace(Buildable->BuildableData.ActorToSpawn, Buildable);
 			}
 			BuildContexts_WTag.Emplace(BuildContext->ContextTag, BuildContext);
 		}
@@ -60,11 +67,38 @@ void UPDBuilderSubsystem::ProcessBuildContextTable(const TSoftObjectPtr<UDataTab
 			GrantedBuildContexts_WorkerTag.Emplace(GrantedContext->WorkerType, GrantedContext);
 		}
 	}
+
+	if (BuildContextTable->RowStruct == FPDBuildActionContext::StaticStruct())
+	{
+		TArray<FPDBuildActionContext*> GrantedContexts;
+		BuildContextTable->GetAllRows<FPDBuildActionContext>(StrCtxt_ProcessBuildData, GrantedContexts);
+		for (const FPDBuildActionContext* GrantedContext : GrantedContexts)
+		{
+			for (const FDataTableRowHandle& ActionDatum : GrantedContext->ActionData)
+			{
+				FPDBuildAction* Action = ActionDatum.GetRow<FPDBuildAction>("");
+				ActionData_WTag.Emplace(Action->ActionTag, Action);
+			}			
+			
+			GrantedActionContexts_KeyedByBuildableTag.Emplace(GrantedContext->ContextTag, GrantedContext);
+		}
+	}	
 }
 
 const FPDBuildContext* UPDBuilderSubsystem::GetBuildContextEntry(const FGameplayTag& BuildContextTag)
 {
 	return BuildContexts_WTag.Contains(BuildContextTag) ? *BuildContexts_WTag.Find(BuildContextTag) : nullptr;
+}
+
+const FPDBuildable* UPDBuilderSubsystem::GetBuildableFromClass(const TSubclassOf<AActor> Class)
+{
+	return Buildable_WClass.Contains(Class) ? *Buildable_WClass.Find(Class) : nullptr;
+}
+
+const FPDBuildable* UPDBuilderSubsystem::GetBuildableFromClassStatic(TSubclassOf<AActor> Class)
+{
+	UPDBuilderSubsystem* BuilderSubsystem = UPDBuilderSubsystem::Get();
+	return BuilderSubsystem->Buildable_WClass.Contains(Class) ? *BuilderSubsystem->Buildable_WClass.Find(Class) : nullptr;
 }
 
 const FPDBuildableData* UPDBuilderSubsystem::GetBuildableData(const FGameplayTag& BuildableTag)
@@ -173,34 +207,16 @@ void UPDBuilderSubsystem::ProcessGhostStage(
 	
 	const FPDBuildableData* BuildableData = NonStaticSelf->BuildableData_WTag.FindRef(BuildableTag);
 	const FPDRTSGhostDatum& GhostData = BuildableData->GhostData;
-	switch (GhostData.TransitionStageType)
+	if (GhostData.StageAssets.IsValidIndex(MutableGhostDatum.CurrentStageIdx))
 	{
-	case EPDRTSGhostTransition::ESingleStage:
+		ProcessGhostStageDataAsset(GhostActor, bIsStartOfStage, GhostData.StageAssets[MutableGhostDatum.CurrentStageIdx]);
+		if (bIsStartOfStage == false) { MutableGhostDatum.CurrentStageIdx++; }
+		
+		if (MutableGhostDatum.CurrentStageIdx > GhostData.StageAssets.Num())
 		{
-			ProcessGhostStageDataAsset(GhostActor, bIsStartOfStage, GhostData.SingleStageAsset);
-			if (bIsStartOfStage == false) { MutableGhostDatum.CurrentStageIdx++; }
-
-			if (MutableGhostDatum.CurrentStageIdx > 0)
-			{
-				IPDRTSBuildableGhostInterface::Execute_OnSpawnedAsMain(GhostActor, BuildableTag);
-			}
-		}
-		break;
-	case EPDRTSGhostTransition::EMultipleStages:
-		if (GhostData.MultiStageStageAssets.IsValidIndex(MutableGhostDatum.CurrentStageIdx))
-		{
-			ProcessGhostStageDataAsset(GhostActor, bIsStartOfStage, GhostData.MultiStageStageAssets[MutableGhostDatum.CurrentStageIdx]);
-			if (bIsStartOfStage == false) { MutableGhostDatum.CurrentStageIdx++; }
-
-			if (MutableGhostDatum.CurrentStageIdx > GhostData.MultiStageStageAssets.Num())
-			{
-				IPDRTSBuildableGhostInterface::Execute_OnSpawnedAsMain(GhostActor, BuildableTag);
-			}			
-		}
-		break;
-	default: ;
+			IPDRTSBuildableGhostInterface::Execute_OnSpawnedAsMain(GhostActor, BuildableTag);
+		}			
 	}
-
 }
 
 double UPDBuilderSubsystem::GetMaxDurationGhostStage(
@@ -213,21 +229,10 @@ double UPDBuilderSubsystem::GetMaxDurationGhostStage(
 	
 	const FPDBuildableData* BuildableData = NonStaticSelf->BuildableData_WTag.FindRef(BuildableTag);
 	const FPDRTSGhostDatum& GhostData = BuildableData->GhostData;
-	switch (GhostData.TransitionStageType)
+	
+	if (GhostData.StageAssets.IsValidIndex(MutableGhostDatum.CurrentStageIdx))
 	{
-	case EPDRTSGhostTransition::ESingleStage:
-		if (MutableGhostDatum.CurrentStageIdx == 0)
-		{
-			return GhostData.SingleStageAsset.MaxDurationForStage;
-		}
-		break;
-	case EPDRTSGhostTransition::EMultipleStages:
-		if (GhostData.MultiStageStageAssets.IsValidIndex(MutableGhostDatum.CurrentStageIdx))
-		{
-			return GhostData.MultiStageStageAssets[MutableGhostDatum.CurrentStageIdx].MaxDurationForStage;
-		}
-		break;
-	default: ;
+		return GhostData.StageAssets[MutableGhostDatum.CurrentStageIdx].MaxDurationForStage;
 	}
 
 	return -1.0;
@@ -240,21 +245,9 @@ bool UPDBuilderSubsystem::IsPastFinalIndex(const FGameplayTag& BuildableTag, FPD
 	
 	const FPDBuildableData* BuildableData = NonStaticSelf->BuildableData_WTag.FindRef(BuildableTag);
 	const FPDRTSGhostDatum& GhostData = BuildableData->GhostData;
-	switch (GhostData.TransitionStageType)
+	if (MutableGhostDatum.CurrentStageIdx >= GhostData.StageAssets.Num())
 	{
-	case EPDRTSGhostTransition::ESingleStage:
-		if (MutableGhostDatum.CurrentStageIdx > 0)
-		{
-			return true;
-		}
-		break;
-	case EPDRTSGhostTransition::EMultipleStages:
-		if (MutableGhostDatum.CurrentStageIdx >= GhostData.MultiStageStageAssets.Num())
-		{
-			return true;
-		}
-		break;
-	default: ;
+		return true;
 	}
 
 	return false;	
