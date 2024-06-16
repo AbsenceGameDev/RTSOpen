@@ -950,7 +950,7 @@ FMassEntityHandle AGodHandPawn::FindClosestMassEntity() const
 	}
 	const FLEntityCompound& EntityCompound = (*QueryBufferData)[QueryBufferData->Num() - 1];
 
-	// Temporary work-around to resolve edgecase created by fixing a data-race in the query buffer 
+	// Temporary work-around to resolve edge-case created by fixing a data-race in the query buffer 
 	// Ensure that it is not a hovered entity from a previous frame still lingering in the query buffer
 	const FVector DeltaV = Collision->GetComponentLocation() - EntityCompound.Location;
 	if (DeltaV.IsNearlyZero(50.0) == false)
@@ -1067,9 +1067,9 @@ void AGodHandPawn::OnConstruction(const FTransform& Transform)
 	Super::OnConstruction(Transform);
 }
 
-void AGodHandPawn::NewAction_Implementation(ERTSBuildMenuModules ActionMode, FGameplayTag ActionTag)
+void AGodHandPawn::SelectBuildMenuEntry_Implementation(ERTSBuildMenuModules ActionMode, FGameplayTag ActionTag)
 {
-	IPDRTSBuilderInterface::NewAction_Implementation(ActionMode, ActionTag);
+	IPDRTSBuilderInterface::SelectBuildMenuEntry_Implementation(ActionMode, ActionTag);
 
 	UPDBuilderSubsystem* BuilderSubsystem = UPDBuilderSubsystem::Get();
 	ensure(BuilderSubsystem != nullptr);
@@ -1096,25 +1096,34 @@ void AGodHandPawn::NewAction_Implementation(ERTSBuildMenuModules ActionMode, FGa
 		CurrentBuildContextTag = FGameplayTag::EmptyTag; 
 		UE_LOG(PDLog_RTSO, Warning, TEXT("AGodHandPawn::NewAction - Deselected BuildContext"))
 		break;
+	}
+}
 
+void AGodHandPawn::SelectActionMenuEntry_Implementation(ERTSBuildableActionMenuModules ActionMode, FGameplayTag ActionTag)
+{
+	IPDRTSBuilderInterface::SelectActionMenuEntry_Implementation(ActionMode, ActionTag);
+
+	UPDBuilderSubsystem* BuilderSubsystem = UPDBuilderSubsystem::Get();
+	ensure(BuilderSubsystem != nullptr);
+	
+	switch (ActionMode)
+	{
 		
-	case ERTSBuildMenuModules::SelectBuildableActionContext:
+	case ERTSBuildableActionMenuModules::SelectBuildableActionContext:
 		{
-			// todo: write impl.
+			// todo: write actual impl.
 			const FPDBuildActionContext** BuildActionContext = BuilderSubsystem->GrantedActionContexts_KeyedByBuildableTag.Find(ActionTag);
 			if (BuildActionContext == nullptr) { break; }
-			
 			break;
 		}
-	case ERTSBuildMenuModules::DeselectBuildableActionContext:
+	case ERTSBuildableActionMenuModules::DeselectBuildableActionContext:
 		{
-			// todo impl
+			// todo: write actual impl.
 			BuilderSubsystem->GrantedActionContexts_KeyedByBuildableTag;
 			break;
 		}	
-	case ERTSBuildMenuModules::FireBuildableAction:
+	case ERTSBuildableActionMenuModules::FireBuildableAction:
 		{
-			// todo: review impl.
 			const FPDBuildAction** FoundActionData = BuilderSubsystem->ActionData_WTag.Find(ActionTag);
 			if (FoundActionData == nullptr) { break; }
 
@@ -1131,36 +1140,30 @@ void AGodHandPawn::NewAction_Implementation(ERTSBuildMenuModules ActionMode, FGa
 				break;
 			}
 
-			if (ActionTag == TAG_BUILD_Actions_SpawnWorker0)
+			// TAG_AI_Type_ type tags are implicitly counted as spawn actions when applied as a 'buildable action tag' in an entry in a 'FPDBuildable' datatable
+			if (ActionTag.MatchesTag(TAG_AI_Type))
 			{
-				// todo impl.
-				break;
-			}
-			if (ActionTag == TAG_BUILD_Actions_SpawnWorker1)
-			{
-				// todo impl.
-				break;
-			}
-			if (ActionTag == TAG_BUILD_Actions_SpawnSoldier0)
-			{
-				// todo impl.
-				break;
-			}
-			if (ActionTag == TAG_BUILD_Actions_SpawnSoldier1)
-			{
-				// todo impl.
-				break;
-			}				
+				// Check if we can match it against a type in our subsystem
+				const bool bIsMatchedAgainst = BuilderSubsystem->GrantedBuildContexts_WorkerTag.Contains(ActionTag);
+				if (bIsMatchedAgainst == false) { return; }
+				// @todo 1. Need to select a entity config and use it to spawn
+				// @todo 2. Will need some mapping between unit-type tags and their entity configs, multiple unit-type tags may share the same configs
+				// @todo 3. Spawn here now that have validated that the worker is valid type
+				// @todo 4. need a spawn queue and unit spawn rules, timings and such
 
-			FireAction(ActionTag);
+				
+				break;
+			}
+
+			FireAction(ActionTag); // If any other action then route it to BP
 		}
 		break;
-	case ERTSBuildMenuModules::DoNothing:
+	case ERTSBuildableActionMenuModules::DoNothing:
 		{
-			// todo impl.
+			// todo: write actual impl.
 			BuilderSubsystem->GrantedActionContexts_KeyedByBuildableTag;
 			break;
-		}
+		}		
 	}
 }
 

@@ -36,7 +36,7 @@ bool PD::Mass::FOctreeBase::SetupOctreeWithNewWorld(UWorld* NewWorld)
 		}
 		else
 		{
-			// @todo log message
+			UE_LOG(PDLog_RTSBase, Error, TEXT("PD::Mass::FOctreeBase::SetupOctreeWithNewWorld -- DispatchOctreeGeneration delegate is nor bound!"))
 		}
 		
 		return false;

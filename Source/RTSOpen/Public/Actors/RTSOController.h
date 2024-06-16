@@ -90,7 +90,7 @@ class RTSOPEN_API ARTSOController
 
 	/** @brief Assigns the currently selected group of entities to a selection-group */
 	virtual void ActionAssignSelectionToHotkey_Implementation(const FInputActionValue& Value) override;
-	/** @brief Switch between hotkeyed selection group. this is also used to read key input for conversation choices */
+	/** @brief Switch between hot-keyed selection group. this is also used to read key input for conversation choices */
 	virtual void ActionHotkeySelection_Implementation(const FInputActionValue& Value) override;
 	/** @brief Only used as a modifier key, does not need any logic in the actual function itself but is used to control priority in our mapping contexts */
 	virtual void ActionChordedBase_Implementation(const FInputActionValue& Value) override;
@@ -168,7 +168,7 @@ class RTSOPEN_API ARTSOController
 	UFUNCTION(BlueprintCallable) void MarqueeSelection(EMarqueeSelectionEvent SelectionEvent);
 	
 	/** @brief Sets up a conversation with necessary prerequisites.
-	 * @details 1. Sets camera manager viewtarget.
+	 * @details 1. Sets camera manager view-target.
 	 * 2. Activates the mapping context 'TAG_CTRL_Ctxt_ConversationMode' and deactivates 'TAG_CTRL_Ctxt_WorkerUnitMode' & 'TAG_CTRL_Ctxt_BaseInput'
 	 * 3. Adds the conversation widget to viewport and sets it's initial payload*/
 	UFUNCTION() void OnBeginConversation(const FClientConversationMessagePayload& Payload, AActor* PotentialCallbackActor);
@@ -182,15 +182,15 @@ class RTSOPEN_API ARTSOController
 
 	/* PDRTS Builder Interface - Start */
 	/** @brief Refreshes our pointer to our selected build context or selected buildable data based on the enum, and the tag finds the actual find the entry therein */
-	virtual void NewAction_Implementation(ERTSBuildMenuModules ActionMode, FGameplayTag ActionTag) override;
+	virtual void SelectBuildMenuEntry_Implementation(ERTSBuildMenuModules ActionMode, FGameplayTag ActionTag) override;
 	/** @brief Pipes through our persistent ActorID to the build system */
 	virtual int32 GetBuilderID_Implementation() override { return GetActorID(); };
 	/* PDRTS Builder Interface - End */
 
 	
-	/** @brief Queues a drawcall into chaos' async debug draw queue */
+	/** @brief Queues a draw-call into chaos' async debug draw queue */
 	static void DrawBoxAndTextChaos(const FVector& BoundsCenter, const FQuat& Rotation, const FVector& DebugExtent, const FString& DebugBoxTitle, FColor LineColour = FColor::Black);
-	/** @brief This function is here to fix a edge-case issue where the marquee volume is affected by large differences in z-height between the start corner and end corner world hitresults*/
+	/** @brief This function is here to fix a edge-case issue where the marquee volume is affected by large differences in z-height between the start corner and end corner world hit-results*/
 	static void AdjustMarqueeHitResultsToMinimumHeight(FHitResult& StartHitResult, FHitResult& CenterHitResult, FHitResult& EndHitResult);
 	/** @brief Queries the octree with the marquee selection volume and stores found handles in 'MarqueeSelectedHandles' */
 	UFUNCTION() void GetEntitiesOrActorsInMarqueeSelection();
@@ -214,7 +214,7 @@ class RTSOPEN_API ARTSOController
 
 	UFUNCTION() UPDBuildingActionsWidgetBase* GetBuildableActionsWidget() const { return BuildableActionsWidget; }
 	
-	/** @brief Dispatches a sync 'parallellfor' that updates 'FPDMFragment_RTSEntityBase' fragments for all entities in the current selection group 
+	/** @brief Dispatches a sync 'ParallelFor' that updates 'FPDMFragment_RTSEntityBase' fragments for all entities in the current selection group 
 	 * @note Called when a new selection group is created or deselected. */
 	void OnSelectionChange(bool bClearSelection);
 
@@ -243,7 +243,7 @@ public:
 	UPROPERTY(VisibleInstanceOnly, BlueprintReadOnly, Category = "RTS|Cursor|State")
 	TEnumAsByte<ECollisionChannel> DedicatedLandscapeTraceChannel = ECollisionChannel::ECC_GameTraceChannel13;	
 	
-	/** @defgroup RTSInputActions. Assign these in editor @todo make developersettings struct to assign these from .ini configs also? */
+	/** @defgroup RTSInputActions. Assign these in editor @todo make developer settings struct to assign these from .ini configs also? */
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "RTS|Input")
 	class UInputAction* CtrlActionMove = nullptr; /**< @ingroup RTSInputActions*/
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "RTS|Input")
@@ -319,7 +319,7 @@ protected:
 	UPROPERTY(VisibleInstanceOnly)
 	FHitResult LatestEndHitResult{};
 
-	/** @brief Actors persistent ID, is generated upon beginplay if none already exists in the UPDRTSBaseSubsystem */
+	/** @brief Actors persistent ID, is generated upon BeginPlay if none already exists in the UPDRTSBaseSubsystem */
 	UPROPERTY(VisibleInstanceOnly)
 	FPDPersistentID ActorID{};
 	

@@ -15,11 +15,17 @@ enum class ERTSBuildMenuModules : uint8
 	SelectContext,
 	DeselectBuildable,
 	DeselectContext, 
+};
+
+UENUM()
+enum class ERTSBuildableActionMenuModules : uint8
+{
 	SelectBuildableActionContext,    // Context of actions granted to a buildable  
 	DeselectBuildableActionContext,  // Context of actions granted to a buildable  
 	FireBuildableAction,             // Actions granted to a buildable 
 	DoNothing,                       // Do nothing 
 };
+
 
 
 /** @brief Boilerplate */
@@ -37,8 +43,8 @@ class PDRTSBASE_API IPDRTSBuilderInterface
 public:
 	/** @brief Used by the build system for when a enw context or buildable is selected (or when an old one is deselected) */
 	UFUNCTION(BlueprintNativeEvent, CallInEditor, Category = "Action|Interface")
-	void NewAction(ERTSBuildMenuModules ActionMode, FGameplayTag ActionTag);
-	virtual void NewAction_Implementation(ERTSBuildMenuModules ActionMode, FGameplayTag ActionTag)
+	void SelectBuildMenuEntry(ERTSBuildMenuModules ActionMode, FGameplayTag ActionTag);
+	virtual void SelectBuildMenuEntry_Implementation(ERTSBuildMenuModules ActionMode, FGameplayTag ActionTag)
 	{
 		// Perform actions
 		switch (ActionMode)
@@ -51,19 +57,32 @@ public:
 			break;
 		case ERTSBuildMenuModules::DeselectContext:
 			break;
-
-		case ERTSBuildMenuModules::SelectBuildableActionContext:
-			break;
-		case ERTSBuildMenuModules::DeselectBuildableActionContext:
-			break;			
-		case ERTSBuildMenuModules::FireBuildableAction:
-			break;
-		case ERTSBuildMenuModules::DoNothing:
-			break;
 		}
 		
 		return;
 	}
+
+
+	/** @brief Used by the build system for when a enw context or buildable is selected (or when an old one is deselected) */
+	UFUNCTION(BlueprintNativeEvent, CallInEditor, Category = "Action|Interface")
+	void SelectActionMenuEntry(ERTSBuildableActionMenuModules ActionMode, FGameplayTag ActionTag);
+	virtual void SelectActionMenuEntry_Implementation(ERTSBuildableActionMenuModules ActionMode, FGameplayTag ActionTag)
+	{
+		// Perform actions
+		switch (ActionMode)
+		{
+		case ERTSBuildableActionMenuModules::SelectBuildableActionContext:
+			break;
+		case ERTSBuildableActionMenuModules::DeselectBuildableActionContext:
+			break;			
+		case ERTSBuildableActionMenuModules::FireBuildableAction:
+			break;
+		case ERTSBuildableActionMenuModules::DoNothing:
+			break;
+		}
+		
+		return;
+	}	
 
 	/** @brief If if logic has already been implemented to generate persistent IDs for players, then implement this and pass it as return */
 	UFUNCTION(BlueprintNativeEvent, CallInEditor, Category = "Action|Interface")

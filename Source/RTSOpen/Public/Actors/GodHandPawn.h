@@ -76,7 +76,8 @@ public:
 	
 	/* PDRTS Builder Interface - Start */
 	/** @brief Refreshes our pointer to our selected build context or selected buildable data based on the enum, and the tag finds the actual find the entry therein */
-	virtual void NewAction_Implementation(ERTSBuildMenuModules ActionMode, FGameplayTag ActionTag) override;
+	virtual void SelectBuildMenuEntry_Implementation(ERTSBuildMenuModules ActionMode, FGameplayTag ActionTag) override;
+	virtual void SelectActionMenuEntry_Implementation(ERTSBuildableActionMenuModules ActionMode, FGameplayTag ActionTag) override;
 	virtual int32 GetBuilderID_Implementation() override;
 	/* PDRTS Builder Interface - End */
 
@@ -155,7 +156,7 @@ public:
 	 * @todo @refactor might have a bug here, look into it when refactoring */
 	void ProcessPlaceBuildable(ARTSOController* PC);
 
-	/** @brief Resets data that is otherwise used for visaully pathing a workers potential walk-path */
+	/** @brief Resets data that is otherwise used for visually pathing a workers potential walk-path */
 	void ResetPathParameters();
 	
 	/** @brief If we were NOT drawing a marquee: then dispatch ai job to entity, if we had a valid entity.

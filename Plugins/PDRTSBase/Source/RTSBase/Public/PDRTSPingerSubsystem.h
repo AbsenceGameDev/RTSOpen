@@ -11,8 +11,8 @@ class UPDRTSBaseUnit;
 class UMassEntitySubsystem;
 
 
-/** @brief Settings to fire off a ping into rts subssytem entities.
- * @note Must be constructed for a valid target actor with a valid ownerID and jobtag, otherwise it will fire off ensures and checks. Will be impossible to miss the potential error */
+/** @brief Settings to fire off a ping into rts subsystem entities.
+ * @note Must be constructed for a valid target actor with a valid ownerID and job-tag, otherwise it will fire off ensures and checks. Will be impossible to miss the potential error */
 USTRUCT(Blueprintable)
 struct PDRTSBASE_API FPDEntityPingDatum
 {
@@ -21,13 +21,13 @@ struct PDRTSBASE_API FPDEntityPingDatum
 	/** @brief Base ctor needed by the engine to resolve the generated code properly */
 	FPDEntityPingDatum() : FPDEntityPingDatum(0) {};
 private:
-	/** @brief private ctor, only accessible by friends. I.e. the ping subsystem may access it to create fake datums to get typehash from */
+	/** @brief private ctor, only accessible by friends. I.e. the ping subsystem may access it to create a fake datum to get typehash from */
 	FPDEntityPingDatum(uint32 InInstanceID);
 public:
-	/** @brief Ctor with world actor we want to ping from and a jobtag to actually ping */
+	/** @brief Ctor with world actor we want to ping from and a JobTag to actually ping */
 	FPDEntityPingDatum(AActor* InWorldActor, const FGameplayTag& InJobTag);
 
-	/** @brief Ctor with world actor we want to ping from and a jobtag to actually ping;
+	/** @brief Ctor with world actor we want to ping from and a JobTag to actually ping;
 	 * @param InWorldActor - Requires valid actor
 	 * @param InJobTag - Requires valid job-tag
 	 * @param InAltOwnerID - Optional OwnerID override, if the actor is known to be missing one or we want to target a job on another players buildable
@@ -95,7 +95,7 @@ class PDRTSBASE_API UPDEntityPinger : public UEngineSubsystem
 	GENERATED_BODY()
 	
 	UPDEntityPinger() = default;
-	/** @brief Init with a starting pingdatum if wanted. likely not needed */
+	/** @brief Init with a starting PingDatum if wanted. likely not needed */
 	explicit UPDEntityPinger(const FPDEntityPingDatum& PingDatum);
 public:
 	/** @brief Shorthand to get the subsystem,
@@ -113,10 +113,10 @@ public:
 	UFUNCTION(BlueprintCallable)
 	void RemovePingDatumWithHash(const FPDEntityPingDatum& PingDatum);
 
-	/** @brief Gets a timerhandle related to a ping-datum, found using BP friendly unsigned byte array */
+	/** @brief Gets a timer handle related to a ping-datum, found using BP friendly unsigned byte array */
 	UFUNCTION(BlueprintCallable)
 	FTimerHandle GetPingHandleCopy(const TArray<uint8>& PingHashBytes);
-	/** @brief Gets a timerhandle related to a ping-datum, found using unsigned int32, not usable in BP  */
+	/** @brief Gets a timer handle related to a ping-datum, found using unsigned int32, not usable in BP  */
 	FTimerHandle GetPingHandleCopy(uint32 PingHash);
 	
 	/** @brief Adds or overwrites a ping datum and enables the pinging */

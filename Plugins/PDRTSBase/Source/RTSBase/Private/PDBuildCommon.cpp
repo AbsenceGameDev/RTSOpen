@@ -3,6 +3,7 @@
 #include "PDBuildCommon.h"
 
 /** Define the gameplay "AI.Type." tags */
+UE_DEFINE_GAMEPLAY_TAG(TAG_AI_Type, "AI.Type");
 UE_DEFINE_GAMEPLAY_TAG(TAG_AI_Type_DefaultUnit, "AI.Type.DefaultUnit");
 UE_DEFINE_GAMEPLAY_TAG(TAG_AI_Type_InvalidUnit, "AI.Type.InvalidUnit");
 
@@ -22,11 +23,9 @@ UE_DEFINE_GAMEPLAY_TAG(TAG_BUILD_ContextMenu_Builder_Expert, "BUILD.ContextMenu.
 
 /** Declaring the "BUILD.Actions." gameplay tags. to be defined in an object-file */
 UE_DEFINE_GAMEPLAY_TAG(TAG_BUILD_Actions_DestroyBuilding, "BUILD.Action.Destroy");
-UE_DEFINE_GAMEPLAY_TAG(TAG_BUILD_Actions_SpawnWorker0, "BUILD.Action.SpawnWorker0");
-UE_DEFINE_GAMEPLAY_TAG(TAG_BUILD_Actions_SpawnWorker1, "BUILD.Action.SpawnWorker1");
-UE_DEFINE_GAMEPLAY_TAG(TAG_BUILD_Actions_SpawnSoldier0, "BUILD.Action.SpawnSoldier0");
-UE_DEFINE_GAMEPLAY_TAG(TAG_BUILD_Actions_SpawnSoldier1, "BUILD.Action.SpawnSoldier1");
+// TAG_AI_Type_ tags are implicitly counted as spawn actions when applied as a 'buildable action tag' in an entry in a 'FPDBuildable'-type of datatable
 
+/** Declaring the "BUILD.ActionContext." gameplay tags. to be defined in an object-file */
 UE_DEFINE_GAMEPLAY_TAG(TAG_BUILD_ActionContext_WorkerHut0, "BUILD.ActionContext.WorkerHut0");
 UE_DEFINE_GAMEPLAY_TAG(TAG_BUILD_ActionContext_WorkerHut1, "BUILD.ActionContext.WorkerHut1");
 UE_DEFINE_GAMEPLAY_TAG(TAG_BUILD_ActionContext_Barracks0, "BUILD.ActionContext.Barracks0");

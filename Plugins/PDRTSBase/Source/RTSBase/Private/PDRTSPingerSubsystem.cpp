@@ -5,6 +5,7 @@
 
 #include "MassEntitySubsystem.h"
 #include "PDBuildCommon.h"
+#include "PDBuilderSubsystem.h"
 #include "Interfaces/PDRTSBuilderInterface.h"
 #include "Pawns/PDRTSBaseUnit.h"
 #include "RTSBase/Classes/PDRTSCommon.h"
@@ -175,26 +176,38 @@ TArray<uint8> UPDEntityPinger::EnablePingStatic(const FPDEntityPingDatum& PingDa
 
 void UPDEntityPinger::Ping_Implementation(UWorld* World, const FPDEntityPingDatum& PingDatum)
 {
-	UPDRTSBaseSubsystem* RTSSubsystem = UPDRTSBaseSubsystem::Get();
 	AsyncTask(ENamedThreads::GameThread,
-		[ConstPingDatum = PingDatum, InWorld = World, RTSSubsystem]()
+		[ConstPingDatum = PingDatum, InWorld = World]()
 		{
-			const FGameplayTag EntityTag = TAG_AI_Type_BuilderUnit_Novice ; // @todo, pass into here from somewhere else 
+			const UPDBuilderSubsystem* BuilderSubsystem = UPDBuilderSubsystem::Get();
+			const FGameplayTag FallBackEntityTag = TAG_AI_Type_BuilderUnit_Novice ; // @todo, pass into here from somewhere else 
+			TArray<FGameplayTag> SelectedUnitTypes{FallBackEntityTag};
+			if (ConstPingDatum.WorldActor == nullptr || BuilderSubsystem->Buildable_WClass.Contains(ConstPingDatum.WorldActor->GetClass()) == false)
+			{
+				UE_LOG(PDLog_BuildSystem, Warning, TEXT("UPDEntityPinger::Ping() Was called with world actor : %s, Actor class is not a spawn type of any entry of a registered FPDBuildable data-table"), ConstPingDatum.WorldActor == nullptr ? *FString("INVALID ACTOR") : *ConstPingDatum.WorldActor->GetName() )
+			}
+			else
+			{
+				SelectedUnitTypes = BuilderSubsystem->ValidUnitTypes_PerBuildable.FindRef(BuilderSubsystem->Buildable_WClass.FindRef(ConstPingDatum.WorldActor->GetClass())->BuildableTag);
+			}
+
 			TArray<FMassEntityHandle> Handles =
-				UPDRTSBaseSubsystem::FindIdleEntitiesOfType({EntityTag}, ConstPingDatum.WorldActor, ConstPingDatum.OwnerID);
+				UPDRTSBaseSubsystem::FindIdleEntitiesOfType(SelectedUnitTypes, ConstPingDatum.WorldActor, ConstPingDatum.OwnerID);
 
 			ParallelFor(Handles.Num(),
-				[InHandles = Handles, InRTSSubsystem = RTSSubsystem, ConstPingDatum, InWorld](const int32 Idx)
+				[InHandles = Handles, ConstPingDatum, InWorld](const int32 Idx)
 				{
+					const UPDRTSBaseSubsystem* RTSSubsystem = UPDRTSBaseSubsystem::Get();
+					
 					const FMassEntityHandle& EntityHandle = InHandles[Idx];
-					if (InRTSSubsystem->EntityManager->IsEntityValid(EntityHandle) == false
-						|| InRTSSubsystem->WorldToEntityHandler.Contains(InWorld) == false)
+					if (RTSSubsystem->EntityManager->IsEntityValid(EntityHandle) == false
+						|| RTSSubsystem->WorldToEntityHandler.Contains(InWorld) == false)
 					{
 						return;
 					}
 
 					const FPDTargetCompound OptTarget = {InvalidHandle, ConstPingDatum.WorldActor->GetActorLocation(), ConstPingDatum.WorldActor};
-					InRTSSubsystem->WorldToEntityHandler.FindRef(InWorld)->RequestAction(ConstPingDatum.OwnerID, OptTarget, ConstPingDatum.JobTag, EntityHandle);
+					RTSSubsystem->WorldToEntityHandler.FindRef(InWorld)->RequestAction(ConstPingDatum.OwnerID, OptTarget, ConstPingDatum.JobTag, EntityHandle);
 				},
 				EParallelForFlags::BackgroundPriority);
 		});

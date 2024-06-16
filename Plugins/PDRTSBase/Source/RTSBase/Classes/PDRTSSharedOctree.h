@@ -121,7 +121,7 @@ namespace PD::Mass
 
 		/** @brief
 		 * - Registers world into 'WorldsWithOctrees' if not already registered.
-		 * - Calls 'DispatchOctreeGeneration' is world is not valid or not initialized
+		 * - Calls 'DispatchOctreeGeneration' if world is not valid or not initialized
 		 * - Generates octree in and adds NewWorld to WorldsWithOctrees to track it
 		 */
 		virtual bool SetupOctreeWithNewWorld(UWorld* NewWorld);

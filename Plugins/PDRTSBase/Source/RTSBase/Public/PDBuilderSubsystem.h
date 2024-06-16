@@ -100,14 +100,21 @@ public:
 	/** @brief Mapped for fast access. Mapped upon subsystem loading the developer settings 'UPDRTSSubsystemSettings' */
 	TMap<FGameplayTag, const FPDBuildWorker*> GrantedBuildContexts_WorkerTag{};
 	/** @brief Mapped for fast access. Mapped upon subsystem loading the developer settings 'UPDRTSSubsystemSettings' */
+	TMap<FGameplayTag, TArray<FGameplayTag>> WorkerTags_PerBuildContext{};
+	/** @brief Mapped for fast access. Mapped upon subsystem loading the developer settings 'UPDRTSSubsystemSettings' */
+	TMap<FGameplayTag, TArray<FGameplayTag>> ValidUnitTypes_PerBuildable{};
+	
+	/** @brief Mapped for fast access. Mapped upon subsystem loading the developer settings 'UPDRTSSubsystemSettings' */
 	TMap<FGameplayTag, const FPDBuildActionContext*> GrantedActionContexts_KeyedByBuildableTag{};
 	/** @brief Mapped for fast access. Mapped upon subsystem loading the developer settings 'UPDRTSSubsystemSettings' */
 	TMap<FGameplayTag, const FPDBuildAction*> ActionData_WTag{};	
 	
 	/** @brief Mapped for fast access. Mapped upon subsystem loading the developer settings 'UPDRTSSubsystemSettings' */
-	TMap<FGameplayTag, const FPDBuildContext*> BuildContexts_WTag{};	
+	TMap<FGameplayTag, const FPDBuildContext*> BuildContexts_WTag{};
 	/** @brief Mapped for fast access. Mapped upon subsystem loading the developer settings 'UPDRTSSubsystemSettings' */
 	TMap<FGameplayTag, const FPDBuildableData*> BuildableData_WTag{};
+	/** @brief Mapped for fast access. Mapped upon subsystem loading the developer settings 'UPDRTSSubsystemSettings' */
+	TMap<FGameplayTag, TArray<FGameplayTag>> BuildableParentContexts_ByBuildableTag{};
 	/** @brief Mapped for fast access. Mapped upon subsystem loading the developer settings 'UPDRTSSubsystemSettings' */
 	TMap<UClass*, const FPDBuildable*> Buildable_WClass{};	
 	
@@ -120,7 +127,7 @@ public:
 	TMap<int32 /*UID*/, TSharedPtr<FOctreeElementId2>> ActorsToCells;
 
 	bool bIsProcessingBuildableRemovalQueue = false;
-	TDeque<int32 /*UID*/> RemoveBuildableQueue_FirstBuffer{};  // First  buffer, tells our processor twhihc UIDS to flush and remove their cells
+	TDeque<int32 /*UID*/> RemoveBuildableQueue_FirstBuffer{};  // First  buffer, tells our processor which UIDs to flush and remove their cells
 	TDeque<int32 /*UID*/> RemoveBuildableQueue_SecondBuffer{}; // Second buffer, while processing first buffer, use this so we don't get race conditions
 
 	// @todo move into developer settings
@@ -137,11 +144,11 @@ public:
 	TArray<FVector> WorldBuildableLocationList{};
 	/** @brief  Mapping Array index (of 'WorldBuildActorArrays') to owner ID for use in our queued additions & removals  */
 	TMap<int32, int32> IndexToID{};
-	/** @brief  Backmapping OwnerID to arraty index, for use in our queued additions & removals  */
+	/** @brief  Back-mapping OwnerID to array index, for use in our queued additions & removals  */
 	TMap<int32, int32> IDToIndex{};
-	/** @brief  Queued removals of user actor arrays, removals requested while our auxiliary asynctask in 'UPDOctreeProcessor::Execute' is iterating 'WorldBuildActorArrays' */
+	/** @brief  Queued removals of user actor arrays, removals requested while our auxiliary async task in 'UPDOctreeProcessor::Execute' is iterating 'WorldBuildActorArrays' */
 	TDeque<int32> QueuedRemovals_BuildablesArrays{};
-	/** @brief  Queued additions of user actor arrays, additions requested while our auxiliary asynctask in 'UPDOctreeProcessor::Execute' is iterating 'WorldBuildActorArrays'  */
+	/** @brief  Queued additions of user actor arrays, additions requested while our auxiliary async task in 'UPDOctreeProcessor::Execute' is iterating 'WorldBuildActorArrays'  */
 	TDeque<TTuple<int32, void*>> QueuedAdditions_BuildablesArrayPointers{};
 	
 	/** @brief Tracking worlds that has been setup with this WorldOctree.  */

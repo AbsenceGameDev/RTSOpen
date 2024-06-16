@@ -84,7 +84,7 @@ void ARTSOInteractableBuildingBase::OnInteract_Implementation(
 		FRTSOLightInventoryFragment* EntityInv = bEntityValid ? EntitySubsystem.GetEntityManager().GetFragmentDataPtr<FRTSOLightInventoryFragment>(InteractionParams.InstigatorEntity) : nullptr;
 		UPDInventoryComponent* Bank = InteractionParams.InstigatorActor != nullptr ? InteractionParams.InstigatorActor->GetComponentByClass<UPDInventoryComponent>() : nullptr;
 
-		ARTSOInteractableBuildingBase* MutableSelf = (ARTSOInteractableBuildingBase*)this; // this will bite me in the ass
+		ARTSOInteractableBuildingBase* MutableSelf = const_cast<ARTSOInteractableBuildingBase*>(this); // this will bite me in the ass
 		// if it enters then it means the stage is finished, 
 		if (MutableSelf->WithdrawRecurringCostFromBankOrEntity(Bank, EntityInv, ImmutableStage))
 		{

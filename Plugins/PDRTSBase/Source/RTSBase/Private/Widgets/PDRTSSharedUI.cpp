@@ -115,14 +115,14 @@ void UPDBuildableEntry::OnPressed()
 	const APawn* CachedOwner = GetOwningPlayer()->GetPawnOrSpectator();
 	if (CachedOwner == nullptr)
 	{
-		/** @todo Log issue to player, @test also write tests for this */
+		/** @todo @test also write tests for this */
 		UE_LOG(PDLog_RTSBase, Error, TEXT("UPDBuildableEntry::OnPressed - Player owning pawn is not set!"))
 		return;
 	}
 	
 	if (CachedOwner->GetClass()->ImplementsInterface(UPDRTSBuilderInterface::StaticClass()) == false)
 	{
-		/** @todo Log issue to player, @test also write tests for this */
+		/** @todo @test also write tests for this */
 		UE_LOG(PDLog_RTSBase, Error, TEXT("UPDBuildableEntry::OnPressed - Player pawn class does not implement 'PDRTSBuilderInterface' or object has been sliced."))
 		
 		return;
@@ -223,7 +223,7 @@ void UPDBuildContextEntry::OnPressed()
 	APawn* CachedOwner = GetOwningPlayer()->GetPawnOrSpectator();
 	if (CachedOwner == nullptr)
 	{
-		/** @todo Log issue to player, @test also write tests for this */
+		/** @todo @test also write tests for this */
 		UE_LOG(PDLog_RTSBase, Error, TEXT("UPDBuildContextEntry::OnPressed - Player owning pawn is not set!"))
 		
 		return;
@@ -231,13 +231,13 @@ void UPDBuildContextEntry::OnPressed()
 	
 	if (CachedOwner->GetClass()->ImplementsInterface(UPDRTSBuilderInterface::StaticClass()) == false)
 	{
-		/** @todo Log issue to player, @test also write tests for this */
+		/** @todo @test also write tests for this */
 		UE_LOG(PDLog_RTSBase, Error, TEXT("UPDBuildContextEntry::OnPressed - Player pawn class does not implement 'PDRTSBuilderInterface' or object has been sliced."))
 		
 		return;
 	}
 
-	IPDRTSBuilderInterface::Execute_NewAction(CachedOwner, ERTSBuildMenuModules::SelectContext, SelfContextTag);
+	IPDRTSBuilderInterface::Execute_SelectBuildMenuEntry(CachedOwner, ERTSBuildMenuModules::SelectContext, SelfContextTag);
 	
 	// if you hit this ensure´then you've forgotten to add an appropriate parent reference upon spawning the widget 
 	ensure(DirectParentReference != nullptr);
@@ -317,7 +317,7 @@ void UPDBuildWidgetBase::SelectBuildContext(const FGameplayTag& NewSelectedConte
 			APawn* CachedOwner = GetOwningPlayer()->GetPawnOrSpectator();
 			if (ensure(CachedOwner != nullptr && CachedOwner->GetClass()->ImplementsInterface(UPDRTSBuilderInterface::StaticClass())))
 			{
-				IPDRTSBuilderInterface::Execute_NewAction(CachedOwner, ERTSBuildMenuModules::DeselectBuildable, FGameplayTag::EmptyTag);
+				IPDRTSBuilderInterface::Execute_SelectBuildMenuEntry(CachedOwner, ERTSBuildMenuModules::DeselectBuildable, FGameplayTag::EmptyTag);
 			}
 			
 			return;
@@ -456,7 +456,6 @@ void UPDBuildWidgetBase::UpdateSelectedBuildable(const FGameplayTag& RequestToSe
 		
 		// Resets any previous selected tints
 		const TArray<UObject*>& ListItems = Buildables->GetListItems();
-		bool bWasSelected = false;
 		for (UObject* const& Item : ListItems)
 		{
 			UPDBuildableEntry* AsBuildableEntry = Buildables->GetEntryWidgetFromItem<UPDBuildableEntry>(Item);
@@ -466,7 +465,7 @@ void UPDBuildWidgetBase::UpdateSelectedBuildable(const FGameplayTag& RequestToSe
 				continue;
 			}
 
-			bWasSelected = bRequestedBuildableWasValid && (RequestToSelectTag == AsBuildableEntry->BuildableTag);
+			const bool bWasSelected = bRequestedBuildableWasValid && (RequestToSelectTag == AsBuildableEntry->BuildableTag);
 			FSlateBrush& Brush = AsBuildableEntry->TextContentBorder->Background;
 			Brush.TintColor = FSlateColor(SelectedWidgetFlair->NotSelectedBuildableTint);
 
@@ -493,7 +492,7 @@ void UPDBuildWidgetBase::UpdateSelectedBuildable(const FGameplayTag& RequestToSe
 	APawn* CachedOwner = GetOwningPlayer()->GetPawnOrSpectator();
 	if (ensure(CachedOwner != nullptr && CachedOwner->GetClass()->ImplementsInterface(UPDRTSBuilderInterface::StaticClass())))
 	{
-		IPDRTSBuilderInterface::Execute_NewAction(CachedOwner, SelectedAction, FinalTagSelection);
+		IPDRTSBuilderInterface::Execute_SelectBuildMenuEntry(CachedOwner, SelectedAction, FinalTagSelection);
 	}
 }
 
@@ -534,7 +533,7 @@ void UPDBuildWidgetBase::EndCloseWorkerBuildMenu()
 	APawn* CachedOwner = GetOwningPlayer()->GetPawnOrSpectator();
 	if (CachedOwner != nullptr && CachedOwner->GetClass()->ImplementsInterface(UPDRTSBuilderInterface::StaticClass()))
 	{
-		IPDRTSBuilderInterface::Execute_NewAction(CachedOwner, ERTSBuildMenuModules::DeselectBuildable, FGameplayTag());
+		IPDRTSBuilderInterface::Execute_SelectBuildMenuEntry(CachedOwner, ERTSBuildMenuModules::DeselectBuildable, FGameplayTag());
 	}
 	
 	bIsMenuVisible = false;
@@ -566,8 +565,8 @@ void UPDBuildWidgetBase::EndCloseWorkerContext()
 	APawn* CachedOwner = GetOwningPlayer()->GetPawnOrSpectator();
 	if (CachedOwner != nullptr && CachedOwner->GetClass()->ImplementsInterface(UPDRTSBuilderInterface::StaticClass()))
 	{
-		IPDRTSBuilderInterface::Execute_NewAction(CachedOwner, ERTSBuildMenuModules::DeselectContext, FGameplayTag());
-		IPDRTSBuilderInterface::Execute_NewAction(CachedOwner, ERTSBuildMenuModules::DeselectBuildable, FGameplayTag());
+		IPDRTSBuilderInterface::Execute_SelectBuildMenuEntry(CachedOwner, ERTSBuildMenuModules::DeselectContext, FGameplayTag());
+		IPDRTSBuilderInterface::Execute_SelectBuildMenuEntry(CachedOwner, ERTSBuildMenuModules::DeselectBuildable, FGameplayTag());
 	}	
 }
 
@@ -650,10 +649,25 @@ void UPDBuildableActionEntry::NativeOnListItemObjectSet(UObject* ListItemObject)
 void UPDBuildableActionEntry::OnPressed()
 {
 	UE_LOG(PDLog_RTSBase, Verbose, TEXT("UPDBuildableActionEntry::OnPressed"))
-	/** @todo: write impl.  OnPress/OnClick decides the action*/
 
+	const APawn* CachedOwner = GetOwningPlayer()->GetPawnOrSpectator();
+	if (CachedOwner == nullptr)
+	{
+		/** @todo @test also write tests for this */
+		UE_LOG(PDLog_RTSBase, Error, TEXT("UPDBuildableActionEntry::OnPressed - Player owning pawn is not set!"))
+		return;
+	}
+	
+	if (CachedOwner->GetClass()->ImplementsInterface(UPDRTSBuilderInterface::StaticClass()) == false)
+	{
+		/** @todo @test also write tests for this */
+		UE_LOG(PDLog_RTSBase, Error, TEXT("UPDBuildableActionEntry::OnPressed - Player pawn class does not implement 'PDRTSBuilderInterface' or object has been sliced."))
+		
+		return;
+	}
 
-
+	// tell DirectParentReference about the clicked button 
+	DirectParentReference->SelectAction(ActionTag);
 
 
 	
@@ -746,13 +760,33 @@ void UPDBuildActionContextEntry::NativeOnListItemObjectSet(UObject* ListItemObje
 void UPDBuildActionContextEntry::OnPressed()
 {
 	UE_LOG(PDLog_RTSBase, Verbose, TEXT("UPDBuildActionContextEntry::OnPressed"))
-	/** @todo: write impl.  OnPress/OnClick decides the action*/
-
-
-
-
-
+	APawn* CachedOwner = GetOwningPlayer()->GetPawnOrSpectator();
+	if (CachedOwner == nullptr)
+	{
+		/** @todo @test also write tests for this */
+		UE_LOG(PDLog_RTSBase, Error, TEXT("UPDBuildActionContextEntry::OnPressed - Player owning pawn is not set!"))
+		
+		return;
+	}
 	
+	if (CachedOwner->GetClass()->ImplementsInterface(UPDRTSBuilderInterface::StaticClass()) == false)
+	{
+		/** @todo @test also write tests for this */
+		UE_LOG(PDLog_RTSBase, Error, TEXT("UPDBuildActionContextEntry::OnPressed - Player pawn class does not implement 'PDRTSBuilderInterface' or object has been sliced."))
+		
+		return;
+	}
+	ensure(DirectParentReference != nullptr && "if you hit this ensure´then you've forgotten to add an appropriate parent reference upon spawning the widget");
+
+	IPDRTSBuilderInterface::Execute_SelectActionMenuEntry(CachedOwner, ERTSBuildableActionMenuModules::SelectBuildableActionContext, SelfContextTag);
+	if (DirectParentReference->SelectedWidgetFlair == nullptr)
+	{
+		/** @todo: log about widget flair not being set.*/
+		UE_LOG(PDLog_RTSBase, Warning, TEXT("UPDBuildActionContextEntry::OnPressed - Parent widget of type 'UPDBuildingActionsWidgetBase' does not have a set 'widget flair'"))
+	}
+
+	// tell DirectParentReference about the clicked button 
+	DirectParentReference->UpdateSelectedActionContext(SelfContextTag);
 }
 
 void UPDBuildActionContextEntry::OnHovered()
@@ -848,7 +882,7 @@ void UPDBuildingActionsWidgetBase::SelectActionContext(const FGameplayTag& NewSe
 			APawn* CachedOwner = GetOwningPlayer()->GetPawnOrSpectator();
 			if (ensure(CachedOwner != nullptr && CachedOwner->GetClass()->ImplementsInterface(UPDRTSBuilderInterface::StaticClass())))
 			{
-				IPDRTSBuilderInterface::Execute_NewAction(CachedOwner, ERTSBuildMenuModules::DeselectBuildableActionContext, FGameplayTag::EmptyTag);
+				IPDRTSBuilderInterface::Execute_SelectActionMenuEntry(CachedOwner, ERTSBuildableActionMenuModules::DeselectBuildableActionContext, FGameplayTag::EmptyTag);
 			}
 			
 			return;
@@ -972,7 +1006,7 @@ void UPDBuildingActionsWidgetBase::UpdateSelectedAction(const FGameplayTag& Requ
 	
 	// Is it already selected?
 	FGameplayTag FinalTagSelection = FGameplayTag::EmptyTag;
-	ERTSBuildMenuModules SelectedAction = ERTSBuildMenuModules::DoNothing;
+	ERTSBuildableActionMenuModules SelectedAction = ERTSBuildableActionMenuModules::DoNothing;
 	for (const FDataTableRowHandle& Context : CurrentActionContextHandles)
 	{
 		const FString CtxtStr = FString::Printf(TEXT("UPDBuildWidgetBase(%s, %s)::UpdateSelectedBuildable"), *Context.RowName.ToString(), *GetName());
@@ -986,7 +1020,6 @@ void UPDBuildingActionsWidgetBase::UpdateSelectedAction(const FGameplayTag& Requ
 		
 		// Resets any previous selected tints
 		const TArray<UObject*>& ListItems = Actions->GetListItems();
-		bool bWasSelected = false;
 		for (UObject* const& Item : ListItems)
 		{
 			UPDBuildableActionEntry* AsBuildableActionEntry = Actions->GetEntryWidgetFromItem<UPDBuildableActionEntry>(Item);
@@ -996,7 +1029,7 @@ void UPDBuildingActionsWidgetBase::UpdateSelectedAction(const FGameplayTag& Requ
 				continue;
 			}
 
-			bWasSelected = bRequestedBuildableWasValid && (RequestToSelectTag == AsBuildableActionEntry->ActionTag);
+			const bool bWasSelected = bRequestedBuildableWasValid && (RequestToSelectTag == AsBuildableActionEntry->ActionTag);
 			FSlateBrush& Brush = AsBuildableActionEntry->TextContentBorder->Background;
 			Brush.TintColor = FSlateColor(SelectedWidgetFlair->NotSelectedBuildableTint);
 
@@ -1005,7 +1038,7 @@ void UPDBuildingActionsWidgetBase::UpdateSelectedAction(const FGameplayTag& Requ
 			{
 				UE_LOG(PDLog_RTSBase, Verbose, TEXT("UPDBuildWidgetBase::UpdateSelectedBuildable -- Selecting buildable(%s)"), *AsBuildableActionEntry->ActionTag.GetTagName().ToString())
 				FinalTagSelection = RequestToSelectTag;
-				SelectedAction = ERTSBuildMenuModules::FireBuildableAction;
+				SelectedAction = ERTSBuildableActionMenuModules::FireBuildableAction;
 				Brush.TintColor = FSlateColor(SelectedWidgetFlair->SelectedBuildableTint);
 				AsBuildableActionEntry->bIsSelected = true;
 			}
@@ -1023,7 +1056,7 @@ void UPDBuildingActionsWidgetBase::UpdateSelectedAction(const FGameplayTag& Requ
 	APawn* CachedOwner = GetOwningPlayer()->GetPawnOrSpectator();
 	if (ensure(CachedOwner != nullptr && CachedOwner->GetClass()->ImplementsInterface(UPDRTSBuilderInterface::StaticClass())))
 	{
-		IPDRTSBuilderInterface::Execute_NewAction(CachedOwner, SelectedAction, FinalTagSelection);
+		IPDRTSBuilderInterface::Execute_SelectActionMenuEntry(CachedOwner, SelectedAction, FinalTagSelection);
 	}	
 }
 
@@ -1064,7 +1097,7 @@ void UPDBuildingActionsWidgetBase::EndCloseBuildableActionMenu()
 	APawn* CachedOwner = GetOwningPlayer()->GetPawnOrSpectator();
 	if (CachedOwner != nullptr && CachedOwner->GetClass()->ImplementsInterface(UPDRTSBuilderInterface::StaticClass()))
 	{
-		IPDRTSBuilderInterface::Execute_NewAction(CachedOwner, ERTSBuildMenuModules::DoNothing, FGameplayTag());
+		IPDRTSBuilderInterface::Execute_SelectActionMenuEntry(CachedOwner, ERTSBuildableActionMenuModules::DoNothing, FGameplayTag());
 	}
 	
 	bIsMenuVisible = false;
@@ -1096,7 +1129,7 @@ void UPDBuildingActionsWidgetBase::EndCloseActionContext()
 	APawn* CachedOwner = GetOwningPlayer()->GetPawnOrSpectator();
 	if (CachedOwner != nullptr && CachedOwner->GetClass()->ImplementsInterface(UPDRTSBuilderInterface::StaticClass()))
 	{
-		IPDRTSBuilderInterface::Execute_NewAction(CachedOwner, ERTSBuildMenuModules::DeselectBuildableActionContext, FGameplayTag());
+		IPDRTSBuilderInterface::Execute_SelectActionMenuEntry(CachedOwner, ERTSBuildableActionMenuModules::DeselectBuildableActionContext, FGameplayTag());
 		// IPDRTSBuilderInterface::Execute_NewAction(CachedOwner, ERTSBuildMenuModules::DeselectBuildable, FGameplayTag());
 	}		
 }

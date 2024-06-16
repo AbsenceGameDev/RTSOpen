@@ -319,7 +319,7 @@ void ARTSOController::ProcessPotentialBuildableMenu(const AActor* HoveredActor) 
 	if (bValidBuildable)
 	{
 		BuildMenuWidget->BeginCloseWorkerContext();
-		BuildableActionsWidget->SetNewWorldActor(HoveredActor, *BuildableEntry);
+		BuildableActionsWidget->SetNewWorldActor(const_cast<AActor*>(HoveredActor), *BuildableEntry);
 	}
 	else
 	{
@@ -751,10 +751,10 @@ void ARTSOController::OnEndConversation(const FClientConversationMessagePayload&
 	ConversationWidget->RemoveFromParent();
 }
 
-void ARTSOController::NewAction_Implementation(ERTSBuildMenuModules ActionMode, FGameplayTag ActionTag)
+void ARTSOController::SelectBuildMenuEntry_Implementation(ERTSBuildMenuModules ActionMode, FGameplayTag ActionTag)
 {
 	if (GetPawn() == nullptr || GetPawn()->GetClass()->ImplementsInterface(UPDRTSBuilderInterface::StaticClass()) == false) { return; }
-	IPDRTSBuilderInterface::Execute_NewAction(GetPawn(), ActionMode, ActionTag);
+	IPDRTSBuilderInterface::Execute_SelectBuildMenuEntry(GetPawn(), ActionMode, ActionTag);
 }
 
 void ARTSOController::DrawBoxAndTextChaos(const FVector& BoundsCenter, const FQuat& Rotation, const FVector& DebugExtent, const FString& DebugBoxTitle, const FColor LineColour)

@@ -15,6 +15,7 @@ class UNiagaraSystem;
 DECLARE_LOG_CATEGORY_CLASS(PDLog_BuildSystem, Log, All);
 
 /** Declaring the "AI.Type." gameplay tags. to be defined in an object-file */
+PDRTSBASE_API UE_DECLARE_GAMEPLAY_TAG_EXTERN(TAG_AI_Type);
 PDRTSBASE_API UE_DECLARE_GAMEPLAY_TAG_EXTERN(TAG_AI_Type_DefaultUnit);
 PDRTSBASE_API UE_DECLARE_GAMEPLAY_TAG_EXTERN(TAG_AI_Type_InvalidUnit);
 
@@ -33,11 +34,9 @@ PDRTSBASE_API UE_DECLARE_GAMEPLAY_TAG_EXTERN(TAG_BUILD_ContextMenu_Builder_Exper
 
 /** Declaring the "BUILD.Actions." gameplay tags. to be defined in an object-file */
 PDRTSBASE_API UE_DECLARE_GAMEPLAY_TAG_EXTERN(TAG_BUILD_Actions_DestroyBuilding);
-PDRTSBASE_API UE_DECLARE_GAMEPLAY_TAG_EXTERN(TAG_BUILD_Actions_SpawnWorker0);
-PDRTSBASE_API UE_DECLARE_GAMEPLAY_TAG_EXTERN(TAG_BUILD_Actions_SpawnWorker1);
-PDRTSBASE_API UE_DECLARE_GAMEPLAY_TAG_EXTERN(TAG_BUILD_Actions_SpawnSoldier0);
-PDRTSBASE_API UE_DECLARE_GAMEPLAY_TAG_EXTERN(TAG_BUILD_Actions_SpawnSoldier1);
+// TAG_AI_Type_ tags are implicitly counted as spawn actions when applied as a 'buildable action tag' in an entry in a 'FPDBuildable'-type of datatable
 
+/** Declaring the "BUILD.ActionContext." gameplay tags. to be defined in an object-file */
 PDRTSBASE_API UE_DECLARE_GAMEPLAY_TAG_EXTERN(TAG_BUILD_ActionContext_WorkerHut0);
 PDRTSBASE_API UE_DECLARE_GAMEPLAY_TAG_EXTERN(TAG_BUILD_ActionContext_WorkerHut1);
 PDRTSBASE_API UE_DECLARE_GAMEPLAY_TAG_EXTERN(TAG_BUILD_ActionContext_Barracks0);
@@ -355,7 +354,7 @@ struct PDRTSBASE_API FPDBuildable : public FTableRowBase
 	GENERATED_BODY()
 
 	FPDBuildable() = default;
-
+	
 	/** @brief The tag of this buildable */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "RTSBase|BuildSystem")
 	FGameplayTag BuildableTag{};	
@@ -367,36 +366,6 @@ struct PDRTSBASE_API FPDBuildable : public FTableRowBase
 	/** @brief The actions granted to this buildable when it has been built */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "RTSBase|BuildSystem", Meta = (RowType = "/Script/PDRTSBase.PDBuildActionContext"))
 	TArray<FDataTableRowHandle> ActionContextHandles{};	
-};
-
-
-/** @brief Actual Buildable row structure, associates tag and it's data with a buildable  */
-USTRUCT(Blueprintable)
-struct PDRTSBASE_API FPDTEST : public FTableRowBase
-{
-	GENERATED_BODY()
-
-	FPDTEST() = default;
-
-	/** @brief The tag of this buildable */
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "RTSBase|BuildSystem")
-	FGameplayTag BuildableTag{};	
-
-	/** @brief Not needed, but use to display clearer name, with being set to nothing the name will be tha buildables tag converted to a name */
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "RTSBase|WorkerUnits")
-	FText ReadableName{};
-
-	/** @brief Actor class to spawn when placing the buildable */
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "RTSBase|WorkerUnits")
-	TSubclassOf<AActor> ActorToSpawn{};
-	
-	/** @brief The buildables data-asset, if not spawned as ghost, or when transitioning from ghost to real building */
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "RTSBase|WorkerUnits")
-	class UPDBuildableDataAsset* DABuildAsset = nullptr;
-
-	/** @brief The buildables ghost configurations, keeps stage settings and such  */
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "RTSBase|BuildSystem")
-	FPDRTSGhostDatum GhostData{};
 };
 
 /** @rief Actual Build-context row structure, associates tag and it's data with a buildable  */

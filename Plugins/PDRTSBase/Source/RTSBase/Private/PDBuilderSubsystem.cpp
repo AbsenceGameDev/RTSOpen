@@ -32,7 +32,7 @@ void UPDBuilderSubsystem::Initialize(FSubsystemCollectionBase& Collection)
 		});
 }
 
-const TCHAR* StrCtxt_ProcessBuildData = *FString("UPDDBuilderSubsystem::ProcessBuildContextTable");
+const TCHAR* StrCtxt_ProcessBuildData = *FString("UPDBuilderSubsystem::ProcessBuildContextTable");
 
 void UPDBuilderSubsystem::ProcessBuildContextTable(const TSoftObjectPtr<UDataTable>& TablePath)
 {
@@ -49,6 +49,8 @@ void UPDBuilderSubsystem::ProcessBuildContextTable(const TSoftObjectPtr<UDataTab
 			for (const FDataTableRowHandle& BuildableDatum : BuildContext->BuildablesData)
 			{
 				FPDBuildable* Buildable = BuildableDatum.GetRow<FPDBuildable>("");
+				BuildableParentContexts_ByBuildableTag.FindOrAdd(Buildable->BuildableTag).Emplace(BuildContext->ContextTag);
+				
 				BuildableData_WTag.Emplace(Buildable->BuildableTag, &Buildable->BuildableData);
 				BuildableData_WTagReverse.Emplace(&Buildable->BuildableData, Buildable->BuildableTag);
 
@@ -65,6 +67,14 @@ void UPDBuilderSubsystem::ProcessBuildContextTable(const TSoftObjectPtr<UDataTab
 		for (const FPDBuildWorker* GrantedContext : WorkerGrantedContexts)
 		{
 			GrantedBuildContexts_WorkerTag.Emplace(GrantedContext->WorkerType, GrantedContext);
+
+			// Map all context tags to their valid worker types, will be needed to properly find applicable worker types efficiently during runtime
+			for (const FDataTableRowHandle& ContextHandle : GrantedContext->GrantedContexts)
+			{
+				const FPDBuildContext* BuildContext = ContextHandle.GetRow<FPDBuildContext>("");
+				WorkerTags_PerBuildContext.FindOrAdd(BuildContext->ContextTag).Emplace(GrantedContext->WorkerType);
+			}
+			
 		}
 	}
 
@@ -82,7 +92,30 @@ void UPDBuilderSubsystem::ProcessBuildContextTable(const TSoftObjectPtr<UDataTab
 			
 			GrantedActionContexts_KeyedByBuildableTag.Emplace(GrantedContext->ContextTag, GrantedContext);
 		}
-	}	
+	}
+
+
+	// tally up all the valid worker types per buildable
+	for (const TTuple<UClass*, const FPDBuildable*>& Buildable_WClass_Entry : Buildable_WClass)
+	{
+		const TArray<FGameplayTag>& ParentContextTags = BuildableParentContexts_ByBuildableTag.FindRef(Buildable_WClass_Entry.Value->BuildableTag);
+		
+		for (const FGameplayTag& ContextTag : ParentContextTags)
+		{
+			if (WorkerTags_PerBuildContext.Contains(ContextTag) == false)
+			{
+				UE_LOG(PDLog_BuildSystem, Warning, TEXT("There are no worker types allowed for build context: %s"), *ContextTag.GetTagName().ToString())
+				continue;
+			}
+			const TArray<FGameplayTag>* ValidWorkerTypesForContext = WorkerTags_PerBuildContext.Find(ContextTag);
+			check(ValidWorkerTypesForContext != nullptr && "If the entry exists in WorkerTags_PerBuildContext it should never be nullptr at this point. Take a good look in the mirror if hitting this assertion")
+			
+			ValidUnitTypes_PerBuildable.FindOrAdd(Buildable_WClass_Entry.Value->BuildableTag).Append(*ValidWorkerTypesForContext);
+		}
+	}
+
+
+	
 }
 
 const FPDBuildContext* UPDBuilderSubsystem::GetBuildContextEntry(const FGameplayTag& BuildContextTag)
