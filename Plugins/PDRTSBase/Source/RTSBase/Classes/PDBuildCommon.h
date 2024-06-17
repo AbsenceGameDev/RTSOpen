@@ -43,7 +43,7 @@ PDRTSBASE_API UE_DECLARE_GAMEPLAY_TAG_EXTERN(TAG_BUILD_ActionContext_Barracks0);
 PDRTSBASE_API UE_DECLARE_GAMEPLAY_TAG_EXTERN(TAG_BUILD_ActionContext_Barracks1);
 
 UCLASS(Config = "Game", DefaultConfig)
-class UPDBuildMessages : public UDeveloperSettings
+class PDRTSBASE_API UPDBuildMessages : public UDeveloperSettings
 {
 	GENERATED_BODY()
 public:

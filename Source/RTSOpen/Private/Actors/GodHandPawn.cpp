@@ -1144,8 +1144,9 @@ void AGodHandPawn::SelectActionMenuEntry_Implementation(ERTSBuildableActionMenuM
 				{
 				case EPDRTSDestroyBuildingBehaviour::RequireConfirmationDialog:
 					{
-						const TSubclassOf<UPDGenericDialog>& ConfirmDialog = PC->GetBuildableActionsWidget()->ConfirmDialogClass;
-						UPDGenericDialog* Dialog = CreateWidget<UPDGenericDialog>(this, ConfirmDialog != nullptr ? ConfirmDialog.Get() : UPDGenericDialog::StaticClass());
+						UPDBuildingActionsWidgetBase* BuildableActionWidget = PC->GetBuildableActionsWidget();
+						const TSubclassOf<UPDGenericDialog>& ConfirmDialog = BuildableActionWidget->ConfirmDialogClass;
+						UPDGenericDialog* Dialog = CreateWidget<UPDGenericDialog>(BuildableActionWidget, ConfirmDialog != nullptr ? ConfirmDialog.Get() : UPDGenericDialog::StaticClass());
 
 						Dialog->DialogMessage = GetDefault<UPDBuildMessages>()->ConfirmDestroyBuilding;
 						Dialog->SuccessCallback.BindUObject(this, &AGodHandPawn::PerformAction_Destroy);
