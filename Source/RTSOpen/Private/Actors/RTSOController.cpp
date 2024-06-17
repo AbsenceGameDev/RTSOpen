@@ -461,8 +461,7 @@ void ARTSOController::ActionToggleMainMenu_Implementation(const FInputActionValu
 	}
 	
 	UE_LOG(PDLog_RTSO, Warning, TEXT("%s -- Removing widget from parent/viewport"), *BuildString);
-	MainMenuWidget->RemoveFromParent();
-	MainMenuWidget->DeactivateWidget();
+	OnReleased_Resume();
 }
 
 void ARTSOController::HandleConversationChoiceInput(int32 ChoiceSelection) const

@@ -888,7 +888,7 @@ public:
 	UFUNCTION(BlueprintCallable)
 	void UpdateSelectedActionContext(const FGameplayTag& RequestToSelectTag);
 	/** @brief  Select a buildable from the buildable list and calls UpdateSelectedBuildable */
-	void SelectAction(const FGameplayTag& NewSelectedBuildable);
+	void SelectAction(const FGameplayTag& NewSelectedAction);
 
 	/** @brief Dispatched a call to interface IPDRTSBuilderInterface::Execute_NewAction(this) if function succeeds.
 	 *  @note If an already selected buildable entry is selected again it gets de-selected */
@@ -917,6 +917,9 @@ public:
 	
 	UFUNCTION(BlueprintCallable)
 	void SetNewWorldActor(AActor* NewWorldActor, const FPDBuildable& BuildableToSourceActionsFrom);
+
+	UFUNCTION(BlueprintCallable)
+	void DestroyCurrentWorldActor() const;
 
 	/** @brief UPDRangedSelector which will be used to select amounts for actions that allow it
 	 * @todo Actually need to make use of this */

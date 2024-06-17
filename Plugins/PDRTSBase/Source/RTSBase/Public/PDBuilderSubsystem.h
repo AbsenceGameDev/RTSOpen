@@ -29,14 +29,16 @@ public:
 	 */
 	virtual void Initialize(FSubsystemCollectionBase& Collection) override;
 	
-	
 	/** @brief Bound to the given developer setting. Resolved the paths into actual tables which we cache to via hash maps */
 	void OnDeveloperSettingsChanged(UObject* SettingsToChange, FPropertyChangedEvent& PropertyEvent);
 
 	/** @brief Returns the default build context data via it's BuildContext-tag*/
 	const FPDBuildContext* GetBuildContextEntry(const FGameplayTag& BuildContextTag);
 	const FPDBuildable* GetBuildableFromClass(TSubclassOf<AActor> Class);
+
 	static const FPDBuildable* GetBuildableFromClassStatic(TSubclassOf<AActor> Class);
+	static const FPDBuildable* GetBuildableWithActionsFromClassStatic(TSubclassOf<AActor> Class);
+	
 	/** @brief Returns the default Buildable data via it's Buildable-tag*/
 	const FPDBuildableData* GetBuildableData(const FGameplayTag& BuildableTag);
 	const FGameplayTag& GetBuildableTagFromData(const FPDBuildableData* BuildableData);

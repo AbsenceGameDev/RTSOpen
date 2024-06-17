@@ -441,7 +441,7 @@ bool AGodHandPawn::ClickPotentialBuildable(ARTSOController* PC)
 	AActor* HitActor = HitResult.GetActor();
 
 	// Poor mans double click @todo refactor
-	const bool bHitValidBuildable = HitActor != nullptr && UPDBuilderSubsystem::GetBuildableFromClassStatic(HitActor->GetClass()) != nullptr;
+	const bool bHitValidBuildable = HitActor != nullptr && UPDBuilderSubsystem::GetBuildableWithActionsFromClassStatic(HitActor->GetClass()) != nullptr;
 	if (bHitValidBuildable)
 	{
 		const bool bClickedSameActor = LastClickedBuildable == HitActor;
@@ -507,8 +507,7 @@ void AGodHandPawn::ActionWorkerUnit_Started_Implementation(const FInputActionVal
 		return;
 	}
 
-
-
+	
 	ARTSOController* PC = GetController<ARTSOController>();
 	if (PC != nullptr)
 	{
@@ -519,10 +518,13 @@ void AGodHandPawn::ActionWorkerUnit_Started_Implementation(const FInputActionVal
 			bJustPlacedBuildable = true;
 			return;
 		}
-
 		
 		// todo Refactor
-		if (ClickPotentialBuildable(PC)) { return; }			
+		if (ClickPotentialBuildable(PC))
+		{
+			UE_LOG(PDLog_RTSO, Warning, TEXT("Buildable supposedly clicked"))
+			return;
+		}			
 		
 		PC->MarqueeSelection(EMarqueeSelectionEvent::STARTMARQUEE);
 	}
@@ -1102,9 +1104,10 @@ void AGodHandPawn::SelectBuildMenuEntry_Implementation(ERTSBuildMenuModules Acti
 void AGodHandPawn::PerformAction_Destroy(const TArray<uint8>& Payload)
 {
 	const ARTSOController* PC = GetController<ARTSOController>();
-	if (PC == nullptr) { return; }
-				
-	PC->GetBuildableActionsWidget()->CurrentWorldActor->Destroy();	
+	const UPDBuildingActionsWidgetBase* BuildableActionsWidget = PC != nullptr ? PC->GetBuildableActionsWidget() : nullptr;
+	if (BuildableActionsWidget == nullptr) { return; }
+
+	BuildableActionsWidget->DestroyCurrentWorldActor();	
 }
 
 void AGodHandPawn::SelectActionMenuEntry_Implementation(ERTSBuildableActionMenuModules ActionMode, FGameplayTag ActionTag, const TArray<uint8>& Payload)

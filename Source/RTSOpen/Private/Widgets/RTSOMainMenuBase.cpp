@@ -25,7 +25,6 @@ void URTSOMainMenuBase::NativeOnActivated()
 	{
 		WidgetStack->RemoveWidget(*ItWidget);
 	}
-	
 
 	UClass* SelectedClass = WidgetClass != nullptr ? WidgetClass.Get() : URTSOMenuWidget::StaticClass();
 	ActiveMenuInstance = WidgetStack->AddWidget<URTSOMenuWidget>(SelectedClass);

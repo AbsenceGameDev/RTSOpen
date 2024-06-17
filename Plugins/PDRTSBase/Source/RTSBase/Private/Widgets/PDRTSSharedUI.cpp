@@ -211,7 +211,7 @@ void UPDBuildableEntry::NativeOnListItemObjectSet(UObject* ListItemObject)
 	TArray<FDataTableRowHandle>& BuildContexts = DirectParentReference->GetCurrentBuildContexts();
 	for (const FDataTableRowHandle& Context : BuildContexts)
 	{
-		const FString CtxtStr = FString::Printf(TEXT("UPDBuildWidgetBase(%s, %s)::SelectBuildContext"), *Context.RowName.ToString(), *GetName());
+		const FString CtxtStr = FString::Printf(TEXT("UPDBuildableEntry(%s)::NativeOnListItemObjectSet(ContextRow: %s)"), *GetName(), *Context.RowName.ToString());
 		const FPDBuildContext* LoadedContext = Context.GetRow<FPDBuildContext>(CtxtStr);
 		if (LoadedContext == nullptr || LoadedContext->ContextTag.IsValid() == false || LoadedContext->ContextTag != ParentMenuContextTag)
 		{
@@ -223,7 +223,8 @@ void UPDBuildableEntry::NativeOnListItemObjectSet(UObject* ListItemObject)
 		const TArray<FDataTableRowHandle>& BuildablesData = LoadedContext->BuildablesData;
 		for (const FDataTableRowHandle& BuildableData : BuildablesData)
 		{
-			const FPDBuildable* Buildable = BuildableData.GetRow<FPDBuildable>("");
+			const FString BuildDatumCtxtStr = CtxtStr + FString::Printf(TEXT("(BuildableData: %s)"), *BuildableData.RowName.ToString());
+			const FPDBuildable* Buildable = BuildableData.GetRow<FPDBuildable>(BuildDatumCtxtStr);
 			if (Buildable == nullptr || Buildable->BuildableTag != Item->GetBuildableTag())
 			{
 				continue;
@@ -331,7 +332,7 @@ void UPDBuildContextEntry::NativeOnListItemObjectSet(UObject* ListItemObject)
 	TArray<FDataTableRowHandle>& BuildContexts = DirectParentReference->GetCurrentBuildContexts();
 	for (const FDataTableRowHandle& Context : BuildContexts)
 	{
-		const FString CtxtStr = FString::Printf(TEXT("UPDBuildWidgetBase(%s, %s)::SelectBuildContext"), *Context.RowName.ToString(), *GetName());
+		const FString CtxtStr = FString::Printf(TEXT("UPDBuildContextEntry(%s)::NativeOnListItemObjectSet(Context: %s)"), *GetName(), *Context.RowName.ToString());
 		const FPDBuildContext* LoadedContext = Context.GetRow<FPDBuildContext>(CtxtStr);
 		if (LoadedContext == nullptr || LoadedContext->ContextTag.IsValid() == false)
 		{
@@ -455,7 +456,7 @@ void UPDBuildWidgetBase::LoadBuildContexts()
 	bool bLastSelectedContextStillValid = false;
 	for (const FDataTableRowHandle& Context : CurrentBuildableContexts)
 	{
-		const FString CtxtStr = FString::Printf(TEXT("UPDBuildWidgetBase(%s, %s)::SelectBuildContext"), *Context.RowName.ToString(), *GetName());
+		const FString CtxtStr = FString::Printf(TEXT("UPDBuildWidgetBase(%s)::LoadBuildContexts(Context: %s)"), *GetName(), *Context.RowName.ToString());
 		FPDBuildContext* LoadedContext = Context.GetRow<FPDBuildContext>(CtxtStr);
 		if (LoadedContext == nullptr || LoadedContext->ContextTag.IsValid() == false)
 		{
@@ -486,7 +487,7 @@ void UPDBuildWidgetBase::SelectBuildContext(const FGameplayTag& NewSelectedConte
 	bool bRequestedContextWasValid = false;
 	for (const FDataTableRowHandle& Context : CurrentBuildableContexts)
 	{
-		const FString CtxtStr = FString::Printf(TEXT("UPDBuildWidgetBase(%s, %s)::SelectBuildContext"), *Context.RowName.ToString(), *GetName());
+		const FString CtxtStr = FString::Printf(TEXT("UPDBuildWidgetBase(%s)::SelectBuildContext(ContextRow: %s)"), *GetName(), *Context.RowName.ToString());
 		FPDBuildContext* LoadedContext = Context.GetRow<FPDBuildContext>(CtxtStr);
 		if (LoadedContext == nullptr || LoadedContext->ContextTag != NewSelectedContext) { continue; }
 
@@ -506,7 +507,9 @@ void UPDBuildWidgetBase::SelectBuildContext(const FGameplayTag& NewSelectedConte
 		
 		for (const FDataTableRowHandle& BuildData : LoadedContext->BuildablesData)
 		{
-			const FPDBuildable* Buildable = BuildData.GetRow<FPDBuildable>("UPDBuildWidgetBase::SelectBuildContext -- @todo write log message");
+			const FString BuildableCtxtStr = FString::Printf(TEXT("UPDBuildWidgetBase(%s)::SelectBuildContext(BuildableData: %s)"), *GetName(), *BuildData.RowName.ToString());
+			
+			const FPDBuildable* Buildable = BuildData.GetRow<FPDBuildable>(BuildableCtxtStr);
 			if (Buildable == nullptr) { continue; }
 
 			UPDBuildableWrapper* DataWrapper = NewObject<UPDBuildableWrapper>(this, UPDBuildableWrapper::StaticClass());
@@ -530,7 +533,7 @@ void UPDBuildWidgetBase::UpdateSelectedContext(const FGameplayTag& RequestToSele
 	bool bWasContextSelected = false;
 	for (const FDataTableRowHandle& Context : CurrentBuildableContexts)
 	{
-		const FString CtxtStr = FString::Printf(TEXT("UPDBuildWidgetBase(%s, %s)::UpdateSelectedContext"), *Context.RowName.ToString(), *GetName());
+		const FString CtxtStr = FString::Printf(TEXT("UPDBuildWidgetBase(%s)::UpdateSelectedContext(ContextRow: %s)"), *GetName(), *Context.RowName.ToString());
 		const FPDBuildContext* LoadedContext = Context.GetRow<FPDBuildContext>(CtxtStr);
 		if (LoadedContext == nullptr || LoadedContext->ContextTag.IsValid() == false)
 		{
@@ -576,13 +579,14 @@ void UPDBuildWidgetBase::SelectBuildable(const FGameplayTag& NewSelectedBuildabl
 	bool bRequestedBuildableWasValid = false;
 	for (const FDataTableRowHandle& Context : CurrentBuildableContexts)
 	{
-		const FString CtxtStr = FString::Printf(TEXT("UPDBuildWidgetBase(%s, %s)::SelectBuildable"), *Context.RowName.ToString(), *GetName());
+		const FString CtxtStr = FString::Printf(TEXT("UPDBuildWidgetBase(%s)::SelectBuildable(ContextRow: %s)"), *GetName(), *Context.RowName.ToString());
 		FPDBuildContext* LoadedContext = Context.GetRow<FPDBuildContext>(CtxtStr);
 		if (LoadedContext == nullptr || LoadedContext->ContextTag.IsValid() == false) { continue; }
 		
 		for (const FDataTableRowHandle& BuildData : LoadedContext->BuildablesData)
 		{
-			const FPDBuildable* Buildable = BuildData.GetRow<FPDBuildable>("");
+			const FString BuildDatumCtxtStr = CtxtStr + FString::Printf(TEXT("(BuildableData: %s)"), *BuildData.RowName.ToString());
+			const FPDBuildable* Buildable = BuildData.GetRow<FPDBuildable>(BuildDatumCtxtStr);
 			if (Buildable == nullptr || (Buildable->BuildableTag != NewSelectedBuildable))
 			{
 				continue;
@@ -626,7 +630,7 @@ void UPDBuildWidgetBase::UpdateSelectedBuildable(const FGameplayTag& RequestToSe
 	ERTSBuildMenuModules SelectedAction = ERTSBuildMenuModules::DeselectBuildable;
 	for (const FDataTableRowHandle& Context : CurrentBuildableContexts)
 	{
-		const FString CtxtStr = FString::Printf(TEXT("UPDBuildWidgetBase(%s, %s)::UpdateSelectedBuildable"), *Context.RowName.ToString(), *GetName());
+		const FString CtxtStr = FString::Printf(TEXT("UPDBuildWidgetBase(%s)::UpdateSelectedBuildable(ContextRow: %s)"), *GetName(), *Context.RowName.ToString());
 		const FPDBuildContext* LoadedContext = Context.GetRow<FPDBuildContext>(CtxtStr);
 		if (LoadedContext == nullptr || LoadedContext->ContextTag.IsValid() == false)
 		{
@@ -701,7 +705,7 @@ void UPDBuildWidgetBase::SpawnWorkerBuildMenu(const FPDBuildWorker& BuildWorker)
 
 void UPDBuildWidgetBase::BeginCloseWorkerBuildMenu()
 {
-	if (CloseWidget == nullptr || CloseWidget->IsValidLowLevelFast() == false)
+	if (CloseWidget == nullptr || CloseWidget->IsValidLowLevelFast() == false || CloseWidget->GetEndTime() < SMALL_NUMBER)
 	{
 		RemoveFromParent();
 		bIsMenuVisible = false;
@@ -734,7 +738,7 @@ void UPDBuildWidgetBase::OpenWorkerContextMenu()
 
 void UPDBuildWidgetBase::BeginCloseWorkerContext()
 {
-	if (CloseWidget == nullptr || CloseWidget->IsValidLowLevelFast() == false)
+	if (CloseContextMenu == nullptr || CloseContextMenu->IsValidLowLevelFast() == false || CloseContextMenu->GetEndTime() < SMALL_NUMBER)
 	{
 		RemoveFromParent();
 		return;
@@ -778,8 +782,8 @@ void UPDBuildableActionEntry::NativeOnListItemObjectSet(UObject* ListItemObject)
 	TArray<FDataTableRowHandle>& BuildContexts = DirectParentReference->GetCurrentActionContexts();
 	for (const FDataTableRowHandle& Context : BuildContexts)
 	{
-		const FString CtxtStr = FString::Printf(TEXT("UPDBuildWidgetBase(%s, %s)::SelectBuildContext"), *Context.RowName.ToString(), *GetName());
-		const FPDBuildContext* LoadedContext = Context.GetRow<FPDBuildContext>(CtxtStr);
+		const FString CtxtStr = FString::Printf(TEXT("UPDBuildableActionEntry(%s)::NativeOnListItemObjectSet(ContextRow: %s)"), *GetName(), *Context.RowName.ToString());
+		const FPDBuildActionContext* LoadedContext = Context.GetRow<FPDBuildActionContext>(CtxtStr);
 		if (LoadedContext == nullptr || LoadedContext->ContextTag.IsValid() == false || LoadedContext->ContextTag != ParentMenuContextTag)
 		{
 			/** @todo Output to log with warning or error level verbosity if the context or the tag was invalid */ 
@@ -787,16 +791,17 @@ void UPDBuildableActionEntry::NativeOnListItemObjectSet(UObject* ListItemObject)
 		}
 
 		const UPDBuildableDataAsset* BuildDataAsset = nullptr;
-		const TArray<FDataTableRowHandle>& BuildablesData = LoadedContext->BuildablesData;
-		for (const FDataTableRowHandle& BuildableData : BuildablesData)
+		const TArray<FDataTableRowHandle>& ActionData = LoadedContext->ActionData;
+		for (const FDataTableRowHandle& ActionDatumHandle : ActionData)
 		{
-			const FPDBuildable* Buildable = BuildableData.GetRow<FPDBuildable>("");
-			if (Buildable == nullptr || Buildable->BuildableTag != ActionTag)
+			const FString BuildDatumCtxtStr = CtxtStr + FString::Printf(TEXT("(BuildableData: %s)"), *ActionDatumHandle.RowName.ToString());
+			const FPDBuildAction* Action = ActionDatumHandle.GetRow<FPDBuildAction>(BuildDatumCtxtStr);
+			if (Action == nullptr || Action->ActionTag != ActionTag)
 			{
 				continue;
 			}
 			
-			BuildDataAsset = Buildable->BuildableData.DABuildAsset;
+			BuildDataAsset = Action->DABuildAsset;
 			break;
 		}
 		
@@ -884,11 +889,8 @@ void UPDBuildableActionEntry::OnReleased()
 void UPDBuildActionContextEntry::NativeOnListItemObjectSet(UObject* ListItemObject)
 {
 	IUserObjectListEntry::NativeOnListItemObjectSet(ListItemObject);
-
-
 	const UPDBuildActionContextWrapper* Item = Cast<UPDBuildActionContextWrapper>(ListItemObject);
 	if (Item == nullptr) { return; }
-
 	
 	// 1. Read data
 	ContextTitle->SetText(Item->GetBuildContextTitle());
@@ -900,8 +902,8 @@ void UPDBuildActionContextEntry::NativeOnListItemObjectSet(UObject* ListItemObje
 	TArray<FDataTableRowHandle>& BuildContexts = DirectParentReference->GetCurrentActionContexts();
 	for (const FDataTableRowHandle& Context : BuildContexts)
 	{
-		const FString CtxtStr = FString::Printf(TEXT("UPDBuildWidgetBase(%s, %s)::SelectBuildContext"), *Context.RowName.ToString(), *GetName());
-		const FPDBuildContext* LoadedContext = Context.GetRow<FPDBuildContext>(CtxtStr);
+		const FString CtxtStr = FString::Printf(TEXT("UPDBuildActionContextEntry(%s)::NativeOnListItemObjectSet(ContextRow: %s)"), *GetName(), *Context.RowName.ToString());
+		const FPDBuildActionContext* LoadedContext = Context.GetRow<FPDBuildActionContext>(CtxtStr);
 		if (LoadedContext == nullptr || LoadedContext->ContextTag.IsValid() == false)
 		{
 			/** @todo Output to log with warning or error level verbosity if the context or the tag was invalid */ 
@@ -1025,7 +1027,7 @@ void UPDBuildingActionsWidgetBase::LoadActionContexts()
 	bool bLastSelectedContextStillValid = false;
 	for (const FDataTableRowHandle& Context : CurrentActionContextHandles)
 	{
-		const FString CtxtStr = FString::Printf(TEXT("UPDBuildWidgetBase(%s, %s)::SelectBuildContext"), *Context.RowName.ToString(), *GetName());
+		const FString CtxtStr = FString::Printf(TEXT("UPDBuildingActionsWidgetBase(%s)::LoadActionContexts(ContextRow: %s)"), *GetName(), *Context.RowName.ToString());
 		FPDBuildActionContext* LoadedContext = Context.GetRow<FPDBuildActionContext>(CtxtStr);
 		if (LoadedContext == nullptr || LoadedContext->ContextTag.IsValid() == false)
 		{
@@ -1056,7 +1058,7 @@ void UPDBuildingActionsWidgetBase::SelectActionContext(const FGameplayTag& NewSe
 	bool bRequestedContextWasValid = false;
 	for (const FDataTableRowHandle& Context : CurrentActionContextHandles)
 	{
-		const FString CtxtStr = FString::Printf(TEXT("UPDBuildWidgetBase(%s, %s)::SelectBuildContext"), *Context.RowName.ToString(), *GetName());
+		const FString CtxtStr = FString::Printf(TEXT("UPDBuildingActionsWidgetBase(%s)::SelectActionContext(ContextRow: %s)"), *GetName(), *Context.RowName.ToString());
 		FPDBuildActionContext* LoadedContext = Context.GetRow<FPDBuildActionContext>(CtxtStr);
 		if (LoadedContext == nullptr || LoadedContext->ContextTag != NewSelectedContext) { continue; }
 
@@ -1071,13 +1073,13 @@ void UPDBuildingActionsWidgetBase::SelectActionContext(const FGameplayTag& NewSe
 			{
 				IPDRTSBuilderInterface::Execute_SelectActionMenuEntry(CachedOwner, ERTSBuildableActionMenuModules::DeselectBuildableActionContext, FGameplayTag::EmptyTag, TArray<uint8>{});
 			}
-			
 			return;
 		}
 		
 		for (const FDataTableRowHandle& ActionDatum : LoadedContext->ActionData)
 		{
-			const FPDBuildAction* Action = ActionDatum.GetRow<FPDBuildAction>("UPDBuildWidgetBase::SelectBuildContext -- @todo write log message");
+			const FString ActionCtxtStr = FString::Printf(TEXT("UPDBuildingActionsWidgetBase(%s)::SelectActionContext(ActionDatum: %s)"), *GetName(), *ActionDatum.RowName.ToString());
+			const FPDBuildAction* Action = ActionDatum.GetRow<FPDBuildAction>(ActionCtxtStr);
 			if (Action == nullptr) { continue; }
 
 			UPDBuildableActionWrapper* DataWrapper = NewObject<UPDBuildableActionWrapper>(this, UPDBuildableActionWrapper::StaticClass());
@@ -1105,7 +1107,7 @@ void UPDBuildingActionsWidgetBase::UpdateSelectedActionContext(const FGameplayTa
 	bool bWasContextSelected = false;
 	for (const FDataTableRowHandle& Context : CurrentActionContextHandles)
 	{
-		const FString CtxtStr = FString::Printf(TEXT("UPDBuildWidgetBase(%s, %s)::UpdateSelectedContext"), *Context.RowName.ToString(), *GetName());
+		const FString CtxtStr = FString::Printf(TEXT("UPDBuildingActionsWidgetBase(%s)::UpdateSelectedActionContext(ContextRow: %s)"), *GetName(), *Context.RowName.ToString());
 		const FPDBuildActionContext* LoadedContext = Context.GetRow<FPDBuildActionContext>(CtxtStr);
 		if (LoadedContext == nullptr || LoadedContext->ContextTag.IsValid() == false)
 		{
@@ -1154,19 +1156,20 @@ void UPDBuildingActionsWidgetBase::UpdateSelectedActionContext(const FGameplayTa
 	SelectActionContext(RequestToSelectTag, bWasContextSelected == false);	
 }
 
-void UPDBuildingActionsWidgetBase::SelectAction(const FGameplayTag& NewSelectedBuildable)
+void UPDBuildingActionsWidgetBase::SelectAction(const FGameplayTag& NewSelectedAction)
 {
-	bool bRequestedBuildableWasValid = false;
+	bool bRequestedActionWasValid = false;
 	for (const FDataTableRowHandle& Context : CurrentActionContextHandles)
 	{
-		const FString CtxtStr = FString::Printf(TEXT("UPDBuildWidgetBase(%s, %s)::SelectBuildable"), *Context.RowName.ToString(), *GetName());
+		const FString CtxtStr = FString::Printf(TEXT("UPDBuildingActionsWidgetBase(%s)::SelectAction(ContextRow: %s)"), *GetName(), *Context.RowName.ToString());
 		FPDBuildActionContext* LoadedContext = Context.GetRow<FPDBuildActionContext>(CtxtStr);
 		if (LoadedContext == nullptr || LoadedContext->ContextTag.IsValid() == false) { continue; }
 		
 		for (const FDataTableRowHandle& ActionDatum : LoadedContext->ActionData)
 		{
-			const FPDBuildable* Buildable = ActionDatum.GetRow<FPDBuildable>("");
-			if (Buildable == nullptr || (Buildable->BuildableTag != NewSelectedBuildable))
+			const FString ActionDatumCtxtStr = CtxtStr + FString::Printf(TEXT("(ActionDatum: %s)"), *ActionDatum.RowName.ToString());
+			const FPDBuildAction* Buildable = ActionDatum.GetRow<FPDBuildAction>(ActionDatumCtxtStr);
+			if (Buildable == nullptr || (Buildable->ActionTag != NewSelectedAction))
 			{
 				continue;
 			}
@@ -1179,43 +1182,43 @@ void UPDBuildingActionsWidgetBase::SelectAction(const FGameplayTag& NewSelectedB
 				const UPDBuildableActionEntry* AsBuildableEntry = Actions->GetEntryWidgetFromItem<UPDBuildableActionEntry>(Item);
 				if (AsBuildableEntry == nullptr || AsBuildableEntry->IsValidLowLevelFast() == false)
 				{
-					UE_LOG(PDLog_RTSBase, Verbose, TEXT("UPDBuildWidgetBase::UpdateSelectedBuildable -- Context(%s) -- AsBuildableEntry: %i"), *LoadedContext->ContextData.ReadableName.ToString(), AsBuildableEntry != nullptr)
+					UE_LOG(PDLog_RTSBase, Verbose, TEXT("UPDBuildingActionsWidgetBase::SelectAction -- Context(%s) -- AsBuildableEntry: %i"), *LoadedContext->ContextData.ReadableName.ToString(), AsBuildableEntry != nullptr)
 					continue;
 				}
-				if (AsBuildableEntry->ActionTag == NewSelectedBuildable )
+				if (AsBuildableEntry->ActionTag == NewSelectedAction )
 				{
 					bWasAlreadyDeselected = AsBuildableEntry->bIsSelected != true;
 				}
 			}
 			
-			bRequestedBuildableWasValid = LastSelectedActionTag != NewSelectedBuildable || bWasAlreadyDeselected;
-			UE_LOG(PDLog_RTSBase, Verbose, TEXT("UPDBuildWidgetBase::SelectBuildable -- bRequestedBuildableWasValid: %i"), bRequestedBuildableWasValid)
+			bRequestedActionWasValid = LastSelectedActionTag != NewSelectedAction || bWasAlreadyDeselected;
+			UE_LOG(PDLog_RTSBase, Verbose, TEXT("UPDBuildingActionsWidgetBase::SelectAction -- bRequestedActionWasValid: %i"), bRequestedActionWasValid)
 			break; 
 		}
 	}
 
-	UpdateSelectedAction(NewSelectedBuildable, bRequestedBuildableWasValid);
+	UpdateSelectedAction(NewSelectedAction, bRequestedActionWasValid);
 
 	// set after updating tag
-	LastSelectedActionTag = bRequestedBuildableWasValid ? NewSelectedBuildable : LastSelectedActionTag;	
+	LastSelectedActionTag = bRequestedActionWasValid ? NewSelectedAction : LastSelectedActionTag;	
 }
 
 
 void UPDBuildingActionsWidgetBase::UpdateSelectedAction(const FGameplayTag& RequestToSelectTag, const bool bRequestedBuildableWasValid)
 {
-	UE_LOG(PDLog_RTSBase, Verbose, TEXT("UPDBuildWidgetBase::UpdateSelectedBuildable - Buildable Tag (%s)"), *RequestToSelectTag.GetTagName().ToString())
+	UE_LOG(PDLog_RTSBase, Verbose, TEXT("UPDBuildingActionsWidgetBase::UpdateSelectedBuildable - Buildable Tag (%s)"), *RequestToSelectTag.GetTagName().ToString())
 	
 	// Is it already selected?
 	FGameplayTag FinalTagSelection = FGameplayTag::EmptyTag;
 	ERTSBuildableActionMenuModules SelectedActionMode = ERTSBuildableActionMenuModules::DoNothing;
 	for (const FDataTableRowHandle& Context : CurrentActionContextHandles)
 	{
-		const FString CtxtStr = FString::Printf(TEXT("UPDBuildWidgetBase(%s, %s)::UpdateSelectedBuildable"), *Context.RowName.ToString(), *GetName());
+		const FString CtxtStr = FString::Printf(TEXT("UPDBuildingActionsWidgetBase(%s)::UpdateSelectedAction(ContextRow: %s)"), *GetName(), *Context.RowName.ToString());
 		const FPDBuildActionContext* LoadedContext = Context.GetRow<FPDBuildActionContext>(CtxtStr);
 		if (LoadedContext == nullptr || LoadedContext->ContextTag.IsValid() == false)
 		{
 			/** @todo Output to log with warning or error level verbosity if the context or the tag was invalid */
-			UE_LOG(PDLog_RTSBase, Warning, TEXT("UPDBuildWidgetBase::UpdateSelectedBuildable -- Context is null or has invalid flag"))
+			UE_LOG(PDLog_RTSBase, Warning, TEXT("UPDBuildingActionsWidgetBase::UpdateSelectedBuildable -- Context is null or has invalid flag"))
 			continue;
 		}
 		
@@ -1226,13 +1229,13 @@ void UPDBuildingActionsWidgetBase::UpdateSelectedAction(const FGameplayTag& Requ
 			UPDBuildableActionEntry* AsBuildableActionEntry = Actions->GetEntryWidgetFromItem<UPDBuildableActionEntry>(Item);
 			if (AsBuildableActionEntry == nullptr || AsBuildableActionEntry->IsValidLowLevelFast() == false)
 			{
-				UE_LOG(PDLog_RTSBase, Warning, TEXT("UPDBuildWidgetBase::UpdateSelectedBuildable -- Context(%s) -- AsBuildableEntry: %i"), *LoadedContext->ContextData.ReadableName.ToString(), AsBuildableActionEntry != nullptr)
+				UE_LOG(PDLog_RTSBase, Warning, TEXT("UPDBuildingActionsWidgetBase::UpdateSelectedBuildable -- Context(%s) -- AsBuildableEntry: %i"), *LoadedContext->ContextData.ReadableName.ToString(), AsBuildableActionEntry != nullptr)
 				continue;
 			}
 			const bool bWidgetFlairValid = SelectedWidgetFlair != nullptr;
 			if (bWidgetFlairValid == false)
 			{
-				UE_LOG(PDLog_RTSBase, Warning, TEXT("UPDBuildWidgetBase::UpdateSelectedBuildable - Widget of type 'UPDBuildingActionsWidgetBase' does not have a set 'WidgetFlair'"))
+				UE_LOG(PDLog_RTSBase, Warning, TEXT("UPDBuildingActionsWidgetBase::UpdateSelectedBuildable - Widget of type 'UPDBuildingActionsWidgetBase' does not have a set 'WidgetFlair'"))
 			}			
 			
 
@@ -1243,7 +1246,7 @@ void UPDBuildingActionsWidgetBase::UpdateSelectedAction(const FGameplayTag& Requ
 			// Selected new tag, if deselection it will not enter this @todo clean things up here
 			if (bWasSelected)
 			{
-				UE_LOG(PDLog_RTSBase, Verbose, TEXT("UPDBuildWidgetBase::UpdateSelectedBuildable -- Selecting buildable(%s)"), *AsBuildableActionEntry->ActionTag.GetTagName().ToString())
+				UE_LOG(PDLog_RTSBase, Verbose, TEXT("UPDBuildingActionsWidgetBase::UpdateSelectedBuildable -- Selecting buildable(%s)"), *AsBuildableActionEntry->ActionTag.GetTagName().ToString())
 				FinalTagSelection = RequestToSelectTag;
 				SelectedActionMode = ERTSBuildableActionMenuModules::FireBuildableAction;
 				Brush.TintColor = FSlateColor(bWidgetFlairValid ? SelectedWidgetFlair->SelectedBuildableTint : Brush.TintColor);
@@ -1251,7 +1254,7 @@ void UPDBuildingActionsWidgetBase::UpdateSelectedAction(const FGameplayTag& Requ
 			}
 			else
 			{
-				UE_LOG(PDLog_RTSBase, Verbose, TEXT("UPDBuildWidgetBase::UpdateSelectedBuildable -- Deselecting buildable(%s)"), *AsBuildableActionEntry->ActionTag.GetTagName().ToString())				
+				UE_LOG(PDLog_RTSBase, Verbose, TEXT("UPDBuildingActionsWidgetBase::UpdateSelectedBuildable -- Deselecting buildable(%s)"), *AsBuildableActionEntry->ActionTag.GetTagName().ToString())				
 				AsBuildableActionEntry->bIsSelected = false;
 			}
 			
@@ -1279,7 +1282,7 @@ void UPDBuildingActionsWidgetBase::SpawnBuildableActionMenu(const FPDBuildable& 
 {
 	FPDBuildActionContextParam ContextParams;
 	ContextParams.NewBuildActionContexts = BuildableToSourceActionsFrom.ActionContextHandles;
-
+	
 	AddToViewport();
 	Actions->SetRenderOpacity(0.0);
 	ActionContexts->SetRenderOpacity(0.0);
@@ -1293,7 +1296,7 @@ void UPDBuildingActionsWidgetBase::SpawnBuildableActionMenu(const FPDBuildable& 
 
 void UPDBuildingActionsWidgetBase::BeginCloseBuildableActionMenu()
 {
-	if (CloseWidget == nullptr || CloseWidget->IsValidLowLevelFast() == false)
+	if (CloseWidget == nullptr || CloseWidget->IsValidLowLevelFast() == false || CloseWidget->GetEndTime() < SMALL_NUMBER)
 	{
 		RemoveFromParent();
 		bIsMenuVisible = false;
@@ -1326,7 +1329,7 @@ void UPDBuildingActionsWidgetBase::OpenActionContextMenu()
 
 void UPDBuildingActionsWidgetBase::BeginCloseActionContext()
 {
-	if (CloseWidget == nullptr || CloseWidget->IsValidLowLevelFast() == false)
+	if (CloseContextMenu == nullptr || CloseContextMenu->IsValidLowLevelFast() == false || CloseContextMenu->GetEndTime() < SMALL_NUMBER)
 	{
 		RemoveFromParent();
 		return;
@@ -1345,8 +1348,10 @@ void UPDBuildingActionsWidgetBase::EndCloseActionContext()
 	if (CachedOwner != nullptr && CachedOwner->GetClass()->ImplementsInterface(UPDRTSBuilderInterface::StaticClass()))
 	{
 		IPDRTSBuilderInterface::Execute_SelectActionMenuEntry(CachedOwner, ERTSBuildableActionMenuModules::DeselectBuildableActionContext, FGameplayTag(), TArray<uint8>{});
-		// IPDRTSBuilderInterface::Execute_NewAction(CachedOwner, ERTSBuildMenuModules::DeselectBuildable, FGameplayTag());
-	}		
+	}
+	
+	bIsMenuVisible = false;
+	RemoveFromParent();	
 }
 
 void UPDBuildingActionsWidgetBase::SetNewWorldActor(AActor* NewWorldActor, const FPDBuildable& BuildableToSourceActionsFrom)
@@ -1358,6 +1363,18 @@ void UPDBuildingActionsWidgetBase::SetNewWorldActor(AActor* NewWorldActor, const
 		return;
 	}
 	SpawnBuildableActionMenu(BuildableToSourceActionsFrom);
+}
+
+void UPDBuildingActionsWidgetBase::DestroyCurrentWorldActor() const
+{
+	if (CurrentWorldActor == nullptr || CurrentWorldActor->IsActorBeingDestroyed())
+	{
+		return;
+	}
+	CurrentWorldActor->Destroy();
+	
+	UPDBuildingActionsWidgetBase* MutableSelf = const_cast<UPDBuildingActionsWidgetBase*>(this);
+	MutableSelf->BeginCloseActionContext();
 }
 
 

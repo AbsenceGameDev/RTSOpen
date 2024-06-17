@@ -48,7 +48,8 @@ void UPDBuilderSubsystem::ProcessBuildContextTable(const TSoftObjectPtr<UDataTab
 		{
 			for (const FDataTableRowHandle& BuildableDatum : BuildContext->BuildablesData)
 			{
-				FPDBuildable* Buildable = BuildableDatum.GetRow<FPDBuildable>("");
+				const FString CtxtStr = FString::Printf(TEXT("UPDBuilderSubsystem::ProcessBuildContextTable(BuildableDatum: %s)"), *BuildableDatum.RowName.ToString());
+				FPDBuildable* Buildable = BuildableDatum.GetRow<FPDBuildable>(CtxtStr);
 				BuildableParentContexts_ByBuildableTag.FindOrAdd(Buildable->BuildableTag).Emplace(BuildContext->ContextTag);
 				
 				BuildableData_WTag.Emplace(Buildable->BuildableTag, &Buildable->BuildableData);
@@ -71,6 +72,7 @@ void UPDBuilderSubsystem::ProcessBuildContextTable(const TSoftObjectPtr<UDataTab
 			// Map all context tags to their valid worker types, will be needed to properly find applicable worker types efficiently during runtime
 			for (const FDataTableRowHandle& ContextHandle : GrantedContext->GrantedContexts)
 			{
+				const FString CtxtStr = FString::Printf(TEXT("UPDBuilderSubsystem::ProcessBuildContextTable(ContextHandle: %s)"), *ContextHandle.RowName.ToString());
 				const FPDBuildContext* BuildContext = ContextHandle.GetRow<FPDBuildContext>("");
 				WorkerTags_PerBuildContext.FindOrAdd(BuildContext->ContextTag).Emplace(GrantedContext->WorkerType);
 			}
@@ -86,7 +88,8 @@ void UPDBuilderSubsystem::ProcessBuildContextTable(const TSoftObjectPtr<UDataTab
 		{
 			for (const FDataTableRowHandle& ActionDatum : GrantedContext->ActionData)
 			{
-				FPDBuildAction* Action = ActionDatum.GetRow<FPDBuildAction>("");
+				const FString CtxtStr = FString::Printf(TEXT("UPDBuilderSubsystem::ProcessBuildContextTable(ActionDatum: %s)"), *ActionDatum.RowName.ToString());
+				FPDBuildAction* Action = ActionDatum.GetRow<FPDBuildAction>(CtxtStr);
 				ActionData_WTag.Emplace(Action->ActionTag, Action);
 			}			
 			
@@ -132,6 +135,17 @@ const FPDBuildable* UPDBuilderSubsystem::GetBuildableFromClassStatic(TSubclassOf
 {
 	UPDBuilderSubsystem* BuilderSubsystem = UPDBuilderSubsystem::Get();
 	return BuilderSubsystem->Buildable_WClass.Contains(Class) ? *BuilderSubsystem->Buildable_WClass.Find(Class) : nullptr;
+}
+
+const FPDBuildable* UPDBuilderSubsystem::GetBuildableWithActionsFromClassStatic(TSubclassOf<AActor> Class)
+{
+	const FPDBuildable* PotentialBuildable = UPDBuilderSubsystem::GetBuildableFromClassStatic(Class);
+	if (PotentialBuildable == nullptr)
+	{
+		return nullptr;
+	}
+
+	return PotentialBuildable->ActionContextHandles.IsEmpty() == false ? PotentialBuildable : nullptr;
 }
 
 const FPDBuildableData* UPDBuilderSubsystem::GetBuildableData(const FGameplayTag& BuildableTag)
