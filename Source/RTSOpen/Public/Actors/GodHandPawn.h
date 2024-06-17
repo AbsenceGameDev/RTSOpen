@@ -81,7 +81,7 @@ public:
 	UFUNCTION()
 	void PerformAction_Destroy(const TArray<uint8>& Payload);
 	
-	virtual void SelectActionMenuEntry_Implementation(ERTSBuildableActionMenuModules ActionMode, FGameplayTag ActionTag) override;
+	virtual void SelectActionMenuEntry_Implementation(ERTSBuildableActionMenuModules ActionMode, FGameplayTag ActionTag, const TArray<uint8>& Payload) override;
 	virtual int32 GetBuilderID_Implementation() override;
 	/* PDRTS Builder Interface - End */
 

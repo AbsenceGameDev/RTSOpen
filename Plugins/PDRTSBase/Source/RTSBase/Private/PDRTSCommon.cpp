@@ -127,7 +127,7 @@ void TBucketTickHandler<TBucketType>::TickBuckets(float DeltaTime)
 				if (AccumulatedTimings.IsValidIndex(EntryIdx))
 				{
 					AccumulatedTimings[EntryIdx] += BucketData.UserInterval;
-					SkipAccumulation[EntryIdx] = false;
+					SkipAccumulation[EntryIdx] = false; // Don't skip accumulation of missed frames if we have any missed frames 
 				}
 				else
 				{
@@ -138,15 +138,15 @@ void TBucketTickHandler<TBucketType>::TickBuckets(float DeltaTime)
 					
 					AccumulatedTimings.EmplaceAt(EntryIdx, BucketData.UserInterval + MissingTime);
 
-					bool bShouldSkip = ReversingTickIndex == TickIdx;
+					bool bShouldSkip = ReversingTickIndex == TickIdx; 
 					BucketData.LastTickOffset =
-						bShouldSkip
-					? (FMath::IsNearlyZero(BucketData.LastTickOffset) == false
-						? BucketData.LastTickOffset
-						: 0.0)
-					: MissingTime;
+						bShouldSkip ?
+							(FMath::IsNearlyZero(BucketData.LastTickOffset) == false ?
+								BucketData.LastTickOffset
+								: 0.0)
+							: MissingTime;
 					
-					SkipAccumulation.EmplaceAt(EntryIdx, bShouldSkip);
+					SkipAccumulation.EmplaceAt(EntryIdx, bShouldSkip); 
 				}
 			
 			}

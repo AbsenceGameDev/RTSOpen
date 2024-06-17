@@ -1107,9 +1107,9 @@ void AGodHandPawn::PerformAction_Destroy(const TArray<uint8>& Payload)
 	PC->GetBuildableActionsWidget()->CurrentWorldActor->Destroy();	
 }
 
-void AGodHandPawn::SelectActionMenuEntry_Implementation(ERTSBuildableActionMenuModules ActionMode, FGameplayTag ActionTag)
+void AGodHandPawn::SelectActionMenuEntry_Implementation(ERTSBuildableActionMenuModules ActionMode, FGameplayTag ActionTag, const TArray<uint8>& Payload)
 {
-	IPDRTSBuilderInterface::SelectActionMenuEntry_Implementation(ActionMode, ActionTag);
+	IPDRTSBuilderInterface::SelectActionMenuEntry_Implementation(ActionMode, ActionTag, Payload);
 
 	UPDBuilderSubsystem* BuilderSubsystem = UPDBuilderSubsystem::Get();
 	ensure(BuilderSubsystem != nullptr);
@@ -1171,6 +1171,10 @@ void AGodHandPawn::SelectActionMenuEntry_Implementation(ERTSBuildableActionMenuM
 				// Check if we can match it against a type in our subsystem
 				const bool bIsMatchedAgainst = BuilderSubsystem->GrantedBuildContexts_WorkerTag.Contains(ActionTag);
 				if (bIsMatchedAgainst == false) { return; }
+
+				// done 0. default to a single spawn if we have no payload instructing us how many we should spawn 
+				uint32 SpawnCount = Payload.IsValidIndex(3) ? RESTORE_BYTE(Payload, 0) | RESTORE_BYTE(Payload, 1) | RESTORE_BYTE(Payload, 2) | RESTORE_BYTE(Payload, 3) : 1;
+
 				// @todo 1. Need to select a entity config and use it to spawn
 				// @todo 2. Will need some mapping between unit-type tags and their entity configs, multiple unit-type tags may share the same configs
 				// @todo 3. Spawn here now that have validated that the worker is valid type

@@ -12,9 +12,9 @@
 
 class UNiagaraSystem;
 class UNiagaraEmitter;
-DECLARE_LOG_CATEGORY_CLASS(PDLog_RTSBase, Log, All);
-
 class UBehaviorTree;
+
+DECLARE_LOG_CATEGORY_CLASS(PDLog_RTSBase, Log, All);
 
 /** Declaring the "AI.Job" gameplay tag. to be defined in an object-file */
 PDRTSBASE_API UE_DECLARE_GAMEPLAY_TAG_EXTERN(TAG_AI_Job_Idle);
@@ -29,6 +29,8 @@ PDRTSBASE_API UE_DECLARE_GAMEPLAY_TAG_EXTERN(TAG_CTRL_Ctxt_WorkerUnitMode);
 PDRTSBASE_API UE_DECLARE_GAMEPLAY_TAG_EXTERN(TAG_CTRL_Ctxt_BuildMode);
 PDRTSBASE_API UE_DECLARE_GAMEPLAY_TAG_EXTERN(TAG_CTRL_Ctxt_ConversationMode);
 
+#define MASK_BYTE(Value, ByteIdx) (uint8)(((Value) >> (ByteIdx*8)) & 0xffff)
+#define RESTORE_BYTE(Bytes, ByteIdx) ((((uint32)Bytes[ByteIdx]) << (ByteIdx*8)))
 
 #define MOpaque(FClassToOpaque)\
 	private:\

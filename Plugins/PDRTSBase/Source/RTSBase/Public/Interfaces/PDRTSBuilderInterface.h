@@ -65,8 +65,8 @@ public:
 
 	/** @brief Used by the build system for when a enw context or buildable is selected (or when an old one is deselected) */
 	UFUNCTION(BlueprintNativeEvent, CallInEditor, Category = "Action|Interface")
-	void SelectActionMenuEntry(ERTSBuildableActionMenuModules ActionMode, FGameplayTag ActionTag);
-	virtual void SelectActionMenuEntry_Implementation(ERTSBuildableActionMenuModules ActionMode, FGameplayTag ActionTag)
+	void SelectActionMenuEntry(ERTSBuildableActionMenuModules ActionMode, FGameplayTag ActionTag, const TArray<uint8>& Payload);
+	virtual void SelectActionMenuEntry_Implementation(ERTSBuildableActionMenuModules ActionMode, FGameplayTag ActionTag, const TArray<uint8>& Payload)
 	{
 		// Perform actions
 		switch (ActionMode)

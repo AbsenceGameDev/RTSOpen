@@ -18,9 +18,170 @@ struct FPDBuildContext;
 
 DECLARE_LOG_CATEGORY_CLASS(PDLog_RTSBaseUI, Log, All);
 
+DECLARE_DELEGATE_OneParam(FPDOnIntValueChanged, int32);
+
 //
-// Generic dialogs, move to UI 
-/** @brief Save/load game delegate, used with the pop-up dialogs defined further down this file */
+// Ranged number entry widgets, @todo create shared UI module in it's own plugin and move this in there 
+UCLASS()
+class PDRTSBASE_API UPDRangedNumberBox : public UUserWidget
+{
+	GENERATED_BODY()
+public:
+
+	UFUNCTION()
+	void ApplySettings(int32 InMinimumCount, int32 InMaximumCount)
+	{
+		MinimumCount = InMinimumCount;
+		MaximumCount = InMaximumCount;
+	};
+
+	UFUNCTION()
+	virtual void SetupDelegates();
+	
+	UFUNCTION()
+	void OnTextBoxCommitted(const FText& Text, ETextCommit::Type CommitMethod);
+	
+	/** @brief Range */
+	UPROPERTY(BlueprintReadWrite, Meta=(ExposeOnSpawn))
+	int32 MinimumCount = 0;	
+	UPROPERTY(BlueprintReadWrite, Meta=(ExposeOnSpawn))
+	int32 MaximumCount = 0;
+	UPROPERTY(VisibleInstanceOnly, BlueprintReadOnly)
+	int32 SelectedCount = 0;
+
+	FPDOnIntValueChanged OnValueChanged{};
+
+	/** @brief Validate number box */
+	UPROPERTY(BlueprintReadWrite, Meta=(BindWidget, ExposeOnSpawn))
+	class UEditableTextBox* ValidatedNumberBox = nullptr;
+};
+
+UCLASS()
+class PDRTSBASE_API UPDRangedIncrementBox : public UUserWidget
+{
+	GENERATED_BODY()
+public:
+
+	UFUNCTION()
+	void ApplySettings(int32 InMinimumCount, int32 InMaximumCount)
+	{
+		MinimumCount = InMinimumCount;
+		MaximumCount = InMaximumCount;
+	};
+
+	UFUNCTION()
+	virtual void SetupDelegates();
+
+	UFUNCTION()
+	void ValidateNewValue(int32 InCount);
+	
+	UFUNCTION()
+	void OnIncrement();
+
+	UFUNCTION()
+	void OnDecrement();	
+
+	/** @brief Range */
+	UPROPERTY(BlueprintReadWrite, Meta=(ExposeOnSpawn))
+	int32 MinimumCount = 0;	
+	UPROPERTY(BlueprintReadWrite, Meta=(ExposeOnSpawn))
+	int32 MaximumCount = 0; 	
+	UPROPERTY(VisibleInstanceOnly, BlueprintReadOnly)
+	int32 SelectedCount = 0; 	
+	
+	/** @brief Hitbox, what our mouse events actually interacts with to increment the value */
+	UPROPERTY(BlueprintReadWrite, Meta=(BindWidget))
+	class UButton* HitboxIncrement = nullptr;
+	UPROPERTY(BlueprintReadWrite, Meta=(BindWidget))
+	class UTextBlock* IncrementTextBlock = nullptr;
+	UPROPERTY(BlueprintReadWrite)
+	FText IncrementText = FText::FromString("+");
+	
+	/** @brief Hitbox, what our mouse events actually interacts with to decrement the value */
+	UPROPERTY(BlueprintReadWrite, Meta=(BindWidget))
+	class UButton* HitboxDecrement = nullptr;	
+	UPROPERTY(BlueprintReadWrite, Meta=(BindWidget))
+	class UTextBlock* DecrementTextBlock = nullptr;	
+	UPROPERTY(BlueprintReadWrite)
+	FText DecrementText = FText::FromString("-");
+	
+	/** @brief Number box with controls */
+	UPROPERTY(BlueprintReadWrite, Meta=(BindWidget, ExposeOnSpawn))
+	class UTextBlock* NumberTextBlock = nullptr;
+	
+	FPDOnIntValueChanged OnValueChanged{};	
+};
+
+UENUM()
+enum class EPDSharedUICountTypeSelector : uint8
+{
+	ERangedSlider,
+	ERangedEditableNumber,
+	ERangedIncrementBox,
+};
+
+UCLASS()
+class UPDSharedUISettings : public UDeveloperSettings
+{
+	GENERATED_BODY()
+
+public:
+
+	UPROPERTY()
+	EPDSharedUICountTypeSelector UICountTypeSelector = EPDSharedUICountTypeSelector::ERangedIncrementBox;
+};
+
+UCLASS()
+class PDRTSBASE_API UPDRangedSelector : public UUserWidget
+{
+	GENERATED_BODY()
+public:
+
+	// @todo need to bind our Min/Max values for our range efficiently somehow, meaning regular UMG bindings are out of the question 
+
+	UFUNCTION()
+	void ApplySettings(int32 InMinimumCount, int32 InMaximumCount);
+
+	// @done Make configurable to use, via developer settings (UPDSharedUISettings), to use either a:
+	// @done 1. Ranged slider
+	// @done 2. Number box with user input, then validation to clamp it to a valid range
+	// @done 3. Number box with '-' and '+' buttons to increase/decrease, clamped to a valid range
+
+	/** @brief Range: Min */
+	UPROPERTY(BlueprintReadWrite, Meta=(ExposeOnSpawn))
+	int32 MinimumCount = 0;	
+	/** @brief Range: Max */
+	UPROPERTY(BlueprintReadWrite, Meta=(ExposeOnSpawn))
+	int32 MaximumCount = 0;
+	UPROPERTY(BlueprintReadWrite, Meta=(ExposeOnSpawn))
+	int32 SelectedCount = 0;
+	
+	/** @brief If Min or Max is set to INDEX_NONE, changes to said member will be ignored */
+	virtual void OnRangeUpdated(int32 NewMin = INDEX_NONE, int32 NewMax = INDEX_NONE);
+
+	UFUNCTION()
+	void OnSliderValueChanged(float NewValue);
+	
+	UFUNCTION()
+	void OnNumberBoxChanged(int32 NewValue); 
+	
+	/** @brief Ranged (Clamped) Slider */
+	UPROPERTY(BlueprintReadWrite, Meta=(BindWidget, ExposeOnSpawn))
+	class USlider* RangedSlider = nullptr;
+
+	/** @brief Validate number box */
+	UPROPERTY(BlueprintReadWrite, Meta=(BindWidget, ExposeOnSpawn))
+	class UPDRangedNumberBox* RangedNumberBox = nullptr;
+	
+	/** @brief Number box with controls */
+	UPROPERTY(BlueprintReadWrite, Meta=(BindWidget, ExposeOnSpawn))
+	class UPDRangedIncrementBox* RangedIncrementBox = nullptr;		
+};
+
+
+//
+// Generic dialogs, @todo create shared UI module in it's own plugin and move this in there 
+/** @brief Dialog delegate with a potential payload */
 DECLARE_DELEGATE_OneParam(FPDDialogDelegate, const TArray<uint8> &)
 
 /** @brief Stylable clickable button */
@@ -106,7 +267,7 @@ public:
 	/** @brief Callback that we want to fire on success (replying yes to the dialog)*/
 	FPDDialogDelegate SuccessCallback{};
 
-	/** @brief Callback that we want to fire on success (replying yes to the dialog)*/
+	/** @brief Callback that we want to fire on fail (replying no to the dialog)*/
 	FPDDialogDelegate FailCallback{};	
 };
 
@@ -676,10 +837,6 @@ public:
 	bool bIsSelected = false;
 };
 
-
-
-
-
 /** @brief  Wrapper struct that allows us to expose rowtype filters */
 USTRUCT(Blueprintable)
 struct FPDBuildActionContextParam
@@ -761,7 +918,10 @@ public:
 	UFUNCTION(BlueprintCallable)
 	void SetNewWorldActor(AActor* NewWorldActor, const FPDBuildable& BuildableToSourceActionsFrom);
 
-	// todo need a widget with number selectors, and some way to pipe in a limit/range for this in a game module, so we never spawn 50 units when we can't afford it for example 
+	/** @brief UPDRangedSelector which will be used to select amounts for actions that allow it
+	 * @todo Actually need to make use of this */
+	UPROPERTY(BlueprintReadWrite, Meta = (BindWidget, ExposeOnSpawn))
+	UPDRangedSelector* CountSelector = nullptr;
 	
 	/** @brief Tileview which will display our 'UPDBuildableEntry's */
 	UPROPERTY(BlueprintReadWrite, Meta = (BindWidget))

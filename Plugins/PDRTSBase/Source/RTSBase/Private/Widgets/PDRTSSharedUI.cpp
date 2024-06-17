@@ -11,6 +11,150 @@
 #include "Components/TileView.h"
 #include "Interfaces/PDRTSBuilderInterface.h"
 
+#include "Components/EditableTextBox.h"
+#include "Components/Slider.h"
+
+//
+// Ranged Editable number box
+
+void UPDRangedNumberBox::SetupDelegates()
+{
+	ValidatedNumberBox->OnTextCommitted.AddDynamic(this, &UPDRangedNumberBox::OnTextBoxCommitted);
+}
+
+// Unseemly matters, avert your gaze. Note: This is done because 'Text' is marked as deprecated and
+// will be moved into private access level at some point, I want to avoid a broke build when that happens
+using EditableTextType = TAccessorTypeHandler<UEditableTextBox, FText>; 
+template struct TTagPrivateMember<EditableTextType, &UEditableTextBox::Text>; // UHT complains as it does not realize this is a template 'tag', this is no normal access 
+
+void UPDRangedNumberBox::OnTextBoxCommitted(const FText& Text, ETextCommit::Type CommitMethod)
+{
+	switch (CommitMethod)
+	{
+	case ETextCommit::OnCleared:
+		return; // Exit function if we've just cleared the box
+	case ETextCommit::Default:
+	case ETextCommit::OnEnter:
+	case ETextCommit::OnUserMovedFocus:
+		break; // In all other cases
+	}
+	
+	const int32 CommittedInt = FCString::Atoi(*Text.ToString());
+	SelectedCount = FMath::Clamp(CommittedInt, MinimumCount, MaximumCount);
+	if (OnValueChanged.ExecuteIfBound(SelectedCount) == false)
+	{
+		// @todo log warning
+	}
+	
+	constexpr ETextIdenticalModeFlags ComparisonFlags = ETextIdenticalModeFlags::DeepCompare | ETextIdenticalModeFlags::LexicalCompareInvariants;
+	FText& InnerText = ValidatedNumberBox->*TPrivateAccessor<EditableTextType>::TypeValue; // nasty ISO-valid hack, please forgive
+
+	const FText NewText = FText::FromString(FString::FromInt(SelectedCount));
+	if (InnerText.IdenticalTo(NewText, ComparisonFlags) == false)
+	{
+		InnerText = NewText;
+		ValidatedNumberBox->BroadcastFieldValueChanged(UEditableTextBox::FFieldNotificationClassDescriptor::Text);
+	}
+}
+
+//
+// Ranged Incremental number box
+void UPDRangedIncrementBox::SetupDelegates()
+{
+	IncrementTextBlock->SetText(IncrementText);
+	DecrementTextBlock->SetText(DecrementText);
+	
+	HitboxIncrement->OnPressed.AddDynamic(this, &UPDRangedIncrementBox::OnIncrement);
+	HitboxDecrement->OnPressed.AddDynamic(this, &UPDRangedIncrementBox::OnDecrement);
+}
+
+void UPDRangedIncrementBox::ValidateNewValue(int32 InCount)
+{
+	SelectedCount = FMath::Clamp(InCount, MinimumCount, MaximumCount);
+	const FText NewText = FText::FromString(FString::FromInt(SelectedCount));
+
+	if (OnValueChanged.ExecuteIfBound(SelectedCount) == false)
+	{
+		// @todo log warning
+	}
+	
+	NumberTextBlock->SetText(NewText);
+}
+
+void UPDRangedIncrementBox::OnIncrement()
+{
+	ValidateNewValue(++SelectedCount);
+}
+
+void UPDRangedIncrementBox::OnDecrement()
+{
+	ValidateNewValue(--SelectedCount);
+}
+
+void UPDRangedSelector::ApplySettings(int32 InMinimumCount, int32 InMaximumCount)
+{	
+	MinimumCount = InMinimumCount;
+	MaximumCount = FMath::Max(MinimumCount, InMaximumCount); // don't allow Max to be below Min
+
+	RangedSlider->SetVisibility(ESlateVisibility::Hidden);
+	RangedNumberBox->SetVisibility(ESlateVisibility::Hidden);
+	RangedIncrementBox->SetVisibility(ESlateVisibility::Hidden);
+
+	switch (GetDefault<UPDSharedUISettings>()->UICountTypeSelector)
+	{
+	case EPDSharedUICountTypeSelector::ERangedSlider:
+		RangedSlider->OnValueChanged.AddDynamic(this, &UPDRangedSelector::OnSliderValueChanged);
+		RangedSlider->SetStepSize(1.0f);
+		RangedSlider->SetMinValue(MinimumCount);
+		RangedSlider->SetMaxValue(MaximumCount);
+		RangedSlider->SetVisibility(ESlateVisibility::Visible);
+		break;
+	case EPDSharedUICountTypeSelector::ERangedEditableNumber:
+		RangedNumberBox->SetupDelegates();
+		RangedNumberBox->OnValueChanged.BindUObject(this, &UPDRangedSelector::OnNumberBoxChanged);
+		RangedNumberBox->ApplySettings(MinimumCount, MaximumCount);
+		RangedNumberBox->SetVisibility(ESlateVisibility::Visible);
+		break;
+	case EPDSharedUICountTypeSelector::ERangedIncrementBox:
+		RangedIncrementBox->SetupDelegates();
+		RangedNumberBox->OnValueChanged.BindUObject(this, &UPDRangedSelector::OnNumberBoxChanged);
+		RangedIncrementBox->ApplySettings(MinimumCount, MaximumCount);
+		RangedIncrementBox->SetVisibility(ESlateVisibility::Visible);
+		break;
+	}
+}
+
+void UPDRangedSelector::OnRangeUpdated(int32 NewMin, int32 NewMax)
+{
+	MinimumCount = NewMin != INDEX_NONE ? NewMin : MinimumCount;
+	MaximumCount = NewMax != INDEX_NONE ? FMath::Max(MinimumCount, NewMax) : MaximumCount; // don't allow Max to be below Min
+	
+	switch (GetDefault<UPDSharedUISettings>()->UICountTypeSelector)
+	{
+	case EPDSharedUICountTypeSelector::ERangedSlider:
+		RangedSlider->SetMinValue(MinimumCount);
+		RangedSlider->SetMaxValue(MaximumCount);
+		break;
+	case EPDSharedUICountTypeSelector::ERangedEditableNumber:
+		RangedNumberBox->ApplySettings(MinimumCount, MaximumCount);
+		break;
+	case EPDSharedUICountTypeSelector::ERangedIncrementBox:
+		RangedIncrementBox->ApplySettings(MinimumCount, MaximumCount);
+		break;
+	}
+}
+
+void UPDRangedSelector::OnSliderValueChanged(float NewValue)
+{
+	OnNumberBoxChanged(static_cast<int32>(NewValue + 0.5f));
+}
+
+void UPDRangedSelector::OnNumberBoxChanged(int32 NewValue)
+{
+	SelectedCount = NewValue;
+};
+
+
 //
 // Generic dialogs
 
@@ -502,9 +646,15 @@ void UPDBuildWidgetBase::UpdateSelectedBuildable(const FGameplayTag& RequestToSe
 				continue;
 			}
 
+			const bool bWidgetFlairValid = SelectedWidgetFlair != nullptr;
+			if (bWidgetFlairValid == false)
+			{
+				UE_LOG(PDLog_RTSBase, Warning, TEXT("UPDBuildWidgetBase::UpdateSelectedBuildable - Widget of type 'UPDBuildingActionsWidgetBase' does not have a set 'WidgetFlair'"))
+			}			
+
 			const bool bWasSelected = bRequestedBuildableWasValid && (RequestToSelectTag == AsBuildableEntry->BuildableTag);
 			FSlateBrush& Brush = AsBuildableEntry->TextContentBorder->Background;
-			Brush.TintColor = FSlateColor(SelectedWidgetFlair->NotSelectedBuildableTint);
+			Brush.TintColor = FSlateColor(bWidgetFlairValid ? SelectedWidgetFlair->NotSelectedBuildableTint: Brush.TintColor);
 
 			// Selected new tag, if deselection it will not enter this @todo clean things up here
 			if (bWasSelected)
@@ -512,7 +662,7 @@ void UPDBuildWidgetBase::UpdateSelectedBuildable(const FGameplayTag& RequestToSe
 				UE_LOG(PDLog_RTSBase, Verbose, TEXT("UPDBuildWidgetBase::UpdateSelectedBuildable -- Selecting buildable(%s)"), *AsBuildableEntry->BuildableTag.GetTagName().ToString())
 				FinalTagSelection = RequestToSelectTag;
 				SelectedAction = ERTSBuildMenuModules::SelectBuildable;
-				Brush.TintColor = FSlateColor(SelectedWidgetFlair->SelectedBuildableTint);
+				Brush.TintColor = FSlateColor(bWidgetFlairValid ? SelectedWidgetFlair->SelectedBuildableTint: Brush.TintColor);
 				AsBuildableEntry->bIsSelected = true;
 			}
 			else
@@ -812,7 +962,7 @@ void UPDBuildActionContextEntry::OnPressed()
 	}
 	ensure(DirectParentReference != nullptr && "if you hit this ensure´then you've forgotten to add an appropriate parent reference upon spawning the widget");
 
-	IPDRTSBuilderInterface::Execute_SelectActionMenuEntry(CachedOwner, ERTSBuildableActionMenuModules::SelectBuildableActionContext, SelfContextTag);
+	IPDRTSBuilderInterface::Execute_SelectActionMenuEntry(CachedOwner, ERTSBuildableActionMenuModules::SelectBuildableActionContext, SelfContextTag, TArray<uint8>{});
 	if (DirectParentReference->SelectedWidgetFlair == nullptr)
 	{
 		/** @todo: log about widget flair not being set.*/
@@ -847,16 +997,16 @@ void UPDBuildActionContextEntry::OnReleased()
 	/** @todo: write impl.*/	
 }
 
-
 //
-//
-//
-//
-// buildables action menu, the menu that shows when selecting a buildable
+// Buildables action menu, the menu that shows when selecting a buildable
 
 void UPDBuildingActionsWidgetBase::NativeConstruct()
 {
 	Super::NativeConstruct();
+
+	CurrentActionContextHandles = DefaultActionContexts;
+	
+	SelectedWidgetFlair = BuildWidgetFlairHandle.GetRow<FPDSharedBuildWidgetFlair>("");
 }
 
 void UPDBuildingActionsWidgetBase::OverwriteActionContext(const FPDBuildActionContextParam& NewRowParams)
@@ -866,6 +1016,8 @@ void UPDBuildingActionsWidgetBase::OverwriteActionContext(const FPDBuildActionCo
 
 void UPDBuildingActionsWidgetBase::LoadActionContexts()
 {
+	CountSelector->SetVisibility(ESlateVisibility::Hidden);
+	
 	// Build the context menu entries (Category)
 	ActionContexts->ClearListItems();
 
@@ -911,12 +1063,13 @@ void UPDBuildingActionsWidgetBase::SelectActionContext(const FGameplayTag& NewSe
 		bRequestedContextWasValid = true;
 		
 		Actions->ClearListItems();
+		CountSelector->SetVisibility(ESlateVisibility::Hidden);
 		if (bWasDeselected) // deselecting a category should intuitively deselect any selected entry
 		{
 			APawn* CachedOwner = GetOwningPlayer()->GetPawnOrSpectator();
 			if (ensure(CachedOwner != nullptr && CachedOwner->GetClass()->ImplementsInterface(UPDRTSBuilderInterface::StaticClass())))
 			{
-				IPDRTSBuilderInterface::Execute_SelectActionMenuEntry(CachedOwner, ERTSBuildableActionMenuModules::DeselectBuildableActionContext, FGameplayTag::EmptyTag);
+				IPDRTSBuilderInterface::Execute_SelectActionMenuEntry(CachedOwner, ERTSBuildableActionMenuModules::DeselectBuildableActionContext, FGameplayTag::EmptyTag, TArray<uint8>{});
 			}
 			
 			return;
@@ -935,6 +1088,11 @@ void UPDBuildingActionsWidgetBase::SelectActionContext(const FGameplayTag& NewSe
 			DataWrapper->AssignData(Action->ReadableName, bCanBuild, ActionTag, LoadedContext->ContextTag, this);
 			Actions->AddItem(DataWrapper);
 		}
+
+		//
+		// Make selector visible if we have at-least one buildable action visible
+		if (Actions->GetListItems().IsEmpty() == false) { CountSelector->SetVisibility(ESlateVisibility::Visible); }
+		
 		break;
 	}
 	
@@ -965,20 +1123,28 @@ void UPDBuildingActionsWidgetBase::UpdateSelectedActionContext(const FGameplayTa
 				continue;
 			}
 			
+			const bool bWidgetFlairValid = SelectedWidgetFlair != nullptr;
+			if (bWidgetFlairValid == false)
+			{
+				/** @todo: log about widget flair not being set.*/
+				UE_LOG(PDLog_RTSBase, Warning, TEXT("UPDBuildingActionsWidgetBase::UpdateSelectedContext - Widget of type 'UPDBuildingActionsWidgetBase' does not have a set 'WidgetFlair'"))
+			}
+			
 			// Selected new tag, @todo clean things up here
 			FSlateBrush& Brush = AsContextEntry->TextContentBorder->Background;
 			const FString& ContextEntryString = AsContextEntry->SelfContextTag.GetTagName().ToString();
 			const bool bShouldSelect = (RequestToSelectTag == AsContextEntry->SelfContextTag) && AsContextEntry->bIsSelected == false;
 			if (bShouldSelect)
 			{
-				UE_LOG(PDLog_RTSBase, Verbose, TEXT("UPDBuildWidgetBase::UpdateSelectedContext -- Selecting context(%s)"), *ContextEntryString)
-				Brush.TintColor = FSlateColor(SelectedWidgetFlair->SelectedContextTint);
+				UE_LOG(PDLog_RTSBase, Verbose, TEXT("UPDBuildingActionsWidgetBase::UpdateSelectedContext -- Selecting context(%s)"), *ContextEntryString)
+				
+				Brush.TintColor = FSlateColor(bWidgetFlairValid ? SelectedWidgetFlair->SelectedContextTint: Brush.TintColor);
 				bWasContextSelected = AsContextEntry->bIsSelected = true;
 			}
 			else // Deselecting any entries we had selected before // @todo redesign this slightly ,as we only need to know the previously selected entry, we should cache it so we can skip this loop
 			{
 				UE_LOG(PDLog_RTSBase, Verbose, TEXT("UPDBuildWidgetBase::UpdateSelectedContext -- Deselecting context(%s)"), *ContextEntryString)				
-				Brush.TintColor = FSlateColor(SelectedWidgetFlair->NotSelectedContextTint);
+				Brush.TintColor = FSlateColor(bWidgetFlairValid ? SelectedWidgetFlair->NotSelectedContextTint : Brush.TintColor);
 				bWasContextSelected = AsContextEntry->bIsSelected = false;
 			}
 			AsContextEntry->TextContentBorder->SetBrush(Brush);
@@ -1034,13 +1200,14 @@ void UPDBuildingActionsWidgetBase::SelectAction(const FGameplayTag& NewSelectedB
 	LastSelectedActionTag = bRequestedBuildableWasValid ? NewSelectedBuildable : LastSelectedActionTag;	
 }
 
+
 void UPDBuildingActionsWidgetBase::UpdateSelectedAction(const FGameplayTag& RequestToSelectTag, const bool bRequestedBuildableWasValid)
 {
 	UE_LOG(PDLog_RTSBase, Verbose, TEXT("UPDBuildWidgetBase::UpdateSelectedBuildable - Buildable Tag (%s)"), *RequestToSelectTag.GetTagName().ToString())
 	
 	// Is it already selected?
 	FGameplayTag FinalTagSelection = FGameplayTag::EmptyTag;
-	ERTSBuildableActionMenuModules SelectedAction = ERTSBuildableActionMenuModules::DoNothing;
+	ERTSBuildableActionMenuModules SelectedActionMode = ERTSBuildableActionMenuModules::DoNothing;
 	for (const FDataTableRowHandle& Context : CurrentActionContextHandles)
 	{
 		const FString CtxtStr = FString::Printf(TEXT("UPDBuildWidgetBase(%s, %s)::UpdateSelectedBuildable"), *Context.RowName.ToString(), *GetName());
@@ -1062,18 +1229,24 @@ void UPDBuildingActionsWidgetBase::UpdateSelectedAction(const FGameplayTag& Requ
 				UE_LOG(PDLog_RTSBase, Warning, TEXT("UPDBuildWidgetBase::UpdateSelectedBuildable -- Context(%s) -- AsBuildableEntry: %i"), *LoadedContext->ContextData.ReadableName.ToString(), AsBuildableActionEntry != nullptr)
 				continue;
 			}
+			const bool bWidgetFlairValid = SelectedWidgetFlair != nullptr;
+			if (bWidgetFlairValid == false)
+			{
+				UE_LOG(PDLog_RTSBase, Warning, TEXT("UPDBuildWidgetBase::UpdateSelectedBuildable - Widget of type 'UPDBuildingActionsWidgetBase' does not have a set 'WidgetFlair'"))
+			}			
+			
 
 			const bool bWasSelected = bRequestedBuildableWasValid && (RequestToSelectTag == AsBuildableActionEntry->ActionTag);
 			FSlateBrush& Brush = AsBuildableActionEntry->TextContentBorder->Background;
-			Brush.TintColor = FSlateColor(SelectedWidgetFlair->NotSelectedBuildableTint);
+			Brush.TintColor = FSlateColor(bWidgetFlairValid ? SelectedWidgetFlair->NotSelectedBuildableTint : Brush.TintColor);
 
 			// Selected new tag, if deselection it will not enter this @todo clean things up here
 			if (bWasSelected)
 			{
 				UE_LOG(PDLog_RTSBase, Verbose, TEXT("UPDBuildWidgetBase::UpdateSelectedBuildable -- Selecting buildable(%s)"), *AsBuildableActionEntry->ActionTag.GetTagName().ToString())
 				FinalTagSelection = RequestToSelectTag;
-				SelectedAction = ERTSBuildableActionMenuModules::FireBuildableAction;
-				Brush.TintColor = FSlateColor(SelectedWidgetFlair->SelectedBuildableTint);
+				SelectedActionMode = ERTSBuildableActionMenuModules::FireBuildableAction;
+				Brush.TintColor = FSlateColor(bWidgetFlairValid ? SelectedWidgetFlair->SelectedBuildableTint : Brush.TintColor);
 				AsBuildableActionEntry->bIsSelected = true;
 			}
 			else
@@ -1090,7 +1263,15 @@ void UPDBuildingActionsWidgetBase::UpdateSelectedAction(const FGameplayTag& Requ
 	APawn* CachedOwner = GetOwningPlayer()->GetPawnOrSpectator();
 	if (ensure(CachedOwner != nullptr && CachedOwner->GetClass()->ImplementsInterface(UPDRTSBuilderInterface::StaticClass())))
 	{
-		IPDRTSBuilderInterface::Execute_SelectActionMenuEntry(CachedOwner, SelectedAction, FinalTagSelection);
+		const TArray<uint8> Payload
+		{
+			MASK_BYTE(CountSelector->SelectedCount, 0),
+			MASK_BYTE(CountSelector->SelectedCount, 1), 
+			MASK_BYTE(CountSelector->SelectedCount, 2),
+			MASK_BYTE(CountSelector->SelectedCount, 3)
+		};
+		
+		IPDRTSBuilderInterface::Execute_SelectActionMenuEntry(CachedOwner, SelectedActionMode, FinalTagSelection, Payload);
 	}	
 }
 
@@ -1131,7 +1312,7 @@ void UPDBuildingActionsWidgetBase::EndCloseBuildableActionMenu()
 	APawn* CachedOwner = GetOwningPlayer()->GetPawnOrSpectator();
 	if (CachedOwner != nullptr && CachedOwner->GetClass()->ImplementsInterface(UPDRTSBuilderInterface::StaticClass()))
 	{
-		IPDRTSBuilderInterface::Execute_SelectActionMenuEntry(CachedOwner, ERTSBuildableActionMenuModules::DoNothing, FGameplayTag());
+		IPDRTSBuilderInterface::Execute_SelectActionMenuEntry(CachedOwner, ERTSBuildableActionMenuModules::DoNothing, FGameplayTag(), TArray<uint8>{});
 	}
 	
 	bIsMenuVisible = false;
@@ -1163,7 +1344,7 @@ void UPDBuildingActionsWidgetBase::EndCloseActionContext()
 	APawn* CachedOwner = GetOwningPlayer()->GetPawnOrSpectator();
 	if (CachedOwner != nullptr && CachedOwner->GetClass()->ImplementsInterface(UPDRTSBuilderInterface::StaticClass()))
 	{
-		IPDRTSBuilderInterface::Execute_SelectActionMenuEntry(CachedOwner, ERTSBuildableActionMenuModules::DeselectBuildableActionContext, FGameplayTag());
+		IPDRTSBuilderInterface::Execute_SelectActionMenuEntry(CachedOwner, ERTSBuildableActionMenuModules::DeselectBuildableActionContext, FGameplayTag(), TArray<uint8>{});
 		// IPDRTSBuilderInterface::Execute_NewAction(CachedOwner, ERTSBuildMenuModules::DeselectBuildable, FGameplayTag());
 	}		
 }
@@ -1171,8 +1352,6 @@ void UPDBuildingActionsWidgetBase::EndCloseActionContext()
 void UPDBuildingActionsWidgetBase::SetNewWorldActor(AActor* NewWorldActor, const FPDBuildable& BuildableToSourceActionsFrom)
 {
 	CurrentWorldActor = NewWorldActor;
-	// @todo remove or add actions contexts here
-	
 	if (CurrentWorldActor == nullptr || BuildableToSourceActionsFrom.BuildableTag.IsValid() == false)
 	{
 		BeginCloseBuildableActionMenu();

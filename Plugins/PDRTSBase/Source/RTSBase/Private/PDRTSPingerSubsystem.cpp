@@ -60,9 +60,6 @@ FPDEntityPingDatum::~FPDEntityPingDatum()
 	WorldActor = nullptr;
 }
 
-#define MASK_BYTE(Value, ByteIdx) (uint8)(((Value) >> (ByteIdx*8)) & 0xffff)
-#define RESTORE_BYTE(Bytes, ByteIdx) ((((uint32)Bytes[ByteIdx]) << (ByteIdx*8)))
-
 TArray<uint8> FPDEntityPingDatum::ToBytes() const
 {
 	const uint32 Bytes = GetTypeHash(*this);
