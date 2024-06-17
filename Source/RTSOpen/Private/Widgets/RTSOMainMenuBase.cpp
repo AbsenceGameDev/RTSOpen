@@ -54,9 +54,9 @@ void URTSOMainMenuBase::BindButtonDelegates(AActor* ActorToBindAt)
 
 void URTSOMainMenuBase::SetupInnerMenuDelegates(const URTSOMenuWidget* OuterMenu)
 {
-	OuterMenu->SettingsButton->OwningStack =
-		OuterMenu->SaveButton->OwningStack =
-		OuterMenu->LoadButton->OwningStack = this;
+	OuterMenu->SettingsButton->OwningWidget =
+		OuterMenu->SaveButton->OwningWidget =
+		OuterMenu->LoadButton->OwningWidget = this;
 	
 	if (OuterMenu->SettingsButton->PotentialTargetWidgetClass != nullptr)
 	{
@@ -121,11 +121,6 @@ void URTSOMainMenuBase::SaveOrLoadSlot(TEnumAsByte<ERTSOSaveType> Type, int32 Sl
 	ARTSOBaseGM* GM = GetWorld() != nullptr ? GetWorld()->GetAuthGameMode<ARTSOBaseGM>() : nullptr;
 	if (GM == nullptr) { return; }
 	
-	// @todo Finish actual implementation here (URTSOMainMenuBase::SaveOrLoadSlot)
-	// @todo 1. Check if user is sure they want to save or load
-	// @todo 2. Call into the GM and set save/load
-
-	
 	URTSOSaveGameDialog* Dialog = CreateWidget<URTSOSaveGameDialog>(this, ConfirmDialogClass != nullptr ? ConfirmDialogClass.Get() : URTSOSaveGameDialog::StaticClass()); 
 	Dialog->Type = Type;
 	Dialog->SlotIdx = SlotIdx;
@@ -135,11 +130,11 @@ void URTSOMainMenuBase::SaveOrLoadSlot(TEnumAsByte<ERTSOSaveType> Type, int32 Sl
 	{
 	case SAVE:
 		Dialog->DialogMessage = FText::FromString("Are you sure you want to save slot (" + FString::Printf(TEXT("%i )"), SlotIdx));
-		Dialog->SuccessCallback.BindUObject(GM, &ARTSOBaseGM::ProcessChangesAndSaveGame);
+		Dialog->SaveSuccessCallback.BindUObject(GM, &ARTSOBaseGM::ProcessChangesAndSaveGame);
 		break;
 	case LOAD:
 		Dialog->DialogMessage = FText::FromString("Are you sure you want to load slot (" + FString::Printf(TEXT("%i )"), SlotIdx));
-		Dialog->SuccessCallback.BindUObject(GM, &ARTSOBaseGM::LoadGame);
+		Dialog->SaveSuccessCallback.BindUObject(GM, &ARTSOBaseGM::LoadGame);
 		break;
 	}
 	Dialog->AddToViewport(10);

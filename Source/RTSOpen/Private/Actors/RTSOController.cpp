@@ -444,20 +444,23 @@ void ARTSOController::Internal_ExitConversation()
 
 void ARTSOController::ActionToggleMainMenu_Implementation(const FInputActionValue& Value)
 {
-	UE_LOG(PDLog_RTSO, Warning, TEXT("ARTSOController::ActionToggleMainMenu"));
+	const FString BuildString = FString::Printf(TEXT("ARTSOController(%s)::ActionToggleMainMenu"), *GetName());
 	
 	if (MainMenuWidget == nullptr)
 	{
+		UE_LOG(PDLog_RTSO, Warning, TEXT("%s -- Spawning 'URTSOMainMenuBase'-derived widget"), *BuildString);
 		MainMenuWidget = CreateWidget<URTSOMainMenuBase>(this, MMWidgetClass);
 	}
 	if (MainMenuWidget->IsInViewport() == false)
 	{
+		UE_LOG(PDLog_RTSO, Warning, TEXT("%s -- Adding main menu to parent/viewport"), *BuildString);
 		MainMenuWidget->AddToViewport();
 	    MainMenuWidget->ActivateWidget();
 		MainMenuWidget->BindButtonDelegates(this);
 		return;
 	}
 	
+	UE_LOG(PDLog_RTSO, Warning, TEXT("%s -- Removing widget from parent/viewport"), *BuildString);
 	MainMenuWidget->RemoveFromParent();
 	MainMenuWidget->DeactivateWidget();
 }

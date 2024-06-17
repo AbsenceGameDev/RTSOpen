@@ -42,6 +42,15 @@ PDRTSBASE_API UE_DECLARE_GAMEPLAY_TAG_EXTERN(TAG_BUILD_ActionContext_WorkerHut1)
 PDRTSBASE_API UE_DECLARE_GAMEPLAY_TAG_EXTERN(TAG_BUILD_ActionContext_Barracks0);
 PDRTSBASE_API UE_DECLARE_GAMEPLAY_TAG_EXTERN(TAG_BUILD_ActionContext_Barracks1);
 
+UCLASS(Config = "Game", DefaultConfig)
+class UPDBuildMessages : public UDeveloperSettings
+{
+	GENERATED_BODY()
+public:
+	// todo replace with string table
+	UPROPERTY()
+	FText ConfirmDestroyBuilding = FText::FromString("Are you sure you want to destroy this building?");
+};
 
 
 
@@ -230,6 +239,20 @@ namespace PD::Build::Behaviour
 {
 	using Camera = EPDRTSBuildCameraBehaviour;
 }
+
+/** @brief Building destruction behaviour, for when players "bulldoze" their own buildings  */
+UENUM(Blueprintable)
+enum class EPDRTSDestroyBuildingBehaviour
+{
+	RequireConfirmationDialog, /** @brief Require a confirmation dialog before destroying the buildable */
+	ImmediateDestruction,   /** @brief Destroy immediately, for snappy feeling and in games where dialogs really mess up the flow of the game */
+};
+
+namespace PD::Build::Behaviour
+{
+	using Destruction = EPDRTSDestroyBuildingBehaviour;
+}
+
 
 //
 // Buildables
@@ -452,7 +475,11 @@ struct FPDRTSBuildSystemBehaviours
 
 	/** @rief Tells us how we want the camera behaviour to be when placing a ghost  */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
-	EPDRTSBuildCameraBehaviour CameraBehaviour = PD::Build::Behaviour::Camera::Place_NoCameraMovement;	
+	EPDRTSBuildCameraBehaviour CameraBehaviour = PD::Build::Behaviour::Camera::Place_NoCameraMovement;
+
+	/** @rief Tells us how we want the camera behaviour to be when placing a ghost  */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	EPDRTSDestroyBuildingBehaviour DestructionBehaviour = PD::Build::Behaviour::Destruction::RequireConfirmationDialog;		
 };
 
 

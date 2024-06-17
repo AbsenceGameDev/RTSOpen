@@ -3,6 +3,7 @@
 #pragma once
 
 #include "CoreMinimal.h"
+#include "CommonActivatableWidget.h"
 #include "UObject/Interface.h"
 #include "GameplayTagContainer.h"
 #include "Blueprint/IUserObjectListEntry.h"
@@ -16,6 +17,102 @@ class UTextBlock;
 struct FPDBuildContext;
 
 DECLARE_LOG_CATEGORY_CLASS(PDLog_RTSBaseUI, Log, All);
+
+//
+// Generic dialogs, move to UI 
+/** @brief Save/load game delegate, used with the pop-up dialogs defined further down this file */
+DECLARE_DELEGATE_OneParam(FPDDialogDelegate, const TArray<uint8> &)
+
+/** @brief Stylable clickable button */
+UCLASS(Blueprintable)
+class PDRTSBASE_API UPDGenericButton : public UUserWidget
+{
+	GENERATED_BODY()
+
+public:
+	/** @brief Base/Root Overlay */
+	UPROPERTY(BlueprintReadWrite, Meta=(BindWidget))
+	class UOverlay* Overlay = nullptr;
+
+	/** @brief Image (or material instance) for the buttons background*/
+	UPROPERTY(BlueprintReadWrite, Meta=(BindWidget))
+	class UImage* Image_ButtonBackground = nullptr;
+
+	/** @brief Widget border */
+	UPROPERTY(BlueprintReadWrite, Meta=(BindWidget))
+	class UBorder* Border = nullptr;
+
+	/** @brief Button text block widget */
+	UPROPERTY(BlueprintReadWrite, Meta=(BindWidget, ExposeOnSpawn))
+	class UTextBlock* TextBlock = nullptr;	
+	
+	/** @brief Hitbox, what our mouse events actually interacts with */
+	UPROPERTY(BlueprintReadWrite, Meta=(BindWidget))
+	class UButton* Hitbox = nullptr;
+
+	/** @brief Target of the button press, add this class to the stack */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly)
+	TSubclassOf<UCommonActivatableWidget> PotentialTargetWidgetClass = nullptr;
+	
+	/** @brief Unused for now, reserve for later use */
+	UPROPERTY()
+	class UUserWidget* OwningWidget = nullptr;	
+};
+
+/** @brief Stylable Generic dialog */
+UCLASS(Blueprintable)
+class PDRTSBASE_API UPDGenericDialog : public UUserWidget
+{
+	GENERATED_BODY()
+
+public:
+
+	/** @brief Calls SuccessCallback.Execute or FailCallback.Execute with the passthrough parameters*/
+	UFUNCTION()
+	virtual void DialogReplyContinue(const bool bSuccess) const;
+
+	/** @brief Assign the yes/no button events to Reply_Yes & Reply_No */
+	UFUNCTION()
+	virtual void SetupDelegates();	
+
+	/** @brief Calls 'DialogReplyContinue' then calls 'RemoveFromParent' to remove self*/
+	UFUNCTION()
+	virtual void Reply_Yes();	
+
+	/** @brief Only Calls 'RemoveFromParent' to remove self*/
+	UFUNCTION()
+	virtual void Reply_No();	
+
+	/** @brief Tet block widget to contain the actual widget message*/
+	UPROPERTY(BlueprintReadWrite, Meta=(BindWidget))
+	class UTextBlock* DialogContent = nullptr;	
+	
+	/** @brief Button to accept/reply yes*/
+	UPROPERTY(BlueprintReadWrite, Meta=(BindWidget))
+	class UPDGenericButton* YesButton = nullptr;
+
+	/** @brief Button to refuse/reply no*/
+	UPROPERTY(BlueprintReadWrite, Meta=(BindWidget))
+	class UPDGenericButton* NoButton = nullptr;	
+	
+	/** @brief Message that the dialog should display */
+	UPROPERTY(EditAnywhere)
+	FText DialogMessage{};
+
+	/** @brief Pass-through for the payload, handle in game module */
+	UPROPERTY()
+	TArray<uint8> Payload{};
+
+	/** @brief Callback that we want to fire on success (replying yes to the dialog)*/
+	FPDDialogDelegate SuccessCallback{};
+
+	/** @brief Callback that we want to fire on success (replying yes to the dialog)*/
+	FPDDialogDelegate FailCallback{};	
+};
+
+
+//
+// Build widget wrappers
 
 /** @brief Tile view object type for loading buildable data */
 UCLASS(Blueprintable)
@@ -664,6 +761,8 @@ public:
 	UFUNCTION(BlueprintCallable)
 	void SetNewWorldActor(AActor* NewWorldActor, const FPDBuildable& BuildableToSourceActionsFrom);
 
+	// todo need a widget with number selectors, and some way to pipe in a limit/range for this in a game module, so we never spawn 50 units when we can't afford it for example 
+	
 	/** @brief Tileview which will display our 'UPDBuildableEntry's */
 	UPROPERTY(BlueprintReadWrite, Meta = (BindWidget))
 	class UTileView* Actions = nullptr;
@@ -704,7 +803,11 @@ public:
 
 	/** @brief World actor this which we draw the context from  */
 	UPROPERTY(VisibleInstanceOnly, BlueprintReadWrite, Meta = (RowType = "/Script/PDRTSBase.PDSharedBuildWidgetFlair"))
-	AActor* CurrentWorldActor = nullptr;	
+	AActor* CurrentWorldActor = nullptr;
+	
+	/** @brief The widget class for any dialogs we might need */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly)
+	TSubclassOf<UPDGenericDialog> ConfirmDialogClass = nullptr;		
 private:
 	/** @brief Currently selected build context  */
 	UPROPERTY(VisibleInstanceOnly, BlueprintReadOnly, Meta = (AllowPrivateAccess="true"))

@@ -1099,6 +1099,14 @@ void AGodHandPawn::SelectBuildMenuEntry_Implementation(ERTSBuildMenuModules Acti
 	}
 }
 
+void AGodHandPawn::PerformAction_Destroy(const TArray<uint8>& Payload)
+{
+	const ARTSOController* PC = GetController<ARTSOController>();
+	if (PC == nullptr) { return; }
+				
+	PC->GetBuildableActionsWidget()->CurrentWorldActor->Destroy();	
+}
+
 void AGodHandPawn::SelectActionMenuEntry_Implementation(ERTSBuildableActionMenuModules ActionMode, FGameplayTag ActionTag)
 {
 	IPDRTSBuilderInterface::SelectActionMenuEntry_Implementation(ActionMode, ActionTag);
@@ -1129,14 +1137,30 @@ void AGodHandPawn::SelectActionMenuEntry_Implementation(ERTSBuildableActionMenuM
 
 			if (ActionTag == TAG_BUILD_Actions_DestroyBuilding)
 			{
-				//
-				// todo make configurable to have and 'accept dialog' here, so if wanted it is not easy to accidentally destroy a building?
-				//
-				
 				const ARTSOController* PC = GetController<ARTSOController>();
 				if (PC == nullptr) { break; }
+				
+				switch (GetDefault<UPDBuilderSubsystemSettings>()->DefaultBuildSystemBehaviours.DestructionBehaviour)
+				{
+				case EPDRTSDestroyBuildingBehaviour::RequireConfirmationDialog:
+					{
+						const TSubclassOf<UPDGenericDialog>& ConfirmDialog = PC->GetBuildableActionsWidget()->ConfirmDialogClass;
+						UPDGenericDialog* Dialog = CreateWidget<UPDGenericDialog>(this, ConfirmDialog != nullptr ? ConfirmDialog.Get() : UPDGenericDialog::StaticClass());
 
-				PC->GetBuildableActionsWidget()->CurrentWorldActor->Destroy();
+						Dialog->DialogMessage = GetDefault<UPDBuildMessages>()->ConfirmDestroyBuilding;
+						Dialog->SuccessCallback.BindUObject(this, &AGodHandPawn::PerformAction_Destroy);
+						Dialog->AddToViewport(10);
+						Dialog->SetupDelegates();
+					}
+					break;
+				case EPDRTSDestroyBuildingBehaviour::ImmediateDestruction:
+					{
+						PC->GetBuildableActionsWidget()->CurrentWorldActor->Destroy();							
+					}
+					break;
+				}
+				
+				
 				break;
 			}
 

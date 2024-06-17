@@ -11,33 +11,35 @@
 // #include "Components/TextBlock.h"
 // #include "Components/Image.h"
 
-void URTSOSaveGameDialog::DialogReplyContinue()
+void URTSOSaveGameDialog::DialogReplyContinue(const bool bSuccess) const
 {
 	// ARTSOBaseGM* GM = GetWorld() != nullptr ? GetWorld()->GetAuthGameMode<ARTSOBaseGM>() : nullptr;
 	// if (GM == nullptr) { return; }
 
-	SuccessCallback.Execute(FString::FromInt(SlotIdx), true);
+	if (bSuccess) { SaveSuccessCallback.Execute(FString::FromInt(SlotIdx), true); }
+	else { SaveFailCallback.Execute(FString::FromInt(SlotIdx), true); }
+	
 }
 
-void URTSOSaveGameDialog::SetupDelegates()
-{
-	YesButton->Hitbox->OnReleased.AddDynamic(this, &URTSOSaveGameDialog::Reply_Yes);
-	NoButton->Hitbox->OnReleased.AddDynamic(this, &URTSOSaveGameDialog::Reply_No);
+// void URTSOSaveGameDialog::SetupDelegates()
+// {
+// 	YesButton->Hitbox->OnReleased.AddDynamic(this, &URTSOSaveGameDialog::Reply_Yes);
+// 	NoButton->Hitbox->OnReleased.AddDynamic(this, &URTSOSaveGameDialog::Reply_No);
+//
+// 	if (DialogContent == nullptr) { return; }
+// 	DialogContent->SetText(DialogMessage);
+// }
 
-	if (DialogContent == nullptr) { return; }
-	DialogContent->SetText(DialogMessage);
-}
-
-void URTSOSaveGameDialog::Reply_Yes()
-{
-	DialogReplyContinue();
-	RemoveFromParent();
-}
-
-void URTSOSaveGameDialog::Reply_No()
-{
-	RemoveFromParent();
-}
+// void URTSOSaveGameDialog::Reply_Yes()
+// {
+// 	DialogReplyContinue();
+// 	RemoveFromParent();
+// }
+//
+// void URTSOSaveGameDialog::Reply_No()
+// {
+// 	RemoveFromParent();
+// }
 
 void URTSOMenuWidget_SaveGame::NativePreConstruct()
 {

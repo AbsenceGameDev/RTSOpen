@@ -77,6 +77,10 @@ public:
 	/* PDRTS Builder Interface - Start */
 	/** @brief Refreshes our pointer to our selected build context or selected buildable data based on the enum, and the tag finds the actual find the entry therein */
 	virtual void SelectBuildMenuEntry_Implementation(ERTSBuildMenuModules ActionMode, FGameplayTag ActionTag) override;
+
+	UFUNCTION()
+	void PerformAction_Destroy(const TArray<uint8>& Payload);
+	
 	virtual void SelectActionMenuEntry_Implementation(ERTSBuildableActionMenuModules ActionMode, FGameplayTag ActionTag) override;
 	virtual int32 GetBuilderID_Implementation() override;
 	/* PDRTS Builder Interface - End */

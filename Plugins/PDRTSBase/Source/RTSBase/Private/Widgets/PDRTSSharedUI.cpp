@@ -11,6 +11,43 @@
 #include "Components/TileView.h"
 #include "Interfaces/PDRTSBuilderInterface.h"
 
+//
+// Generic dialogs
+
+void UPDGenericDialog::DialogReplyContinue(const bool bSuccess) const
+{
+	// ARTSOBaseGM* GM = GetWorld() != nullptr ? GetWorld()->GetAuthGameMode<ARTSOBaseGM>() : nullptr;
+	// if (GM == nullptr) { return; }
+
+	if (bSuccess) { SuccessCallback.ExecuteIfBound(Payload); }
+	else { FailCallback.ExecuteIfBound(Payload); }
+}
+
+void UPDGenericDialog::SetupDelegates()
+{
+	check(YesButton != nullptr)
+	check(NoButton != nullptr)
+	check(DialogContent != nullptr)
+	
+	YesButton->Hitbox->OnReleased.AddDynamic(this, &UPDGenericDialog::Reply_Yes);
+	NoButton->Hitbox->OnReleased.AddDynamic(this, &UPDGenericDialog::Reply_No);
+	DialogContent->SetText(DialogMessage);
+}
+
+void UPDGenericDialog::Reply_Yes()
+{
+	DialogReplyContinue(true);
+	RemoveFromParent();
+}
+
+void UPDGenericDialog::Reply_No()
+{
+	DialogReplyContinue(false);
+	RemoveFromParent();
+}
+
+//
+// build system widgets
 void UPDBuildableEntry::NativeOnListItemObjectSet(UObject* ListItemObject)
 {
 	IUserObjectListEntry::NativeOnListItemObjectSet(ListItemObject);
@@ -668,9 +705,6 @@ void UPDBuildableActionEntry::OnPressed()
 
 	// tell DirectParentReference about the clicked button 
 	DirectParentReference->SelectAction(ActionTag);
-
-
-	
 }
 
 void UPDBuildableActionEntry::OnHovered()

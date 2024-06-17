@@ -5,6 +5,7 @@
 #include "CoreMinimal.h"
 #include "CommonActivatableWidget.h"
 #include "CommonButtonBase.h"
+#include "PDRTSSharedUI.h"
 #include "RTSOActiveMainMenu.generated.h"
 
 class UCommonTextBlock;
@@ -20,80 +21,84 @@ enum ERTSOSaveType
 	LOAD
 };
 
-/** @brief Game Menu - Base menu button*/
+/** @brief Game Menu - Base menu button
+ * @note Moved all necessary logic to UPDGenericButton, keeping this subclassed o we don't break any uasset widgets that derive from this
+ */
 UCLASS(Blueprintable)
-class URTSOMenuButton : public UUserWidget
+class URTSOMenuButton : public UPDGenericButton
 {
 	GENERATED_BODY()
 
 public:
-	/** @brief Base/Root Overlay */
-	UPROPERTY(BlueprintReadWrite, Meta=(BindWidget))
-	class UOverlay* Overlay = nullptr;
+	// /** @brief Base/Root Overlay */
+	// UPROPERTY(BlueprintReadWrite, Meta=(BindWidget))
+	// class UOverlay* Overlay = nullptr;
+	//
+	// /** @brief Image (or material instance) for the buttons background*/
+	// UPROPERTY(BlueprintReadWrite, Meta=(BindWidget))
+	// class UImage* Image_ButtonBackground = nullptr;
+	//
+	// /** @brief Widget border */
+	// UPROPERTY(BlueprintReadWrite, Meta=(BindWidget))
+	// class UBorder* Border = nullptr;
+	//
+	// /** @brief Button text block widget */
+	// UPROPERTY(BlueprintReadWrite, Meta=(BindWidget, ExposeOnSpawn))
+	// class UTextBlock* TextBlock = nullptr;	
+	//
+	// /** @brief Hitbox, what our mouse events actually interacts with */
+	// UPROPERTY(BlueprintReadWrite, Meta=(BindWidget))
+	// class UButton* Hitbox = nullptr;
 
-	/** @brief Image (or material instance) for the buttons background*/
-	UPROPERTY(BlueprintReadWrite, Meta=(BindWidget))
-	class UImage* Image_ButtonBackground = nullptr;
-
-	/** @brief Widget border */
-	UPROPERTY(BlueprintReadWrite, Meta=(BindWidget))
-	class UBorder* Border = nullptr;
-
-	/** @brief Button text block widget */
-	UPROPERTY(BlueprintReadWrite, Meta=(BindWidget, ExposeOnSpawn))
-	class UTextBlock* TextBlock = nullptr;	
-	
-	/** @brief Hitbox, what our mouse events actually interacts with */
-	UPROPERTY(BlueprintReadWrite, Meta=(BindWidget))
-	class UButton* Hitbox = nullptr;
-
-	/** @brief Target of the button press, add this class to the stack */
-	UPROPERTY(EditAnywhere, BlueprintReadOnly)
-	TSubclassOf<UCommonActivatableWidget> PotentialTargetWidgetClass = nullptr;
-	/** @brief Unused for now, reserve for later use */
-	UPROPERTY()
-	class URTSOMainMenuBase* OwningStack = nullptr;	
+	// /** @brief Target of the button press, add this class to the stack */
+	// UPROPERTY(EditAnywhere, BlueprintReadOnly)
+	// TSubclassOf<UCommonActivatableWidget> PotentialTargetWidgetClass = nullptr;
+	// /** @brief Unused for now, reserve for later use */
+	// UPROPERTY()
+	// class URTSOMainMenuBase* OwningStack = nullptr;	
 };
 
-/** @brief Game Menu - Save dialog*/
+/** @brief Game Menu - Save dialog
+ * @note Moved most necessary logic to UPDGenericDialog,
+ * keeping this subclassed so can override the 'DialogReplyContinue' and so we also don't break any uasset widgets that derive from this
+ */
 UCLASS(Blueprintable)
-class URTSOSaveGameDialog : public UUserWidget
+class URTSOSaveGameDialog : public UPDGenericDialog
 {
 	GENERATED_BODY()
 
 public:
 
 	/** @brief Calls SuccessCallback.Execute with the passthrough parameters*/
-	UFUNCTION()
-	void DialogReplyContinue();
+	virtual void DialogReplyContinue(const bool bSuccess) const override; // declared as ufunction in parent class
 
-	/** @brief Assign the yes/no button events to Reply_Yes & Reply_No */
-	UFUNCTION()
-	void SetupDelegates();	
+	// /** @brief Assign the yes/no button events to Reply_Yes & Reply_No */
+	// UFUNCTION()
+	// virtual void SetupDelegates() override;	
 
-	/** @brief Calls 'DialogReplyContinue' then calls 'RemoveFromParent' to remove self*/
-	UFUNCTION()
-	void Reply_Yes();	
+	// /** @brief Calls 'DialogReplyContinue' then calls 'RemoveFromParent' to remove self*/
+	// UFUNCTION()
+	// virtual void Reply_Yes() override;	
+	//
+	// /** @brief Only Calls 'RemoveFromParent' to remove self*/
+	// UFUNCTION()
+	// virtual void Reply_No() override;	
 
-	/** @brief Only Calls 'RemoveFromParent' to remove self*/
-	UFUNCTION()
-	void Reply_No();	
-
-	/** @brief Tet block widget to contain the actual widget message*/
-	UPROPERTY(BlueprintReadWrite, Meta=(BindWidget))
-	class UTextBlock* DialogContent = nullptr;	
-	
-	/** @brief Button to accept/reply yes*/
-	UPROPERTY(BlueprintReadWrite, Meta=(BindWidget))
-	class URTSOMenuButton* YesButton = nullptr;
-
-	/** @brief Button to refuse/reply no*/
-	UPROPERTY(BlueprintReadWrite, Meta=(BindWidget))
-	class URTSOMenuButton* NoButton = nullptr;	
-	
-	/** @brief Message that the dialog should display */
-	UPROPERTY(EditAnywhere)
-	FText DialogMessage{};
+	// /** @brief Tet block widget to contain the actual widget message*/
+	// UPROPERTY(BlueprintReadWrite, Meta=(BindWidget))
+	// class UTextBlock* DialogContent = nullptr;	
+	//
+	// /** @brief Button to accept/reply yes*/
+	// UPROPERTY(BlueprintReadWrite, Meta=(BindWidget))
+	// class URTSOMenuButton* YesButton = nullptr;
+	//
+	// /** @brief Button to refuse/reply no*/
+	// UPROPERTY(BlueprintReadWrite, Meta=(BindWidget))
+	// class URTSOMenuButton* NoButton = nullptr;	
+	//
+	// /** @brief Message that the dialog should display */
+	// UPROPERTY(EditAnywhere)
+	// FText DialogMessage{};
 
 	/** @brief Pass-through for the ERTSOSaveType */
 	UPROPERTY()
@@ -104,7 +109,10 @@ public:
 	int32 SlotIdx = INDEX_NONE;
 
 	/** @brief Callback that we want to fire on success (replying yes to the dialog)*/
-	FRTSOSavegameDelegate SuccessCallback{};
+	FRTSOSavegameDelegate SaveSuccessCallback{};
+
+	/** @brief Callback that we want to fire on success (replying yes to the dialog)*/
+	FRTSOSavegameDelegate SaveFailCallback{};	
 };
 
 /** @brief Game Menu - Save widget*/
