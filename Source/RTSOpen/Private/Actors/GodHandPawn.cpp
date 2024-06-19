@@ -654,41 +654,15 @@ void AGodHandPawn::ProcessPlaceBuildable(ARTSOController* PC)
 	}
 }
 
-//
-// @thoughts: How to handle selected units?
-void AGodHandPawn::ActionWorkerUnit_Completed_Implementation(const FInputActionValue& Value)
+bool AGodHandPawn::AttemptSelectSingleUnit()
 {
 	// const bool ImmutableMoveInput = Value.Get<bool>();
 	ARTSOController* PC = GetController<ARTSOController>();
-	if (PC == nullptr || PC->IsValidLowLevelFast() == false) { return; }
-
-	// Buildable data takes priority now, but: @todo create and action/event PriorityQueue and handle each 'event' by the order of that queue!
-	if (bJustPlacedBuildable)
+	if (PC == nullptr || PC->IsValidLowLevelFast() == false || EntityManager->IsEntityValid(InstanceState.SelectedWorkerUnitHandle) == false)
 	{
-		bJustPlacedBuildable = true;
-		return;
+		return false;
 	}
 
-	if (PC->IsDrawingMarquee())
-	{
-		PC->MarqueeSelection(EMarqueeSelectionEvent::RELEASEMARQUEE);
-		return;
-	}
-	PC->DeactivateMappingContext(TAG_CTRL_Ctxt_DragMove);
-	
-	const FGameplayTagContainer AssociatedTags = InstanceState.WorkerUnitActionTarget != nullptr && InstanceState.WorkerUnitActionTarget->Implements<UPDInteractInterface>()
-		? IPDInteractInterface::Execute_GetGenericTagContainer(InstanceState.WorkerUnitActionTarget)
-		: FGameplayTagContainer{}; 
-
-	if (NC_WorkerPath != nullptr) { NC_WorkerPath->Deactivate(); }
-	if (AssociatedTags.IsEmpty() || EntityManager->IsEntityValid(InstanceState.SelectedWorkerUnitHandle) == false)
-	{
-		UE_LOG(PDLog_RTSO, Warning, TEXT("ActionWorkerUnit_Completed -- Unexpected error -- Clearing selected worker unit "))
-
-		ResetPathParameters();
-		return;
-	}
-	
 	const FVector CollisionLocation = Collision->GetComponentLocation();
 	const FTransform& TargetInstanceTransform = GetEntityTransform(InstanceState.SelectedWorkerUnitHandle);
 	const FVector EntityLocation = TargetInstanceTransform.GetLocation(); 
@@ -703,15 +677,33 @@ void AGodHandPawn::ActionWorkerUnit_Completed_Implementation(const FInputActionV
 		PC->GetMutableMarqueeSelectionMap().FindOrAdd(PC->GeneratedGroupID(), PassThroughHandle);
 		PC->OnSelectionChange(false);
 		PC->OnMarqueeSelectionUpdated( INDEX_NONE, {InstanceState.SelectedWorkerUnitHandle.Index});
+		return true;
+	}
+	return false;
+}
+
+void AGodHandPawn::DispatchUnitActionWithTargets()
+{
+	ARTSOController* PC = GetController<ARTSOController>();
+	if (PC == nullptr || PC->IsValidLowLevelFast() == false) { return; }
+	
+	const FGameplayTagContainer AssociatedTags = InstanceState.WorkerUnitActionTarget != nullptr && InstanceState.WorkerUnitActionTarget->Implements<UPDInteractInterface>()
+		? IPDInteractInterface::Execute_GetGenericTagContainer(InstanceState.WorkerUnitActionTarget)
+		: FGameplayTagContainer{}; 
+
+	if (AssociatedTags.IsEmpty() || EntityManager->IsEntityValid(InstanceState.SelectedWorkerUnitHandle) == false)
+	{
+		UE_LOG(PDLog_RTSO, Warning, TEXT("ActionWorkerUnit_Completed -- Unexpected error -- Clearing selected worker unit "))
+
+		ResetPathParameters();
 		return;
 	}
-	
-	FVector2D ScreenCoordinates;
-	bool bFoundInputType;
 
 	FMassInt16Vector FallbackTargetLocation{};
 	if (InstanceState.WorkerUnitActionTarget == nullptr)
 	{
+		FVector2D ScreenCoordinates;
+		bool bFoundInputType;
 		FHitResult HitResult = PC->ProjectMouseToGroundPlane(PC->DedicatedLandscapeTraceChannel, ScreenCoordinates, bFoundInputType);
 		FallbackTargetLocation = HitResult.bBlockingHit ? FMassInt16Vector{HitResult.Location} : FMassInt16Vector{};
 	}
@@ -722,7 +714,7 @@ void AGodHandPawn::ActionWorkerUnit_Completed_Implementation(const FInputActionV
 		FPDTargetCompound OptTarget = {InvalidHandle, FallbackTargetLocation, InstanceState.WorkerUnitActionTarget};
 		Cast<UPDRTSBaseUnit>(ISMs[0])->RequestAction(PC->GetActorID(), OptTarget, AssociatedTags.GetByIndex(0), InstanceState.SelectedWorkerUnitHandle);
 	}
-	
+
 	FPDMFragment_RTSEntityBase* PermadevEntityBase = EntityManager->GetFragmentDataPtr<FPDMFragment_RTSEntityBase>(InstanceState.SelectedWorkerUnitHandle);
 	if (PermadevEntityBase != nullptr)
 	{
@@ -730,17 +722,48 @@ void AGodHandPawn::ActionWorkerUnit_Completed_Implementation(const FInputActionV
 		// but if it is empty it will default to using a shared path instead
 		PermadevEntityBase->QueuedUnitPath.Emplace(FVector::ZeroVector);
 		PermadevEntityBase->OwnerID = PC->GetActorID();
+	}	
+}
+
+//
+// @thoughts: How to handle selected units?
+void AGodHandPawn::ActionWorkerUnit_Completed_Implementation(const FInputActionValue& Value)
+{
+	// const bool ImmutableMoveInput = Value.Get<bool>();
+	ARTSOController* PC = GetController<ARTSOController>();
+	if (PC == nullptr || PC->IsValidLowLevelFast() == false || bJustPlacedBuildable)
+	{
+		// Buildable data takes priority now, but: @todo create and action/event PriorityQueue and handle each 'event' by the order of that queue!
+		bJustPlacedBuildable = false;
+		return;
 	}
+
+	if (PC->IsDrawingMarquee())
+	{
+		PC->MarqueeSelection(EMarqueeSelectionEvent::RELEASEMARQUEE);
+		return;
+	}
+	PC->DeactivateMappingContext(TAG_CTRL_Ctxt_DragMove);
+	
+	// If false we failed selecting a single unit/ There was nothing to select
+	if (AttemptSelectSingleUnit())
+	{
+		return;
+	}
+
+	// Dispatch the action
+	DispatchUnitActionWithTargets();
 	
 	if (NC_WorkerPath != nullptr) { NC_WorkerPath->Deactivate(); }
 	InstanceState.bUpdatePathOnTick = false;
 	InstanceState.SelectedWorkerUnitHandle = {0, 0};
 	UE_LOG(PDLog_RTSO, Warning, TEXT("ActionWorkerUnit_Completed -- Clearing selected worker unit "))
-	
 }
 
 void AGodHandPawn::ResetPathParameters()
 {
+	if (NC_WorkerPath != nullptr) { NC_WorkerPath->Deactivate(); }
+	
 	InstanceState.bUpdatePathOnTick = false;
 	InstanceState.WorkUnitTargetLocation = FVector::ZeroVector;
 	InstanceState.WorkerUnitActionTarget = nullptr;

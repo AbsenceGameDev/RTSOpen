@@ -159,6 +159,8 @@ public:
 	/** @brief Aborts marquee selection and either spawns a ghost or spawns a buildable, based on buildable placement behaviour
 	 * @todo @refactor might have a bug here, look into it when refactoring */
 	void ProcessPlaceBuildable(ARTSOController* PC);
+	bool AttemptSelectSingleUnit();
+	void DispatchUnitActionWithTargets();
 
 	/** @brief Resets data that is otherwise used for visually pathing a workers potential walk-path */
 	void ResetPathParameters();
