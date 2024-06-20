@@ -12,6 +12,11 @@ UE_DEFINE_GAMEPLAY_TAG(TAG_AI_Type_BuilderUnit_Intermeditate, "AI.Type.Builder.I
 UE_DEFINE_GAMEPLAY_TAG(TAG_AI_Type_BuilderUnit_Advanced, "AI.Type.Builder.Advanced");
 UE_DEFINE_GAMEPLAY_TAG(TAG_AI_Type_BuilderUnit_Expert, "AI.Type.Builder.Expert");
 
+UE_DEFINE_GAMEPLAY_TAG(TAG_AI_Type_SoldierUnit_Novice, "AI.Type.Soldier.Novice");
+UE_DEFINE_GAMEPLAY_TAG(TAG_AI_Type_SoldierUnit_Intermeditate, "AI.Type.Soldier.Intermeditate");
+UE_DEFINE_GAMEPLAY_TAG(TAG_AI_Type_SoldierUnit_Advanced, "AI.Type.Soldier.Advanced");
+UE_DEFINE_GAMEPLAY_TAG(TAG_AI_Type_SoldierUnit_Expert, "AI.Type.Soldier.Expert");
+
 /** Declaring the "BUILD.ContextMenu." gameplay tags */
 UE_DEFINE_GAMEPLAY_TAG(TAG_BUILD_ContextMenu_DefaultWorker, "BUILD.ContextMenu.DefaultWorker");
 

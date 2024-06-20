@@ -135,6 +135,10 @@ public:
 	/** @brief Work table soft objects */
 	UPROPERTY(Config, EditAnywhere, Category = "Worker AI Subsystem", Meta = (RequiredAssetDataTags="RowStructure=/Script/PDRTSBase.PDWorkUnitDatum"))
 	TArray<TSoftObjectPtr<UDataTable>> WorkTables;
+
+	UPROPERTY(Config, EditAnywhere, Category = "Worker AI Subsystem")
+	bool bVisualizeWorkerPaths = true;
+	
 };
 
 

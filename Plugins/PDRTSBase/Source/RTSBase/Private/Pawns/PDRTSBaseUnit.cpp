@@ -106,24 +106,24 @@ void UPDRTSBaseUnit::BeginPlay()
 void UPDRTSBaseUnit::AssignTask(FMassEntityHandle EntityHandle, const FGameplayTag& JobTag, const FPDTargetCompound& OptTarget)
 {
 	UPDRTSBaseSubsystem* RTSSubsystem = UPDRTSBaseSubsystem::Get();
-	if (RTSSubsystem == nullptr) { return; }
-
-	const FPDWorkUnitDatum* WorkUnitDatum = RTSSubsystem->GetWorkEntry(JobTag);
-	if (WorkUnitDatum == nullptr)
+	if (ensure(RTSSubsystem != nullptr) == false)
 	{
-		UE_LOG(PDLog_RTSBase, Verbose, TEXT("UPDRTSBaseUnit::AssignTask(Ent:%i) - NO WORKUNITDATUM"), EntityHandle.SerialNumber);
-		return;
+		return; 
 	}
 
-	if (EntityManager->IsEntityValid(EntityHandle) == false) { return; }
+	const FPDWorkUnitDatum* WorkUnitDatum = RTSSubsystem->GetWorkEntry(JobTag);
+	if (WorkUnitDatum == nullptr || EntityManager->IsEntityValid(EntityHandle) == false)
+	{
+		UE_LOG(PDLog_RTSBase, Verbose, TEXT("UPDRTSBaseUnit::AssignTask(Ent:%i) - NO WORKUNITDATUM related to tag(%s) or invalid entity"), EntityHandle.SerialNumber, *JobTag.GetTagName().ToString());
+		return;
+	}
 	
 	ActiveJobMap.FindOrAdd(EntityHandle.Index) = JobTag;
 	ActiveTargetMap.FindOrAdd(EntityHandle.Index) = OptTarget;
-	
+
 	// For our purposes action fragment should never be nullptr in case the handle itself is valid
 	check(EntityManager->GetFragmentDataPtr<FPDMFragment_Action>(EntityHandle) != nullptr);
 	FPDMFragment_Action* EntityAction = EntityManager->GetFragmentDataPtr<FPDMFragment_Action>(EntityHandle);
-	
 	
 	EntityAction->ActionTag = JobTag;
 	EntityAction->OptTargets = OptTarget;

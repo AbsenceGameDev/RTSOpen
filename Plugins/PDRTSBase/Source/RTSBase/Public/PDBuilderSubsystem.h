@@ -119,9 +119,8 @@ public:
 	TMap<FGameplayTag, TArray<FGameplayTag>> BuildableParentContexts_ByBuildableTag{};
 	/** @brief Mapped for fast access. Mapped upon subsystem loading the developer settings 'UPDRTSSubsystemSettings' */
 	TMap<UClass*, const FPDBuildable*> Buildable_WClass{};	
-	
 	/** @brief Mapped for fast access. Mapped upon subsystem loading the developer settings 'UPDRTSSubsystemSettings' */
-	TMap<FPDBuildableData*, FGameplayTag>       BuildableData_WTagReverse{};	
+	TMap<FPDBuildableData*, FGameplayTag> BuildableData_WTagReverse{};	
 
 	
 	/** @brief The actual octree our buildable actors will make use of*/

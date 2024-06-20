@@ -37,15 +37,19 @@ public:
 	
 	/** @brief Dispatch the octree generation on a latent action, via the worlds 'LatentActionManager' */
 	UFUNCTION()
-	virtual void DispatchOctreeGeneration();
+	void DispatchOctreeGeneration();
 	
 	/** @brief Bound to the given developer setting. Resolved the paths into actual WorkTables Array */
 	void OnDeveloperSettingsChanged(UObject* SettingsToChange, FPropertyChangedEvent& PropertyEvent);
 
 	/** @brief Processes the tables in 'WorkTables' and fills a number of maps for fast lookups downstream for entity jobs and such */
 	UFUNCTION()
-	virtual void ProcessTables();
+	void ProcessTables();
 
+	/** @brief Loads tables into 'WorkTables' and calls ProcessTables */
+	UFUNCTION()
+	void LoadAndProcessTables();
+	
 	/** @brief Requests to generate a navpath for the selection group to the given target*/
 	UFUNCTION()
 	virtual void RequestNavpathGenerationForSelectionGroup(

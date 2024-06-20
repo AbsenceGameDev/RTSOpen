@@ -156,6 +156,7 @@ EStateTreeRunStatus FPDMTask_MoveToTarget::EnterState(FStateTreeExecutionContext
 	const bool bIsEntityValid = EntitySubsystem.GetEntityManager().IsEntityValid(ActionTargetAsEntity);
 	if (InstanceData.OptTargets.IsValidCompoundByManager(EntitySubsystem.GetEntityManager()) == false)
 	{
+		UE_LOG(PDLog_RTSBase, Warning, TEXT("FPDMTask_MoveToTarget::EnterState -- OptTargets had no valid targets or targetlocations"))
 		return EStateTreeRunStatus::Failed;
 	}
 	

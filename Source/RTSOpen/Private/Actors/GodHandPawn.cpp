@@ -331,7 +331,14 @@ void AGodHandPawn::UpdateCursorLocation(float DeltaTime)
 
 void AGodHandPawn::RefreshPathingEffects()
 {
-	if (EntityManager->IsEntityValid(InstanceState.SelectedWorkerUnitHandle) == false || Collision == nullptr ) { return; }
+	const bool bVisualizeWorkerPaths = GetDefault<UPDRTSSubsystemSettings>()->bVisualizeWorkerPaths;
+
+	if (bVisualizeWorkerPaths == false
+		|| EntityManager->IsEntityValid(InstanceState.SelectedWorkerUnitHandle) == false
+		|| Collision == nullptr )
+	{
+		return;
+	}
 	
 	const FVector CollisionLocation = Collision->GetComponentLocation();
 	const FTransform& TargetInstanceTransform = GetEntityTransform(InstanceState.SelectedWorkerUnitHandle);
@@ -493,16 +500,19 @@ void AGodHandPawn::ActionWorkerUnit_Started_Implementation(const FInputActionVal
 	
 	if (InstanceState.SelectedWorkerUnitHandle.Index != 0)
 	{
-		if (NS_WorkerPath != nullptr && NC_WorkerPath == nullptr)
+		if (GetDefault<UPDRTSSubsystemSettings>()->bVisualizeWorkerPaths)
 		{
-			NC_WorkerPath = UNiagaraFunctionLibrary::SpawnSystemAttached(NS_WorkerPath, SceneRoot, NAME_None, FVector(0.f), FRotator(0.f), EAttachLocation::SnapToTarget, false);
-			InstanceState.bUpdatePathOnTick = true;
-		}
-		else if (NC_WorkerPath != nullptr)
-		{
-			NC_WorkerPath->ReinitializeSystem();
-			NC_WorkerPath->Activate();
-			InstanceState.bUpdatePathOnTick = true;
+			if (NS_WorkerPath != nullptr && NC_WorkerPath == nullptr)
+			{
+				NC_WorkerPath = UNiagaraFunctionLibrary::SpawnSystemAttached(NS_WorkerPath, SceneRoot, NAME_None, FVector(0.f), FRotator(0.f), EAttachLocation::SnapToTarget, false);
+				InstanceState.bUpdatePathOnTick = true;
+			}
+			else if (NC_WorkerPath != nullptr)
+			{
+				NC_WorkerPath->ReinitializeSystem();
+				NC_WorkerPath->Activate();
+				InstanceState.bUpdatePathOnTick = true;
+			}
 		}
 		return;
 	}
@@ -687,17 +697,24 @@ void AGodHandPawn::DispatchUnitActionWithTargets()
 	ARTSOController* PC = GetController<ARTSOController>();
 	if (PC == nullptr || PC->IsValidLowLevelFast() == false) { return; }
 	
+	
+	const bool bIsValidFallbackLocation = true; // @todo actually do a location query here 
+	
 	const FGameplayTagContainer AssociatedTags = InstanceState.WorkerUnitActionTarget != nullptr && InstanceState.WorkerUnitActionTarget->Implements<UPDInteractInterface>()
 		? IPDInteractInterface::Execute_GetGenericTagContainer(InstanceState.WorkerUnitActionTarget)
-		: FGameplayTagContainer{}; 
+		: bIsValidFallbackLocation ? FGameplayTagContainer{TAG_AI_Job_WalkToTarget} : FGameplayTagContainer{}; 
 
+	// remove the AssociatedTags.IsEmpty() and instead 
 	if (AssociatedTags.IsEmpty() || EntityManager->IsEntityValid(InstanceState.SelectedWorkerUnitHandle) == false)
 	{
-		UE_LOG(PDLog_RTSO, Warning, TEXT("ActionWorkerUnit_Completed -- Unexpected error -- Clearing selected worker unit "))
+		UE_LOG(PDLog_RTSO, Warning, TEXT("DispatchUnitActionWithTargets -- Unexpected error -- Clearing selected worker unit "))
 
 		ResetPathParameters();
 		return;
 	}
+
+	// //
+	// // @todo fix path not updating
 
 	FMassInt16Vector FallbackTargetLocation{};
 	if (InstanceState.WorkerUnitActionTarget == nullptr)
@@ -705,12 +722,15 @@ void AGodHandPawn::DispatchUnitActionWithTargets()
 		FVector2D ScreenCoordinates;
 		bool bFoundInputType;
 		FHitResult HitResult = PC->ProjectMouseToGroundPlane(PC->DedicatedLandscapeTraceChannel, ScreenCoordinates, bFoundInputType);
-		FallbackTargetLocation = HitResult.bBlockingHit ? FMassInt16Vector{HitResult.Location} : FMassInt16Vector{};
+		FallbackTargetLocation = HitResult.bBlockingHit ? FMassInt16Vector{HitResult.Location} : FMassInt16Vector{Collision->GetComponentLocation()};
 	}
 	
 	const TArray<TObjectPtr<UInstancedStaticMeshComponent>>& ISMs = UPDRTSBaseSubsystem::GetMassISMs(GetWorld());
 	if (ISMs.IsEmpty() == false && Cast<UPDRTSBaseUnit>(ISMs[0]))
 	{
+		const FVector& TestVector = FallbackTargetLocation.Get();
+		UE_LOG(PDLog_RTSO, Warning, TEXT("DispatchUnitActionWithTargets -- Sending action request to entity : FallbackTargetLocation(x: %f ,y: %f ,z: %f) "), TestVector.X, TestVector.Y, TestVector.Z);
+		
 		FPDTargetCompound OptTarget = {InvalidHandle, FallbackTargetLocation, InstanceState.WorkerUnitActionTarget};
 		Cast<UPDRTSBaseUnit>(ISMs[0])->RequestAction(PC->GetActorID(), OptTarget, AssociatedTags.GetByIndex(0), InstanceState.SelectedWorkerUnitHandle);
 	}
@@ -746,15 +766,14 @@ void AGodHandPawn::ActionWorkerUnit_Completed_Implementation(const FInputActionV
 	PC->DeactivateMappingContext(TAG_CTRL_Ctxt_DragMove);
 	
 	// If false we failed selecting a single unit/ There was nothing to select
-	if (AttemptSelectSingleUnit())
-	{
-		return;
-	}
+	if (AttemptSelectSingleUnit()) { return; }
 
 	// Dispatch the action
 	DispatchUnitActionWithTargets();
+
+	const bool bVisualizeWorkerPaths = GetDefault<UPDRTSSubsystemSettings>()->bVisualizeWorkerPaths;
+	if (bVisualizeWorkerPaths && NC_WorkerPath != nullptr) { NC_WorkerPath->DestroyInstance(); }
 	
-	if (NC_WorkerPath != nullptr) { NC_WorkerPath->Deactivate(); }
 	InstanceState.bUpdatePathOnTick = false;
 	InstanceState.SelectedWorkerUnitHandle = {0, 0};
 	UE_LOG(PDLog_RTSO, Warning, TEXT("ActionWorkerUnit_Completed -- Clearing selected worker unit "))
@@ -762,7 +781,8 @@ void AGodHandPawn::ActionWorkerUnit_Completed_Implementation(const FInputActionV
 
 void AGodHandPawn::ResetPathParameters()
 {
-	if (NC_WorkerPath != nullptr) { NC_WorkerPath->Deactivate(); }
+	const bool bVisualizeWorkerPaths = GetDefault<UPDRTSSubsystemSettings>()->bVisualizeWorkerPaths;
+	if (bVisualizeWorkerPaths && NC_WorkerPath != nullptr) { NC_WorkerPath->DestroyInstance(); }
 	
 	InstanceState.bUpdatePathOnTick = false;
 	InstanceState.WorkUnitTargetLocation = FVector::ZeroVector;

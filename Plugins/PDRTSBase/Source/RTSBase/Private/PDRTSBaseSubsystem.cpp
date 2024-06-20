@@ -21,9 +21,17 @@ class AMassVisualizer;
 void UPDRTSBaseSubsystem::Initialize(FSubsystemCollectionBase& Collection)
 {
 	Super::Initialize(Collection);
+	LoadAndProcessTables();
+}
+
+void UPDRTSBaseSubsystem::LoadAndProcessTables()
+{
 	for (const TSoftObjectPtr<UDataTable>& TablePath : GetDefault<UPDRTSSubsystemSettings>()->WorkTables)
 	{
-		WorkTables.Emplace(TablePath.LoadSynchronous());
+		UDataTable* ResolvedTable = TablePath.LoadSynchronous();
+		WorkTables.Emplace(ResolvedTable);
+
+		ResolvedTable->OnDataTableChanged().AddLambda([&]() { ProcessTables(); });
 	}
 
 	GetMutableDefault<UPDRTSSubsystemSettings>()->OnSettingChanged().AddLambda(
@@ -31,6 +39,8 @@ void UPDRTSBaseSubsystem::Initialize(FSubsystemCollectionBase& Collection)
 		{
 			OnDeveloperSettingsChanged(SettingsToChange,PropertyEvent);
 		});
+
+	ProcessTables();
 }
 
 void UPDRTSBaseSubsystem::DispatchOctreeGeneration()
@@ -223,8 +233,13 @@ void UPDRTSBaseSubsystem::OnDeveloperSettingsChanged(UObject* SettingsToChange, 
 	WorkTables.Empty(); // clear array and refill with edited properties.
 	for(const TSoftObjectPtr<UDataTable>& TablePath : Cast<UPDRTSSubsystemSettings>(SettingsToChange)->WorkTables)
 	{
-		WorkTables.Emplace(TablePath.LoadSynchronous());
+		UDataTable* ResolvedTable = TablePath.LoadSynchronous();
+		WorkTables.Emplace(ResolvedTable);
+		
+		ResolvedTable->OnDataTableChanged().AddLambda([&]() { ProcessTables(); });
 	}
+
+	ProcessTables();
 }
 
 

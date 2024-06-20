@@ -1371,10 +1371,10 @@ void UPDBuildingActionsWidgetBase::DestroyCurrentWorldActor() const
 	{
 		return;
 	}
-	CurrentWorldActor->Destroy();
 	
+	CurrentWorldActor->Destroy();
 	UPDBuildingActionsWidgetBase* MutableSelf = const_cast<UPDBuildingActionsWidgetBase*>(this);
-	MutableSelf->BeginCloseActionContext();
+	MutableSelf->SetNewWorldActor(nullptr, FPDBuildable{});
 }
 
 
