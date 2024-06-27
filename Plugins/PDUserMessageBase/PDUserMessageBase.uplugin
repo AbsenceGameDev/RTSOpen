@@ -2,8 +2,8 @@
 	"FileVersion": 3,
 	"Version": 1,
 	"VersionName": "1.0",
-	"FriendlyName": "PDInteraction",
-	"Description": "Interaction base plugin",
+	"FriendlyName": "PDUserMessageBase",
+	"Description": "Plugin to enable gameplay messages (widget and audio events)",
 	"Category": "Other",
 	"CreatedBy": "Ario Amin @ Permafrost Development",
 	"CreatedByURL": "https://github.com/AbsenceGameDev",
@@ -16,14 +16,9 @@
 	"Installed": false,
 	"Modules": [
 		{
-			"Name": "PDInteraction",
+			"Name": "PDUserMessageBase",
 			"Type": "Runtime",
 			"LoadingPhase": "Default"
-		},
-		{
-			"Name": "PDInteractPreloader",
-			"Type": "EditorAndProgram",
-			"LoadingPhase": "EarliestPossible"
 		}
 	]
 }
