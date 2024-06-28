@@ -7,6 +7,8 @@
 #include "Subsystems/EngineSubsystem.h"
 #include "PDUserMessageSubsystem.generated.h"
 
+class APDUserMessageNetworkManager;
+struct FGameplayTag;
 /** @brief Subsystem to handle octree size changes and to act as a manager for the entity workers */
 UCLASS()
 class PDUSERMESSAGEBASE_API UPDUserMessageSubsystem : public UEngineSubsystem
@@ -17,6 +19,19 @@ public:
 	 * @note as the engine will instantiate these subsystem earlier than anything will reasonably call Get()  */
 	static UPDUserMessageSubsystem* Get();
 
+	UFUNCTION(BlueprintCallable)
+	static void RegisterNetworkManager(APDUserMessageNetworkManager* NewNetworkManager);	
+	void Internal_RegisterNetworkManager(APDUserMessageNetworkManager* NewNetworkManager);	
+
+	
+	/** Queues a message to the network manager 
+	 * @note Implementation only exists on the server */
+	UFUNCTION(BlueprintCallable)
+	static void SendMessageToUser_Server(FGameplayTag& MessageTag, APlayerController* Target);
+	void Internal_SendMessageToUser_Server(FGameplayTag& MessageTag, APlayerController* Target);
+
+	UPROPERTY()
+	APDUserMessageNetworkManager* RegisteredNetworkManager = nullptr; 
 };
 
 /**

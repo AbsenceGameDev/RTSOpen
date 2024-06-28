@@ -1,40 +1,40 @@
-/* @author: Ario Amin @ Permafrost Development. @copyright: Full BSL(1.1) License included at bottom of the file  */
+﻿/* @author: Ario Amin @ Permafrost Development. @copyright: Full BSL(1.1) License included at bottom of the file  */
 
-using UnrealBuildTool;
+#pragma once
 
-public class PDUserMessageBase : ModuleRules
+#include "CoreMinimal.h"
+#include "GameplayTagContainer.h"
+#include "GameFramework/Actor.h"
+#include "Net/PDUserMessageDatum.h"
+
+#include "PDUserMessageNetworkManager.generated.h"
+
+struct FGameplayTag;
+
+UCLASS(Blueprintable, BlueprintType)
+class PDUSERMESSAGEBASE_API APDUserMessageNetworkManager : public AActor
 {
-	public PDUserMessageBase(ReadOnlyTargetRules Target) : base(Target)
-	{
-		PCHUsage = ModuleRules.PCHUsageMode.UseExplicitOrSharedPCHs;
-		
-		PublicIncludePaths.AddRange(new string[] {});
-		PrivateIncludePaths.AddRange(new string[] {});
-		
-		PublicDependencyModuleNames.AddRange(
-			new string[]
-			{
-				"Core",
-				"GameplayTags",
-				"NetCore",
-			}
-			);
-			
-		
-		PrivateDependencyModuleNames.AddRange(
-			new string[]
-			{
-				"CoreUObject",
-				"Engine",
-				"Slate",
-				"SlateCore",
-				"UMG",
-			}
-			);
+	GENERATED_UCLASS_BODY()
+public:
+	
+	UFUNCTION()
+	virtual void BeginPlay() override;
 
-		DynamicallyLoadedModuleNames.AddRange(new string[] {});
-	}
-}
+	virtual void TickActor(float DeltaTime, ELevelTick TickType, FActorTickFunction& ThisTickFunction) override;
+
+	UFUNCTION()
+	void AppendToMessageFrame(const FGameplayTag& NewMessageTag, APlayerController* TargetController);
+	
+	
+	UPROPERTY(Replicated)
+	FPDUserMessageFrameList LatestFrame;
+	
+	/** @brief Tells us which message index we are currently processing */
+	UPROPERTY()
+	TMap<APlayerController*,int32> CurrentIndexPerPlayer{};
+};
+
+
 
 /*
 Business Source License 1.1

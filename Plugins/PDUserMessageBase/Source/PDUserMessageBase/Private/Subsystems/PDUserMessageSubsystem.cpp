@@ -1,14 +1,44 @@
 ﻿/* @author: Ario Amin @ Permafrost Development. @copyright: Full BSL(1.1) License included at bottom of the file  */
 
 #include "Subsystems/PDUserMessageSubsystem.h"
+#include "GameplayTags.h"
+#include "Actors/PDUserMessageNetworkManager.h"
+#include "Interfaces/PDUserRecipientInterface.h"
+
 
 UPDUserMessageSubsystem* UPDUserMessageSubsystem::Get()
 {
 	return GEngine->GetEngineSubsystem<UPDUserMessageSubsystem>();
 }
 
+void UPDUserMessageSubsystem::RegisterNetworkManager(APDUserMessageNetworkManager* NewNetworkManager)
+{
+	UPDUserMessageSubsystem::Get()->Internal_RegisterNetworkManager(NewNetworkManager);
+}
 
-/**
+void UPDUserMessageSubsystem::Internal_RegisterNetworkManager(APDUserMessageNetworkManager* NewNetworkManager)
+{
+	if (NewNetworkManager == nullptr) { return; }
+
+	RegisteredNetworkManager = NewNetworkManager;	
+}
+
+void UPDUserMessageSubsystem::SendMessageToUser_Server(FGameplayTag& MessageTag, APlayerController* Target)
+{
+	UPDUserMessageSubsystem::Get()->Internal_SendMessageToUser_Server(MessageTag, Target);
+
+}
+
+void UPDUserMessageSubsystem::Internal_SendMessageToUser_Server(FGameplayTag& MessageTag, APlayerController* Target)
+{
+	if (RegisteredNetworkManager == nullptr) { return; }
+
+	// Function impl is empty on clients
+	RegisteredNetworkManager->AppendToMessageFrame(MessageTag, Target);
+}
+
+
+/*
 Business Source License 1.1
 
 Parameters

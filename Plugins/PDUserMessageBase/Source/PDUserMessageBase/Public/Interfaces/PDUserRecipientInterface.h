@@ -1,40 +1,56 @@
-/* @author: Ario Amin @ Permafrost Development. @copyright: Full BSL(1.1) License included at bottom of the file  */
+﻿/* @author: Ario Amin @ Permafrost Development. @copyright: Full BSL(1.1) License included at bottom of the file  */
 
-using UnrealBuildTool;
+#pragma once
+#include "GameplayTagContainer.h"
 
-public class PDUserMessageBase : ModuleRules
+#include "PDUserRecipientInterface.generated.h"
+
+struct FGameplayTag;
+
+UENUM()
+enum class EPDUserMessageProcessResult : uint8
 {
-	public PDUserMessageBase(ReadOnlyTargetRules Target) : base(Target)
-	{
-		PCHUsage = ModuleRules.PCHUsageMode.UseExplicitOrSharedPCHs;
-		
-		PublicIncludePaths.AddRange(new string[] {});
-		PrivateIncludePaths.AddRange(new string[] {});
-		
-		PublicDependencyModuleNames.AddRange(
-			new string[]
-			{
-				"Core",
-				"GameplayTags",
-				"NetCore",
-			}
-			);
-			
-		
-		PrivateDependencyModuleNames.AddRange(
-			new string[]
-			{
-				"CoreUObject",
-				"Engine",
-				"Slate",
-				"SlateCore",
-				"UMG",
-			}
-			);
+	ECurrentMessageDoesNotExist,
+	ECurrentMessageMayBeProcessed,
+	ECurrentMessageIsWaitingForPacketToProcess,
+	ECurrentMessageIsWaitingForPreviousMessageToFinishProcessing,
+	ECurrentMessageHasFinishedProcessing,
+};
 
-		DynamicallyLoadedModuleNames.AddRange(new string[] {});
-	}
-}
+USTRUCT(Blueprintable)
+struct FPDUserMessageProcess
+{
+	GENERATED_BODY()
+
+	UPROPERTY(BlueprintReadWrite)
+	EPDUserMessageProcessResult Results;
+	UPROPERTY(BlueprintReadWrite)
+	FGameplayTag MessageTag;
+};
+
+UINTERFACE() class PDUSERMESSAGEBASE_API UPDUserRecipientInterface : public UInterface { GENERATED_BODY(); };
+
+class PDUSERMESSAGEBASE_API  IPDUserRecipientInterface
+	: public IInterface
+{
+	GENERATED_BODY()
+public:
+	UFUNCTION(BlueprintCallable, BlueprintNativeEvent)
+	void SendUserMessage(int32 MessageIdx, const FGameplayTag& Tag);
+	void SendUserMessage_Implementation(int32 MessageIdx, const FGameplayTag& Tag);
+
+	UFUNCTION(BlueprintCallable, BlueprintNativeEvent)
+	FPDUserMessageProcess& OnProcessUserMessage();
+	FPDUserMessageProcess& OnProcessMessage_Implementation();
+	
+	// Only lives until consumed, but is updated much less often, most likely in the order of minutes,
+	// will be sorted upon so queue messages can play as intended
+	TMap<int32, FPDUserMessageProcess> LocalMessageQueueFrame{};
+
+	int32 CurrentMessageIndexSession = INDEX_NONE;
+	bool bIsProcessingCurrentMessage = false;
+};
+
 
 /*
 Business Source License 1.1

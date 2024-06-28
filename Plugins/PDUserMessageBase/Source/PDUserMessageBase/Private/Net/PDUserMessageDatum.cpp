@@ -1,39 +1,42 @@
-/* @author: Ario Amin @ Permafrost Development. @copyright: Full BSL(1.1) License included at bottom of the file  */
+﻿/* @author: Ario Amin @ Permafrost Development. @copyright: Full BSL(1.1) License included at bottom of the file  */
 
-using UnrealBuildTool;
+#include "Net/PDUserMessageDatum.h"
 
-public class PDUserMessageBase : ModuleRules
+#include "Interfaces/PDUserRecipientInterface.h"
+
+void FPDUserMessageDatum::PreReplicatedRemove(const FPDUserMessageFrameList& OwningList)
 {
-	public PDUserMessageBase(ReadOnlyTargetRules Target) : base(Target)
+	if (Target == nullptr
+		|| Target->GetClass()->ImplementsInterface(UPDUserRecipientInterface::StaticClass()) == false )
 	{
-		PCHUsage = ModuleRules.PCHUsageMode.UseExplicitOrSharedPCHs;
-		
-		PublicIncludePaths.AddRange(new string[] {});
-		PrivateIncludePaths.AddRange(new string[] {});
-		
-		PublicDependencyModuleNames.AddRange(
-			new string[]
-			{
-				"Core",
-				"GameplayTags",
-				"NetCore",
-			}
-			);
-			
-		
-		PrivateDependencyModuleNames.AddRange(
-			new string[]
-			{
-				"CoreUObject",
-				"Engine",
-				"Slate",
-				"SlateCore",
-				"UMG",
-			}
-			);
-
-		DynamicallyLoadedModuleNames.AddRange(new string[] {});
+		UE_LOG(LogTemp, Warning, TEXT("Called on incorrent player"))
+		return;
 	}
+
+	IPDUserRecipientInterface::Execute_SendUserMessage(Target, INDEX_NONE, FGameplayTag::EmptyTag);
+	
+}
+
+void FPDUserMessageDatum::PostReplicatedAdd(const FPDUserMessageFrameList& OwningList)
+{
+	PostReplicatedChange(OwningList);
+}
+
+void FPDUserMessageDatum::PostReplicatedChange(const FPDUserMessageFrameList& OwningList)
+{
+	if (Target == nullptr
+		|| Target->GetClass()->ImplementsInterface(UPDUserRecipientInterface::StaticClass()) == false )
+	{
+		UE_LOG(LogTemp, Warning, TEXT("Called on incorrent player"))
+		return;
+	}
+
+	IPDUserRecipientInterface::Execute_SendUserMessage(Target, MessageIdx, MessageTag);
+}
+
+bool FPDUserMessageFrameList::NetSerialize(FNetDeltaSerializeInfo& DeltaParams)
+{
+	return FFastArraySerializer::FastArrayDeltaSerialize<FPDUserMessageDatum, FPDUserMessageFrameList>(Items, DeltaParams, *this);
 }
 
 /*

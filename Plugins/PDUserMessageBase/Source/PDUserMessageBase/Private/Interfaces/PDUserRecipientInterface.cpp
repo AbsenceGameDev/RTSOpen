@@ -1,40 +1,55 @@
 /* @author: Ario Amin @ Permafrost Development. @copyright: Full BSL(1.1) License included at bottom of the file  */
 
-using UnrealBuildTool;
+#include "Interfaces/PDUserRecipientInterface.h"
 
-public class PDUserMessageBase : ModuleRules
+#include "GameplayTagContainer.h"
+
+void IPDUserRecipientInterface::SendUserMessage_Implementation(int32 MessageIdx, const FGameplayTag& Tag)
 {
-	public PDUserMessageBase(ReadOnlyTargetRules Target) : base(Target)
+	if (bIsProcessingCurrentMessage == false)
 	{
-		PCHUsage = ModuleRules.PCHUsageMode.UseExplicitOrSharedPCHs;
+		bIsProcessingCurrentMessage = true;
 		
-		PublicIncludePaths.AddRange(new string[] {});
-		PrivateIncludePaths.AddRange(new string[] {});
+		const bool bIsNextInOrder = CurrentMessageIndexSession + 1 == MessageIdx;
+		const bool bIsOutOfOrder = bIsNextInOrder == false;
+		static const char* const Ctx = "Incoming message should always be above the latest processed index, it may be far above but never below"; 
+		check(CurrentMessageIndexSession > MessageIdx && Ctx) 
 		
-		PublicDependencyModuleNames.AddRange(
-			new string[]
-			{
-				"Core",
-				"GameplayTags",
-				"NetCore",
-			}
-			);
-			
-		
-		PrivateDependencyModuleNames.AddRange(
-			new string[]
-			{
-				"CoreUObject",
-				"Engine",
-				"Slate",
-				"SlateCore",
-				"UMG",
-			}
-			);
-
-		DynamicallyLoadedModuleNames.AddRange(new string[] {});
+		if (bIsNextInOrder) { CurrentMessageIndexSession = MessageIdx; }
 	}
+	
+	// @todo 
+	LocalMessageQueueFrame.Emplace(MessageIdx, Tag);
 }
+
+FPDUserMessageProcess& IPDUserRecipientInterface::OnProcessMessage_Implementation()
+{
+	FPDUserMessageProcess Results{EPDUserMessageProcessResult::ECurrentMessageIsWaitingForPacketToProcess};
+	bIsProcessingCurrentMessage = true;
+	
+
+	const bool bDoesContainMessage = LocalMessageQueueFrame.Contains(CurrentMessageIndexSession);
+	if (bDoesContainMessage == false)
+	{
+		return Results;
+	}
+
+	const bool bIsStillProcessingPreviousMessage =
+		LocalMessageQueueFrame.Contains(CurrentMessageIndexSession -1)
+		&& (LocalMessageQueueFrame.FindRef(CurrentMessageIndexSession -1).Results
+		    != EPDUserMessageProcessResult::ECurrentMessageHasFinishedProcessing);
+	if (bIsProcessingCurrentMessage == false)
+	{
+		Results.Results = EPDUserMessageProcessResult::ECurrentMessageIsWaitingForPreviousMessageToFinishProcessing;
+		return Results;
+	}
+
+	FPDUserMessageProcess& MessageProcess = *LocalMessageQueueFrame.Find(CurrentMessageIndexSession);
+	MessageProcess.Results = EPDUserMessageProcessResult::ECurrentMessageMayBeProcessed;
+	++CurrentMessageIndexSession;
+	return Results;
+}
+
 
 /*
 Business Source License 1.1

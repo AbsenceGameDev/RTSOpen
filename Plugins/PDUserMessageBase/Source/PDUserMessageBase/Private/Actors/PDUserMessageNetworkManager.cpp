@@ -1,40 +1,58 @@
-/* @author: Ario Amin @ Permafrost Development. @copyright: Full BSL(1.1) License included at bottom of the file  */
+﻿/* @author: Ario Amin @ Permafrost Development. @copyright: Full BSL(1.1) License included at bottom of the file  */
 
-using UnrealBuildTool;
+#include "Actors/PDUserMessageNetworkManager.h"
 
-public class PDUserMessageBase : ModuleRules
+#include "Net/UnrealNetwork.h"
+#include "Net/Core/PushModel/PushModel.h"
+
+APDUserMessageNetworkManager::APDUserMessageNetworkManager(const FObjectInitializer& ObjectInitializer)
+	: Super(ObjectInitializer)
 {
-	public PDUserMessageBase(ReadOnlyTargetRules Target) : base(Target)
-	{
-		PCHUsage = ModuleRules.PCHUsageMode.UseExplicitOrSharedPCHs;
-		
-		PublicIncludePaths.AddRange(new string[] {});
-		PrivateIncludePaths.AddRange(new string[] {});
-		
-		PublicDependencyModuleNames.AddRange(
-			new string[]
-			{
-				"Core",
-				"GameplayTags",
-				"NetCore",
-			}
-			);
-			
-		
-		PrivateDependencyModuleNames.AddRange(
-			new string[]
-			{
-				"CoreUObject",
-				"Engine",
-				"Slate",
-				"SlateCore",
-				"UMG",
-			}
-			);
-
-		DynamicallyLoadedModuleNames.AddRange(new string[] {});
-	}
+	NetUpdateFrequency = 0; // No Polling, we are going state based
+	NetDormancy = DORM_Awake; // Stay awake, never know which player might need a message from the server sent to them
 }
+
+void APDUserMessageNetworkManager::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const
+{
+	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
+
+	FDoRepLifetimeParams Params{};
+	Params.Condition = ELifetimeCondition::COND_None;
+	Params.bIsPushBased = true;
+
+	// As we are going stateful, we control when we make an update, and if the message is teh same it is likely we want to replay it, remember we flush the messages on the server the frame after it is sent
+	Params.RepNotifyCondition = ELifetimeRepNotifyCondition::REPNOTIFY_Always;
+
+	DOREPLIFETIME_WITH_PARAMS(APDUserMessageNetworkManager, LatestFrame, Params)
+}
+
+
+void APDUserMessageNetworkManager::BeginPlay()
+{
+	Super::BeginPlay();
+}
+
+
+void APDUserMessageNetworkManager::TickActor(float DeltaTime, ELevelTick TickType, FActorTickFunction& ThisTickFunction)
+{
+#if WITH_SERVER_CODE
+	MARK_PROPERTY_DIRTY_FROM_NAME(APDUserMessageNetworkManager, LatestFrame, this)
+	LatestFrame.Clear();
+#endif	
+	
+	Super::TickActor(DeltaTime, TickType, ThisTickFunction);
+}
+
+void APDUserMessageNetworkManager::AppendToMessageFrame(const FGameplayTag& NewMessageTag, APlayerController* TargetController)
+{
+#if WITH_SERVER_CODE
+	MARK_PROPERTY_DIRTY_FROM_NAME(APDUserMessageNetworkManager, LatestFrame, this)
+	int32& LatestMessageIndexForPlayer = CurrentIndexPerPlayer.FindOrAdd(TargetController);
+	LatestFrame.Items.Add(FPDUserMessageDatum{LatestMessageIndexForPlayer++, NewMessageTag, TargetController});
+	ForceNetUpdate();
+#endif	
+}
+
 
 /*
 Business Source License 1.1

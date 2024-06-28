@@ -1,40 +1,71 @@
-/* @author: Ario Amin @ Permafrost Development. @copyright: Full BSL(1.1) License included at bottom of the file  */
+﻿/* @author: Ario Amin @ Permafrost Development. @copyright: Full BSL(1.1) License included at bottom of the file  */
 
-using UnrealBuildTool;
+#pragma once
 
-public class PDUserMessageBase : ModuleRules
+#if ENGINE_MAJOR_VERSION >= 5 && ENGINE_MINOR_VERSION >= 2
+#include "Net/Serialization/FastArraySerializer.h"
+#else
+#include "Engine/NetSerialization.h"
+#endif
+#include "GameplayTagContainer.h"
+
+#include "PDUserMessageDatum.generated.h"
+
+struct FGameplayTag;
+
+struct FPDUserMessageFrameList; // Fwd decl for the message datum to use
+
+USTRUCT(Blueprintable)
+struct PDUSERMESSAGEBASE_API FPDUserMessageDatum : public FFastArraySerializerItem
 {
-	public PDUserMessageBase(ReadOnlyTargetRules Target) : base(Target)
-	{
-		PCHUsage = ModuleRules.PCHUsageMode.UseExplicitOrSharedPCHs;
-		
-		PublicIncludePaths.AddRange(new string[] {});
-		PrivateIncludePaths.AddRange(new string[] {});
-		
-		PublicDependencyModuleNames.AddRange(
-			new string[]
-			{
-				"Core",
-				"GameplayTags",
-				"NetCore",
-			}
-			);
-			
-		
-		PrivateDependencyModuleNames.AddRange(
-			new string[]
-			{
-				"CoreUObject",
-				"Engine",
-				"Slate",
-				"SlateCore",
-				"UMG",
-			}
-			);
+	GENERATED_BODY()
 
-		DynamicallyLoadedModuleNames.AddRange(new string[] {});
-	}
-}
+	FPDUserMessageDatum(int32 InMessageIdx, const FGameplayTag& InMessageTag, APlayerController* InTarget)
+		: MessageIdx(InMessageIdx), MessageTag(InMessageTag), Target(InTarget)
+	{};
+
+	UFUNCTION()
+	void PreReplicatedRemove(const FPDUserMessageFrameList& OwningList);
+	UFUNCTION()
+	void PostReplicatedAdd(const FPDUserMessageFrameList& OwningList);
+	UFUNCTION()
+	void PostReplicatedChange(const FPDUserMessageFrameList& OwningList);
+
+	// This will increment for a player during a given session, just so we may dislay messages that have been recieved out of order, in order
+	UPROPERTY()
+	int32 MessageIdx = 0;
+	
+	UPROPERTY()
+	FGameplayTag MessageTag = FGameplayTag::EmptyTag;
+	
+	UPROPERTY()
+	APlayerController* Target = nullptr; // Should always be nullptr if replicated to the incorrect players
+};
+
+
+USTRUCT(Blueprintable)
+struct PDUSERMESSAGEBASE_API FPDUserMessageFrameList : public  FFastArraySerializer
+{
+	GENERATED_BODY()
+
+
+	bool NetSerialize(FNetDeltaSerializeInfo& DeltaParams);
+	
+	void Clear();
+
+	TArray<FPDUserMessageDatum> Items;
+	
+};
+
+template<>
+struct TStructOpsTypeTraits<FPDUserMessageFrameList> : TStructOpsTypeTraitsBase2<FPDUserMessageFrameList>
+{
+	enum
+	{
+		WithNetDeltaSerialize = true,
+	};
+};
+
 
 /*
 Business Source License 1.1
