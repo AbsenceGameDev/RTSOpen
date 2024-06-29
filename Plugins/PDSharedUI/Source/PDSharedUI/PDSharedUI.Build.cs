@@ -1,65 +1,42 @@
-﻿/* @author: Ario Amin @ Permafrost Development. @copyright: Full BSL(1.1) License included at bottom of the file  */
+/* @author: Ario Amin @ Permafrost Development. @copyright: Full BSL(1.1) License included at bottom of the file  */
 
-#pragma once
-#include "GameplayTagContainer.h"
+using UnrealBuildTool;
 
-#include "PDUserRecipientInterface.generated.h"
-
-struct FGameplayTag;
-
-UENUM()
-enum class EPDUserMessageProcessResult : uint8
+public class PDSharedUI : ModuleRules
 {
-	ECurrentMessageDoesNotExist,
-	ECurrentMessageMayBeProcessed,
-	ECurrentMessageIsWaitingForPacketToProcess,
-	ECurrentMessageIsWaitingForPreviousMessageToFinishProcessing,
-	ECurrentMessageHasFinishedProcessing,
-};
+	public PDSharedUI(ReadOnlyTargetRules Target) : base(Target)
+	{
+		PCHUsage = ModuleRules.PCHUsageMode.UseExplicitOrSharedPCHs;
+		
+		PublicIncludePaths.AddRange(new string[] {});
+		PrivateIncludePaths.AddRange(new string[] {});
+		
+		PublicDependencyModuleNames.AddRange(
+			new string[]
+			{
+				"Core",
+				"GameplayTags",
+				"NetCore",
+				"DeveloperSettings",
+			}
+			);
+			
+		
+		PrivateDependencyModuleNames.AddRange(
+			new string[]
+			{
+				"CoreUObject",
+				"Engine",
+				"Slate",
+				"SlateCore",
+				"UMG", 
+				"CommonUI",
+			}
+			);
 
-USTRUCT(Blueprintable)
-struct FPDUserMessageProcess
-{
-	GENERATED_BODY()
-	
-	/** @brief  */
-	void OnProcessFinished();
-
-	/** @brief  -1 implies closable dialog window */
-	UPROPERTY(BlueprintReadWrite)
-	float MessageDuration = -1; 
-	
-	/** @brief  */
-	UPROPERTY(BlueprintReadWrite)
-	EPDUserMessageProcessResult Results;
-	/** @brief  */
-	UPROPERTY(BlueprintReadWrite)
-	FGameplayTag MessageTag;
-};
-
-UINTERFACE() class PDUSERMESSAGEBASE_API UPDUserRecipientInterface : public UInterface { GENERATED_BODY() };
-
-class PDUSERMESSAGEBASE_API  IPDUserRecipientInterface
-	: public IInterface
-{
-	GENERATED_BODY()
-public:
-	UFUNCTION(BlueprintCallable, BlueprintNativeEvent)
-	void SendUserMessage(int32 MessageIdx, const FGameplayTag& Tag);
-	virtual void SendUserMessage_Implementation(int32 MessageIdx, const FGameplayTag& Tag);
-
-	UFUNCTION(BlueprintCallable, BlueprintNativeEvent)
-	void StartProcessMessage(FPDUserMessageProcess& OutProcess);
-	virtual void StartProcessMessage_Implementation(FPDUserMessageProcess& OutProcess);
-	
-	// Only lives until consumed, but is updated much less often, most likely in the order of minutes,
-	// will be sorted upon so queue messages can play as intended
-	TMap<int32, FPDUserMessageProcess> LocalMessageQueueFrame{};
-
-	int32 CurrentMessageIndexSession = INDEX_NONE;
-	bool bIsProcessingCurrentMessage = false;
-};
-
+		DynamicallyLoadedModuleNames.AddRange(new string[] {});
+	}
+}
 
 /*
 Business Source License 1.1

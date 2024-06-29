@@ -33,9 +33,9 @@ struct PDUSERMESSAGEBASE_API FPDGameErrorMessageRow : public FTableRowBase
 	FGameplayTag GameMessageStyleTag = FGameplayTag{};
 	
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
-	UPDGameMessageAudioDataAsset*  GameMessageAudioData = nullptr;
+	FPDGameMessageAudioRow  GameMessageAudio = {};
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
-	UPDGameMessageWidgetDataAsset* GameMessageWidgetData = nullptr;
+	FPDGameMessageWidgetRow GameMessageWidgets = {};
 };
 
 /**

@@ -1,65 +1,45 @@
 ﻿/* @author: Ario Amin @ Permafrost Development. @copyright: Full BSL(1.1) License included at bottom of the file  */
 
-#pragma once
-#include "GameplayTagContainer.h"
+#include "UI/PDDialogs.h"
 
-#include "PDUserRecipientInterface.generated.h"
+#include "Components/Button.h"
+#include "Components/TextBlock.h"
+#include "UI/PDButtons.h"
 
-struct FGameplayTag;
+//
+// Generic dialogs
 
-UENUM()
-enum class EPDUserMessageProcessResult : uint8
+void UPDGenericDialog::DialogReplyContinue(const bool bSuccess) const
 {
-	ECurrentMessageDoesNotExist,
-	ECurrentMessageMayBeProcessed,
-	ECurrentMessageIsWaitingForPacketToProcess,
-	ECurrentMessageIsWaitingForPreviousMessageToFinishProcessing,
-	ECurrentMessageHasFinishedProcessing,
-};
+	// ARTSOBaseGM* GM = GetWorld() != nullptr ? GetWorld()->GetAuthGameMode<ARTSOBaseGM>() : nullptr;
+	// if (GM == nullptr) { return; }
 
-USTRUCT(Blueprintable)
-struct FPDUserMessageProcess
+	if (bSuccess) { SuccessCallback.ExecuteIfBound(Payload); }
+	else { FailCallback.ExecuteIfBound(Payload); }
+}
+
+void UPDGenericDialog::SetupDelegates()
 {
-	GENERATED_BODY()
+	check(YesButton != nullptr)
+	check(NoButton != nullptr)
+	check(DialogContent != nullptr)
 	
-	/** @brief  */
-	void OnProcessFinished();
+	YesButton->Hitbox->OnReleased.AddDynamic(this, &UPDGenericDialog::Reply_Yes);
+	NoButton->Hitbox->OnReleased.AddDynamic(this, &UPDGenericDialog::Reply_No);
+	DialogContent->SetText(DialogMessage);
+}
 
-	/** @brief  -1 implies closable dialog window */
-	UPROPERTY(BlueprintReadWrite)
-	float MessageDuration = -1; 
-	
-	/** @brief  */
-	UPROPERTY(BlueprintReadWrite)
-	EPDUserMessageProcessResult Results;
-	/** @brief  */
-	UPROPERTY(BlueprintReadWrite)
-	FGameplayTag MessageTag;
-};
-
-UINTERFACE() class PDUSERMESSAGEBASE_API UPDUserRecipientInterface : public UInterface { GENERATED_BODY() };
-
-class PDUSERMESSAGEBASE_API  IPDUserRecipientInterface
-	: public IInterface
+void UPDGenericDialog::Reply_Yes()
 {
-	GENERATED_BODY()
-public:
-	UFUNCTION(BlueprintCallable, BlueprintNativeEvent)
-	void SendUserMessage(int32 MessageIdx, const FGameplayTag& Tag);
-	virtual void SendUserMessage_Implementation(int32 MessageIdx, const FGameplayTag& Tag);
+	DialogReplyContinue(true);
+	RemoveFromParent();
+}
 
-	UFUNCTION(BlueprintCallable, BlueprintNativeEvent)
-	void StartProcessMessage(FPDUserMessageProcess& OutProcess);
-	virtual void StartProcessMessage_Implementation(FPDUserMessageProcess& OutProcess);
-	
-	// Only lives until consumed, but is updated much less often, most likely in the order of minutes,
-	// will be sorted upon so queue messages can play as intended
-	TMap<int32, FPDUserMessageProcess> LocalMessageQueueFrame{};
-
-	int32 CurrentMessageIndexSession = INDEX_NONE;
-	bool bIsProcessingCurrentMessage = false;
-};
-
+void UPDGenericDialog::Reply_No()
+{
+	DialogReplyContinue(false);
+	RemoveFromParent();
+}
 
 /*
 Business Source License 1.1

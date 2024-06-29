@@ -15,7 +15,7 @@ public class RTSOpen : ModuleRules
 		{ 
 			"Core", "CoreUObject", "Engine", "InputCore", "NetCore", "DeveloperSettings",
 			"GameplayTags", "EnhancedInput", "CommonConversationRuntime", 
-			"PDRTSBase", "PDInventory", "PDConversationHelper"
+			"PDRTSBase", "PDInventory", "PDConversationHelper", "PDSharedUI"
 		});
 
 		PublicDependencyModuleNames.AddRange(new string[]

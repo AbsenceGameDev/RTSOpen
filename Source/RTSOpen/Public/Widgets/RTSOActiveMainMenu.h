@@ -6,6 +6,8 @@
 #include "CommonActivatableWidget.h"
 #include "CommonButtonBase.h"
 #include "PDRTSSharedUI.h"
+#include "UI/PDButtons.h"
+#include "UI/PDDialogs.h"
 #include "RTSOActiveMainMenu.generated.h"
 
 class UCommonTextBlock;

@@ -9,63 +9,84 @@
 
 #include "PDMessageAudioCommon.generated.h"
 
+class UAudioComponent;
+class USoundBase;
+class USoundClass;
+class USoundAttenuation;
+class UInitialActiveSoundParams;
+
 // @todo impl. below class, base object can keep actual members, child classes may define these members actual values?
 UCLASS(Blueprintable, BlueprintType)
-class UPDBaseAudioObject : public UObject
+class UPDBaseAudioData : public UDataAsset
+{
+	GENERATED_BODY()
+public:
+
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	USoundBase* SoundBase = nullptr;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	USoundClass* SoundClass = nullptr;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	USoundAttenuation* SoundAttenuation = nullptr;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	UInitialActiveSoundParams* InitialActiveSoundParams = nullptr;	
+};
+
+// @todo impl. below class
+USTRUCT(Blueprintable, BlueprintType)
+struct FPDErrorAudio 
+{
+	GENERATED_BODY()
+public:
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	TSoftObjectPtr<UPDBaseAudioData> ErrorAudioData = nullptr;
+};
+
+
+// @todo impl. below class
+USTRUCT(Blueprintable, BlueprintType)
+struct FPDSuccessAudio
+{
+	GENERATED_BODY()
+public:
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	TSoftObjectPtr<UPDBaseAudioData> SucessAudioData = nullptr;	
+};
+
+// @todo impl. below class
+USTRUCT(Blueprintable, BlueprintType)
+struct FPDWaitAudio
 {
 	GENERATED_BODY()
 public:
 };
 
 // @todo impl. below class
-UCLASS(Blueprintable, BlueprintType)
-class UPDErrorAudio : public UPDBaseAudioObject
+USTRUCT(Blueprintable, BlueprintType)
+struct FPDStartAudio
 {
 	GENERATED_BODY()
 public:
 };
 
-
-// @todo impl. below class
-UCLASS(Blueprintable, BlueprintType)
-class UPDSuccessAudio : public UPDBaseAudioObject
-{
-	GENERATED_BODY()
-public:
-};
-
-// @todo impl. below class
-UCLASS(Blueprintable, BlueprintType)
-class UPDWaitAudio : public UPDBaseAudioObject
-{
-	GENERATED_BODY()
-public:
-};
-
-// @todo impl. below class
-UCLASS(Blueprintable, BlueprintType)
-class UPDStartAudio : public UPDBaseAudioObject
-{
-	GENERATED_BODY()
-public:
-};
-
-UCLASS(Blueprintable, BlueprintType)
-class PDUSERMESSAGEBASE_API UPDGameMessageAudioDataAsset : public UDataAsset
+USTRUCT(Blueprintable, BlueprintType)
+struct PDUSERMESSAGEBASE_API FPDGameMessageAudioRow : public FTableRowBase
 {
 	GENERATED_BODY()
 
-	UPROPERTY(EditAnywhere)
-	UPDErrorAudio* ErrorAudio = nullptr;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	TSoftObjectPtr<UPDBaseAudioData> ErrorAudioData = nullptr;
 
-	UPROPERTY(EditAnywhere)
-	UPDWaitAudio* WaitAudio = nullptr;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	TSoftObjectPtr<UPDBaseAudioData> WaitAudioData = nullptr;
 
-	UPROPERTY(EditAnywhere)
-	UPDStartAudio* StartAudio = nullptr;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	TSoftObjectPtr<UPDBaseAudioData> StartAudioData = nullptr;
 
-	UPROPERTY(EditAnywhere)
-	UPDSuccessAudio* SuccessAudio = nullptr;	
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	TSoftObjectPtr<UPDBaseAudioData> SuccessAudioData = nullptr;
+
 };
 
 /**

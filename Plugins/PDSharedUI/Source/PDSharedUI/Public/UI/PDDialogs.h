@@ -1,67 +1,75 @@
 ﻿/* @author: Ario Amin @ Permafrost Development. @copyright: Full BSL(1.1) License included at bottom of the file  */
 
 #pragma once
-#include "GameplayTagContainer.h"
 
-#include "PDUserRecipientInterface.generated.h"
+#include "CoreMinimal.h"
+#include "Blueprint/UserWidget.h"
+#include "Subsystems/EngineSubsystem.h"
+#include "UObject/Interface.h"
+#include "PDDialogs.generated.h"
 
-struct FGameplayTag;
+DECLARE_DELEGATE_OneParam(FPDOnIntValueChanged, int32);
 
-UENUM()
-enum class EPDUserMessageProcessResult : uint8
-{
-	ECurrentMessageDoesNotExist,
-	ECurrentMessageMayBeProcessed,
-	ECurrentMessageIsWaitingForPacketToProcess,
-	ECurrentMessageIsWaitingForPreviousMessageToFinishProcessing,
-	ECurrentMessageHasFinishedProcessing,
-};
+class UTextBlock;
+class UPDGenericButton;
 
-USTRUCT(Blueprintable)
-struct FPDUserMessageProcess
-{
-	GENERATED_BODY()
-	
-	/** @brief  */
-	void OnProcessFinished();
+//
+// Generic dialogs, @todo create shared UI module in it's own plugin and move this in there 
+/** @brief Dialog delegate with a potential payload */
+DECLARE_DELEGATE_OneParam(FPDDialogDelegate, const TArray<uint8> &)
 
-	/** @brief  -1 implies closable dialog window */
-	UPROPERTY(BlueprintReadWrite)
-	float MessageDuration = -1; 
-	
-	/** @brief  */
-	UPROPERTY(BlueprintReadWrite)
-	EPDUserMessageProcessResult Results;
-	/** @brief  */
-	UPROPERTY(BlueprintReadWrite)
-	FGameplayTag MessageTag;
-};
-
-UINTERFACE() class PDUSERMESSAGEBASE_API UPDUserRecipientInterface : public UInterface { GENERATED_BODY() };
-
-class PDUSERMESSAGEBASE_API  IPDUserRecipientInterface
-	: public IInterface
+/** @brief Stylable Generic dialog */
+UCLASS(Blueprintable)
+class PDSHAREDUI_API UPDGenericDialog : public UUserWidget
 {
 	GENERATED_BODY()
+
 public:
-	UFUNCTION(BlueprintCallable, BlueprintNativeEvent)
-	void SendUserMessage(int32 MessageIdx, const FGameplayTag& Tag);
-	virtual void SendUserMessage_Implementation(int32 MessageIdx, const FGameplayTag& Tag);
 
-	UFUNCTION(BlueprintCallable, BlueprintNativeEvent)
-	void StartProcessMessage(FPDUserMessageProcess& OutProcess);
-	virtual void StartProcessMessage_Implementation(FPDUserMessageProcess& OutProcess);
+	/** @brief Calls SuccessCallback.Execute or FailCallback.Execute with the passthrough parameters*/
+	UFUNCTION()
+	virtual void DialogReplyContinue(const bool bSuccess) const;
+
+	/** @brief Assign the yes/no button events to Reply_Yes & Reply_No */
+	UFUNCTION()
+	virtual void SetupDelegates();	
+
+	/** @brief Calls 'DialogReplyContinue' then calls 'RemoveFromParent' to remove self*/
+	UFUNCTION()
+	virtual void Reply_Yes();	
+
+	/** @brief Only Calls 'RemoveFromParent' to remove self*/
+	UFUNCTION()
+	virtual void Reply_No();	
+
+	/** @brief Tet block widget to contain the actual widget message*/
+	UPROPERTY(BlueprintReadWrite, Meta=(BindWidget))
+	UTextBlock* DialogContent = nullptr;	
 	
-	// Only lives until consumed, but is updated much less often, most likely in the order of minutes,
-	// will be sorted upon so queue messages can play as intended
-	TMap<int32, FPDUserMessageProcess> LocalMessageQueueFrame{};
+	/** @brief Button to accept/reply yes*/
+	UPROPERTY(BlueprintReadWrite, Meta=(BindWidget))
+	UPDGenericButton* YesButton = nullptr;
 
-	int32 CurrentMessageIndexSession = INDEX_NONE;
-	bool bIsProcessingCurrentMessage = false;
+	/** @brief Button to refuse/reply no*/
+	UPROPERTY(BlueprintReadWrite, Meta=(BindWidget))
+	UPDGenericButton* NoButton = nullptr;	
+	
+	/** @brief Message that the dialog should display */
+	UPROPERTY(EditAnywhere)
+	FText DialogMessage{};
+
+	/** @brief Pass-through for the payload, handle in game module */
+	UPROPERTY()
+	TArray<uint8> Payload{};
+
+	/** @brief Callback that we want to fire on success (replying yes to the dialog)*/
+	FPDDialogDelegate SuccessCallback{};
+
+	/** @brief Callback that we want to fire on fail (replying no to the dialog)*/
+	FPDDialogDelegate FailCallback{};	
 };
 
-
-/*
+/**
 Business Source License 1.1
 
 Parameters

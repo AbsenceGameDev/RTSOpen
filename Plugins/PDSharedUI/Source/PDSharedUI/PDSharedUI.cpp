@@ -1,65 +1,20 @@
-﻿/* @author: Ario Amin @ Permafrost Development. @copyright: Full BSL(1.1) License included at bottom of the file  */
+/* @author: Ario Amin @ Permafrost Development. @copyright: Full BSL(1.1) License included at bottom of the file  */
 
-#pragma once
-#include "GameplayTagContainer.h"
+#include "PDSharedUI.h"
 
-#include "PDUserRecipientInterface.generated.h"
+#define LOCTEXT_NAMESPACE "FPDSharedUIModule"
 
-struct FGameplayTag;
-
-UENUM()
-enum class EPDUserMessageProcessResult : uint8
+void FPDSharedUIModule::StartupModule()
 {
-	ECurrentMessageDoesNotExist,
-	ECurrentMessageMayBeProcessed,
-	ECurrentMessageIsWaitingForPacketToProcess,
-	ECurrentMessageIsWaitingForPreviousMessageToFinishProcessing,
-	ECurrentMessageHasFinishedProcessing,
-};
+}
 
-USTRUCT(Blueprintable)
-struct FPDUserMessageProcess
+void FPDSharedUIModule::ShutdownModule()
 {
-	GENERATED_BODY()
+}
+
+#undef LOCTEXT_NAMESPACE
 	
-	/** @brief  */
-	void OnProcessFinished();
-
-	/** @brief  -1 implies closable dialog window */
-	UPROPERTY(BlueprintReadWrite)
-	float MessageDuration = -1; 
-	
-	/** @brief  */
-	UPROPERTY(BlueprintReadWrite)
-	EPDUserMessageProcessResult Results;
-	/** @brief  */
-	UPROPERTY(BlueprintReadWrite)
-	FGameplayTag MessageTag;
-};
-
-UINTERFACE() class PDUSERMESSAGEBASE_API UPDUserRecipientInterface : public UInterface { GENERATED_BODY() };
-
-class PDUSERMESSAGEBASE_API  IPDUserRecipientInterface
-	: public IInterface
-{
-	GENERATED_BODY()
-public:
-	UFUNCTION(BlueprintCallable, BlueprintNativeEvent)
-	void SendUserMessage(int32 MessageIdx, const FGameplayTag& Tag);
-	virtual void SendUserMessage_Implementation(int32 MessageIdx, const FGameplayTag& Tag);
-
-	UFUNCTION(BlueprintCallable, BlueprintNativeEvent)
-	void StartProcessMessage(FPDUserMessageProcess& OutProcess);
-	virtual void StartProcessMessage_Implementation(FPDUserMessageProcess& OutProcess);
-	
-	// Only lives until consumed, but is updated much less often, most likely in the order of minutes,
-	// will be sorted upon so queue messages can play as intended
-	TMap<int32, FPDUserMessageProcess> LocalMessageQueueFrame{};
-
-	int32 CurrentMessageIndexSession = INDEX_NONE;
-	bool bIsProcessingCurrentMessage = false;
-};
-
+IMPLEMENT_MODULE(FPDSharedUIModule, PDSharedUI)
 
 /*
 Business Source License 1.1

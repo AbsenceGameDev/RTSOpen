@@ -1,67 +1,62 @@
 ﻿/* @author: Ario Amin @ Permafrost Development. @copyright: Full BSL(1.1) License included at bottom of the file  */
 
 #pragma once
-#include "GameplayTagContainer.h"
 
-#include "PDUserRecipientInterface.generated.h"
+#include "CoreMinimal.h"
+#include "Blueprint/UserWidget.h"
+#include "Subsystems/EngineSubsystem.h"
 
-struct FGameplayTag;
+#include "CommonActivatableWidget.h"
+#include "UObject/Interface.h"
 
-UENUM()
-enum class EPDUserMessageProcessResult : uint8
-{
-	ECurrentMessageDoesNotExist,
-	ECurrentMessageMayBeProcessed,
-	ECurrentMessageIsWaitingForPacketToProcess,
-	ECurrentMessageIsWaitingForPreviousMessageToFinishProcessing,
-	ECurrentMessageHasFinishedProcessing,
-};
+#include "PDButtons.generated.h"
 
-USTRUCT(Blueprintable)
-struct FPDUserMessageProcess
-{
-	GENERATED_BODY()
-	
-	/** @brief  */
-	void OnProcessFinished();
+class UCommonActivatableWidget;
+class UBorder;
+class UButton;
+class UOverlay;
+class UImage;
+class UTextBlock;
+class UUserWidget;
 
-	/** @brief  -1 implies closable dialog window */
-	UPROPERTY(BlueprintReadWrite)
-	float MessageDuration = -1; 
-	
-	/** @brief  */
-	UPROPERTY(BlueprintReadWrite)
-	EPDUserMessageProcessResult Results;
-	/** @brief  */
-	UPROPERTY(BlueprintReadWrite)
-	FGameplayTag MessageTag;
-};
-
-UINTERFACE() class PDUSERMESSAGEBASE_API UPDUserRecipientInterface : public UInterface { GENERATED_BODY() };
-
-class PDUSERMESSAGEBASE_API  IPDUserRecipientInterface
-	: public IInterface
+/** @brief Stylable clickable button */
+UCLASS(Blueprintable)
+class PDSHAREDUI_API UPDGenericButton : public UUserWidget
 {
 	GENERATED_BODY()
+
 public:
-	UFUNCTION(BlueprintCallable, BlueprintNativeEvent)
-	void SendUserMessage(int32 MessageIdx, const FGameplayTag& Tag);
-	virtual void SendUserMessage_Implementation(int32 MessageIdx, const FGameplayTag& Tag);
+	/** @brief Base/Root Overlay */
+	UPROPERTY(BlueprintReadWrite, Meta=(BindWidget))
+	UOverlay* Overlay = nullptr;
 
-	UFUNCTION(BlueprintCallable, BlueprintNativeEvent)
-	void StartProcessMessage(FPDUserMessageProcess& OutProcess);
-	virtual void StartProcessMessage_Implementation(FPDUserMessageProcess& OutProcess);
+	/** @brief Image (or material instance) for the buttons background*/
+	UPROPERTY(BlueprintReadWrite, Meta=(BindWidget))
+	UImage* Image_ButtonBackground = nullptr;
+
+	/** @brief Widget border */
+	UPROPERTY(BlueprintReadWrite, Meta=(BindWidget))
+	UBorder* Border = nullptr;
+
+	/** @brief Button text block widget */
+	UPROPERTY(BlueprintReadWrite, Meta=(BindWidget, ExposeOnSpawn))
+	UTextBlock* TextBlock = nullptr;	
 	
-	// Only lives until consumed, but is updated much less often, most likely in the order of minutes,
-	// will be sorted upon so queue messages can play as intended
-	TMap<int32, FPDUserMessageProcess> LocalMessageQueueFrame{};
+	/** @brief Hitbox, what our mouse events actually interacts with */
+	UPROPERTY(BlueprintReadWrite, Meta=(BindWidget))
+	UButton* Hitbox = nullptr;
 
-	int32 CurrentMessageIndexSession = INDEX_NONE;
-	bool bIsProcessingCurrentMessage = false;
+	/** @brief Target of the button press, add this class to the stack */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly)
+	TSubclassOf<UCommonActivatableWidget> PotentialTargetWidgetClass = nullptr;
+	
+	/** @brief Unused for now, reserve for later use */
+	UPROPERTY()
+	UUserWidget* OwningWidget = nullptr;	
 };
 
 
-/*
+/**
 Business Source License 1.1
 
 Parameters

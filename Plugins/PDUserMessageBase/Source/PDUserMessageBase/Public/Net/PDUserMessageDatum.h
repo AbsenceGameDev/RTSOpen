@@ -20,15 +20,14 @@ struct PDUSERMESSAGEBASE_API FPDUserMessageDatum : public FFastArraySerializerIt
 {
 	GENERATED_BODY()
 
+	FPDUserMessageDatum(){};
+
 	FPDUserMessageDatum(int32 InMessageIdx, const FGameplayTag& InMessageTag, APlayerController* InTarget)
 		: MessageIdx(InMessageIdx), MessageTag(InMessageTag), Target(InTarget)
 	{};
 
-	UFUNCTION()
 	void PreReplicatedRemove(const FPDUserMessageFrameList& OwningList);
-	UFUNCTION()
 	void PostReplicatedAdd(const FPDUserMessageFrameList& OwningList);
-	UFUNCTION()
 	void PostReplicatedChange(const FPDUserMessageFrameList& OwningList);
 
 	// This will increment for a player during a given session, just so we may dislay messages that have been recieved out of order, in order
@@ -51,8 +50,9 @@ struct PDUSERMESSAGEBASE_API FPDUserMessageFrameList : public  FFastArraySeriali
 
 	bool NetSerialize(FNetDeltaSerializeInfo& DeltaParams);
 	
-	void Clear();
+	inline void Clear() { Items.Empty(); }
 
+	UPROPERTY()
 	TArray<FPDUserMessageDatum> Items;
 	
 };

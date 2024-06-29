@@ -1,67 +1,175 @@
 ﻿/* @author: Ario Amin @ Permafrost Development. @copyright: Full BSL(1.1) License included at bottom of the file  */
 
 #pragma once
-#include "GameplayTagContainer.h"
 
-#include "PDUserRecipientInterface.generated.h"
+#include "CoreMinimal.h"
+#include "Blueprint/UserWidget.h"
+#include "Subsystems/EngineSubsystem.h"
 
-struct FGameplayTag;
+#include "UObject/Interface.h"
+#include "PDNumberBoxes.generated.h"
 
-UENUM()
-enum class EPDUserMessageProcessResult : uint8
-{
-	ECurrentMessageDoesNotExist,
-	ECurrentMessageMayBeProcessed,
-	ECurrentMessageIsWaitingForPacketToProcess,
-	ECurrentMessageIsWaitingForPreviousMessageToFinishProcessing,
-	ECurrentMessageHasFinishedProcessing,
-};
+DECLARE_DELEGATE_OneParam(FPDOnIntValueChanged, int32);
 
-USTRUCT(Blueprintable)
-struct FPDUserMessageProcess
-{
-	GENERATED_BODY()
-	
-	/** @brief  */
-	void OnProcessFinished();
-
-	/** @brief  -1 implies closable dialog window */
-	UPROPERTY(BlueprintReadWrite)
-	float MessageDuration = -1; 
-	
-	/** @brief  */
-	UPROPERTY(BlueprintReadWrite)
-	EPDUserMessageProcessResult Results;
-	/** @brief  */
-	UPROPERTY(BlueprintReadWrite)
-	FGameplayTag MessageTag;
-};
-
-UINTERFACE() class PDUSERMESSAGEBASE_API UPDUserRecipientInterface : public UInterface { GENERATED_BODY() };
-
-class PDUSERMESSAGEBASE_API  IPDUserRecipientInterface
-	: public IInterface
+//
+// Ranged number entry widgets, @todo create shared UI module in it's own plugin and move this in there 
+UCLASS()
+class PDSHAREDUI_API UPDRangedNumberBox : public UUserWidget
 {
 	GENERATED_BODY()
 public:
-	UFUNCTION(BlueprintCallable, BlueprintNativeEvent)
-	void SendUserMessage(int32 MessageIdx, const FGameplayTag& Tag);
-	virtual void SendUserMessage_Implementation(int32 MessageIdx, const FGameplayTag& Tag);
 
-	UFUNCTION(BlueprintCallable, BlueprintNativeEvent)
-	void StartProcessMessage(FPDUserMessageProcess& OutProcess);
-	virtual void StartProcessMessage_Implementation(FPDUserMessageProcess& OutProcess);
+	UFUNCTION()
+	void ApplySettings(int32 InMinimumCount, int32 InMaximumCount)
+	{
+		MinimumCount = InMinimumCount;
+		MaximumCount = InMaximumCount;
+	};
+
+	UFUNCTION()
+	virtual void SetupDelegates();
 	
-	// Only lives until consumed, but is updated much less often, most likely in the order of minutes,
-	// will be sorted upon so queue messages can play as intended
-	TMap<int32, FPDUserMessageProcess> LocalMessageQueueFrame{};
+	UFUNCTION()
+	void OnTextBoxCommitted(const FText& Text, ETextCommit::Type CommitMethod);
+	
+	/** @brief Range */
+	UPROPERTY(BlueprintReadWrite, Meta=(ExposeOnSpawn))
+	int32 MinimumCount = 0;	
+	UPROPERTY(BlueprintReadWrite, Meta=(ExposeOnSpawn))
+	int32 MaximumCount = 0;
+	UPROPERTY(VisibleInstanceOnly, BlueprintReadOnly)
+	int32 SelectedCount = 0;
 
-	int32 CurrentMessageIndexSession = INDEX_NONE;
-	bool bIsProcessingCurrentMessage = false;
+	FPDOnIntValueChanged OnValueChanged{};
+
+	/** @brief Validate number box */
+	UPROPERTY(BlueprintReadWrite, Meta=(BindWidget, ExposeOnSpawn))
+	class UEditableTextBox* ValidatedNumberBox = nullptr;
 };
 
+UCLASS()
+class PDSHAREDUI_API UPDRangedIncrementBox : public UUserWidget
+{
+	GENERATED_BODY()
+public:
 
-/*
+	UFUNCTION()
+	void ApplySettings(int32 InMinimumCount, int32 InMaximumCount)
+	{
+		MinimumCount = InMinimumCount;
+		MaximumCount = InMaximumCount;
+	};
+
+	UFUNCTION()
+	virtual void SetupDelegates();
+
+	UFUNCTION()
+	void ValidateNewValue(int32 InCount);
+	
+	UFUNCTION()
+	void OnIncrement();
+
+	UFUNCTION()
+	void OnDecrement();	
+
+	/** @brief Range */
+	UPROPERTY(BlueprintReadWrite, Meta=(ExposeOnSpawn))
+	int32 MinimumCount = 0;	
+	UPROPERTY(BlueprintReadWrite, Meta=(ExposeOnSpawn))
+	int32 MaximumCount = 0; 	
+	UPROPERTY(VisibleInstanceOnly, BlueprintReadOnly)
+	int32 SelectedCount = 0; 	
+	
+	/** @brief Hitbox, what our mouse events actually interacts with to increment the value */
+	UPROPERTY(BlueprintReadWrite, Meta=(BindWidget))
+	class UButton* HitboxIncrement = nullptr;
+	UPROPERTY(BlueprintReadWrite, Meta=(BindWidget))
+	class UTextBlock* IncrementTextBlock = nullptr;
+	UPROPERTY(BlueprintReadWrite)
+	FText IncrementText = FText::FromString("+");
+	
+	/** @brief Hitbox, what our mouse events actually interacts with to decrement the value */
+	UPROPERTY(BlueprintReadWrite, Meta=(BindWidget))
+	class UButton* HitboxDecrement = nullptr;	
+	UPROPERTY(BlueprintReadWrite, Meta=(BindWidget))
+	class UTextBlock* DecrementTextBlock = nullptr;	
+	UPROPERTY(BlueprintReadWrite)
+	FText DecrementText = FText::FromString("-");
+	
+	/** @brief Number box with controls */
+	UPROPERTY(BlueprintReadWrite, Meta=(BindWidget, ExposeOnSpawn))
+	class UTextBlock* NumberTextBlock = nullptr;
+	
+	FPDOnIntValueChanged OnValueChanged{};	
+};
+
+UENUM()
+enum class EPDSharedUICountTypeSelector : uint8
+{
+	ERangedSlider,
+	ERangedEditableNumber,
+	ERangedIncrementBox,
+};
+
+UCLASS()
+class PDSHAREDUI_API UPDSharedUISettings : public UDeveloperSettings
+{
+	GENERATED_BODY()
+
+public:
+
+	UPROPERTY()
+	EPDSharedUICountTypeSelector UICountTypeSelector = EPDSharedUICountTypeSelector::ERangedIncrementBox;
+};
+
+UCLASS()
+class PDSHAREDUI_API UPDRangedSelector : public UUserWidget
+{
+	GENERATED_BODY()
+public:
+
+	// @todo need to bind our Min/Max values for our range efficiently somehow, meaning regular UMG bindings are out of the question 
+
+	UFUNCTION()
+	void ApplySettings(int32 InMinimumCount, int32 InMaximumCount);
+
+	// @done Make configurable to use, via developer settings (UPDSharedUISettings), to use either a:
+	// @done 1. Ranged slider
+	// @done 2. Number box with user input, then validation to clamp it to a valid range
+	// @done 3. Number box with '-' and '+' buttons to increase/decrease, clamped to a valid range
+
+	/** @brief Range: Min */
+	UPROPERTY(BlueprintReadWrite, Meta=(ExposeOnSpawn))
+	int32 MinimumCount = 0;	
+	/** @brief Range: Max */
+	UPROPERTY(BlueprintReadWrite, Meta=(ExposeOnSpawn))
+	int32 MaximumCount = 0;
+	UPROPERTY(BlueprintReadWrite, Meta=(ExposeOnSpawn))
+	int32 SelectedCount = 0;
+	
+	/** @brief If Min or Max is set to INDEX_NONE, changes to said member will be ignored */
+	virtual void OnRangeUpdated(int32 NewMin = INDEX_NONE, int32 NewMax = INDEX_NONE);
+
+	UFUNCTION()
+	void OnSliderValueChanged(float NewValue);
+	
+	UFUNCTION()
+	void OnNumberBoxChanged(int32 NewValue); 
+	
+	/** @brief Ranged (Clamped) Slider */
+	UPROPERTY(BlueprintReadWrite, Meta=(BindWidget, ExposeOnSpawn))
+	class USlider* RangedSlider = nullptr;
+
+	/** @brief Validate number box */
+	UPROPERTY(BlueprintReadWrite, Meta=(BindWidget, ExposeOnSpawn))
+	class UPDRangedNumberBox* RangedNumberBox = nullptr;
+	
+	/** @brief Number box with controls */
+	UPROPERTY(BlueprintReadWrite, Meta=(BindWidget, ExposeOnSpawn))
+	class UPDRangedIncrementBox* RangedIncrementBox = nullptr;		
+};
+
+/**
 Business Source License 1.1
 
 Parameters

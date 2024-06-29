@@ -8,13 +8,28 @@
 #include "Blueprint/UserWidget.h"
 #include "Subsystems/EngineSubsystem.h"
 
+#include "CommonActivatableWidget.h"
+#include "UObject/Interface.h"
+#include "Blueprint/UserWidget.h"
+#include "Blueprint/IUserObjectListEntry.h"
+#include "UI/PDDialogs.h"
+
 #include "PDMessageWidgetCommon.generated.h"
 
 DECLARE_LOG_CATEGORY_CLASS(PDLog_MessageSystem, Log, All);
+DECLARE_DELEGATE_OneParam(FPDOnIntValueChanged, int32);
+
+struct FPDBuildable;
+struct FPDBuildWorker;
+class UImage;
+class UTextBlock;
+struct FPDBuildContext;
+
+
 
 // @todo impl. below class
 UCLASS(Blueprintable, BlueprintType)
-class UPDErrorWidget : public UUserWidget
+class UPDErrorWidget : public UPDGenericDialog
 {
 	GENERATED_BODY()
 public:
@@ -22,7 +37,7 @@ public:
 
 // @todo impl. below class
 UCLASS(Blueprintable, BlueprintType)
-class UPDSuccessWidget : public UUserWidget
+class UPDSuccessWidget : public UPDGenericDialog
 {
 	GENERATED_BODY()
 public:
@@ -30,7 +45,7 @@ public:
 
 // @todo impl. below class
 UCLASS(Blueprintable, BlueprintType)
-class UPDWaitWidget : public UUserWidget
+class UPDWaitWidget : public UPDGenericDialog
 {
 	GENERATED_BODY()
 public:
@@ -38,30 +53,31 @@ public:
 
 // @todo impl. below class
 UCLASS(Blueprintable, BlueprintType)
-class UPDStartWidget : public UUserWidget
+class UPDStartWidget : public UPDGenericDialog
 {
 	GENERATED_BODY()
 public:
 };
 
 
-UCLASS(Blueprintable, BlueprintType)
-class PDUSERMESSAGEBASE_API UPDGameMessageWidgetDataAsset : public UDataAsset
+USTRUCT(Blueprintable, BlueprintType)
+struct PDUSERMESSAGEBASE_API FPDGameMessageWidgetRow : public FTableRowBase
 {
 	GENERATED_BODY()
 
 	UPROPERTY(EditAnywhere)
-	UPDErrorWidget* ErrorWidget = nullptr;
+	TObjectPtr<UPDErrorWidget> ErrorWidget = nullptr;
 
 	UPROPERTY(EditAnywhere)
-	UPDWaitWidget* WaitWidget = nullptr;
+	TObjectPtr<UPDWaitWidget> WaitWidget = nullptr;
 
 	UPROPERTY(EditAnywhere)
-	UPDStartWidget* StartWidget = nullptr;
+	TObjectPtr<UPDStartWidget> StartWidget = nullptr;
 
 	UPROPERTY(EditAnywhere)
-	UPDSuccessWidget* SuccessWidget = nullptr;	
+	TObjectPtr<UPDSuccessWidget> SuccessWidget = nullptr;	
 };
+
 
 /**
 Business Source License 1.1

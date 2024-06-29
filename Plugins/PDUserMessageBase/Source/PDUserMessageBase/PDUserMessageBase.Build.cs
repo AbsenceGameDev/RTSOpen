@@ -17,6 +17,7 @@ public class PDUserMessageBase : ModuleRules
 				"Core",
 				"GameplayTags",
 				"NetCore",
+				"PDSharedUI",
 			}
 			);
 			
@@ -28,7 +29,8 @@ public class PDUserMessageBase : ModuleRules
 				"Engine",
 				"Slate",
 				"SlateCore",
-				"UMG",
+				"UMG", 
+				"CommonUI",
 			}
 			);
 

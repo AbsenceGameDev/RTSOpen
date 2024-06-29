@@ -15,23 +15,26 @@ void IPDUserRecipientInterface::SendUserMessage_Implementation(int32 MessageIdx,
 		static const char* const Ctx = "Incoming message should always be above the latest processed index, it may be far above but never below"; 
 		check(CurrentMessageIndexSession > MessageIdx && Ctx) 
 		
-		if (bIsNextInOrder) { CurrentMessageIndexSession = MessageIdx; }
+		if (bIsNextInOrder)
+		{
+			CurrentMessageIndexSession = MessageIdx;
+		}
 	}
-	
-	// @todo 
-	LocalMessageQueueFrame.Emplace(MessageIdx, Tag);
+
+	FPDUserMessageProcess MessageProcess{};
+	MessageProcess.MessageTag = Tag;
+	LocalMessageQueueFrame.Emplace(MessageIdx, MessageProcess);
 }
 
-FPDUserMessageProcess& IPDUserRecipientInterface::OnProcessMessage_Implementation()
+void IPDUserRecipientInterface::StartProcessMessage_Implementation(FPDUserMessageProcess& OutProcess)
 {
-	FPDUserMessageProcess Results{EPDUserMessageProcessResult::ECurrentMessageIsWaitingForPacketToProcess};
+	OutProcess.Results = EPDUserMessageProcessResult::ECurrentMessageIsWaitingForPacketToProcess;
 	bIsProcessingCurrentMessage = true;
 	
-
 	const bool bDoesContainMessage = LocalMessageQueueFrame.Contains(CurrentMessageIndexSession);
 	if (bDoesContainMessage == false)
 	{
-		return Results;
+		return;
 	}
 
 	const bool bIsStillProcessingPreviousMessage =
@@ -40,14 +43,14 @@ FPDUserMessageProcess& IPDUserRecipientInterface::OnProcessMessage_Implementatio
 		    != EPDUserMessageProcessResult::ECurrentMessageHasFinishedProcessing);
 	if (bIsProcessingCurrentMessage == false)
 	{
-		Results.Results = EPDUserMessageProcessResult::ECurrentMessageIsWaitingForPreviousMessageToFinishProcessing;
-		return Results;
+		OutProcess.Results = EPDUserMessageProcessResult::ECurrentMessageIsWaitingForPreviousMessageToFinishProcessing;
+		return;
 	}
 
 	FPDUserMessageProcess& MessageProcess = *LocalMessageQueueFrame.Find(CurrentMessageIndexSession);
 	MessageProcess.Results = EPDUserMessageProcessResult::ECurrentMessageMayBeProcessed;
 	++CurrentMessageIndexSession;
-	return Results;
+	return;
 }
 
 
