@@ -91,7 +91,7 @@ void URTSOConversationInstance::OnChoiceNodePickedByUser(const FConversationCont
 	// @note Store selected tags on server
 	ARTSOBaseGM* GM = GetWorld() != nullptr ? GetWorld()->GetAuthGameMode<ARTSOBaseGM>() : nullptr;
 	if (GM == nullptr || ListenerAsController == nullptr) { return; }
-	GM->GameSave->PlayersAndConversationTags.FindOrAdd(ListenerAsController->GetActorID()).AppendTags(ChoiceNode->ChoiceTags);
+	GM->GameSave->Data.PlayersAndConversationTags.FindOrAdd(ListenerAsController->GetActorID()).AppendTags(ChoiceNode->ChoiceTags);
 }
 
 //

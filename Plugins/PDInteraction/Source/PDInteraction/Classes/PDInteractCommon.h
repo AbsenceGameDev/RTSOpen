@@ -360,7 +360,7 @@ public:
  * @brief Structure used by the save-game structure. Holds data regarding world interactables.
  */
 USTRUCT(BlueprintType, Blueprintable)
-struct PDINTERACTION_API FRTSSavedInteractables
+struct PDINTERACTION_API FRTSSavedInteractable
 {
 	GENERATED_BODY()
 
@@ -378,7 +378,26 @@ struct PDINTERACTION_API FRTSSavedInteractables
 
 	/** @brief Reserved Usability 'stat'. @todo consider removing and replacing in gamemodule class, where a progression system could be hooked into here to give an extended stat-list */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "GameInstance|Widgets")
-	double Usability = 0.0; 
+	double Usability = 0.0;
+
+	/** @brief Instance ID is used to compare old vs new data */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "GameInstance|Widgets")
+	int32 InstanceIndex = INDEX_NONE;
+
+	bool operator==(const FRTSSavedInteractable& Other) const
+	{
+		return 
+			this->ActorClass == Other.ActorClass
+			&& this->InstanceIndex == Other.InstanceIndex
+			&& FMath::IsNearlyEqual(this->Usability, Other.Usability, 0.5f) 
+			&& (this->Location - Other.Location).IsNearlyZero(5.f);
+	}
+
+	bool operator!=(const FRTSSavedInteractable& Other) const
+	{
+		return (*this == Other) == false;
+	}		
+	
 };
 
 

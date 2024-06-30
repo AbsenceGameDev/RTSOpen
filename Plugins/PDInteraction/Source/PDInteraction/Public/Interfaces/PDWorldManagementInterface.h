@@ -21,6 +21,13 @@ public:
 	void RegisterWorldInteractable(UWorld* SelectedWorld, AActor* SelectedInteractable);
 	virtual void RegisterWorldInteractable_Implementation(UWorld* SelectedWorld, AActor* SelectedInteractable) = 0;
 
+	/** @brief Implement override in classes inheriting from this interface. Has a pure virtual _Implementation function */
+	UFUNCTION(BlueprintNativeEvent, BlueprintCallable)
+	void DeregisterWorldInteractable(UWorld* SelectedWorld, AActor* SelectedInteractable);
+	virtual void DeregisterWorldInteractable_Implementation(UWorld* SelectedWorld, AActor* SelectedInteractable) = 0;
+
+	
+
 public:
 };
 

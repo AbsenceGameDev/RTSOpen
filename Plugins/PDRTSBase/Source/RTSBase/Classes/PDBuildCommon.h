@@ -4,6 +4,7 @@
 
 #include "CoreMinimal.h"
 #include "GameplayTagContainer.h"
+#include "MassEntityConfigAsset.h"
 #include "MassEntityTypes.h"
 #include "NativeGameplayTags.h"
 #include "Subsystems/EngineSubsystem.h"
@@ -444,7 +445,20 @@ struct PDRTSBASE_API FPDSharedBuildWidgetFlair : public FTableRowBase
 	FLinearColor NotSelectedBuildableTint = FLinearColor::Blue;	
 };
 
-/** @rief Worker builder definition table row, Defines what entity types are granted which build-contexts  */
+UCLASS(Blueprintable)
+class PDRTSBASE_API UPDRTSUnitTypeDataAsset : public UDataAsset
+{
+	GENERATED_BODY()
+public:
+	UPDRTSUnitTypeDataAsset() = default;
+
+	/** @brief The entity config we want to load this unit with */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "RTSBase|WorkerUnits")
+	const TSoftObjectPtr<UMassEntityConfigAsset> EntityConfig = {};
+};
+
+/** @brief Worker builder definition table row, Defines what entity types are granted which build-contexts
+ * @todo rename to FPDEntityUnit or something similar */
 USTRUCT(Blueprintable)
 struct PDRTSBASE_API FPDBuildWorker : public FTableRowBase
 {
@@ -457,8 +471,12 @@ struct PDRTSBASE_API FPDBuildWorker : public FTableRowBase
 	FGameplayTag WorkerType{};
 	
 	/** @brief The buildable contexts granted to this worked */
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Meta = (RowType = "/Script/PDRTSBase.PDBuildContext"))
-	TArray<FDataTableRowHandle> GrantedContexts;	
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "RTSBase|WorkerUnits", Meta = (RowType = "/Script/PDRTSBase.PDBuildContext"))
+	TArray<FDataTableRowHandle> GrantedContexts;
+
+	/** @brief The entity config we want to load this unit with */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "RTSBase|WorkerUnits")
+	const UPDRTSUnitTypeDataAsset* MassEntityData = nullptr;
 };
 
 

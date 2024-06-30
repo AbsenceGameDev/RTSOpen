@@ -46,6 +46,12 @@ void APDInteractActor::BeginPlay()
 	check(bHasBeenRegisteredWithCurrentWorld)
 }
 
+void APDInteractActor::BeginDestroy()
+{
+	Super::BeginDestroy();
+	IPDInteractInterface::Execute_RegisterWorldInteractable(this, GetWorld(), this);
+}
+
 void APDInteractActor::Tick(float DeltaTime)
 {
 	Super::Tick(DeltaTime);

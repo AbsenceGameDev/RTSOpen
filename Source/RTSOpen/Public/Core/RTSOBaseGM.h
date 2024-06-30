@@ -168,10 +168,12 @@ public:
 
 	/** @brief Load worker/units from current save data*/
 	UFUNCTION(BlueprintNativeEvent, BlueprintCallable)
-	void LoadEntities();	
+	void LoadEntities(const TArray<FRTSSavedWorldUnits>& OverrideEntityUnits);	
 
 	/** @brief Runs configured auto-saver */
 	virtual void TickActor(float DeltaTime, ELevelTick TickType, FActorTickFunction& ThisTickFunction) override;
+
+	void OnThreadFinished_PlayerLoadDataSync(EPDSaveDataThreadSelector FinishedThread);
 	
 public:
 	
@@ -193,7 +195,42 @@ public:
 
 	/** @brief Root save slot name, fallback if none is selected */
 	static const FString ROOTSAVE;
+
+private:
+
+	#define TPDPreprocessLoadData(Name, TContainer,  ...) \
+	typedef struct Name  \
+	{ \
+	public:\
+		TContainer<__VA_ARGS__> ToDelete; \
+		TContainer<__VA_ARGS__> ToAdd; \
+		TContainer<__VA_ARGS__> ToModify; \
+	} _##Name;
+	
+	TPDPreprocessLoadData(MProcessedInteractData, TArray, FRTSSavedInteractable);
+	TPDPreprocessLoadData(MProcessedUnits, TArray, FRTSSavedWorldUnits);
+	TPDPreprocessLoadData(MProcessedItems, TMap, int32, FRTSSavedItems);
+	TPDPreprocessLoadData(MProcessedLocations, TMap, int32, FVector);
+	TPDPreprocessLoadData(MProcessedConvos, TMap, int32, FRTSSavedConversationActorData);
+	TPDPreprocessLoadData(MProcessedTags, TMap, int32, FGameplayTagContainer);
+
+	union ProcessedLoadData
+	{
+		ProcessedLoadData() {}
+		~ProcessedLoadData() {}
+		MProcessedInteractData SavedInteracts;
+		MProcessedUnits     SavedUnits;
+		MProcessedItems     SavedItems;
+		MProcessedLocations SavedLocs;
+		MProcessedConvos    SavedConvoActors;
+		MProcessedTags      SavedConvoTags;		
+	};
+	
+	bool bProcessingLoadData = false;
+	TStaticArray<bool, static_cast<uint8>(EPDSaveDataThreadSelector::EEnd), 8> FinishedLoadThreads;
+	TStaticArray<ProcessedLoadData, static_cast<uint8>(EPDSaveDataThreadSelector::EEnd), 8> LoadDataInProcess;
 };
+
 
 /**
 Business Source License 1.1

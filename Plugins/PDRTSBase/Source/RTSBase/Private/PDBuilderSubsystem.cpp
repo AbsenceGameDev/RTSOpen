@@ -158,6 +158,16 @@ const FGameplayTag& UPDBuilderSubsystem::GetBuildableTagFromData(const FPDBuilda
 	return BuildableData_WTagReverse.Contains(BuildableData) ? *BuildableData_WTagReverse.Find(BuildableData) : FGameplayTag::EmptyTag;
 }
 
+const FPDBuildWorker* UPDBuilderSubsystem::GetWorkerData(const FGameplayTag& WorkerTag)
+{
+	return GrantedBuildContexts_WorkerTag.Contains(WorkerTag) ? *GrantedBuildContexts_WorkerTag.Find(WorkerTag) : nullptr;
+}
+
+const FPDBuildWorker* UPDBuilderSubsystem::GetWorkerDataStatic(const FGameplayTag& WorkerTag)
+{
+	return UPDBuilderSubsystem::Get()->GetWorkerData(WorkerTag);
+}
+
 void UPDBuilderSubsystem::QueueRemoveFromWorldBuildTree(int32 UID)
 {
 	// FILO

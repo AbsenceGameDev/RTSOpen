@@ -44,6 +44,12 @@ void IPDInteractInterface::RegisterWorldInteractable_Implementation(UWorld* Sele
 	check(GEngine != nullptr)
 	check(UPDInteractSubsystem::Get() != nullptr)
 
+
+	if(InstanceID == INDEX_NONE)
+	{
+		GenerateInstanceID();
+	}
+	
 	IPDWorldManagementInterface::Execute_RegisterWorldInteractable(UPDInteractSubsystem::Get(), SelectedWorld, SelectedInteractable);
 	bHasBeenRegisteredWithCurrentWorld = true;
 }

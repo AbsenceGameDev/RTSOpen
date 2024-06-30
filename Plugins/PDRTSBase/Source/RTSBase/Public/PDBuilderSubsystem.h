@@ -42,7 +42,12 @@ public:
 	/** @brief Returns the default Buildable data via it's Buildable-tag*/
 	const FPDBuildableData* GetBuildableData(const FGameplayTag& BuildableTag);
 	const FGameplayTag& GetBuildableTagFromData(const FPDBuildableData* BuildableData);
-	
+
+	/** @brief Returns the default Buildable data via it's Buildable-tag*/
+	const FPDBuildWorker* GetWorkerData(const FGameplayTag& WorkerTag);
+
+	/** @brief Returns the default Buildable data via it's Buildable-tag*/
+	static const FPDBuildWorker* GetWorkerDataStatic(const FGameplayTag& WorkerTag);	
 	
 	/** @brief Queue a removal from the buildable octree */
 	void QueueRemoveFromWorldBuildTree(int32 UID);

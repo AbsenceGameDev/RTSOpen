@@ -38,6 +38,8 @@ public:
 	virtual void OnConstruction(const FTransform& Transform) override;
 	/** @brief Registers the actor with the interaction subsystem */
 	virtual void BeginPlay() override;
+	/** @brief Deregisters the actor with the interaction subsystem */
+	virtual void BeginDestroy() override;
 	/** @brief Default setting Disabled. Only Calls Super. Reserved for later use */
 	virtual void Tick(float DeltaTime) override;
 

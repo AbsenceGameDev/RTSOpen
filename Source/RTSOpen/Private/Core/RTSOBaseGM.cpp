@@ -10,7 +10,9 @@
 #include "Actors/Interactables/ConversationHandlers/RTSOInteractableConversationActor.h"
 
 #include "MassCommonFragments.h"
+#include "MassEntitySubsystem.h"
 #include "MassSpawnerSubsystem.h"
+#include "PDBuilderSubsystem.h"
 #include "Components/PDInventoryComponent.h"
 #include "GameFramework/GameStateBase.h"
 #include "Kismet/GameplayStatics.h"
@@ -67,13 +69,13 @@ void ARTSOBaseGM::ClearSave_Implementation(const bool bRefreshSeed)
 {
 	check(GameSave != nullptr)
 
-	GameSave->GameTime = 0;
-	GameSave->Interactables.Empty();
-	GameSave->Inventories.Empty();
+	GameSave->Data.GameTime = 0;
+	GameSave->Data.Interactables.Empty();
+	GameSave->Data.Inventories.Empty();
 
 	if (bRefreshSeed)
 	{
-		GameSave->Seeder = UKismetMathLibrary::MakeRandomStream(FMath::RandRange(0, INT_MAX));
+		GameSave->Data.Seeder = UKismetMathLibrary::MakeRandomStream(FMath::RandRange(0, INT_MAX));
 	}
 	
 	bHasStartedSaveData = false;
@@ -116,7 +118,7 @@ void ARTSOBaseGM::ProcessChangesAndSaveGame_Implementation(const FString& Slot, 
 	SaveAllItems();
 	
 	const FTimerDelegate SaveGameCallback = FTimerDelegate::CreateUObject(this, &ARTSOBaseGM::SaveGame, Slot, bAllowOverwrite);
-	GetWorld()->GetTimerManager().SetTimer(GameSave->SaveThrottleHandle, SaveGameCallback, 4, false);
+	GetWorld()->GetTimerManager().SetTimer(GameSave->Data.SaveThrottleHandle, SaveGameCallback, 4, false);
 }
 
 // Not needed, data updated directly after each choice injunction,
@@ -141,7 +143,7 @@ void ARTSOBaseGM::SaveConversationActorStates_Implementation()
 			? ConversationActor->ConversationActorPersistentID.GetID()
 			: FPDPersistentID::GenerateNewPersistentID();
 		
-		FRTSSavedConversationActorData& State = GameSave->ConversationActorState.FindOrAdd(IDStruct.GetID());
+		FRTSSavedConversationActorData& State = GameSave->Data.ConversationActorState.FindOrAdd(IDStruct.GetID());
 		State.Health = 1.0; // Force full health for now
 		State.Location = ConversationActor->GetActorLocation();
 		State.ActorClassType = TSoftClassPtr<ARTSOInteractableConversationActor>(ConversationActor->GetClass());
@@ -170,36 +172,38 @@ void ARTSOBaseGM::SavePlayerState_Implementation(ARTSOController* PlayerControll
 	check(GameSave != nullptr)
 
 	// todo store player stats here as-well when I've finished writing the progression system 
-	GameSave->PlayerLocations.FindOrAdd(PlayerController->GetActorID()) = PlayerController->GetPawn()->GetActorLocation();
+	GameSave->Data.PlayerLocations.FindOrAdd(PlayerController->GetActorID()) = PlayerController->GetPawn()->GetActorLocation();
 }
 
 void ARTSOBaseGM::SaveInteractables_Implementation()
 {
 	check(GameSave != nullptr)
 	check(UPDInteractSubsystem::Get() != nullptr)
-	GameSave->Interactables.Empty();
+	GameSave->Data.Interactables.Empty();
 
 	FPDArrayListWrapper& SaveInfo = *UPDInteractSubsystem::Get()->WorldInteractables.Find(GetWorld());
-	for (FRTSSavedInteractables& _Actor: SaveInfo.ActorInfo)
+	for (TTuple<int32, FRTSSavedInteractable>& _Actor : SaveInfo.ActorInfo)
 	{
 		// Update class if needed
-		if (_Actor.ActorInWorld == nullptr)
+		if (_Actor.Value.ActorInWorld == nullptr)
 		{
-			_Actor.Usability = 0.0;
+			_Actor.Value.Usability = 0.0;
 			continue;
 		}
 
 		// Update class if needed
-		if (_Actor.ActorClass == nullptr)
+		if (_Actor.Value.ActorClass == nullptr)
 		{
-			_Actor.ActorClass = _Actor.ActorInWorld->GetClass();
+			_Actor.Value.ActorClass = _Actor.Value.ActorInWorld->GetClass();
 		}
 		
 		// update location
-		_Actor.Location = _Actor.ActorInWorld->GetActorLocation();
+		_Actor.Value.Location = _Actor.Value.ActorInWorld->GetActorLocation();
 	}
-	
-	GameSave->Interactables.Append(SaveInfo.ActorInfo);
+
+	TArray<FRTSSavedInteractable> InteractableArray{};
+	SaveInfo.ActorInfo.GenerateValueArray(InteractableArray);
+	GameSave->Data.Interactables.Append(InteractableArray);
 }
 
 void ARTSOBaseGM::SaveAllItems_Implementation()
@@ -227,7 +231,7 @@ void ARTSOBaseGM::SaveAllItems_Implementation()
 		AccumulatedItems.Emplace(ID, FRTSSavedItems{CurrentGodHandPawn->InventoryComponent->ItemList.Items});
 	}
 	
-	GameSave->Inventories.Append(AccumulatedItems); // overwrite any previous value, this is slow so only allow saving resources every 4 seconds at max, limited by the latent action below 
+	GameSave->Data.Inventories.Append(AccumulatedItems); // overwrite any previous value, this is slow so only allow saving resources every 4 seconds at max, limited by the latent action below 
 }
 
 /* Save current units, their locations and actor classes*/
@@ -258,9 +262,11 @@ void ARTSOBaseGM::SaveEntities_Implementation()
 
 			// Get mass entity soft object pointer, RTSSubsystem will only have done tha actual association if we've spawned entities using our ARTSOMassSpawner class 
 			const FMassArchetypeHandle ArchetypeHandle = EntityManager->GetArchetypeForEntity(Cell.EntityHandle);
-			UnitDatum.MassEntityConfigAssetPath = RTSSubsystem->GetConfigAssetForArchetype(ArchetypeHandle);
 			
-			GameSave->EntityUnits.Emplace(UnitDatum);
+			UnitDatum.InstanceIndex = Cell.EntityHandle;
+			UnitDatum.EntityUnitTag = EntityBaseFragment.EntityType;
+			
+			GameSave->Data.EntityUnits.Emplace(UnitDatum);
 		}
 	);
 }
@@ -268,11 +274,254 @@ void ARTSOBaseGM::SaveEntities_Implementation()
 //
 // Loading
 
+// NewData.Interactables;              // TArray<FRTSSavedInteractable>
+// NewData.EntityUnits;                // TArray<FRTSSavedWorldUnits>
+template<typename TInnerType = FRTSSavedWorldUnits>
+void LoadArray(const TArray<TInnerType>& OldData, const TArray<TInnerType>& NewData,
+	TArray<TInnerType>& DeleteContainer, // : Anything which is in OldData that isn't in NewData (Intersection of OldData and the Complement of NewData)
+	TArray<TInnerType>& AddContainer,    // : Anything which is in NewData that isn't in OldData (Intersection of NewData and the Complement of OldData)
+	TArray<TInnerType>& ModifyContainer) // : Anything updated from the intersection of OldData and NewData (Modified elements in the intersection of NewData and OldData)
+
+{
+	// Slow compare, needed if compare type is an array, 
+	for (const TInnerType& OldDatum : OldData)
+	{
+		bool bOldDatumExist = false;
+		bool bNeedsToBeModified = false;
+
+		const TInnerType* DatumPtr = &OldDatum;
+		
+		for (const TInnerType& NewDatum : NewData)
+		{
+			if (OldDatum.InstanceIndex == NewDatum.InstanceIndex)
+			{
+				bOldDatumExist = true;
+				bNeedsToBeModified = OldDatum != NewDatum;
+				DatumPtr = &NewDatum;
+				break;
+			}
+		}
+
+		
+		// Emplace copies
+		if (bOldDatumExist && bNeedsToBeModified) { ModifyContainer.Emplace(*DatumPtr); }
+		else if (bOldDatumExist == false) { DeleteContainer.Emplace(OldDatum); }
+		
+	}
+
+	// Slow compare, needed if compare type is an array, 
+	for (const TInnerType& NewDatum : NewData)
+	{
+		bool bOldDatumExist_DoNotAddAgain = false;
+		for (const TInnerType& OldDatum : OldData)
+		{
+			if (OldDatum.InstanceIndex == NewDatum.InstanceIndex)
+			{
+				bOldDatumExist_DoNotAddAgain = true;
+				break;
+			}
+		}
+
+		// Emplace copy
+		if (bOldDatumExist_DoNotAddAgain == false) { AddContainer.Emplace(NewDatum); }
+	}
+}
+
+
+// NewData.Inventories;                // TMap<int32, FRTSSavedItems>
+// NewData.PlayerLocations;            // TMap<int32, FVector>
+// NewData.ConversationActorState;     // TMap<int32, FRTSSavedConversationActorData>
+// NewData.PlayersAndConversationTags; // TMap<int32, FGameplayTagContainer>
+void ProcessLoadSavedItems(const TMap<int32, FRTSSavedItems>& OldData, const TMap<int32, FRTSSavedItems>& NewData,
+	TMap<int32, FRTSSavedItems>& DeleteContainer, // : Anything which is in OldData that isn't in NewData (Intersection of OldData and the Complement of NewData)
+	TMap<int32, FRTSSavedItems>& AddContainer,    // : Anything which is in NewData that isn't in OldData (Intersection of NewData and the Complement of OldData)
+	TMap<int32, FRTSSavedItems>& ModifyContainer) // : Anything updated from the intersection of OldData and NewData (Modified elements in the intersection of NewData and OldData)
+
+{
+	
+	// Slow inner compare, needed if compare type is an array, 
+	for (const TTuple<int32, FRTSSavedItems>& OldUserDatum : OldData)
+	{
+		const int32 UserID = OldUserDatum.Key;
+		
+		TTuple<int32, FRTSSavedItems> NewUserDatum = OldUserDatum;
+
+		const bool bUserDatumExists = NewData.Contains(UserID);
+		bool bNeedsToBeModified = false; // bUserDatumExists && NewData.FindRef(OldUserDatum.Key) != OldUserDatum.Value;
+		if (bUserDatumExists)
+		{
+			NewUserDatum = TTuple<int32, FRTSSavedItems>{UserID, NewData.FindRef(UserID)};
+			
+			TArray<FPDItemNetDatum> DeleteList;
+			TArray<FPDItemNetDatum> AddList;
+			TArray<FPDItemNetDatum> ModifyList;
+			// // @todo finish
+			// LoadArray<FPDItemNetDatum>(
+			// 	OldUserDatum.Value.Items,
+			// 	NewUserDatum.Value.Items,
+			// 	DeleteList,
+			// 	AddList,
+			// 	ModifyList);
+
+			for (const FPDItemNetDatum& ItemToDelete : DeleteList)
+			{
+				// @todo, Process for current UserID
+				bNeedsToBeModified = true;
+			}
+
+			for (const FPDItemNetDatum& ItemToAdd : AddList)
+			{
+				// @todo, Process for current UserID
+				bNeedsToBeModified = true;
+			}
+
+			for (const FPDItemNetDatum& ItemToModify : ModifyList)
+			{
+				// @todo, Process for current UserID
+				bNeedsToBeModified = true;
+			}
+		}
+		
+		// Emplace copies
+		if (bUserDatumExists && bNeedsToBeModified) { ModifyContainer.Emplace(NewUserDatum.Key, NewUserDatum.Value); }
+		else if (bUserDatumExists == false) { DeleteContainer.Emplace(OldUserDatum.Key, OldUserDatum.Value); }
+	}
+
+	//
+	// Compare if this is a new user from the perspective of the new data 
+	for (const TTuple<int, FRTSSavedItems>& NewDatum : NewData)
+	{
+		const bool bUserDatumExists = OldData.Contains(NewDatum.Key);
+
+		// Emplace copy 
+		if (bUserDatumExists == false) { AddContainer.Emplace(NewDatum.Key, NewDatum.Value); }
+	}
+}
+
+void ProcessLoadPlayerLocations(const TMap<int32, FVector>& OldData, const TMap<int32, FVector>& NewData,
+	TMap<int32, FVector>& DeleteContainer, // : Anything which is in OldData that isn't in NewData (Intersection of OldData and the Complement of NewData)
+	TMap<int32, FVector>& AddContainer,    // : Anything which is in NewData that isn't in OldData (Intersection of NewData and the Complement of OldData)
+	TMap<int32, FVector>& ModifyContainer) // : Anything updated from the intersection of OldData and NewData (Modified elements in the intersection of NewData and OldData)
+
+{
+	// Slow inner compare, needed if compare type is an array, 
+	for (const TTuple<int32, FVector>& OldUserDatum : OldData)
+	{
+		const int32 UserID = OldUserDatum.Key;
+		
+		TTuple<int32, FVector> NewUserDatum = OldUserDatum;
+
+		const bool bUserDatumExists = NewData.Contains(UserID);
+		bool bNeedsToBeModified = false; // bUserDatumExists && NewData.FindRef(OldUserDatum.Key) != OldUserDatum.Value;
+		if (bUserDatumExists)
+		{
+			NewUserDatum = TTuple<int32, FVector>{UserID, NewData.FindRef(UserID)};
+			bNeedsToBeModified = (OldUserDatum.Value - NewUserDatum.Value).IsNearlyZero(5.f) == false; 
+		}
+		
+		// Emplace copies
+		if (bUserDatumExists && bNeedsToBeModified) { ModifyContainer.Emplace(NewUserDatum.Key, NewUserDatum.Value); }
+		else if (bUserDatumExists == false) { DeleteContainer.Emplace(OldUserDatum.Key, OldUserDatum.Value); }
+		
+	}
+
+	//
+	// Compare if this is a new user from the perspective of the new data 
+	for (const TTuple<int, FVector>& NewDatum : NewData)
+	{
+		const bool bUserDatumExists = OldData.Contains(NewDatum.Key);
+
+		// Emplace copy 
+		if (bUserDatumExists == false) { AddContainer.Emplace(NewDatum.Key, NewDatum.Value); }
+	}
+}
+
+// TODO / IN-PROGRESS : ProcessLoadConversationActorsData(..)
+void ProcessLoadConversationActorsData(const TMap<int32, FRTSSavedConversationActorData>& OldData, const TMap<int32, FRTSSavedConversationActorData>& NewData,
+	TMap<int32, FRTSSavedConversationActorData>& DeleteContainer, // : Anything which is in OldData that isn't in NewData (Intersection of OldData and the Complement of NewData)
+	TMap<int32, FRTSSavedConversationActorData>& AddContainer,    // : Anything which is in NewData that isn't in OldData (Intersection of NewData and the Complement of OldData)
+	TMap<int32, FRTSSavedConversationActorData>& ModifyContainer) // : Anything updated from the intersection of OldData and NewData (Modified elements in the intersection of NewData and OldData)
+
+{
+	// Slow inner compare, needed if compare type is an array, 
+	for (const TTuple<int32, FRTSSavedConversationActorData>& OldUserDatum : OldData)
+	{
+		const int32 UserID = OldUserDatum.Key;
+		
+		TTuple<int32, FRTSSavedConversationActorData> NewUserDatum = OldUserDatum;
+
+		const bool bUserDatumExists = NewData.Contains(UserID);
+		bool bNeedsToBeModified = false; // bUserDatumExists && NewData.FindRef(OldUserDatum.Key) != OldUserDatum.Value;
+		if (bUserDatumExists)
+		{
+			NewUserDatum = TTuple<int32, FRTSSavedConversationActorData>{UserID, NewData.FindRef(UserID)};
+			bNeedsToBeModified = OldUserDatum != NewUserDatum;
+		}
+		
+		// Emplace copies
+		if (bUserDatumExists && bNeedsToBeModified) { ModifyContainer.Emplace(NewUserDatum.Key, NewUserDatum.Value); }
+		else if (bUserDatumExists == false) { DeleteContainer.Emplace(OldUserDatum.Key, OldUserDatum.Value); }
+		
+	}
+
+	//
+	// Compare if this is a new user from the perspective of the new data 
+	for (const TTuple<int, FRTSSavedConversationActorData>& NewDatum : NewData)
+	{
+		const bool bUserDatumExists = OldData.Contains(NewDatum.Key);
+
+		// Emplace copy 
+		if (bUserDatumExists == false) { AddContainer.Emplace(NewDatum.Key, NewDatum.Value); }
+	}
+}
+
+
+void ProcessLoadPlayerAccumulatedTags(const TMap<int32, FGameplayTagContainer>& OldData, const TMap<int32, FGameplayTagContainer>& NewData,
+	TMap<int32, FGameplayTagContainer>& DeleteContainer, // : Anything which is in OldData that isn't in NewData (Intersection of OldData and the Complement of NewData)
+	TMap<int32, FGameplayTagContainer>& AddContainer,    // : Anything which is in NewData that isn't in OldData (Intersection of NewData and the Complement of OldData)
+	TMap<int32, FGameplayTagContainer>& ModifyContainer) // : Anything updated from the intersection of OldData and NewData (Modified elements in the intersection of NewData and OldData)
+
+{
+	// Slow inner compare, needed if compare type is an array, 
+	for (const TTuple<int32, FGameplayTagContainer>& OldUserDatum : OldData)
+	{
+		const int32 UserID = OldUserDatum.Key;
+		
+		TTuple<int32, FGameplayTagContainer> NewUserDatum = OldUserDatum;
+
+		const bool bUserDatumExists = NewData.Contains(UserID);
+		bool bNeedsToBeModified = false; // bUserDatumExists && NewData.FindRef(OldUserDatum.Key) != OldUserDatum.Value;
+		if (bUserDatumExists)
+		{
+			NewUserDatum = TTuple<int32, FGameplayTagContainer>{UserID, NewData.FindRef(UserID)};
+			bNeedsToBeModified = (OldUserDatum.Value == NewUserDatum.Value) == false; 
+		}
+		
+		// Emplace copies
+		if (bUserDatumExists && bNeedsToBeModified) { ModifyContainer.Emplace(NewUserDatum.Key, NewUserDatum.Value); }
+		else if (bUserDatumExists == false) { DeleteContainer.Emplace(OldUserDatum.Key, OldUserDatum.Value); }
+		
+	}
+
+	//
+	// Compare if this is a new user from the perspective of the new data 
+	for (const TTuple<int, FGameplayTagContainer>& NewDatum : NewData)
+	{
+		const bool bUserDatumExists = OldData.Contains(NewDatum.Key);
+
+		// Emplace copy 
+		if (bUserDatumExists == false) { AddContainer.Emplace(NewDatum.Key, NewDatum.Value); }
+	}
+}
+
+
 void ARTSOBaseGM::LoadGame_Implementation(const FString& Slot, const bool bDummyParam)
 {
 	const FString SelectedSlot = Slot == FString() ? ARTSOBaseGM::ROOTSAVE : Slot;
 	
 	const bool bDoesExist = UGameplayStatics::DoesSaveGameExist(SelectedSlot,0);
+
+	FRTSSaveData OldData = GameSave != nullptr ? GameSave->Data : FRTSSaveData{};
 	if (bDoesExist)
 	{
 		GameSave = Cast<URTSOpenSaveGame>(UGameplayStatics::LoadGameFromSlot(SelectedSlot,0));
@@ -280,7 +529,320 @@ void ARTSOBaseGM::LoadGame_Implementation(const FString& Slot, const bool bDummy
 	}
 	
 	GameSave = Cast<URTSOpenSaveGame>(UGameplayStatics::CreateSaveGameObject(URTSOpenSaveGame::StaticClass()));
+	const FRTSSaveData& NewData = GameSave->Data;
+
+	// 0. Prepare 6, unbound, threaded tasks
+	// 1. For each task assign the different save data types: 
+	// 1a.  This means to return anything we should Delete: Anything which is in OldData that isn't in NewData (Intersection of OldData and the Complement of NewData)
+	// 1b.  This means to return anything we should Add:    Anything which is in NewData that isn't in OldData (Intersection of NewData and the Complement of OldData)
+	// 1c.  This means to return anything we should Modify: Anything updated from the intersection of OldData and NewData (Modified elements in the intersection of NewData and OldData)
+	// 2. When all threads have finished call 'InstantiateLoadedData'
+	// 2a.  @todo Need to update the 4 functions in InstantiateLoadedData: The containers for Delete/Add/Modify gathered by the threaded functions needs to be taken into account, so existing objects aren't reloaded
+	// 2b.  @todo Also need a developer setting that forces a fresh (full) load, instead of the default where it only will load changes 
+
+	for (bool& LoadThreadState : FinishedLoadThreads)
+	{
+		LoadThreadState = false;
+	}
+
+	bProcessingLoadData = true;
+	ParallelFor(
+		static_cast<uint8>(EPDSaveDataThreadSelector::EEnd),
+		[&](uint8 Step)
+		{
+			const EPDSaveDataThreadSelector ThreadSelector{Step};
+
+			switch (ThreadSelector)
+			{
+			case EPDSaveDataThreadSelector::EInteractables:
+				{
+					ProcessedLoadData& ThreadData = LoadDataInProcess[static_cast<uint8>(EPDSaveDataThreadSelector::EInteractables)];
+					// (DONE) NewData.Interactables;              // TArray<FRTSSavedInteractable>
+					LoadArray<FRTSSavedInteractable>(
+						OldData.Interactables,
+						NewData.Interactables,
+						ThreadData.SavedInteracts.ToDelete,
+						ThreadData.SavedInteracts.ToAdd,
+						ThreadData.SavedInteracts.ToModify);
+					
+					OnThreadFinished_PlayerLoadDataSync(EPDSaveDataThreadSelector::EInteractables);
+				}
+				break;
+			case EPDSaveDataThreadSelector::EEntities:
+				{
+					ProcessedLoadData& ThreadData = LoadDataInProcess[static_cast<uint8>(EPDSaveDataThreadSelector::EEntities)];
+					// (DONE) NewData.EntityUnits;                // TArray<FRTSSavedWorldUnits>
+					LoadArray<FRTSSavedWorldUnits>(
+						OldData.EntityUnits,
+						NewData.EntityUnits,
+						ThreadData.SavedUnits.ToDelete,
+						ThreadData.SavedUnits.ToAdd,
+						ThreadData.SavedUnits.ToModify);
+
+					OnThreadFinished_PlayerLoadDataSync(EPDSaveDataThreadSelector::EEntities);
+				}	
+				break;
+			case EPDSaveDataThreadSelector::EInventories:
+				{
+					ProcessedLoadData& ThreadData = LoadDataInProcess[static_cast<uint8>(EPDSaveDataThreadSelector::EInventories)];
+					// (DONE) NewData.Inventories;                // TMap<int32, FRTSSavedItems>
+					ProcessLoadSavedItems(
+						OldData.Inventories,
+						NewData.Inventories,
+						ThreadData.SavedItems.ToDelete,
+						ThreadData.SavedItems.ToAdd,
+						ThreadData.SavedItems.ToModify);
+
+					OnThreadFinished_PlayerLoadDataSync(EPDSaveDataThreadSelector::EInventories);
+				}
+				break;
+			case EPDSaveDataThreadSelector::ELocations:
+				{
+					ProcessedLoadData& ThreadData = LoadDataInProcess[static_cast<uint8>(EPDSaveDataThreadSelector::ELocations)];
+					// (DONE) NewData.PlayerLocations;            // TMap<int32, FVector>
+					ProcessLoadPlayerLocations(
+						OldData.PlayerLocations,
+						NewData.PlayerLocations,
+						ThreadData.SavedLocs.ToDelete,
+						ThreadData.SavedLocs.ToAdd,
+						ThreadData.SavedLocs.ToModify);
+
+					OnThreadFinished_PlayerLoadDataSync(EPDSaveDataThreadSelector::ELocations);
+				}
+				break;
+			case EPDSaveDataThreadSelector::EConversationActors:
+				{
+					// (DONE) NewData.ConversationActorState;     // TMap<int32, FRTSSavedConversationActorData>
+					ProcessedLoadData& ThreadData = LoadDataInProcess[static_cast<uint8>(EPDSaveDataThreadSelector::EConversationActors)];
+					ProcessLoadConversationActorsData(
+						OldData.ConversationActorState,
+						NewData.ConversationActorState,
+						ThreadData.SavedConvoActors.ToDelete,
+						ThreadData.SavedConvoActors.ToAdd,
+						ThreadData.SavedConvoActors.ToModify);
+
+					OnThreadFinished_PlayerLoadDataSync(EPDSaveDataThreadSelector::EConversationActors);
+				}
+				break;
+			case EPDSaveDataThreadSelector::EPlayerConversationProgress:
+				{
+					ProcessedLoadData& ThreadData = LoadDataInProcess[static_cast<uint8>(EPDSaveDataThreadSelector::EPlayerConversationProgress)];
+					// (DONE) NewData.PlayersAndConversationTags; // TMap<int32, FGameplayTagContainer>
+					ProcessLoadPlayerAccumulatedTags(
+						OldData.PlayersAndConversationTags,
+						NewData.PlayersAndConversationTags,
+						ThreadData.SavedConvoTags.ToDelete,
+						ThreadData.SavedConvoTags.ToAdd,
+						ThreadData.SavedConvoTags.ToModify);
+
+					OnThreadFinished_PlayerLoadDataSync(EPDSaveDataThreadSelector::EPlayerConversationProgress);
+				}
+				break;
+			default: break;
+			}
+		}
+		, false
+		, false
+		);
 }
+
+void ARTSOBaseGM::OnThreadFinished_PlayerLoadDataSync(EPDSaveDataThreadSelector FinishedThread)
+{
+	FinishedLoadThreads[static_cast<uint8>(FinishedThread)] = true;
+	bool bAllThreadsLoaded = true;
+	for (const bool& LoadThreadState : FinishedLoadThreads)
+	{
+		bAllThreadsLoaded &= LoadThreadState ;
+	}
+
+	if (bAllThreadsLoaded && bProcessingLoadData)
+	{
+		bProcessingLoadData = false;
+		uint8 End = static_cast<uint8>(EPDSaveDataThreadSelector::EEnd);
+		for (uint8 Step = 0 ; Step < End; Step++)
+		{
+			const EPDSaveDataThreadSelector CurrentSelector = static_cast<EPDSaveDataThreadSelector>(Step);
+			switch (CurrentSelector)
+			{
+			case EPDSaveDataThreadSelector::EInteractables:
+				{
+					MProcessedInteractData& ProcessedData = LoadDataInProcess[Step].SavedInteracts;
+					// @DONE iterate and spawn all interactables from ProcessedData.ToAdd
+					for (FRTSSavedInteractable& InteractableToSpawn : ProcessedData.ToAdd)
+					{
+						FRotator DummyRot{0};
+						APDInteractActor* InteractActor = Cast<APDInteractActor>(GetWorld()->SpawnActor(InteractableToSpawn.ActorClass.Get(), &InteractableToSpawn.Location, &DummyRot));
+						if (InteractActor == nullptr)
+						{
+							UE_LOG(PDLog_RTSO, Error, TEXT("ARTSOBaseGM::OnThreadFinished_PlayerLoadDataSync -- Loaded interactable was not inheriting from 'APDInteractActor'"))
+							continue;
+						}
+
+						InteractableToSpawn.ActorInWorld = InteractActor;
+						InteractActor->Usability = InteractableToSpawn.Usability;
+					}
+					
+					// @DONE iterate and delete all interactables from ProcessedData.ToDelete
+					for (const FRTSSavedInteractable& InteractableToRemove : ProcessedData.ToDelete)
+					{
+						const FPDArrayListWrapper& InteractableListWrapper = UPDInteractSubsystem::Get()->WorldInteractables.FindRef(GetWorld());
+						AActor* ActorInWorld = InteractableListWrapper.ActorInfo.FindRef(InteractableToRemove.InstanceIndex).ActorInWorld;
+						if (ActorInWorld == nullptr) { continue; }
+						ActorInWorld->Destroy();
+					}
+					
+					// @DONE iterate and modify all interactables from ProcessedData.ToModify
+					for (const FRTSSavedInteractable& InteractableToModify : ProcessedData.ToModify)
+					{
+						const FPDArrayListWrapper& InteractableListWrapper = UPDInteractSubsystem::Get()->WorldInteractables.FindRef(GetWorld());
+						AActor* ActorInWorld = InteractableListWrapper.ActorInfo.FindRef(InteractableToModify.InstanceIndex).ActorInWorld;
+						APDInteractActor* InteractActor = Cast<APDInteractActor>(ActorInWorld);
+						if (InteractActor == nullptr) { continue; }
+
+						InteractActor->Usability = InteractableToModify.Usability;
+						ActorInWorld->SetActorLocation(InteractableToModify.Location);
+					}
+					
+					
+					break;
+				}
+			case EPDSaveDataThreadSelector::EEntities:
+				{
+					MProcessedUnits& ProcessedData = LoadDataInProcess[Step].SavedUnits;
+					// @DONE spawn all entities from ProcessedData.ToAdd
+					LoadEntities(ProcessedData.ToAdd);
+
+					UMassEntitySubsystem* SpawnerSystem = UWorld::GetSubsystem<UMassEntitySubsystem>(GetWorld());
+					const UMassEntitySubsystem* EntitySubsystem = UWorld::GetSubsystem<UMassEntitySubsystem>(GetWorld());
+					FMassEntityManager* EntityManager = EntitySubsystem != nullptr ? const_cast<FMassEntityManager*>(&EntitySubsystem->GetEntityManager()) : nullptr;
+					if (EntityManager == nullptr) { continue; }
+					
+					// @DONE iterate and delete all entities from ProcessedData.ToDelete
+					for (const FRTSSavedWorldUnits& EntityToRemove : ProcessedData.ToDelete)
+					{
+						if (EntityManager->IsEntityValid(EntityToRemove.InstanceIndex) == false)
+						{
+							continue;
+						}
+						EntityManager->DestroyEntity(EntityToRemove.InstanceIndex);
+					}
+					
+					// @DONE iterate and modify all entities from ProcessedData.ToModify
+					for (const FRTSSavedWorldUnits& EntityToModify : ProcessedData.ToModify)
+					{
+						if (EntityManager->IsEntityValid(EntityToModify.InstanceIndex) == false)
+						{
+							continue;
+						}
+
+						FPDMFragment_Action* EntityAction = EntityManager->GetFragmentDataPtr<FPDMFragment_Action>(EntityToModify.InstanceIndex);
+						if (EntityAction != nullptr)
+						{
+							*EntityAction = EntityToModify.CurrentAction; 
+						}
+
+						FTransformFragment* EntityTransformFragment = EntityManager->GetFragmentDataPtr<FTransformFragment>(EntityToModify.InstanceIndex);
+						if (EntityTransformFragment != nullptr)
+						{
+							EntityTransformFragment->GetMutableTransform().SetLocation(EntityToModify.Location); 
+						}
+
+						FPDMFragment_RTSEntityBase* EntityBaseFragment = EntityManager->GetFragmentDataPtr<FPDMFragment_RTSEntityBase>(EntityToModify.InstanceIndex);
+						if (EntityBaseFragment != nullptr)
+						{
+							EntityBaseFragment->EntityType = EntityToModify.EntityUnitTag; 
+							EntityBaseFragment->OwnerID = EntityToModify.OwnerID; 
+							EntityBaseFragment->SelectionGroupIndex = EntityToModify.SelectionIndex; 
+						}
+					}
+					break;
+				}
+			case EPDSaveDataThreadSelector::EInventories:
+				{
+					MProcessedItems& ProcessedData = LoadDataInProcess[Step].SavedItems;
+					// @todo iterate and spawn all inventories from ProcessedData.ToAdd
+					for (TTuple<int, FRTSSavedItems>& InvToSpawn : ProcessedData.ToAdd)
+					{
+					}
+					
+					// @todo iterate and delete all inventories from ProcessedData.ToDelete
+					for (const TTuple<int, FRTSSavedItems>& InvToRemove : ProcessedData.ToDelete)
+					{
+					}
+					
+					// @todo iterate and modify all inventories from ProcessedData.ToModify
+					for (const TTuple<int, FRTSSavedItems>& InvToModify : ProcessedData.ToModify)
+					{
+					}
+					break;
+				}
+			case EPDSaveDataThreadSelector::ELocations:
+				{
+					MProcessedLocations& ProcessedData = LoadDataInProcess[Step].SavedLocs;
+					// @todo iterate and set all player locations from ProcessedData.ToAdd
+					for (TTuple<int, FVector>& LocationToAdd : ProcessedData.ToAdd)
+					{
+					}
+					
+					// @todo iterate and delete all player locations from ProcessedData.ToDelete
+					for (const TTuple<int, FVector>& LocationToRemove : ProcessedData.ToDelete)
+					{
+					}
+					
+					// @todo iterate and modify all player locations from ProcessedData.ToModify
+					for (const TTuple<int, FVector>& LocationToModify : ProcessedData.ToModify)
+					{
+					}
+					break;
+				}
+			case EPDSaveDataThreadSelector::EConversationActors:
+				{
+					MProcessedConvos& ProcessedData = LoadDataInProcess[Step].SavedConvoActors;
+					// @todo iterate and set all conversation interactable actors from ProcessedData.ToAdd
+					for (TTuple<int, FRTSSavedConversationActorData>& ConversationToAdd : ProcessedData.ToAdd)
+					{
+					}
+					
+					// @todo iterate and delete all conversation interactable actors from ProcessedData.ToDelete
+					for (const TTuple<int, FRTSSavedConversationActorData>& ConversationToRemove : ProcessedData.ToDelete)
+					{
+					}
+					
+					// @todo iterate and modify all conversation interactable actors from ProcessedData.ToModify
+					for (const TTuple<int, FRTSSavedConversationActorData>& ConversationToModify : ProcessedData.ToModify)
+					{
+					}
+					break;
+				}
+			case EPDSaveDataThreadSelector::EPlayerConversationProgress:
+				{
+					MProcessedTags& ProcessedData = LoadDataInProcess[Step].SavedConvoTags;
+					// @todo iterate and set all conversation/mission tags from ProcessedData.ToAdd
+					for (TTuple<int, FGameplayTagContainer>& TagsToAdd : ProcessedData.ToAdd)
+					{
+					}
+					
+					// @todo iterate and delete all conversation/mission tags from ProcessedData.ToDelete
+					for (const TTuple<int, FGameplayTagContainer>& TagsToRemove : ProcessedData.ToDelete)
+					{
+					}
+					
+					// @todo iterate and modify all conversation/mission tags from ProcessedData.ToModify
+					for (const TTuple<int, FGameplayTagContainer>& TagsToModify : ProcessedData.ToModify)
+					{
+					}
+					break;
+				}
+			case EPDSaveDataThreadSelector::EEnd:
+				break;
+			}
+			
+		}
+		
+	}
+
+}
+
 
 void ARTSOBaseGM::OnGeneratedLandscapeReady_Implementation()
 {
@@ -291,19 +853,19 @@ void ARTSOBaseGM::InstantiateLoadedData(ARTSOController* PC)
 {
 	LoadPlayerState(PC);
 	LoadInteractables();
-	LoadResources(GameSave->Inventories);
-	LoadEntities();
+	LoadResources(GameSave->Data.Inventories);
+	LoadEntities({});
 }
 
 void ARTSOBaseGM::LoadAllPlayerStates()
 {
-	// URTSOConversationActorTrackerSubsystem* Tracker =GetWorld()->GetSubsystem<URTSOConversationActorTrackerSubsystem>();
-	// check(Tracker != nullptr)
-	//
-	// for (ARTSOController* Controller : Tracker->TrackedPlayerControllers)
-	// {
-	// 	LoadPlayerState(Controller);
-	// }
+	URTSOConversationActorTrackerSubsystem* Tracker =GetWorld()->GetSubsystem<URTSOConversationActorTrackerSubsystem>();
+	check(Tracker != nullptr)
+	
+	for (ARTSOController* Controller : Tracker->TrackedPlayerControllers)
+	{
+		LoadPlayerState(Controller);
+	}
 }
 
 void ARTSOBaseGM::LoadPlayerState_Implementation(ARTSOController* PlayerController)
@@ -311,19 +873,19 @@ void ARTSOBaseGM::LoadPlayerState_Implementation(ARTSOController* PlayerControll
 	// Assume player tracker subsystem has loaded in the proper persistent ID for whatever backend service that might be used
 
 	const int32 PersistentID = PlayerController->GetActorID();
-	if (GameSave->PlayerLocations.Contains(PersistentID) == false)
+	if (GameSave->Data.PlayerLocations.Contains(PersistentID) == false)
 	{
 		UE_LOG(PDLog_RTSO, Error, TEXT("Save object does not contain saved player location data for ID: %i"), PersistentID);
 		return;
 	}
 
 	// @todo also store player rotation (possibly just save the full transform)
-	PlayerController->ClientSetLocation(GameSave->PlayerLocations.FindChecked(PersistentID), FRotator());
+	PlayerController->ClientSetLocation(GameSave->Data.PlayerLocations.FindChecked(PersistentID), FRotator());
 }
 
 void ARTSOBaseGM::LoadInteractables_Implementation()
 {
-	for (FRTSSavedInteractables& Interactable : GameSave->Interactables)
+	for (FRTSSavedInteractable& Interactable : GameSave->Data.Interactables)
 	{
 		if (Interactable.ActorClass.IsValid() == false)
 		{
@@ -384,7 +946,7 @@ void ARTSOBaseGM::LoadResources_Implementation(const TMap<int32, FRTSSavedItems>
 	}
 }
 
-void ARTSOBaseGM::LoadEntities_Implementation()
+void ARTSOBaseGM::LoadEntities_Implementation(const TArray<FRTSSavedWorldUnits>& OverrideEntityUnits)
 {
 	check(GameSave != nullptr)
 
@@ -397,15 +959,22 @@ void ARTSOBaseGM::LoadEntities_Implementation()
 	using FEntityCompoundTuple = TTuple<int32, FInnerEntityData>;
 	TMap<const FMassEntityTemplateID, FEntityCompoundTuple> EntitiesToSpawn{};
 	
-	for (const FRTSSavedWorldUnits& EntityData : GameSave->EntityUnits)
+	for (const FRTSSavedWorldUnits& EntityData : OverrideEntityUnits.IsEmpty() ? GameSave->Data.EntityUnits : OverrideEntityUnits)
 	{
-		const UMassEntityConfigAsset* LoadedConfig = EntityData.MassEntityConfigAssetPath.LoadSynchronous();
+		const FPDBuildWorker* Unit = UPDBuilderSubsystem::GetWorkerDataStatic(EntityData.EntityUnitTag);
+		if (Unit == nullptr)
+		{
+			UE_LOG(PDLog_RTSO, Error, TEXT("ARTSOBaseGM::LoadEntities -- Found no worker data for worker of type :%s"), *EntityData.EntityUnitTag.GetTagName().ToString())
+			continue;
+		}
+		
+		const UMassEntityConfigAsset* LoadedConfig = Unit->MassEntityData->EntityConfig.LoadSynchronous();
 		const FMassEntityTemplate& Template = LoadedConfig->GetOrCreateEntityTemplate(*GetWorld());
 
 		// Make sure the subsystem associates the archetypes and configs in-case we
 		// load entities from a save file and not via an ARTSOMassSpawner
 		const FMassArchetypeHandle& Archetype = SpawnerSystem->GetMassEntityTemplate(Template.GetTemplateID())->GetArchetype();
-		RTSSubsystem->AssociateArchetypeWithConfigAsset(Archetype, EntityData.MassEntityConfigAssetPath);
+		RTSSubsystem->AssociateArchetypeWithConfigAsset(Archetype, Unit->MassEntityData->EntityConfig);
 		
 		if (EntitiesToSpawn.Contains(Template.GetTemplateID()) == false)
 		{

@@ -22,6 +22,11 @@ DECLARE_LOG_CATEGORY_CLASS(PDLog_RTSO, Log, All);
 class APDInteractActor;
 class UPDRTSBaseUnit;
 class ARTSOInteractableConversationActor;
+
+
+enum class EPDSaveDataThreadSelector : uint8 { EInteractables, EEntities, EInventories, ELocations, EConversationActors, EPlayerConversationProgress, EEnd};
+
+
 /** @brief Save data for inventory items */
 USTRUCT(BlueprintType, Blueprintable)
 struct FRTSSavedItems
@@ -58,7 +63,34 @@ struct FRTSSavedConversationActorData
 
 	/** @brief Unused. assume it will always be 1.0 for now	*/
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Data|SaveGame|Unit")
-	double Health = 1.0;		
+	double Health = 1.0;
+
+	bool operator==(const FRTSSavedConversationActorData& Other) const
+	{
+		TArray<int32> ThisProgressionKeyArray;
+		TArray<int32> OtherProgressionKeyArray;
+		this->ProgressionPerPlayer.GenerateKeyArray(ThisProgressionKeyArray);
+		Other.ProgressionPerPlayer.GenerateKeyArray(OtherProgressionKeyArray);
+
+		TArray<int32> ThisProgressionValueArray;
+		TArray<int32> OtherProgressionValueArray;
+		this->ProgressionPerPlayer.GenerateValueArray(ThisProgressionValueArray);
+		Other.ProgressionPerPlayer.GenerateValueArray(OtherProgressionValueArray);		
+		
+		return 
+			this->ActorClassType == Other.ActorClassType
+			&& ThisProgressionKeyArray == OtherProgressionKeyArray
+			&& ThisProgressionValueArray == OtherProgressionValueArray
+			&& this->Missions.Array() == Other.Missions.Array()
+			&& FMath::IsNearlyEqual(this->Health, Other.Health, 0.5f) 
+			&& (this->Location - Other.Location).IsNearlyZero(5.f);
+	}
+
+	bool operator!=(const FRTSSavedConversationActorData& Other) const
+	{
+		return (*this == Other) == false;
+	}	
+	
 };
 
 /** @brief Save data for world units/entities*/
@@ -87,18 +119,37 @@ struct FRTSSavedWorldUnits
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Data|SaveGame|Unit")
 	int32 SelectionIndex = INDEX_NONE;
 
-	/** @brief Stored soft object path for the config asset to spawn this entity */
+	/** @brief Tag related to this entity, @todo use to load entity config from table  */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Data|SaveGame|Unit")
-	TSoftObjectPtr<UMassEntityConfigAsset> MassEntityConfigAssetPath;
-	
+	FGameplayTag EntityUnitTag; //
+
+	/** @brief Instance ID is used to compare old vs new data */
+	UPROPERTY(EditAnywhere, Category = "GameInstance|Widgets")
+	FMassEntityHandle InstanceIndex = {INDEX_NONE, INDEX_NONE};
+
+	bool operator==(const FRTSSavedWorldUnits& Other) const
+	{
+		return 
+			this->CurrentAction.Reward == Other.CurrentAction.Reward
+			&& this->CurrentAction.RewardAmount == Other.CurrentAction.RewardAmount
+			&& this->CurrentAction.ActionTag == Other.CurrentAction.ActionTag
+			&& this->CurrentAction.OptTargets.IsValidCompound() == Other.CurrentAction.OptTargets.IsValidCompound()
+			&& this->InstanceIndex == Other.InstanceIndex
+			&& this->EntityUnitTag == Other.EntityUnitTag
+			&& FMath::IsNearlyEqual(this->Health, Other.Health, 0.5f) 
+			&& (this->Location - Other.Location).IsNearlyZero(5.f);
+	}
+
+	bool operator!=(const FRTSSavedWorldUnits& Other) const
+	{
+		return (*this == Other) == false;
+	}	
 };
 
-/** @brief Main save data structure, @todo associate account ID to the persistent ID */
-UCLASS(BlueprintType, Blueprintable)
-class RTSOPEN_API URTSOpenSaveGame : public USaveGame
+USTRUCT(BlueprintType, Blueprintable)
+struct RTSOPEN_API FRTSSaveData
 {
 	GENERATED_BODY()
-public:
 	/** @brief Random stream */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "GameInstance|Widgets")
 	FRandomStream Seeder{0};
@@ -113,7 +164,7 @@ public:
 
 	/** @brief World interactables and their parameters */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "GameInstance|Widgets")
-	TArray<FRTSSavedInteractables> Interactables{};
+	TArray<FRTSSavedInteractable> Interactables{};
 
 	/** @brief World entities and their parameters, such as ownerID */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "GameInstance|Widgets")
@@ -133,6 +184,19 @@ public:
 
 	/** @brief Timer Handle, save is dispatched on a timer to throttle any saves */
 	FTimerHandle SaveThrottleHandle;
+	
+};
+
+
+/** @brief Main save data structure, @todo associate account ID to the persistent ID */
+UCLASS(BlueprintType, Blueprintable)
+class RTSOPEN_API URTSOpenSaveGame : public USaveGame
+{
+	GENERATED_BODY()
+public:
+	/** @brief Data struct */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "GameInstance|Widgets")
+	FRTSSaveData Data;
 };
 
 /** @brief @todo move to new file in UI folder */

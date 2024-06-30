@@ -18,7 +18,7 @@ struct FPDArrayListWrapper
 
 	/** @brief Wrapper of interactable data that we want to save to file */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
-	TArray<FRTSSavedInteractables> ActorInfo{};
+	TMap<int32 /*InstanceID*/, FRTSSavedInteractable> ActorInfo{};
 };
 
 /** @brief Interaction subsystem, tracks all the interactables in the world for fast querying */
@@ -34,6 +34,9 @@ public:
 	/** @brief Register an interactable in the world. APDInteractableActor does this by default in the base class */
 	virtual void RegisterWorldInteractable_Implementation(UWorld* SelectedWorld, AActor* SelectedInteractable) override;
 
+	/** @brief Register an interactable in the world. APDInteractableActor does this by default in the base class */
+	virtual void DeregisterWorldInteractable_Implementation(UWorld* SelectedWorld, AActor* SelectedInteractable) override;
+	
 	/** @brief Transferring world interactable pointers. @todo replace dummy implementation, will not actually work and will leave garbage pointers */
 	virtual void TransferringWorld(UWorld* OldWorld, UWorld* TargetWorld);
 

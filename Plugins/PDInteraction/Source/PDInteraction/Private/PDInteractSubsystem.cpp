@@ -20,20 +20,42 @@ void UPDInteractSubsystem::RegisterWorldInteractable_Implementation(UWorld* Sele
 		return;
 	}
 
-	if (Cast<IPDInteractInterface>(SelectedInteractable) == nullptr)
+	if (SelectedInteractable->GetClass()->ImplementsInterface(UPDInteractInterface::StaticClass()) == false)
 	{
 		UE_LOG(PDLog_Interact, Error, TEXT("Called 'UPDInteractSubsystem::RegisterWorldInteractable' without valid interactable actor"));
 		return;
 	}
 	
-	const FRTSSavedInteractables Interactable{
+	IPDInteractInterface* AsInterface = Cast<IPDInteractInterface>(SelectedInteractable);
+	const FRTSSavedInteractable Interactable{
 		SelectedInteractable,
 		SelectedInteractable->GetClass(), // Interact Actor class
 		SelectedInteractable->GetActorLocation(), // Interact Actor location
 		IPDInteractInterface::Execute_GetCurrentUsability(SelectedInteractable) // Interact Actor usability
 		};
 	
-	WorldInteractables.FindOrAdd(SelectedWorld).ActorInfo.Emplace(Interactable);
+	WorldInteractables.FindOrAdd(SelectedWorld).ActorInfo.Emplace(AsInterface->GetInstanceID(), Interactable);
+}
+
+void UPDInteractSubsystem::DeregisterWorldInteractable_Implementation(UWorld* SelectedWorld, AActor* SelectedInteractable)
+{
+	check(SelectedWorld != nullptr)
+
+	if (SelectedInteractable == nullptr)
+	{
+		UE_LOG(PDLog_Interact, Error, TEXT("Called 'UPDInteractSubsystem::RegisterWorldInteractable' without valid actor"));
+		return;
+	}
+
+	if (SelectedInteractable->GetClass()->ImplementsInterface(UPDInteractInterface::StaticClass()) == false)
+	{
+		UE_LOG(PDLog_Interact, Error, TEXT("Called 'UPDInteractSubsystem::RegisterWorldInteractable' without valid interactable actor"));
+		return;
+	}
+	
+	IPDInteractInterface* AsInterface = Cast<IPDInteractInterface>(SelectedInteractable);	
+	
+	WorldInteractables.FindOrAdd(SelectedWorld).ActorInfo.Remove(AsInterface->GetInstanceID());
 }
 
 void UPDInteractSubsystem::TransferringWorld(UWorld* OldWorld, UWorld* TargetWorld)

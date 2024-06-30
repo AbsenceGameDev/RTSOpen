@@ -62,6 +62,23 @@ public:
 	// { return GetInteractionMessage_Implementation(); };
 	// virtual const FPDInteractMessage& GetInteractionMessage_Implementation();	
 	
+	/** @brief  Pure virtual, implement when sub-classing */
+	inline virtual int32 GenerateInstanceID() 
+	{
+		for (; LatestInstanceIDs.Contains(++LatestInstanceID) ; ) {} // Slow the more consectutive instance IDs we have
+		return InstanceID = LatestInstanceID;
+	}; 
+	inline virtual void SetInstanceID(int32 NewID) 
+	{
+		InstanceID = NewID;
+
+		LatestInstanceIDs.Emplace(NewID);;
+	}; 
+	inline virtual int32 GetInstanceID() 
+	{
+		return InstanceID;
+	}; 
+	
 	/** @brief Flag to tell us if we've been registered with the subsystem */
 	bool bHasBeenRegisteredWithCurrentWorld = false;
 
@@ -69,6 +86,9 @@ public:
 	FPDInteractMessage OutMessage;
 
 	double Usability = 1.0;
+	int32 InstanceID = INDEX_NONE;
+	inline static int32 LatestInstanceID = INDEX_NONE;
+	inline static TSet<int32> LatestInstanceIDs{};
 };
 
 /**
