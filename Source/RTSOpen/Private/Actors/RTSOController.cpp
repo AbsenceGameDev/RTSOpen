@@ -54,22 +54,7 @@ void ARTSOController::BeginPlay()
 	ActivateMappingContext(TAG_CTRL_Ctxt_BaseInput);
 	ActivateMappingContext(TAG_CTRL_Ctxt_WorkerUnitMode);
 	
-	// add id-actor mapping	
-	UPDRTSBaseSubsystem* RTSSubsystem = UPDRTSBaseSubsystem::Get();
-	TMap<AActor*, int32>& ActorToIDMap =  RTSSubsystem->SharedOwnerIDBackMappings;
-	TMap<int32, AActor*>& IDToActorMap =  RTSSubsystem->SharedOwnerIDMappings;
-
-	if (ActorToIDMap.Contains(this) && ActorToIDMap.FindRef(this) != INVALID_ID)
-	{
-		ActorID = ActorToIDMap.FindRef(this);
-		IDToActorMap.FindOrAdd(ActorID.GetID()) = this;
-	}
-	else
-	{
-		ActorID = FPDPersistentID::GenerateNewPersistentID();
-		ActorToIDMap.FindOrAdd(this) = ActorID.GetID();
-		IDToActorMap.FindOrAdd(ActorID.GetID()) = this;
-	}
+	RefreshOrAddNewID();
 
 	if (MMWidgetClass->IsValidLowLevelFast())
 	{
@@ -116,6 +101,26 @@ void ARTSOController::EndPlay(const EEndPlayReason::Type EndPlayReason)
 	}
 	
 	Super::EndPlay(EndPlayReason);
+}
+
+void ARTSOController::RefreshOrAddNewID()
+{
+	// add id-actor mapping	
+	UPDRTSBaseSubsystem* RTSSubsystem = UPDRTSBaseSubsystem::Get();
+	TMap<AActor*, int32>& ActorToIDMap =  RTSSubsystem->SharedOwnerIDBackMappings;
+	TMap<int32, AActor*>& IDToActorMap =  RTSSubsystem->SharedOwnerIDMappings;
+
+	if (ActorToIDMap.Contains(this) && ActorToIDMap.FindRef(this) != INVALID_ID)
+	{
+		ActorID = ActorToIDMap.FindRef(this);
+		IDToActorMap.FindOrAdd(ActorID.GetID()) = this;
+	}
+	else
+	{
+		ActorID = FPDPersistentID::GenerateNewPersistentID();
+		ActorToIDMap.FindOrAdd(this) = ActorID.GetID();
+		IDToActorMap.FindOrAdd(ActorID.GetID()) = this;
+	}
 }
 
 void ARTSOController::SetupInputComponent()

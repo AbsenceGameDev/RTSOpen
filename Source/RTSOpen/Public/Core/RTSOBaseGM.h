@@ -146,26 +146,6 @@ public:
 	UFUNCTION(BlueprintNativeEvent, BlueprintCallable)
 	void OnGeneratedLandscapeReady();
 	
-	/** @brief Instantiate objects, actors and entities upon loading a slot */
-	UFUNCTION()
-	void InstantiateLoadedData(ARTSOController* PC);
-
-	/** @brief Load all player states */
-	UFUNCTION(BlueprintCallable)
-	void LoadAllPlayerStates();
-
-	/** @brief Load Player states from current save data*/
-	UFUNCTION(BlueprintNativeEvent, BlueprintCallable)
-	void LoadPlayerState(ARTSOController* PlayerController);
-	
-	/** @brief Loads interactables from current save data */
-	UFUNCTION(BlueprintNativeEvent, BlueprintCallable)
-	void LoadInteractables();
-
-	/** @brief Load items/resources from current save data*/
-	UFUNCTION(BlueprintNativeEvent, BlueprintCallable)
-	void LoadResources(const TMap<int32, FRTSSavedItems>& DataRef);
-
 	/** @brief Load worker/units from current save data*/
 	UFUNCTION(BlueprintNativeEvent, BlueprintCallable)
 	void LoadEntities(const TArray<FRTSSavedWorldUnits>& OverrideEntityUnits);	
@@ -173,6 +153,13 @@ public:
 	/** @brief Runs configured auto-saver */
 	virtual void TickActor(float DeltaTime, ELevelTick TickType, FActorTickFunction& ThisTickFunction) override;
 
+	/** @brief Spawns player controllers and keeps them reserved until player with mathcing ID logs in, @todo at which point they need to be assigned to the incoming connection with matching ID*/
+	void FinalizeLoadReservedPlayerControllers(const TMap<int32, AActor*>& OwnerIDMappings);
+	void FinalizeLoadInteractableData();
+	void FinalizeLoadEntityData();
+	void FinalizeLoadInventoryData(const TMap<int32, AActor*>& OwnerIDMappings);
+	void FinalizeLoadConversationActors();
+	void FinalizeLoadPlayerMissionTags(const TMap<int32, AActor*>& OwnerIDMappings);
 	void OnThreadFinished_PlayerLoadDataSync(EPDSaveDataThreadSelector FinishedThread);
 	
 public:
@@ -197,6 +184,11 @@ public:
 	static const FString ROOTSAVE;
 
 private:
+	
+	/** @brief We preload controller upon startup, when the player has connected we assign the controller to them
+	 *  @todo Finish supporting code for preloaded controllers */
+	UPROPERTY()
+	TArray<APlayerController*> PreloadedControllers{};
 
 	#define TPDPreprocessLoadData(Name, TContainer,  ...) \
 	typedef struct Name  \

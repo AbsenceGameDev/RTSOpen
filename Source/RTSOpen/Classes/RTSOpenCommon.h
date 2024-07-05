@@ -24,7 +24,127 @@ class UPDRTSBaseUnit;
 class ARTSOInteractableConversationActor;
 
 
-enum class EPDSaveDataThreadSelector : uint8 { EInteractables, EEntities, EInventories, ELocations, EConversationActors, EPlayerConversationProgress, EEnd};
+enum class EPDSaveDataThreadSelector : uint8 { EPlayers = 0, EInteractables, EEntities, EInventories, EConversationActors, EPlayerConversationProgress, EEnd};
+
+
+
+/**
+ * @todo @note: If I have time then write a small mission system, but avoid putting to much time into it
+ * @todo @cont: as I am working on a separate repo as-well with a full fledged mission system,
+ * @todo @cont: so not worth making two fully fledged ones,
+ * @todo @cont: this one well have to be made with some shortcuts in design and implementation
+ */
+UENUM()
+enum ERTSOConversationState
+{
+	CurrentStateActive    UMETA(DisplayName="Conversation: Current State Active"),
+	CurrentStateInactive  UMETA(DisplayName="Conversation: Current State Inactive"),
+	CurrentStateCompleted UMETA(DisplayName="Conversation: Current State Completed"),
+	Invalid               UMETA(DisplayName="Conversation: Current State INVALID"),
+	Valid                 UMETA(DisplayName="Conversation: Current State VALID"),
+};
+
+/** @brief Conversation rules, used for mission-progression */
+USTRUCT(Blueprintable)
+struct FRTSOConversationRules
+{
+	GENERATED_BODY()
+	
+	/** @brief Tag for entry data that these rules pertain */
+	UPROPERTY(EditAnywhere)
+	FGameplayTag EntryTag;
+	
+	/** @brief StartingState and ActiveState for this conversation instance */
+	UPROPERTY(EditAnywhere)
+	TEnumAsByte<ERTSOConversationState> State = ERTSOConversationState::CurrentStateInactive;
+
+	/** @brief Tags required for this instance to be loaded */
+	UPROPERTY(EditAnywhere)
+	TArray<FGameplayTag> RequiredTags;
+
+	/** @brief Flag to tell if this conversation is repeatable*/
+	UPROPERTY(EditAnywhere)
+	bool bCanRepeatConversation = true;
+
+	bool operator==(const FRTSOConversationRules& Other) const
+	{
+		// we really only care about the entry tag and required tags in comparisons 
+		return
+			this->EntryTag == Other.EntryTag
+			&& this->RequiredTags == Other.RequiredTags;
+	}
+
+	bool operator!=(const FRTSOConversationRules& Other) const
+	{
+		return (*this == Other) == false;
+	}
+};
+
+/** @brief Conversation base Settings.  */
+USTRUCT(Blueprintable)
+struct FRTSOConversationMetaProgressionDatum : public FTableRowBase
+{
+	GENERATED_BODY()
+
+	/**< @brief Starting progression */
+	UPROPERTY(EditAnywhere)
+	FGameplayTag MissionTag = FGameplayTag{};	
+	
+	/**< @brief Starting progression */
+	UPROPERTY(EditAnywhere)
+	int32 BaseProgression = 0;
+	
+	/** @brief Required tags to progress through the mission phases */
+	UPROPERTY(EditAnywhere)
+	TArray<FRTSOConversationRules> PhaseRequiredTags;
+
+	bool operator==(const FRTSOConversationMetaProgressionDatum& Other) const
+	{
+		return 
+			this->MissionTag == Other.MissionTag
+			&& this->BaseProgression == Other.BaseProgression
+			&& this->PhaseRequiredTags == Other.PhaseRequiredTags;
+	}
+
+	bool operator!=(const FRTSOConversationMetaProgressionDatum& Other) const
+	{
+		return (*this == Other) == false;
+	}
+};
+
+
+/** @brief Conversation meta progression wrapper, @note this is nasty @todo actually plan deisng for this after having the inital prototypes finished. */
+USTRUCT(Blueprintable)
+struct FRTSOConversationMetaProgressionListWrapper
+{
+	GENERATED_BODY()
+
+	/** @brief Map of progression datum per mission tag */
+	UPROPERTY(EditAnywhere)
+	TMap<FGameplayTag, FRTSOConversationMetaProgressionDatum> ProgressionDataMap;
+
+	bool operator==(const FRTSOConversationMetaProgressionListWrapper& Other) const
+	{
+		TArray<FGameplayTag> ThisMetaProgressionKeyArray;
+		TArray<FGameplayTag> OtherMetaProgressionKeyArray;
+		this->ProgressionDataMap.GenerateKeyArray(ThisMetaProgressionKeyArray);
+		Other.ProgressionDataMap.GenerateKeyArray(OtherMetaProgressionKeyArray);
+
+		TArray<FRTSOConversationMetaProgressionDatum> ThisMetaProgressionValueArray;
+		TArray<FRTSOConversationMetaProgressionDatum> OtherMetaProgressionValueArray;
+		this->ProgressionDataMap.GenerateValueArray(ThisMetaProgressionValueArray);
+		Other.ProgressionDataMap.GenerateValueArray(OtherMetaProgressionValueArray);	
+		
+		return 
+			ThisMetaProgressionKeyArray == OtherMetaProgressionKeyArray
+			&& ThisMetaProgressionValueArray == OtherMetaProgressionValueArray;		
+	}
+
+	bool operator!=(const FRTSOConversationMetaProgressionListWrapper& Other) const
+	{
+		return (*this == Other) == false;
+	}
+};
 
 
 /** @brief Save data for inventory items */
@@ -59,7 +179,7 @@ struct FRTSSavedConversationActorData
 	/** @brief Progression map, keyed by user (ID) and valued by progression level for the conversation.
 	 * @todo I have made a mistake here as we need to know exactly which conversation the progression level relates to, not only the progression level and the userID */
 	UPROPERTY(EditAnywhere, BlueprintReadOnly)
-	TMap<int32/*ActorID*/, int32/*ProgressionLevel*/> ProgressionPerPlayer; 
+	TMap<int32/*ActorID*/, FRTSOConversationMetaProgressionListWrapper/*ProgressionLevel*/> ProgressionPerPlayer; 
 
 	/** @brief Unused. assume it will always be 1.0 for now	*/
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Data|SaveGame|Unit")
@@ -72,11 +192,12 @@ struct FRTSSavedConversationActorData
 		this->ProgressionPerPlayer.GenerateKeyArray(ThisProgressionKeyArray);
 		Other.ProgressionPerPlayer.GenerateKeyArray(OtherProgressionKeyArray);
 
-		TArray<int32> ThisProgressionValueArray;
-		TArray<int32> OtherProgressionValueArray;
+		TArray<FRTSOConversationMetaProgressionListWrapper> ThisProgressionValueArray;
+		TArray<FRTSOConversationMetaProgressionListWrapper> OtherProgressionValueArray;
 		this->ProgressionPerPlayer.GenerateValueArray(ThisProgressionValueArray);
 		Other.ProgressionPerPlayer.GenerateValueArray(OtherProgressionValueArray);		
-		
+
+		// Give a fair amount of slack on the floating points
 		return 
 			this->ActorClassType == Other.ActorClassType
 			&& ThisProgressionKeyArray == OtherProgressionKeyArray

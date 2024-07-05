@@ -43,13 +43,15 @@ class RTSOPEN_API ARTSOController
 	, public IPDRTSBuilderInterface
 {
 	GENERATED_UCLASS_BODY()
-
 	/** @brief Runs some setup, such as applying mapping contexts (TAG_CTRL_Ctxt_BaseInput, TAG_CTRL_Ctxt_WorkerUnitMode)
 	 * and generates or loads a persistent ID from UPDRTSBaseSubsystem and proceeds to register it
 	 * Lastly it instantiates the actual conversation widget in memory */
 	virtual void BeginPlay() override;
 	/** @brief Unregisters the actors persistent ID in UPDRTSBaseSubsystem */
 	virtual void EndPlay(const EEndPlayReason::Type EndPlayReason) override;
+
+	/** @brief Todo move to interface, refreshes or creates a new player ID */
+	void RefreshOrAddNewID();
 	
 	/** @brief Sets up bindings for enhanced input */
 	virtual void SetupInputComponent() override;
@@ -277,7 +279,10 @@ public:
 
 	/** @brief Selection error for when clicking to select a single entity */
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "RTS|Input")
-	double ClickToSelectErrorMin = 350.0; 
+	double ClickToSelectErrorMin = 350.0;
+	
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "RTS|Input")
+	FGameplayTagContainer ConversationProgressTags = {};
 
 protected:
 	/** @brief Main menu widget base class, has a widget stack for supplying different stacked widgets */

@@ -149,9 +149,25 @@ void ARTSOBaseGM::SaveConversationActorStates_Implementation()
 		State.ActorClassType = TSoftClassPtr<ARTSOInteractableConversationActor>(ConversationActor->GetClass());
 		
 		State.ProgressionPerPlayer.Empty();
-		for (TTuple<int32/*PlayerID*/, int32/**/> PlayerInstanceData : ConversationActor->InstanceData.ProgressionPerPlayer)
+
+
+		bool bValidInstanceData = false;
+		for (TTuple<FGameplayTag, FRTSOConversationMetaState>& ConversationActorState : *ConversationActor->InstanceDataPerMissionPtr)
 		{
-			State.ProgressionPerPlayer.FindOrAdd(PlayerInstanceData.Key) = PlayerInstanceData.Value;
+			FGameplayTag& MissionTag = ConversationActorState.Key;
+			FRTSOConversationMetaState& MetaProgressState = ConversationActorState.Value;
+			for (TTuple<int32/*PlayerID*/, int32/**/> PlayerInstanceData : MetaProgressState.ProgressionPerPlayer)
+			{
+				FRTSOConversationMetaProgressionDatum& MetaProgressionDatum = State.ProgressionPerPlayer.FindOrAdd(PlayerInstanceData.Key).ProgressionDataMap.FindOrAdd(MissionTag);
+				MetaProgressionDatum.BaseProgression = PlayerInstanceData.Value;
+
+				bValidInstanceData = true;
+			}
+		}
+		if (bValidInstanceData == false )
+		{
+			UE_LOG(PDLog_RTSOInteract, Warning, TEXT("ARTSOBaseGM(%s)::SaveConversationActorStates -- 'InstanceDataPerMission' Array had no valid entries"), *GetName())
+			return ;
 		}
 	}
 }
@@ -273,9 +289,6 @@ void ARTSOBaseGM::SaveEntities_Implementation()
 
 //
 // Loading
-
-// NewData.Interactables;              // TArray<FRTSSavedInteractable>
-// NewData.EntityUnits;                // TArray<FRTSSavedWorldUnits>
 template<typename TInnerType = FRTSSavedWorldUnits>
 void LoadArray(const TArray<TInnerType>& OldData, const TArray<TInnerType>& NewData,
 	TArray<TInnerType>& DeleteContainer, // : Anything which is in OldData that isn't in NewData (Intersection of OldData and the Complement of NewData)
@@ -327,11 +340,6 @@ void LoadArray(const TArray<TInnerType>& OldData, const TArray<TInnerType>& NewD
 	}
 }
 
-
-// NewData.Inventories;                // TMap<int32, FRTSSavedItems>
-// NewData.PlayerLocations;            // TMap<int32, FVector>
-// NewData.ConversationActorState;     // TMap<int32, FRTSSavedConversationActorData>
-// NewData.PlayersAndConversationTags; // TMap<int32, FGameplayTagContainer>
 void ProcessLoadSavedItems(const TMap<int32, FRTSSavedItems>& OldData, const TMap<int32, FRTSSavedItems>& NewData,
 	TMap<int32, FRTSSavedItems>& DeleteContainer, // : Anything which is in OldData that isn't in NewData (Intersection of OldData and the Complement of NewData)
 	TMap<int32, FRTSSavedItems>& AddContainer,    // : Anything which is in NewData that isn't in OldData (Intersection of NewData and the Complement of OldData)
@@ -436,7 +444,6 @@ void ProcessLoadPlayerLocations(const TMap<int32, FVector>& OldData, const TMap<
 	}
 }
 
-// TODO / IN-PROGRESS : ProcessLoadConversationActorsData(..)
 void ProcessLoadConversationActorsData(const TMap<int32, FRTSSavedConversationActorData>& OldData, const TMap<int32, FRTSSavedConversationActorData>& NewData,
 	TMap<int32, FRTSSavedConversationActorData>& DeleteContainer, // : Anything which is in OldData that isn't in NewData (Intersection of OldData and the Complement of NewData)
 	TMap<int32, FRTSSavedConversationActorData>& AddContainer,    // : Anything which is in NewData that isn't in OldData (Intersection of NewData and the Complement of OldData)
@@ -475,7 +482,6 @@ void ProcessLoadConversationActorsData(const TMap<int32, FRTSSavedConversationAc
 	}
 }
 
-
 void ProcessLoadPlayerAccumulatedTags(const TMap<int32, FGameplayTagContainer>& OldData, const TMap<int32, FGameplayTagContainer>& NewData,
 	TMap<int32, FGameplayTagContainer>& DeleteContainer, // : Anything which is in OldData that isn't in NewData (Intersection of OldData and the Complement of NewData)
 	TMap<int32, FGameplayTagContainer>& AddContainer,    // : Anything which is in NewData that isn't in OldData (Intersection of NewData and the Complement of OldData)
@@ -513,7 +519,6 @@ void ProcessLoadPlayerAccumulatedTags(const TMap<int32, FGameplayTagContainer>& 
 		if (bUserDatumExists == false) { AddContainer.Emplace(NewDatum.Key, NewDatum.Value); }
 	}
 }
-
 
 void ARTSOBaseGM::LoadGame_Implementation(const FString& Slot, const bool bDummyParam)
 {
@@ -596,9 +601,9 @@ void ARTSOBaseGM::LoadGame_Implementation(const FString& Slot, const bool bDummy
 					OnThreadFinished_PlayerLoadDataSync(EPDSaveDataThreadSelector::EInventories);
 				}
 				break;
-			case EPDSaveDataThreadSelector::ELocations:
+			case EPDSaveDataThreadSelector::EPlayers:
 				{
-					ProcessedLoadData& ThreadData = LoadDataInProcess[static_cast<uint8>(EPDSaveDataThreadSelector::ELocations)];
+					ProcessedLoadData& ThreadData = LoadDataInProcess[static_cast<uint8>(EPDSaveDataThreadSelector::EPlayers)];
 					// (DONE) NewData.PlayerLocations;            // TMap<int32, FVector>
 					ProcessLoadPlayerLocations(
 						OldData.PlayerLocations,
@@ -607,7 +612,7 @@ void ARTSOBaseGM::LoadGame_Implementation(const FString& Slot, const bool bDummy
 						ThreadData.SavedLocs.ToAdd,
 						ThreadData.SavedLocs.ToModify);
 
-					OnThreadFinished_PlayerLoadDataSync(EPDSaveDataThreadSelector::ELocations);
+					OnThreadFinished_PlayerLoadDataSync(EPDSaveDataThreadSelector::EPlayers);
 				}
 				break;
 			case EPDSaveDataThreadSelector::EConversationActors:
@@ -646,8 +651,356 @@ void ARTSOBaseGM::LoadGame_Implementation(const FString& Slot, const bool bDummy
 		);
 }
 
+void ARTSOBaseGM::FinalizeLoadReservedPlayerControllers(const TMap<int32, AActor*>& OwnerIDMappings)
+{
+	MProcessedLocations& ProcessedData = LoadDataInProcess[static_cast<uint8>(EPDSaveDataThreadSelector::EPlayers)].SavedLocs;
+	for (TTuple<int32, FVector>& PlayerToAdd : ProcessedData.ToAdd)
+	{
+		const int32 UserID = PlayerToAdd.Key;
+
+		AActor* User = OwnerIDMappings.Contains(UserID) ? OwnerIDMappings.FindRef(UserID) : nullptr;
+		if (User == nullptr)
+		{
+			// Preload controllers in server, @todo override ::Login to route connected players to their preloaded controller
+			// Preload controllers in server, @todo pass in BP subclass for spawn class! 
+			APlayerController* const NewPC = PreloadedControllers.Emplace_GetRef(SpawnPlayerControllerCommon(ROLE_Authority, PlayerToAdd.Value, FRotator::ZeroRotator, ARTSOController::StaticClass()));
+			NewPC->SetOwner(this); // keep owning until player connects
+			continue;
+		}
+
+		User->SetActorLocation(PlayerToAdd.Value);
+	}
+					
+	for (const TTuple<int32, FVector>& PlayerToModify : ProcessedData.ToModify)
+	{
+		const int32 UserID = PlayerToModify.Key;
+
+		AActor* User = OwnerIDMappings.Contains(UserID) ? OwnerIDMappings.FindRef(UserID) : nullptr;
+		if (User == nullptr)
+		{
+			UE_LOG(PDLog_RTSO, Error, TEXT("ARTSOBaseGM::OnThreadFinished_PlayerLoadDataSync -- Missing Expected User by ID: %i"), UserID)
+			continue;
+		}
+
+		User->SetActorLocation(PlayerToModify.Value);
+	}
+
+	for (const TTuple<int32, FVector>& PlayerToDelete : ProcessedData.ToDelete)
+	{
+		const int32 UserID = PlayerToDelete.Key;
+
+		AActor* User = OwnerIDMappings.Contains(UserID) ? OwnerIDMappings.FindRef(UserID) : nullptr;
+		if (Owner == nullptr)
+		{
+			UE_LOG(PDLog_RTSO, Error, TEXT("ARTSOBaseGM::OnThreadFinished_PlayerLoadDataSync -- Missing Expected User by ID: %i"), UserID)
+			continue;
+		}
+
+		User->SetOwner(nullptr);
+		User->Destroy();
+	}
+}
+
+void ARTSOBaseGM::FinalizeLoadInteractableData()
+{
+	MProcessedInteractData& ProcessedData = LoadDataInProcess[static_cast<uint8>(EPDSaveDataThreadSelector::EInteractables)].SavedInteracts;
+	// @DONE iterate and spawn all interactables from ProcessedData.ToAdd
+	for (FRTSSavedInteractable& InteractableToSpawn : ProcessedData.ToAdd)
+	{
+		FRotator DummyRot{0};
+		APDInteractActor* InteractActor = Cast<APDInteractActor>(GetWorld()->SpawnActor(InteractableToSpawn.ActorClass.Get(), &InteractableToSpawn.Location, &DummyRot));
+		if (InteractActor == nullptr)
+		{
+			UE_LOG(PDLog_RTSO, Error, TEXT("ARTSOBaseGM::OnThreadFinished_PlayerLoadDataSync -- Loaded interactable was not inheriting from 'APDInteractActor'"))
+			continue;
+		}
+
+		InteractableToSpawn.ActorInWorld = InteractActor;
+		InteractActor->Usability = InteractableToSpawn.Usability;
+	}
+					
+	// @DONE iterate and delete all interactables from ProcessedData.ToDelete
+	for (const FRTSSavedInteractable& InteractableToRemove : ProcessedData.ToDelete)
+	{
+		const FPDArrayListWrapper& InteractableListWrapper = UPDInteractSubsystem::Get()->WorldInteractables.FindRef(GetWorld());
+		AActor* ActorInWorld = InteractableListWrapper.ActorInfo.FindRef(InteractableToRemove.InstanceIndex).ActorInWorld;
+		if (ActorInWorld == nullptr) { continue; }
+		ActorInWorld->Destroy();
+	}
+					
+	// @DONE iterate and modify all interactables from ProcessedData.ToModify
+	for (const FRTSSavedInteractable& InteractableToModify : ProcessedData.ToModify)
+	{
+		const FPDArrayListWrapper& InteractableListWrapper = UPDInteractSubsystem::Get()->WorldInteractables.FindRef(GetWorld());
+		AActor* ActorInWorld = InteractableListWrapper.ActorInfo.FindRef(InteractableToModify.InstanceIndex).ActorInWorld;
+		APDInteractActor* InteractActor = Cast<APDInteractActor>(ActorInWorld);
+		if (InteractActor == nullptr) { continue; }
+
+		InteractActor->Usability = InteractableToModify.Usability;
+		ActorInWorld->SetActorLocation(InteractableToModify.Location);
+	}
+}
+
+void ARTSOBaseGM::FinalizeLoadEntityData()
+{
+	MProcessedUnits& ProcessedData = LoadDataInProcess[static_cast<uint8>(EPDSaveDataThreadSelector::EEntities)].SavedUnits;
+	// @DONE spawn all entities from ProcessedData.ToAdd
+	LoadEntities(ProcessedData.ToAdd);
+
+	UMassEntitySubsystem* SpawnerSystem = UWorld::GetSubsystem<UMassEntitySubsystem>(GetWorld());
+	const UMassEntitySubsystem* EntitySubsystem = UWorld::GetSubsystem<UMassEntitySubsystem>(GetWorld());
+	FMassEntityManager* EntityManager = EntitySubsystem != nullptr ? const_cast<FMassEntityManager*>(&EntitySubsystem->GetEntityManager()) : nullptr;
+	if (EntityManager == nullptr) { return; }
+					
+	// @DONE iterate and delete all entities from ProcessedData.ToDelete
+	for (const FRTSSavedWorldUnits& EntityToRemove : ProcessedData.ToDelete)
+	{
+		if (EntityManager->IsEntityValid(EntityToRemove.InstanceIndex) == false)
+		{
+			continue;
+		}
+		EntityManager->DestroyEntity(EntityToRemove.InstanceIndex);
+	}
+					
+	// @DONE iterate and modify all entities from ProcessedData.ToModify
+	for (const FRTSSavedWorldUnits& EntityToModify : ProcessedData.ToModify)
+	{
+		if (EntityManager->IsEntityValid(EntityToModify.InstanceIndex) == false)
+		{
+			continue;
+		}
+
+		FPDMFragment_Action* EntityAction = EntityManager->GetFragmentDataPtr<FPDMFragment_Action>(EntityToModify.InstanceIndex);
+		if (EntityAction != nullptr)
+		{
+			*EntityAction = EntityToModify.CurrentAction; 
+		}
+
+		FTransformFragment* EntityTransformFragment = EntityManager->GetFragmentDataPtr<FTransformFragment>(EntityToModify.InstanceIndex);
+		if (EntityTransformFragment != nullptr)
+		{
+			EntityTransformFragment->GetMutableTransform().SetLocation(EntityToModify.Location); 
+		}
+
+		FPDMFragment_RTSEntityBase* EntityBaseFragment = EntityManager->GetFragmentDataPtr<FPDMFragment_RTSEntityBase>(EntityToModify.InstanceIndex);
+		if (EntityBaseFragment != nullptr)
+		{
+			EntityBaseFragment->EntityType = EntityToModify.EntityUnitTag; 
+			EntityBaseFragment->OwnerID = EntityToModify.OwnerID; 
+			EntityBaseFragment->SelectionGroupIndex = EntityToModify.SelectionIndex; 
+		}
+	}
+}
+
+void ARTSOBaseGM::FinalizeLoadInventoryData(const TMap<int32, AActor*>& OwnerIDMappings)
+{
+	MProcessedItems& ProcessedData = LoadDataInProcess[static_cast<uint8>(EPDSaveDataThreadSelector::EInventories)].SavedItems;
+	// @DONE iterate and spawn all inventories from ProcessedData.ToAdd
+	for (TTuple<int32, FRTSSavedItems>& InvToSpawn : ProcessedData.ToAdd)
+	{
+		const int32 UserID = InvToSpawn.Key;
+		const FRTSSavedItems& ItemsToAdd = InvToSpawn.Value;
+
+		const AActor* User = OwnerIDMappings.Contains(UserID) ? OwnerIDMappings.FindRef(UserID) : nullptr;
+		if (User == nullptr) { continue; }
+
+		UPDInventoryComponent* Inv = User->GetComponentByClass<UPDInventoryComponent>();
+		if (Inv == nullptr) { continue; }
+
+		for (const FPDItemNetDatum& AddedItem : ItemsToAdd.Items)
+		{
+			Inv->RequestUpdateItem(EPDItemNetOperation::ADDNEW, AddedItem.ItemTag, AddedItem.TotalItemCount);
+		}
+	}
+					
+	// @DONE iterate and delete all inventories from ProcessedData.ToDelete
+	for (const TTuple<int32, FRTSSavedItems>& InvToRemove : ProcessedData.ToDelete)
+	{
+		const int32 UserID = InvToRemove.Key;
+		const FRTSSavedItems& ItemsToRemove = InvToRemove.Value;
+
+		const AActor* User = OwnerIDMappings.Contains(UserID) ? OwnerIDMappings.FindRef(UserID) : nullptr;
+		if (User == nullptr) { continue; }
+
+		UPDInventoryComponent* Inv = User->GetComponentByClass<UPDInventoryComponent>();
+		if (Inv == nullptr) { continue; }
+
+		for (const FPDItemNetDatum& RemoveItem : ItemsToRemove.Items)
+		{
+			Inv->RequestUpdateItem(EPDItemNetOperation::REMOVEALL, RemoveItem.ItemTag, 0);
+		}
+						
+	}
+					
+	// @DONE iterate and modify all inventories from ProcessedData.ToModify
+	for (const TTuple<int32, FRTSSavedItems>& InvToModify : ProcessedData.ToModify)
+	{
+		const int32 UserID = InvToModify.Key;
+		const FRTSSavedItems& ItemsToUpdate = InvToModify.Value;
+
+		const AActor* User = OwnerIDMappings.Contains(UserID) ? OwnerIDMappings.FindRef(UserID) : nullptr;
+		if (User == nullptr) { continue; }
+
+		UPDInventoryComponent* Inv = User->GetComponentByClass<UPDInventoryComponent>();
+		if (Inv == nullptr) { continue; }
+
+		for (const FPDItemNetDatum& ChangedItem : ItemsToUpdate.Items)
+		{
+			const FPDItemNetDatum& ExistingItem = Inv->ItemList.Items[Inv->ItemList.ItemToIndexMapping.FindRef(ChangedItem.ItemTag)];
+			Inv->RequestUpdateItem(EPDItemNetOperation::CHANGE, ChangedItem.ItemTag, ChangedItem.TotalItemCount - ExistingItem.TotalItemCount);
+		}						
+	}
+}
+
+void ARTSOBaseGM::FinalizeLoadConversationActors()
+{
+	UPDInteractSubsystem* InteractSubsystem = UPDInteractSubsystem::Get();
+	FPDArrayListWrapper& CurrentWorldInteractables = InteractSubsystem->WorldInteractables.FindOrAdd(GetWorld());
+					
+	MProcessedConvos& ProcessedData = LoadDataInProcess[static_cast<uint8>(EPDSaveDataThreadSelector::EConversationActors)].SavedConvoActors;
+	// @done iterate and set all conversation interactable actors from ProcessedData.ToAdd
+	for (TTuple<int32, FRTSSavedConversationActorData>& ConversationToAdd : ProcessedData.ToAdd)
+	{
+		const int32 ConvActorID = ConversationToAdd.Key;
+		const FRTSSavedConversationActorData& ConvActorData = ConversationToAdd.Value;
+
+						
+		// if it was already spawned in when parsing interactables to spawn 
+		bool bAddActor = true;
+		if (CurrentWorldInteractables.ActorInfo.Contains(ConvActorID))
+		{
+			ARTSOInteractableConversationActor* ExistingActor = Cast<ARTSOInteractableConversationActor>(CurrentWorldInteractables.ActorInfo.FindRef(ConvActorID).ActorInWorld);
+			if (ExistingActor == nullptr)
+			{
+				CurrentWorldInteractables.ActorInfo.Remove(ConvActorID);
+								
+				continue;
+			}
+
+			bAddActor = false;
+							
+			ExistingActor->SetActorLocation(ConvActorData.Location);
+			for (const TTuple<int, FRTSOConversationMetaProgressionListWrapper>& PlayerConvTuple : ConvActorData.ProgressionPerPlayer)
+			{
+				const int32 UserID = PlayerConvTuple.Key;
+				const TMap<FGameplayTag, FRTSOConversationMetaProgressionDatum>& UserProgressionMap = PlayerConvTuple.Value.ProgressionDataMap;
+
+				for (const TTuple<FGameplayTag, FRTSOConversationMetaProgressionDatum>& UserProgressionTuple : UserProgressionMap)
+				{
+					const FRTSOConversationMetaProgressionDatum& MetaProgressionDatum = UserProgressionTuple.Value;
+
+					// @todo this is nasty, fix! 
+					FRTSOConversationMetaState& MissionInstanceData = ExistingActor->InstanceDataPerMission.FindOrAdd(MetaProgressionDatum.MissionTag); 
+					MissionInstanceData.MissionTag = MetaProgressionDatum.MissionTag;
+					MissionInstanceData.PhaseRequiredTags = MetaProgressionDatum.PhaseRequiredTags;
+					MissionInstanceData.ProgressionPerPlayer.FindOrAdd(UserID) = MetaProgressionDatum.BaseProgression;
+				}
+			}
+		}
+
+		if (bAddActor)
+		{
+			FRTSSavedInteractable& NewActorInfo = CurrentWorldInteractables.ActorInfo.FindOrAdd(ConvActorID);
+							
+			NewActorInfo.Location = ConvActorData.Location;
+			NewActorInfo.Usability = ConvActorData.Health;
+			NewActorInfo.ActorClass = ConvActorData.ActorClassType;
+			NewActorInfo.InstanceIndex = ConvActorID;
+
+			FRotator DummyRot = FRotator::ZeroRotator; // @todo supply actual rotation
+			NewActorInfo.ActorInWorld = GetWorld()->SpawnActor(NewActorInfo.ActorClass.LoadSynchronous(),&NewActorInfo.Location, &DummyRot);
+			NewActorInfo.ActorInWorld->SetOwner(this);
+		}
+						
+	}
+					
+	// @done iterate and delete all conversation interactable actors from ProcessedData.ToDelete
+	for (const TTuple<int32, FRTSSavedConversationActorData>& ConversationToRemove : ProcessedData.ToDelete)
+	{
+		const int32 ConvActorID = ConversationToRemove.Key;
+		// if it was already spawned in when parsing interactables to spawn 
+		if (CurrentWorldInteractables.ActorInfo.Contains(ConvActorID))
+		{
+			ARTSOInteractableConversationActor* ExistingActor = Cast<ARTSOInteractableConversationActor>(CurrentWorldInteractables.ActorInfo.FindRef(ConvActorID).ActorInWorld);
+			if (ExistingActor == nullptr) { continue; }
+
+			ExistingActor->SetOwner(nullptr);
+			ExistingActor->Destroy();
+		}					
+	}
+					
+	// @done iterate and modify all conversation interactable actors from ProcessedData.ToModify
+	for (const TTuple<int32, FRTSSavedConversationActorData>& ConversationToModify : ProcessedData.ToModify)
+	{
+		const int32 ConvActorID = ConversationToModify.Key;
+		const FRTSSavedConversationActorData& ConvActorData = ConversationToModify.Value;
+
+		// if it was already spawned in when parsing interactables to spawn 
+		if (CurrentWorldInteractables.ActorInfo.Contains(ConvActorID))
+		{
+			ARTSOInteractableConversationActor* ExistingActor = Cast<ARTSOInteractableConversationActor>(CurrentWorldInteractables.ActorInfo.FindRef(ConvActorID).ActorInWorld);
+			if (ExistingActor == nullptr)
+			{
+				UE_LOG(PDLog_RTSO, Error, TEXT("ARTSOBaseGM::OnThreadFinished_PlayerLoadDataSync -- Missing Expected ConversationActor by ConversationActor ID: %i"), ConvActorID)
+				continue;
+			}
+							
+			ExistingActor->SetActorLocation(ConvActorData.Location);
+			for (const TTuple<int, FRTSOConversationMetaProgressionListWrapper>& PlayerConvTuple : ConvActorData.ProgressionPerPlayer)
+			{
+				const int32 UserID = PlayerConvTuple.Key;
+				const TMap<FGameplayTag, FRTSOConversationMetaProgressionDatum>& UserProgressionMap = PlayerConvTuple.Value.ProgressionDataMap;
+
+				for (const TTuple<FGameplayTag, FRTSOConversationMetaProgressionDatum>& UserProgressionTuple : UserProgressionMap)
+				{
+					const FRTSOConversationMetaProgressionDatum& MetaProgressionDatum = UserProgressionTuple.Value;
+
+					// @todo this is nasty with self referencing tags, fix  
+					FRTSOConversationMetaState& MissionInstanceData = ExistingActor->InstanceDataPerMission.FindOrAdd(MetaProgressionDatum.MissionTag); 
+					MissionInstanceData.MissionTag = MetaProgressionDatum.MissionTag;
+					MissionInstanceData.PhaseRequiredTags = MetaProgressionDatum.PhaseRequiredTags;
+					MissionInstanceData.ProgressionPerPlayer.FindOrAdd(UserID) = MetaProgressionDatum.BaseProgression;
+				}
+			}
+		}
+	}
+}
+
+void ARTSOBaseGM::FinalizeLoadPlayerMissionTags(const TMap<int32, AActor*>& OwnerIDMappings)
+{
+	MProcessedTags& ProcessedData = LoadDataInProcess[static_cast<uint8>(EPDSaveDataThreadSelector::EPlayerConversationProgress)].SavedConvoTags;
+
+	// @Note, no need to iterate ProcessedData.ToModify, it will always be empty
+					
+	// @done iterate and set all conversation/mission tags from ProcessedData.ToAdd
+	for (TTuple<int32, FGameplayTagContainer>& TagsToAdd : ProcessedData.ToAdd)
+	{
+		const int32 UserID = TagsToAdd.Key;
+
+		AActor* User = OwnerIDMappings.Contains(UserID) ? OwnerIDMappings.FindRef(UserID) : nullptr;
+		ARTSOController* PC = Cast<ARTSOController>(User);
+		if (PC == nullptr) { continue; }
+						
+		PC->ConversationProgressTags.AppendTags(TagsToAdd.Value);
+	}
+					
+	// @done iterate and delete all conversation/mission tags from ProcessedData.ToDelete
+	for (const TTuple<int32, FGameplayTagContainer>& TagsToRemove : ProcessedData.ToDelete)
+	{
+		const int32 UserID = TagsToRemove.Key;
+
+		AActor* User = OwnerIDMappings.Contains(UserID) ? OwnerIDMappings.FindRef(UserID) : nullptr;
+		ARTSOController* PC = Cast<ARTSOController>(User);
+		if (PC == nullptr) { continue; }
+						
+		PC->ConversationProgressTags.RemoveTags(TagsToRemove.Value);						
+	}
+}
+
 void ARTSOBaseGM::OnThreadFinished_PlayerLoadDataSync(EPDSaveDataThreadSelector FinishedThread)
 {
+	const TMap<int32, AActor*>& OwnerIDMappings = GEngine->GetEngineSubsystem<UPDRTSBaseSubsystem>()->SharedOwnerIDMappings;
+	
 	FinishedLoadThreads[static_cast<uint8>(FinishedThread)] = true;
 	bool bAllThreadsLoaded = true;
 	for (const bool& LoadThreadState : FinishedLoadThreads)
@@ -658,292 +1011,18 @@ void ARTSOBaseGM::OnThreadFinished_PlayerLoadDataSync(EPDSaveDataThreadSelector 
 	if (bAllThreadsLoaded && bProcessingLoadData)
 	{
 		bProcessingLoadData = false;
-		uint8 End = static_cast<uint8>(EPDSaveDataThreadSelector::EEnd);
-		for (uint8 Step = 0 ; Step < End; Step++)
-		{
-			const EPDSaveDataThreadSelector CurrentSelector = static_cast<EPDSaveDataThreadSelector>(Step);
-			switch (CurrentSelector)
-			{
-			case EPDSaveDataThreadSelector::EInteractables:
-				{
-					MProcessedInteractData& ProcessedData = LoadDataInProcess[Step].SavedInteracts;
-					// @DONE iterate and spawn all interactables from ProcessedData.ToAdd
-					for (FRTSSavedInteractable& InteractableToSpawn : ProcessedData.ToAdd)
-					{
-						FRotator DummyRot{0};
-						APDInteractActor* InteractActor = Cast<APDInteractActor>(GetWorld()->SpawnActor(InteractableToSpawn.ActorClass.Get(), &InteractableToSpawn.Location, &DummyRot));
-						if (InteractActor == nullptr)
-						{
-							UE_LOG(PDLog_RTSO, Error, TEXT("ARTSOBaseGM::OnThreadFinished_PlayerLoadDataSync -- Loaded interactable was not inheriting from 'APDInteractActor'"))
-							continue;
-						}
-
-						InteractableToSpawn.ActorInWorld = InteractActor;
-						InteractActor->Usability = InteractableToSpawn.Usability;
-					}
-					
-					// @DONE iterate and delete all interactables from ProcessedData.ToDelete
-					for (const FRTSSavedInteractable& InteractableToRemove : ProcessedData.ToDelete)
-					{
-						const FPDArrayListWrapper& InteractableListWrapper = UPDInteractSubsystem::Get()->WorldInteractables.FindRef(GetWorld());
-						AActor* ActorInWorld = InteractableListWrapper.ActorInfo.FindRef(InteractableToRemove.InstanceIndex).ActorInWorld;
-						if (ActorInWorld == nullptr) { continue; }
-						ActorInWorld->Destroy();
-					}
-					
-					// @DONE iterate and modify all interactables from ProcessedData.ToModify
-					for (const FRTSSavedInteractable& InteractableToModify : ProcessedData.ToModify)
-					{
-						const FPDArrayListWrapper& InteractableListWrapper = UPDInteractSubsystem::Get()->WorldInteractables.FindRef(GetWorld());
-						AActor* ActorInWorld = InteractableListWrapper.ActorInfo.FindRef(InteractableToModify.InstanceIndex).ActorInWorld;
-						APDInteractActor* InteractActor = Cast<APDInteractActor>(ActorInWorld);
-						if (InteractActor == nullptr) { continue; }
-
-						InteractActor->Usability = InteractableToModify.Usability;
-						ActorInWorld->SetActorLocation(InteractableToModify.Location);
-					}
-					
-					
-					break;
-				}
-			case EPDSaveDataThreadSelector::EEntities:
-				{
-					MProcessedUnits& ProcessedData = LoadDataInProcess[Step].SavedUnits;
-					// @DONE spawn all entities from ProcessedData.ToAdd
-					LoadEntities(ProcessedData.ToAdd);
-
-					UMassEntitySubsystem* SpawnerSystem = UWorld::GetSubsystem<UMassEntitySubsystem>(GetWorld());
-					const UMassEntitySubsystem* EntitySubsystem = UWorld::GetSubsystem<UMassEntitySubsystem>(GetWorld());
-					FMassEntityManager* EntityManager = EntitySubsystem != nullptr ? const_cast<FMassEntityManager*>(&EntitySubsystem->GetEntityManager()) : nullptr;
-					if (EntityManager == nullptr) { continue; }
-					
-					// @DONE iterate and delete all entities from ProcessedData.ToDelete
-					for (const FRTSSavedWorldUnits& EntityToRemove : ProcessedData.ToDelete)
-					{
-						if (EntityManager->IsEntityValid(EntityToRemove.InstanceIndex) == false)
-						{
-							continue;
-						}
-						EntityManager->DestroyEntity(EntityToRemove.InstanceIndex);
-					}
-					
-					// @DONE iterate and modify all entities from ProcessedData.ToModify
-					for (const FRTSSavedWorldUnits& EntityToModify : ProcessedData.ToModify)
-					{
-						if (EntityManager->IsEntityValid(EntityToModify.InstanceIndex) == false)
-						{
-							continue;
-						}
-
-						FPDMFragment_Action* EntityAction = EntityManager->GetFragmentDataPtr<FPDMFragment_Action>(EntityToModify.InstanceIndex);
-						if (EntityAction != nullptr)
-						{
-							*EntityAction = EntityToModify.CurrentAction; 
-						}
-
-						FTransformFragment* EntityTransformFragment = EntityManager->GetFragmentDataPtr<FTransformFragment>(EntityToModify.InstanceIndex);
-						if (EntityTransformFragment != nullptr)
-						{
-							EntityTransformFragment->GetMutableTransform().SetLocation(EntityToModify.Location); 
-						}
-
-						FPDMFragment_RTSEntityBase* EntityBaseFragment = EntityManager->GetFragmentDataPtr<FPDMFragment_RTSEntityBase>(EntityToModify.InstanceIndex);
-						if (EntityBaseFragment != nullptr)
-						{
-							EntityBaseFragment->EntityType = EntityToModify.EntityUnitTag; 
-							EntityBaseFragment->OwnerID = EntityToModify.OwnerID; 
-							EntityBaseFragment->SelectionGroupIndex = EntityToModify.SelectionIndex; 
-						}
-					}
-					break;
-				}
-			case EPDSaveDataThreadSelector::EInventories:
-				{
-					MProcessedItems& ProcessedData = LoadDataInProcess[Step].SavedItems;
-					// @todo iterate and spawn all inventories from ProcessedData.ToAdd
-					for (TTuple<int, FRTSSavedItems>& InvToSpawn : ProcessedData.ToAdd)
-					{
-					}
-					
-					// @todo iterate and delete all inventories from ProcessedData.ToDelete
-					for (const TTuple<int, FRTSSavedItems>& InvToRemove : ProcessedData.ToDelete)
-					{
-					}
-					
-					// @todo iterate and modify all inventories from ProcessedData.ToModify
-					for (const TTuple<int, FRTSSavedItems>& InvToModify : ProcessedData.ToModify)
-					{
-					}
-					break;
-				}
-			case EPDSaveDataThreadSelector::ELocations:
-				{
-					MProcessedLocations& ProcessedData = LoadDataInProcess[Step].SavedLocs;
-					// @todo iterate and set all player locations from ProcessedData.ToAdd
-					for (TTuple<int, FVector>& LocationToAdd : ProcessedData.ToAdd)
-					{
-					}
-					
-					// @todo iterate and delete all player locations from ProcessedData.ToDelete
-					for (const TTuple<int, FVector>& LocationToRemove : ProcessedData.ToDelete)
-					{
-					}
-					
-					// @todo iterate and modify all player locations from ProcessedData.ToModify
-					for (const TTuple<int, FVector>& LocationToModify : ProcessedData.ToModify)
-					{
-					}
-					break;
-				}
-			case EPDSaveDataThreadSelector::EConversationActors:
-				{
-					MProcessedConvos& ProcessedData = LoadDataInProcess[Step].SavedConvoActors;
-					// @todo iterate and set all conversation interactable actors from ProcessedData.ToAdd
-					for (TTuple<int, FRTSSavedConversationActorData>& ConversationToAdd : ProcessedData.ToAdd)
-					{
-					}
-					
-					// @todo iterate and delete all conversation interactable actors from ProcessedData.ToDelete
-					for (const TTuple<int, FRTSSavedConversationActorData>& ConversationToRemove : ProcessedData.ToDelete)
-					{
-					}
-					
-					// @todo iterate and modify all conversation interactable actors from ProcessedData.ToModify
-					for (const TTuple<int, FRTSSavedConversationActorData>& ConversationToModify : ProcessedData.ToModify)
-					{
-					}
-					break;
-				}
-			case EPDSaveDataThreadSelector::EPlayerConversationProgress:
-				{
-					MProcessedTags& ProcessedData = LoadDataInProcess[Step].SavedConvoTags;
-					// @todo iterate and set all conversation/mission tags from ProcessedData.ToAdd
-					for (TTuple<int, FGameplayTagContainer>& TagsToAdd : ProcessedData.ToAdd)
-					{
-					}
-					
-					// @todo iterate and delete all conversation/mission tags from ProcessedData.ToDelete
-					for (const TTuple<int, FGameplayTagContainer>& TagsToRemove : ProcessedData.ToDelete)
-					{
-					}
-					
-					// @todo iterate and modify all conversation/mission tags from ProcessedData.ToModify
-					for (const TTuple<int, FGameplayTagContainer>& TagsToModify : ProcessedData.ToModify)
-					{
-					}
-					break;
-				}
-			case EPDSaveDataThreadSelector::EEnd:
-				break;
-			}
-			
-		}
-		
+		FinalizeLoadReservedPlayerControllers(OwnerIDMappings);					
+		FinalizeLoadInteractableData();
+		FinalizeLoadEntityData();
+		FinalizeLoadInventoryData(OwnerIDMappings);
+		FinalizeLoadConversationActors();
+		FinalizeLoadPlayerMissionTags(OwnerIDMappings);
 	}
-
 }
-
 
 void ARTSOBaseGM::OnGeneratedLandscapeReady_Implementation()
 {
 	// Load file data if it exists
-}
-
-void ARTSOBaseGM::InstantiateLoadedData(ARTSOController* PC)
-{
-	LoadPlayerState(PC);
-	LoadInteractables();
-	LoadResources(GameSave->Data.Inventories);
-	LoadEntities({});
-}
-
-void ARTSOBaseGM::LoadAllPlayerStates()
-{
-	URTSOConversationActorTrackerSubsystem* Tracker =GetWorld()->GetSubsystem<URTSOConversationActorTrackerSubsystem>();
-	check(Tracker != nullptr)
-	
-	for (ARTSOController* Controller : Tracker->TrackedPlayerControllers)
-	{
-		LoadPlayerState(Controller);
-	}
-}
-
-void ARTSOBaseGM::LoadPlayerState_Implementation(ARTSOController* PlayerController)
-{
-	// Assume player tracker subsystem has loaded in the proper persistent ID for whatever backend service that might be used
-
-	const int32 PersistentID = PlayerController->GetActorID();
-	if (GameSave->Data.PlayerLocations.Contains(PersistentID) == false)
-	{
-		UE_LOG(PDLog_RTSO, Error, TEXT("Save object does not contain saved player location data for ID: %i"), PersistentID);
-		return;
-	}
-
-	// @todo also store player rotation (possibly just save the full transform)
-	PlayerController->ClientSetLocation(GameSave->Data.PlayerLocations.FindChecked(PersistentID), FRotator());
-}
-
-void ARTSOBaseGM::LoadInteractables_Implementation()
-{
-	for (FRTSSavedInteractable& Interactable : GameSave->Data.Interactables)
-	{
-		if (Interactable.ActorClass.IsValid() == false)
-		{
-			UE_LOG(PDLog_RTSO, Error, TEXT("Class could not be loaded: %s"), *Interactable.ActorClass.ToSoftObjectPath().ToString());
-			continue;
-		}
-		UClass* LoadedClass = Interactable.ActorClass.LoadSynchronous();
-		if (LoadedClass->ImplementsInterface(UPDInteractInterface::StaticClass()) == false)
-		{
-			UE_LOG(PDLog_RTSO, Error, TEXT("Class does not implement PDInteractInterface: %s"), *Interactable.ActorClass.ToSoftObjectPath().ToString());
-			continue;			
-		}
-		
-		Interactable.ActorInWorld = GetWorld()->SpawnActor(LoadedClass, &Interactable.Location, nullptr);
-		Cast<IPDInteractInterface>(Interactable.ActorInWorld)->Usability =Interactable.Usability;
-	}
-}
-
-void ARTSOBaseGM::LoadResources_Implementation(const TMap<int32, FRTSSavedItems>& DataRef)
-{
-	// TMap<AActor*, int32>& ActorToIDMap =  UPDRTSBaseSubsystem::Get()->SharedOwnerIDBackMappings;
-	TMap<int32, AActor*>& IDToActorMap =  UPDRTSBaseSubsystem::Get()->SharedOwnerIDMappings;
-
-	TArray<TTuple<UPDInventoryComponent*, const FRTSSavedItems& /*SavedItems*/>> InventoriesToUpdate;
-	
-	for (const TTuple<int32 /*PersistentID*/, FRTSSavedItems /*Item data*/>& ItemDataEntry : DataRef)
-	{
-		const int32 ID = ItemDataEntry.Key;
-		const FRTSSavedItems& SavedItems = ItemDataEntry.Value;
-
-		if (IDToActorMap.Contains(ID) == false)
-		{
-			UE_LOG(PDLog_RTSO, Error, TEXT("IDToActorMap does not contain mapping for PersistentID: %i"), ID);
-			continue;	
-		}
-
-		const AController* AsController = Cast<AController>(IDToActorMap.FindChecked(ID));
-		if (AsController == nullptr)
-		{
-			UE_LOG(PDLog_RTSO, Error, TEXT("IDToActorMap.FindChecked(ID) does not point into a valid controller"));
-			continue;	
-		}
-
-		AGodHandPawn* CurrentGodHandPawn = AsController->GetPawn<AGodHandPawn>();
-		if (CurrentGodHandPawn == nullptr)
-		{
-			UE_LOG(PDLog_RTSO, Error, TEXT("AsController does not own a valid godhand pawn"));
-			continue;	
-		}
-
-		InventoriesToUpdate.Emplace(CurrentGodHandPawn->InventoryComponent, SavedItems);
-	}
-
-	for (const TTuple<UPDInventoryComponent*, const FRTSSavedItems&>& InventoryCompound : InventoriesToUpdate)
-	{
-		MARK_PROPERTY_DIRTY_FROM_NAME(UPDInventoryComponent, ItemList, InventoryCompound.Key)
-		InventoryCompound.Key->ItemList.Items = InventoryCompound.Value.Items;
-	}
 }
 
 void ARTSOBaseGM::LoadEntities_Implementation(const TArray<FRTSSavedWorldUnits>& OverrideEntityUnits)

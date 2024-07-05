@@ -7,6 +7,7 @@
 
 #include "NativeGameplayTags.h"
 #include "PDConversationCommons.h"
+#include "RTSOpenCommon.h"
 #include "Actors/PDInteractActor.h"
 #include "Interfaces/PDPersistenceInterface.h"
 #include "Interfaces/RTSOConversationInterface.h"
@@ -17,60 +18,6 @@ class UCameraComponent;
 class UPDConversationInstance;
 class URTSOConversationInstance;
 
-/**
- * @todo @note: If I have time then write a small mission system, but avoid putting to much time into it
- * @todo @cont: as I am working on a separate repo as-well with a full fledged mission system,
- * @todo @cont: so not worth making two fully fledged ones,
- * @todo @cont: this one well have to be made with some shortcuts in design and implementation
- */
-UENUM()
-enum ERTSOConversationState
-{
-	CurrentStateActive    UMETA(DisplayName="Conversation: Current State Active"),
-	CurrentStateInactive  UMETA(DisplayName="Conversation: Current State Inactive"),
-	CurrentStateCompleted UMETA(DisplayName="Conversation: Current State Completed"),
-	Invalid               UMETA(DisplayName="Conversation: Current State INVALID"),
-	Valid                 UMETA(DisplayName="Conversation: Current State VALID"),
-};
-
-/** @brief Conversation rules, used for mission-progression */
-USTRUCT(Blueprintable)
-struct FRTSOConversationRules
-{
-	GENERATED_BODY()
-	
-	/** @brief Tag for entry data that these rules pertain */
-	UPROPERTY(EditAnywhere)
-	FGameplayTag EntryTag;
-	
-	/** @brief StartingState and ActiveState for this conversation instance */
-	UPROPERTY(EditAnywhere)
-	TEnumAsByte<ERTSOConversationState> State = ERTSOConversationState::CurrentStateInactive;
-
-	/** @brief Tags required for this instance to be loaded */
-	UPROPERTY(EditAnywhere)
-	TArray<FGameplayTag> RequiredTags;
-
-	/** @brief Flag to tell if this conversation is repeatable*/
-	UPROPERTY(EditAnywhere)
-	bool bCanRepeatConversation = true;
-};
-
-/** @brief Conversation base Settings.  */
-USTRUCT(Blueprintable)
-struct FRTSOConversationMetaProgressionDatum : public FTableRowBase
-{
-	GENERATED_BODY()
-	
-	/**< @brief Starting progression */
-	UPROPERTY(EditAnywhere)
-	int32 BaseProgression = 0;
-	
-	/** @brief Required tags to progress through the mission phases */
-	UPROPERTY(EditAnywhere)
-	TArray<FRTSOConversationRules> PhaseRequiredTags;
-};
-
 /** @brief Conversation MetaState (MEta in ti context alludes to what binds different conversations together. i.e. Conversation mission state per conversation actor*/
 USTRUCT(Blueprintable)
 struct FRTSOConversationMetaState
@@ -80,17 +27,18 @@ struct FRTSOConversationMetaState
 	/** @brief Sets PhaseRequiredTags state value from ConversationProgressionEntry.PhaseRequiredTags */
 	void ApplyValuesFromProgressionTable(FRTSOConversationMetaProgressionDatum& ConversationProgressionEntry);
 	
-	/** @brief Progression map, keyed by user (ID) and valued by progression level for the conversation.
-	 * @todo I have made a mistake here as we need to know exactly which conversation the progression level relates to, not only the progression level and the userID */
+	/**< @brief Mission tag that is related ot the meta state of a conversation actor */
+	UPROPERTY(EditAnywhere)
+	FGameplayTag MissionTag = FGameplayTag{};		
+
+	/** @brief Progression map, keyed by user (ID) and valued by progression level for the conversation. */
 	UPROPERTY(EditAnywhere, BlueprintReadOnly)
 	TMap<int32/*ActorID*/, int32/*ProgressionLever*/> ProgressionPerPlayer;
 	
 	/** @brief Required tags to progress through the mission phases */
 	UPROPERTY(EditAnywhere, BlueprintReadOnly)
-	TArray<FRTSOConversationRules> PhaseRequiredTags;	
+	TArray<FRTSOConversationRules> PhaseRequiredTags;
 	
-	/** @brief Actors that are interacting with the conversation actor. Used as storage */
-	TDeque<AActor*> InteractingActors;
 
 	/** @brief The currently active conversation instance. note@todo might need to map this, keyed by userID (players persistent ID/actorID, I really need to unify these names haha) */
 	UPROPERTY(BlueprintReadOnly)
@@ -166,6 +114,13 @@ public:
 	/** @brief Removes tracked conversation from URTSOConversationActorTrackerSubsystem */
 	virtual void BeginDestroy() override;
 
+	/** @brief Sets the current mission for the given player/user in case the mission tag is invalid */
+	void AttemptInitializeFirstPlayerMission(int32 UserID, const FGameplayTag& MissionTag);
+	
+	/** @brief Sets the current mission for the given player/user */
+	void SetCurrentPlayerMission(int32 UserID, const FGameplayTag& MissionTag);
+	
+	
 	/** @brief adds 'JobTag' to a 'FGameplayTagContainer' and returns it */
 	virtual FGameplayTagContainer GetGenericTagContainer_Implementation() const override;
 
@@ -186,22 +141,39 @@ public:
 	 * the entrytag and comparing it's elements with those in the calling actor */
 	virtual ERTSOConversationState ValidateRequiredTags(const FGameplayTag& EntryTag, AActor* CallingActor) const;
 	/** @return InstanceDataPtr->PhaseRequiredTags[ConversationProgression].bCanRepeatConversation*/
-	bool CanRepeatConversation(int32 ConversationProgression) const;
+	bool CanRepeatConversation(int32 UserID, int32 ConversationProgression) const;
 	/** @brief Resolves the entry conversation tag (that points to the new conversation instance), for the given conversation progression level */
-	virtual const FGameplayTag& ResolveTagForProgressionLevel(const int32 ConversationProgression) const;
+	virtual const FGameplayTag& ResolveTagForProgressionLevel(int32 UserID, const int32 ConversationProgression) const;
 	/** @brief Empty for now. Reserved for later use */
 	virtual void OnConversationPhaseStateChanged(const FGameplayTag& EntryTag, ERTSOConversationState NewState);
 	
+	// /** @brief The handle to the settings row entry we want to apply to the mission. */
+	// UPROPERTY(EditAnywhere, BlueprintReadWrite, Meta = (RowType = "/Script/RTSOpen.RTSOConversationMetaProgressionDatum"))
+	// FDataTableRowHandle ConversationSettingsHandle;	
+
 	/** @brief The handle to the settings row entry we want to apply to the mission. */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Meta = (RowType = "/Script/RTSOpen.RTSOConversationMetaProgressionDatum"))
-	FDataTableRowHandle ConversationSettingsHandle;	
+	TArray<FDataTableRowHandle> ConversationSettingsHandles;
 
-	/** @note This pointer is just so we can modify the underlying value without restrictions in const functions*/
-	FRTSOConversationMetaState* InstanceDataPtr{};
+	// @todo: Need replayable conversation as-well /** @brief The handle to the settings row entry we want to apply to the mission. */
+	// UPROPERTY(EditAnywhere, BlueprintReadWrite, Meta = (RowType = "/Script/RTSOpen.RTSOConversationMetaProgressionDatum"))
+	// TArray<FDataTableRowHandle> ReplayableConversationSettingsHandles;
+
+	
+	// /** @note This pointer is just so we can modify the underlying value without restrictions in const functions*/
+	// FRTSOConversationMetaState* InstanceDataPtr{};
+	// /** @deprecated The actual instance data. */
+	// UPROPERTY(VisibleInstanceOnly, BlueprintReadWrite)
+	// FRTSOConversationMetaState InstanceData{};
+
 	/** @brief The actual instance data */
 	UPROPERTY(VisibleInstanceOnly, BlueprintReadWrite)
-	FRTSOConversationMetaState InstanceData{};
-
+	TMap<FGameplayTag, FRTSOConversationMetaState> InstanceDataPerMission{};	// @todo replace above with this
+	
+	/** @note This pointer is just so we can modify the underlying value without restrictions in const functions*/
+	TMap<FGameplayTag, FRTSOConversationMetaState>* InstanceDataPerMissionPtr{};	// @todo replace above with this
+	
+	
 	/** @brief The owned participant component. */
 	UPROPERTY(VisibleInstanceOnly)
 	UConversationParticipantComponent* ParticipantComponent;
@@ -217,6 +189,14 @@ public:
 	/** @brief Persistent IDs for the conversation actor */
 	UPROPERTY(EditAnywhere)
 	FPDPersistentID ConversationActorPersistentID;
+
+	// UPROPERTY(VisibleInstanceOnly)
+	// FGameplayTag CurrentMission = FGameplayTag{};
+
+	UPROPERTY(VisibleInstanceOnly)
+	TMap<int32, FGameplayTag> CurrentMissionPerPlayer{};
+
+	
 private:
 	/** @brief The JobTag related to this actor.*/
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Meta = (AllowPrivateAccess="true"))
@@ -235,6 +215,8 @@ class URTSOConversationActorTrackerSubsystem : public UWorldSubsystem
 {
 	GENERATED_BODY()
 public:
+
+	static URTSOConversationActorTrackerSubsystem* Get(UWorld* World);
 
 	// @todo start: make sure these actors copy their progression data before being destroyed
 	// @todo cont:  if being destroyed by lets say an in-game event or via an intentional player interaction

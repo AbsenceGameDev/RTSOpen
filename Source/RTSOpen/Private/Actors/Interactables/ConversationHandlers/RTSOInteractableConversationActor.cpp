@@ -36,7 +36,9 @@ UE_DEFINE_GAMEPLAY_TAG(TAG_Conversation_Participant_Listener, "Conversation.Part
 void FRTSOConversationMetaState::ApplyValuesFromProgressionTable(FRTSOConversationMetaProgressionDatum& ConversationProgressionEntry)
 {
 	// ProgressionPerPlayer = ConversationProgressionEntry.BaseProgression;
+	MissionTag = ConversationProgressionEntry.MissionTag;
 	PhaseRequiredTags = ConversationProgressionEntry.PhaseRequiredTags;
+	
 }
 
 ARTSOInteractableConversationActor::ARTSOInteractableConversationActor()
@@ -92,6 +94,7 @@ void URTSOConversationInstance::OnChoiceNodePickedByUser(const FConversationCont
 	ARTSOBaseGM* GM = GetWorld() != nullptr ? GetWorld()->GetAuthGameMode<ARTSOBaseGM>() : nullptr;
 	if (GM == nullptr || ListenerAsController == nullptr) { return; }
 	GM->GameSave->Data.PlayersAndConversationTags.FindOrAdd(ListenerAsController->GetActorID()).AppendTags(ChoiceNode->ChoiceTags);
+	ListenerAsController->ConversationProgressTags.AppendTags(ChoiceNode->ChoiceTags);
 }
 
 //
@@ -177,12 +180,30 @@ void ARTSOInteractableConversationActor::BeginPlay()
 	UPDAsyncAction_ActivateFeature* ActiveFeature = UPDAsyncAction_ActivateFeature::CreateActionInstance(this, GameFeatureName);
 	ActiveFeature->Activate();
 	
-	if (ConversationSettingsHandle.IsNull()) { return; }
-	const FString Context = FString::Printf(TEXT("ARTSOInteractableConversationActor(%s)::OnConstruction -- Attempting to access ConversationSettingsHandle.GetRow<FRTSOConversationMetaProgressionDatum>() "), *GetName());
-	InstanceData.ApplyValuesFromProgressionTable(*ConversationSettingsHandle.GetRow<FRTSOConversationMetaProgressionDatum>(Context));
-	InstanceDataPtr = &InstanceData;
-
 	JobTag = TAG_AI_Job_GenericInteract;
+
+
+	for (const FDataTableRowHandle& ConversationSettingsHandle : ConversationSettingsHandles)
+	{
+		if (ConversationSettingsHandle.IsNull()) { continue; }
+		const FString Context = FString::Printf(TEXT("ARTSOInteractableConversationActor(%s)::OnConstruction -- Attempting to access ConversationSettingsHandle.GetRow<FRTSOConversationMetaProgressionDatum>() "), *GetName());
+
+		FRTSOConversationMetaProgressionDatum* BaseMetaProgressDatum = ConversationSettingsHandle.GetRow<FRTSOConversationMetaProgressionDatum>(Context);
+		BaseMetaProgressDatum->MissionTag;
+
+		FRTSOConversationMetaState& MetaProgressState = InstanceDataPerMission.FindOrAdd(BaseMetaProgressDatum->MissionTag);
+		MetaProgressState.MissionTag = BaseMetaProgressDatum->MissionTag;
+		MetaProgressState.PhaseRequiredTags = BaseMetaProgressDatum->PhaseRequiredTags;
+
+		AttemptInitializeFirstPlayerMission(INDEX_NONE, BaseMetaProgressDatum->MissionTag);
+		
+		FGameplayTag& BaseState = CurrentMissionPerPlayer.FindOrAdd(INDEX_NONE);
+		if (BaseState.IsValid() == false)
+		{
+			BaseState = BaseMetaProgressDatum->MissionTag;
+		}		
+	}
+	InstanceDataPerMissionPtr = &InstanceDataPerMission;
 }
 
 void ARTSOInteractableConversationActor::BeginDestroy()
@@ -197,6 +218,20 @@ void ARTSOInteractableConversationActor::BeginDestroy()
 	}
 	URTSOConversationActorTrackerSubsystem* ConversationTrackerSubsystem = GetWorld()->GetSubsystem<URTSOConversationActorTrackerSubsystem>();
 	ConversationTrackerSubsystem->TrackedConversationActors.Remove(this);	
+}
+
+void ARTSOInteractableConversationActor::AttemptInitializeFirstPlayerMission(int32 UserID, const FGameplayTag& MissionTag)
+{
+	FGameplayTag& State = CurrentMissionPerPlayer.FindOrAdd(UserID);
+	if (State.IsValid()) { return; } // Exit early if already has a valid tag		
+
+	State = MissionTag;
+}
+
+void ARTSOInteractableConversationActor::SetCurrentPlayerMission(int32 UserID, const FGameplayTag& MissionTag)
+{
+	FGameplayTag& State = CurrentMissionPerPlayer.FindOrAdd(UserID);
+	State = MissionTag;	// overwrite last mission tag of the associated user state
 }
 
 FGameplayTagContainer ARTSOInteractableConversationActor::GetGenericTagContainer_Implementation() const
@@ -221,12 +256,18 @@ void ARTSOInteractableConversationActor::OnInteract_Implementation(
 	case EPDInteractResult::INTERACT_UNHANDLED:
 		break; // was not handled by a supplied delegate
 	}
-	
-	if (InstanceDataPtr == nullptr || InteractionParams.InteractionPercent <= .85) { return; }
+
+	// Nasty, I know, but right now I can't mark the function as const and still be able to bind it to the dynamic delegate 
+	ARTSOInteractableConversationActor* MutableSelf = const_cast<ARTSOInteractableConversationActor*>(this);
 
 	const TMap<int32, AActor*>& IDToActorMap =  UPDRTSBaseSubsystem::Get()->SharedOwnerIDMappings;
 	const UMassEntitySubsystem& EntitySubsystem = *GetWorld()->GetSubsystem<UMassEntitySubsystem>();
 	const FPDMFragment_RTSEntityBase* EntityBase = EntitySubsystem.GetEntityManager().GetFragmentDataPtr<FPDMFragment_RTSEntityBase>(InteractionParams.InstigatorEntity);
+	MutableSelf->AttemptInitializeFirstPlayerMission(EntityBase->OwnerID, MutableSelf->CurrentMissionPerPlayer[INDEX_NONE]);
+	const FGameplayTag& CurrentMission = MutableSelf->CurrentMissionPerPlayer[EntityBase->OwnerID];
+	
+	if (InstanceDataPerMissionPtr->Contains(CurrentMission) == false || InteractionParams.InteractionPercent <= .85) { return; }
+	FRTSOConversationMetaState& MetaProgressState = *InstanceDataPerMissionPtr->Find(CurrentMission);	
 
 	AActor* SelectedActor = EntityBase != nullptr && IDToActorMap.Contains(EntityBase->OwnerID) ?
 		IDToActorMap.FindRef(EntityBase->OwnerID) : InteractionParams.InstigatorActor;
@@ -239,19 +280,19 @@ void ARTSOInteractableConversationActor::OnInteract_Implementation(
 	
 	const int32 OwnerID = AsCallingController->GetActorID();
 	TryInitializeOwnerProgression(OwnerID);
-	const int32 CurrentProgression = InstanceDataPtr->ProgressionPerPlayer.FindRef(OwnerID);
+	const int32 CurrentProgression = MetaProgressState.ProgressionPerPlayer.FindRef(OwnerID);
 
 	UE_LOG(PDLog_RTSOInteract, Warning, TEXT("ARTSOInteractableConversationActor::OnInteract"));
 	const ERTSOConversationState ConversationState =
-		ValidateRequiredTags(ResolveTagForProgressionLevel(CurrentProgression), AsCallingPawn);
+		ValidateRequiredTags(ResolveTagForProgressionLevel(OwnerID, CurrentProgression), AsCallingPawn);
 	switch (ConversationState)
 	{
 	case CurrentStateCompleted:
 		// handle based on conversation rules
-		if (CanRepeatConversation(CurrentProgression) == false) { return; }
+		if (CanRepeatConversation(OwnerID, CurrentProgression) == false) { return; }
 		break;
 	case Invalid:
-		// @todo fail log
+		UE_LOG(PDLog_RTSOInteract, Warning, TEXT("ARTSOInteractableConversationActor::OnInteract -- Invalid State"));
 		return;
 	case Valid:
 		// Continue on as normal 
@@ -262,23 +303,21 @@ void ARTSOInteractableConversationActor::OnInteract_Implementation(
 	UE_LOG(PDLog_RTSOInteract, Warning, TEXT("ARTSOInteractableConversationActor::OnInteract - 2"));
 
 	// open conversation here with instigator
-	InstanceDataPtr->ActiveConversationInstance =
+	MetaProgressState.ActiveConversationInstance =
 		Cast<URTSOConversationInstance>(
 			URTSOConversationBPFL::StartConversation(
-			InstanceDataPtr->PhaseRequiredTags[CurrentProgression].EntryTag,
+			MetaProgressState.PhaseRequiredTags[CurrentProgression].EntryTag,
 			(ARTSOInteractableConversationActor*)this, 
 			TAG_Conversation_Participant_Speaker, 
 			AsCallingController,
 			TAG_Conversation_Participant_Listener,
 			URTSOConversationInstance::StaticClass()));
-	if (InstanceDataPtr->ActiveConversationInstance == nullptr) { return; }
+	if (MetaProgressState.ActiveConversationInstance == nullptr) { return; }
 	
 	const int32 ActorID =  UPDRTSBaseSubsystem::Get()->SharedOwnerIDBackMappings.FindRef(AsCallingController);
-	InstanceDataPtr->ActiveConversationInstance->ServerRefreshConversationChoices();
-	if (InstanceDataPtr->ActiveConversationInstance->ChoiceWaitingStateMap.FindRef(ActorID))
+	MetaProgressState.ActiveConversationInstance->ServerRefreshConversationChoices();
+	if (MetaProgressState.ActiveConversationInstance->ChoiceWaitingStateMap.FindRef(ActorID))
 	{
-		// Nasty, I know, but right now I can't mark the function as const and still be able to bind it to the dynamic delegate 
-		ARTSOInteractableConversationActor* MutableSelf = ((ARTSOInteractableConversationActor*)this);
 		ARTSOInteractableConversationActor::Execute_BeginWaitingForChoices(MutableSelf, ActorID);
 	}
 	
@@ -326,11 +365,19 @@ void ARTSOInteractableConversationActor::BeginWaitingForChoices_Implementation(i
 void ARTSOInteractableConversationActor::ReplyChoice_Implementation(AActor* Caller, int32 Choice)
 {
 	UE_LOG(PDLog_RTSOInteract, Warning, TEXT("ARTSOInteractableConversationActor::ReplyChoice - Choice: %i"), Choice);
+
+	const ARTSOController* AsCallingController = Cast<ARTSOController>(Caller);
+	const int32 OwnerID = AsCallingController->GetActorID();	
+	const FGameplayTag& CurrentMission = CurrentMissionPerPlayer[OwnerID];
+	
+	if (InstanceDataPerMissionPtr->Contains(CurrentMission) == false ) { return; }
+	const FRTSOConversationMetaState& MetaProgressState = *InstanceDataPerMissionPtr->Find(CurrentMission);
+	
 	const FClientConversationMessagePayload& Payload = ParticipantComponent->GetLastMessage();
 	if (Payload.Options.IsValidIndex(Choice) == false)
 	{
 		const FAdvanceConversationRequest AdvanceRequest{FConversationChoiceReference::Empty};
-		URTSOConversationBPFL::RequestToAdvance(InstanceDataPtr->ActiveConversationInstance, ParticipantComponent, AdvanceRequest);		
+		URTSOConversationBPFL::RequestToAdvance(MetaProgressState.ActiveConversationInstance, ParticipantComponent, AdvanceRequest);		
 		return;
 	}
 
@@ -339,7 +386,7 @@ void ARTSOInteractableConversationActor::ReplyChoice_Implementation(AActor* Call
 	FAdvanceConversationRequest AdvanceRequest{OptionEntry.ChoiceReference};
 	AdvanceRequest.UserParameters = OptionEntry.ExtraData;
 	
-	URTSOConversationBPFL::RequestToAdvance(InstanceDataPtr->ActiveConversationInstance, ParticipantComponent, AdvanceRequest);
+	URTSOConversationBPFL::RequestToAdvance(MetaProgressState.ActiveConversationInstance, ParticipantComponent, AdvanceRequest);
 
 	const FString BuildString = "Selected{" + FString::FromInt(Choice) + "}";
 	UKismetSystemLibrary::PrintString(this, BuildString, true, true, FLinearColor::Blue, 50);
@@ -347,15 +394,20 @@ void ARTSOInteractableConversationActor::ReplyChoice_Implementation(AActor* Call
 
 void ARTSOInteractableConversationActor::TryInitializeOwnerProgression(const int32 OwnerID) const
 {
-	if (InstanceDataPtr == nullptr)
+	const FGameplayTag& CurrentMission = CurrentMissionPerPlayer[OwnerID];
+	if (InstanceDataPerMissionPtr->Contains(CurrentMission) == false )
 	{
-		UE_LOG(PDLog_RTSOInteract, Warning, TEXT("ConversationActor(%s)::TryInitializeOwnerProgression -- InstanceData invalid"), *GetName())
+		UE_LOG(PDLog_RTSOInteract, Warning, TEXT("ConversationActor(%s)::TryInitializeOwnerProgression -- InstanceData for mission(%s) invalid"), *GetName(), *CurrentMission.GetTagName().ToString())
 		return;
 	}
 
-	if (InstanceDataPtr->ProgressionPerPlayer.Contains(OwnerID) == false)
+	CurrentMissionPerPlayer[INDEX_NONE];
+
+	FRTSOConversationMetaState& MetaProgressState = *InstanceDataPerMissionPtr->Find(CurrentMission);
+
+	if (MetaProgressState.ProgressionPerPlayer.Contains(OwnerID) == false)
 	{
-		InstanceDataPtr->ProgressionPerPlayer.Add(OwnerID) = 0;
+		MetaProgressState.ProgressionPerPlayer.Add(OwnerID) = 0;
 	}
 }
 
@@ -377,25 +429,34 @@ ERTSOConversationState ARTSOInteractableConversationActor::ValidateRequiredTags(
 		return ValidatedTagState;
 	}
 
-
 	const int32 OwnerID = AsCallingController->GetActorID();	
+	const FGameplayTag& CurrentMission = CurrentMissionPerPlayer[OwnerID];
+	
+	if (InstanceDataPerMissionPtr->Contains(CurrentMission) == false )
+	{
+		UE_LOG(PDLog_RTSOInteract, Warning, TEXT("ConversationActor(%s)::ValidateRequiredTags -- InstanceData for mission(%s) invalid"), *GetName(), *CurrentMission.GetTagName().ToString())
+		return ValidatedTagState;
+	}
+	FRTSOConversationMetaState& MetaProgressState = *InstanceDataPerMissionPtr->Find(CurrentMission);
+	
+
 	
 	const TSet<FGameplayTag>& ActorTagSet = Cast<IRTSOConversationInterface>(AsCallingPawn)->GetProgressionTagSet();
 
-	const int32 LastConversationProgressionIndex = InstanceDataPtr->PhaseRequiredTags.Num();
+	
+	const int32 LastConversationProgressionIndex = MetaProgressState.PhaseRequiredTags.Num();
 	int32 ConversationProgressionLevel = 0;
 
 	TryInitializeOwnerProgression(OwnerID);
 	for (; ConversationProgressionLevel < LastConversationProgressionIndex ;)
 	{
-		if (ConversationProgressionLevel > InstanceDataPtr->ProgressionPerPlayer.FindOrAdd(OwnerID))
+		if (ConversationProgressionLevel > MetaProgressState.ProgressionPerPlayer.FindOrAdd(OwnerID))
 			{
-				UE_LOG(PDLog_RTSOInteract, Warning, TEXT("ConversationActor(%s)::ValidateRequiredTags -- prog step over player prog"), *GetName())
+				UE_LOG(PDLog_RTSOInteract, Warning, TEXT("ConversationActor(%s)::ValidateRequiredTags -- progression index is invalid"), *GetName())
 				break;
 			}
 		
-		const FRTSOConversationRules& RequiredRules =
-				InstanceDataPtr->PhaseRequiredTags[ConversationProgressionLevel];
+		const FRTSOConversationRules& RequiredRules = MetaProgressState.PhaseRequiredTags[ConversationProgressionLevel];
 		ConversationProgressionLevel++;
 
 		// Invalid entry tag, might be too early in that conversation 'tree'
@@ -430,24 +491,40 @@ ERTSOConversationState ARTSOInteractableConversationActor::ValidateRequiredTags(
 	return ValidatedTagState;
 }
 
-bool ARTSOInteractableConversationActor::CanRepeatConversation(const int32 ConversationProgression) const
+bool ARTSOInteractableConversationActor::CanRepeatConversation(int32 UserID, const int32 ConversationProgression) const
 {
-	const bool bIsValidIndex = InstanceDataPtr->PhaseRequiredTags.IsValidIndex(ConversationProgression);
-	if (bIsValidIndex == false) { return false; }
-
-	return InstanceDataPtr->PhaseRequiredTags[ConversationProgression].bCanRepeatConversation;
+	const FGameplayTag& CurrentMission = CurrentMissionPerPlayer[UserID];
+	
+	if (InstanceDataPerMissionPtr->Contains(CurrentMission) == false )
+	{
+		UE_LOG(PDLog_RTSOInteract, Warning, TEXT("ConversationActor(%s)::ValidateRequiredTags -- InstanceData for mission(%s) invalid"), *GetName(), *CurrentMission.GetTagName().ToString())
+		return false;
+	}
+	FRTSOConversationMetaState& MetaProgressState = *InstanceDataPerMissionPtr->Find(CurrentMission);
+	return MetaProgressState.PhaseRequiredTags[ConversationProgression].bCanRepeatConversation;
 }
 
-const FGameplayTag& ARTSOInteractableConversationActor::ResolveTagForProgressionLevel(const int32 ConversationProgression) const
+const FGameplayTag& ARTSOInteractableConversationActor::ResolveTagForProgressionLevel(int32 UserID, const int32 ConversationProgression) const
 {
-	const bool bIsValidIndex = InstanceDataPtr->PhaseRequiredTags.IsValidIndex(ConversationProgression);
-	if (bIsValidIndex == false) { return FGameplayTag::EmptyTag; }
-
-	return InstanceDataPtr->PhaseRequiredTags[ConversationProgression].EntryTag;
+	const FGameplayTag& CurrentMission = CurrentMissionPerPlayer[UserID];
+	
+	if (InstanceDataPerMissionPtr->Contains(CurrentMission) == false )
+	{
+		UE_LOG(PDLog_RTSOInteract, Warning, TEXT("ConversationActor(%s)::ValidateRequiredTags -- InstanceData for mission(%s) invalid"), *GetName(), *CurrentMission.GetTagName().ToString())
+		return FGameplayTag::EmptyTag;
+	}
+	FRTSOConversationMetaState& MetaProgressState = *InstanceDataPerMissionPtr->Find(CurrentMission);
+	return MetaProgressState.PhaseRequiredTags[ConversationProgression].EntryTag;
 }
 
 void ARTSOInteractableConversationActor::OnConversationPhaseStateChanged(const FGameplayTag& EntryTag, ERTSOConversationState NewState)
 {
+}
+
+URTSOConversationActorTrackerSubsystem* URTSOConversationActorTrackerSubsystem::Get(UWorld* World)
+{
+	check(World && "World ins static URTSOConversationActorTrackerSubsystem::Get is not valid")
+	return World->GetSubsystem<URTSOConversationActorTrackerSubsystem>();
 }
 
 /**

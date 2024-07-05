@@ -173,8 +173,8 @@ void URTSOConversationMessageWidget::SelectChoice_Implementation(int32 ChoiceSel
 	{
 		return;
 	}
-	IRTSOConversationSpeakerInterface::Execute_ReplyChoice(CurrentPotentialCallbackActor, nullptr, ChoiceSelection);
 	
+	IRTSOConversationSpeakerInterface::Execute_ReplyChoice(CurrentPotentialCallbackActor, GetOwningPlayer(), ChoiceSelection);
 }
 
 void URTSOConversationMessageWidget::NativeDestruct()
