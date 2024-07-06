@@ -153,7 +153,7 @@ struct PDRTSBASE_API FPDTargetCompound
 	
 	/** @brief Target (if actor) */
 	UPROPERTY(EditAnywhere)
-	AActor* ActionTargetAsActor = nullptr;
+	AActor* ActionTargetAsActor = nullptr; // @todo Replace with Persistent Actor ID
 };
 
 /** @brief Shared fragment for when entities share animation data */
