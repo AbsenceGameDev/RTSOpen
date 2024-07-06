@@ -24,7 +24,21 @@ class UPDRTSBaseUnit;
 class ARTSOInteractableConversationActor;
 
 
-enum class EPDSaveDataThreadSelector : uint8 { EPlayers = 0, EInteractables, EEntities, EInventories, EConversationActors, EPlayerConversationProgress, EEnd};
+enum class EPDSaveDataThreadSelector : int8
+{
+	// Things we want to handle on different threads
+	EPlayers = 0,
+	EInteractables,
+	EEntities,
+	EInventories,
+	EConversationActors,
+	EPlayerConversationProgress,
+	EEnd,
+
+	// Needed for other work that does not involve threads, felt unnecessary to keep in another enum when  
+	ESeeder = -2,
+	EGameTime = -1
+};
 
 
 

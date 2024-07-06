@@ -552,13 +552,15 @@ void ARTSOBaseGM::LoadGame_Implementation(const FString& Slot, const bool bDummy
 
 	bProcessingLoadData = true;
 	ParallelFor(
-		static_cast<uint8>(EPDSaveDataThreadSelector::EEnd),
-		[&](uint8 Step)
+		static_cast<int8>(EPDSaveDataThreadSelector::EEnd),
+		[&](int8 Step)
 		{
-			const EPDSaveDataThreadSelector ThreadSelector{Step};
+			const EPDSaveDataThreadSelector ThreadSelector = static_cast<EPDSaveDataThreadSelector>(Step);
 
 			switch (ThreadSelector)
 			{
+			default: break;
+				
 			case EPDSaveDataThreadSelector::EInteractables:
 				{
 					ProcessedLoadData& ThreadData = LoadDataInProcess[static_cast<uint8>(EPDSaveDataThreadSelector::EInteractables)];
@@ -643,7 +645,6 @@ void ARTSOBaseGM::LoadGame_Implementation(const FString& Slot, const bool bDummy
 					OnThreadFinished_PlayerLoadDataSync(EPDSaveDataThreadSelector::EPlayerConversationProgress);
 				}
 				break;
-			default: break;
 			}
 		}
 		, false

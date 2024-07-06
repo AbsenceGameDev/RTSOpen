@@ -20,19 +20,22 @@ public class RTSOpen : ModuleRules
 
 		PublicDependencyModuleNames.AddRange(new string[]
 		{
-			"MassEntity", "MassCommon", "MassNavigation", "MassMovement", "MassAIBehavior", "MassSmartObjects", "MassSignals", "MassRepresentation", "MassLOD", "MassSpawner", 
-			"AIModule", "StateTreeModule", "SmartObjectsModule", "NavigationSystem", 
-			"StructUtils", 
-			"AnimToTexture", 
-			"Chaos"
+			/*Mass*/     "MassEntity", "MassCommon", "MassNavigation", "MassMovement", "MassAIBehavior", "MassSmartObjects", "MassSignals", "MassRepresentation", "MassLOD", "MassSpawner", 
+			/*AI*/       "AIModule", "StateTreeModule", "SmartObjectsModule", "NavigationSystem", 
+			/*Struct*/   "StructUtils", 
+			/*Animation*/"AnimToTexture", 
+			/*Physics*/  "Chaos",
+			
 		});
 		
 		PrivateDependencyModuleNames.AddRange(new string[] 
 		{ 
+			/*Editor*/    "UnrealEd",			
 			"GameplayTags", "EnhancedInput", 
-			"SlateCore", "Slate", "CommonUI", "UMG", 
-			"Niagara", "MassCrowd", "CommonConversationRuntime", 
-			"PDInteraction", "PDInventory", "PDRTSBase", "PDConversationHelper",
+			/*Widget*/       "SlateCore", "Slate", "CommonUI", "UMG", 
+			/*Effects*/      "Niagara", "MassCrowd", 
+            /*Conversation*/ "CommonConversationRuntime", 
+			/*PermaDev*/     "PDInteraction", "PDInventory", "PDRTSBase", "PDConversationHelper",
 		});
 	}
 }

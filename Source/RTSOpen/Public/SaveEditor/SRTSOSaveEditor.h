@@ -4,9 +4,55 @@
 
 #include "CoreMinimal.h"
 #include "GameplayTagContainer.h"
+#include "RTSOpenCommon.h"
+#include "ClassViewerFilter.h"
 #include "Subsystems/EngineSubsystem.h"
+#include "SRTSOSaveEditor.generated.h"
 
 DECLARE_LOG_CATEGORY_CLASS(PDLog_SaveEditor, Log, All);
+
+USTRUCT()
+struct FPlayerLocationStruct 
+{ 
+	GENERATED_BODY() 
+	int32 /*UserID*/ Key; 
+	FVector /*User Location*/ Value;
+};
+USTRUCT()
+struct FUserInventoriesStruct 
+{ 
+	GENERATED_BODY() 
+	int32 /*UserID*/ Key; 
+	FRTSSavedItems /*User Inventory Wrapper*/ Value;
+};
+USTRUCT()
+struct FConversationStateStruct 
+{ 
+	GENERATED_BODY() 
+	int32 /*ActorID*/ Key; 
+	FRTSSavedConversationActorData Value;
+};
+USTRUCT()
+struct FConversationProgressionInnerStruct 
+{ 
+	GENERATED_BODY() 
+	int32 /*UserID*/ Key; 
+	FRTSOConversationMetaProgressionListWrapper /*ProgressionLevel*/ Value;
+};
+USTRUCT()
+struct FUserMissionTagsStruct 
+{ 
+	GENERATED_BODY() 
+	int32 Key /*PlayerID*/; 
+	FGameplayTagContainer /*AccumulatedMissionTags*/ Value;
+};
+USTRUCT()
+struct FStacksStruct 
+{ 
+	GENERATED_BODY() 
+	int32 Key /*StackIndex*/; 
+	int32 /*ItemCount*/ Value;
+};
 
 /**
  * @brief  Loads custom tags that may have been added by a player/user
@@ -14,8 +60,19 @@ DECLARE_LOG_CATEGORY_CLASS(PDLog_SaveEditor, Log, All);
 class RTSOPEN_API SRTSOSaveEditor : public SCompoundWidget
 {
 public:
+	DECLARE_DELEGATE_OneParam( FOnPlayerDataChosen, const FPlayerLocationStruct&);
+	DECLARE_DELEGATE_OneParam( FOnInteractableDataChosen, const FRTSSavedInteractable&);
+	DECLARE_DELEGATE_OneParam( FOnEntityDataChosen, const FRTSSavedWorldUnits&);
+	DECLARE_DELEGATE_OneParam( FOnInventoryOverviewDataChosen, const FUserInventoriesStruct&);
+	DECLARE_DELEGATE_OneParam( FOnItemDataChosen, const FPDItemNetDatum&);
+	DECLARE_DELEGATE_OneParam( FOnConverstionStateDataChosen, const FConversationStateStruct&);
+	DECLARE_DELEGATE_OneParam( FOnMissionTagsDataChosen, const FUserMissionTagsStruct&);
+	DECLARE_DELEGATE_OneParam( FOnInteractableClassPicked, const TOptional<EMouseCursor::Type>&);
+
+	
 	SLATE_BEGIN_ARGS(SRTSOSaveEditor) { }
 
+	
  		/** @todo Called when the save editor window is scrolled. */
  		SLATE_EVENT(FOnUserScrolled, OnUserScrolled)
 
@@ -24,9 +81,71 @@ public:
 	
 	SLATE_END_ARGS()
 
-
 	void Construct(const FArguments& InArgs);
 	void HandleValueChange(FGameplayTag Submenu, int32 MenuItem, int32 NewValue) const;
+
+	void CopyData(URTSOpenSaveGame* InSaveGame);
+	void OnCompletedCopyData();
+	void OnFailedCopyData();
+
+	void OnSeedValueChanged(int32 NewSeed);
+	void OnGameTimeValueChanged(float NewGameTime);
+
+	void ResetFieldData(EPDSaveDataThreadSelector SaveDataGroupSelector);
+
+	TSharedRef<ITableRow> MakeListViewWidget_PlayerData(TSharedPtr<FPlayerLocationStruct> InItem, const TSharedRef<STableViewBase>& OwnerTable) const;
+	void OnComponentSelected_PlayerData(TSharedPtr<FPlayerLocationStruct> InItem, ESelectInfo::Type InSelectInfo);
+
+	void OnInteractableUsabilityChanged(int32 ActorID, float NewUsability) const;
+	
+	TSharedRef<ITableRow> MakeListViewWidget_InteractableData(TSharedPtr<FRTSSavedInteractable> InItem, const TSharedRef<STableViewBase>& OwnerTable) const;
+	void OnComponentSelected_InteractableData(TSharedPtr<FRTSSavedInteractable> InItem, ESelectInfo::Type InSelectInfo);
+
+	TSharedRef<ITableRow> MakeListViewWidget_EntityData(TSharedPtr<FRTSSavedWorldUnits> InItem, const TSharedRef<STableViewBase>& OwnerTable) const;
+	void OnComponentSelected_EntityData(TSharedPtr<FRTSSavedWorldUnits> InItem, ESelectInfo::Type InSelectInfo);
+
+	TSharedRef<ITableRow> MakeListViewWidget_InventoryOverviewData(TSharedPtr<FUserInventoriesStruct> InItem, const TSharedRef<STableViewBase>& OwnerTable) const;
+	void OnComponentSelected_InventoryOverviewData(TSharedPtr<FUserInventoriesStruct> InItem, ESelectInfo::Type InSelectInfo);
+
+	TSharedRef<ITableRow> MakeListViewWidget_ItemData(TSharedPtr<FPDItemNetDatum> InItem, const TSharedRef<STableViewBase>& OwnerTable) const;
+	void OnComponentSelected_ItemData(TSharedPtr<FPDItemNetDatum> InItem, ESelectInfo::Type InSelectInfo) const;
+
+	TSharedRef<ITableRow> MakeListViewWidget_ConversationStateData(TSharedPtr<FConversationStateStruct> InItem, const TSharedRef<STableViewBase>& OwnerTable) const;
+	void OnComponentSelected_ConversationStateData(TSharedPtr<FConversationStateStruct> InItem, ESelectInfo::Type InSelectInfo);
+	
+	TSharedRef<ITableRow> MakeListViewWidget_UserMissionTags(TSharedPtr<FUserMissionTagsStruct> InItem, const TSharedRef<STableViewBase>& OwnerTable) const;
+	void OnComponentSelected_UserMissionTags(TSharedPtr<FUserMissionTagsStruct> InItem, ESelectInfo::Type InSelectInfo);	
+	
+	
+	URTSOpenSaveGame* SaveGamePtr = nullptr;
+	FRTSSaveData CopiedSaveData;
+
+	// Views
+	TArray<TSharedPtr<FPlayerLocationStruct>>    LocationsAsSharedTupleArray;
+	TArray<TSharedPtr<FRTSSavedInteractable>>   InteractableAsSharedArray;
+	TArray<TSharedPtr<FRTSSavedWorldUnits>>     EntitiesAsSharedArray;
+	TArray<TSharedPtr<FUserInventoriesStruct>>   AllUserInventoriesAsSharedTupleArray;
+	TArray<TSharedPtr<FConversationStateStruct>> ConversationStatesAsSharedArray;
+	TArray<TSharedPtr<FUserMissionTagsStruct>>   UserMissionTagsAsSharedArray;
+	
+
+	// Callbacks
+	FOnPlayerDataChosen OnPlayerDataChosen{};
+	FOnInteractableDataChosen OnInteractableDataChosen{};
+	FOnEntityDataChosen OnEntityDataChosen{};
+	FOnInventoryOverviewDataChosen OnInventoryOverviewDataChosen{};
+	FOnItemDataChosen OnItemDataChosen{};
+	FOnConverstionStateDataChosen OnConversationStateDataChosen{};
+	FOnMissionTagsDataChosen OnOnMissionTagsDataChosen{};
+
+	UClass* SelectedClass = nullptr;
+
+	// View Tables
+	TSharedPtr<STableRow< TSharedPtr<FRTSSavedInteractable>>> InteractableTable;
+	TSharedPtr<STableRow< TSharedPtr<FRTSSavedWorldUnits>>> EntityTable;
+	TSharedPtr<STableRow< TSharedPtr<FUserInventoriesStruct>>> InventoryTable;
+	TSharedPtr<STableRow< TSharedPtr<FConversationStateStruct>>> ConversationStateTable;
+	TSharedPtr<STableRow< TSharedPtr<FUserMissionTagsStruct>>> MissionTagsTable;
 };
 
 class SRTSOSaveEditorSubmenu : public SCompoundWidget
@@ -38,7 +157,7 @@ public:
 	{}
 	SLATE_ARGUMENT(FGameplayTag, SubmenuTag)
 
-	SLATE_EVENT(FOnValueChange, OnValueChange)
+	SLATE_EVENT(FOnValueChange, OnValueChanged)
 SLATE_END_ARGS()
 
 	/**  */
@@ -59,7 +178,63 @@ private:
 	FReply OnUseSelectedItemClick();
 	
 	FGameplayTag SubmenuTag;
-	FOnValueChange OnValueChange;
+	FOnValueChange OnValueChanged;
+};
+
+
+class FRTSSaveEd_InteractableClassFilter : public IClassViewerFilter
+{
+public:
+	/** The meta class for the property that classes must be a child-of. */
+	const UClass* ClassPropertyMetaClass = nullptr;
+
+	/** The interface that must be implemented. */
+	const UClass* InterfaceThatMustBeImplemented = nullptr;
+
+	/** Whether or not abstract classes are allowed. */
+	bool bAllowAbstract = false;
+
+	/** Classes that can be picked */
+	TArray<const UClass*> AllowedClassFilters;
+
+	/** Classes that can't be picked */
+	TArray<const UClass*> DisallowedClassFilters;
+
+	virtual bool IsClassAllowed(const FClassViewerInitializationOptions& InInitOptions, const UClass* InClass, TSharedRef< FClassViewerFilterFuncs > InFilterFuncs ) override
+	{
+		return IsClassAllowedHelper(InClass);
+	}
+	
+	virtual bool IsUnloadedClassAllowed(const FClassViewerInitializationOptions& InInitOptions, const TSharedRef< const IUnloadedBlueprintData > InBlueprint, TSharedRef< FClassViewerFilterFuncs > InFilterFuncs) override
+	{
+		return IsClassAllowedHelper(InBlueprint);
+	}
+
+private:
+
+	template <typename TClass>
+	bool IsClassAllowedHelper(TClass InClass)
+	{
+		bool bMatchesFlags = !InClass->HasAnyClassFlags(CLASS_Hidden | CLASS_HideDropDown | CLASS_Deprecated) &&
+			(bAllowAbstract || !InClass->HasAnyClassFlags(CLASS_Abstract));
+
+		if (bMatchesFlags && InClass->IsChildOf(ClassPropertyMetaClass)
+			&& (!InterfaceThatMustBeImplemented || InClass->ImplementsInterface(InterfaceThatMustBeImplemented)))
+		{
+			auto PredicateFn = [InClass](const UClass* Class)
+			{
+				return InClass->IsChildOf(Class);
+			};
+
+			if (DisallowedClassFilters.FindByPredicate(PredicateFn) == nullptr &&
+				(AllowedClassFilters.Num() == 0 || AllowedClassFilters.FindByPredicate(PredicateFn) != nullptr))
+			{
+				return true;
+			}
+		}
+
+		return false;
+	}
 };
 
 /**
