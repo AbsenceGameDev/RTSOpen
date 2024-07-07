@@ -1,112 +1,136 @@
 ﻿/* @author: Ario Amin @ Permafrost Development. @copyright: Full BSL(1.1) License included at bottom of the file  */
 
 #pragma once
-
 #include "CoreMinimal.h"
-#include "CommonActivatableWidget.h"
-#include "CommonButtonBase.h"
-#include "PDRTSSharedUI.h"
-#include "UI/PDButtons.h"
-#include "UI/PDDialogs.h"
-#include "RTSOActiveMainMenu.generated.h"
+#include "RTSOpenCommon.h"
+#include "Blueprint/UserWidget.h"
+#include "Components/Widget.h"
+#include "Components/WidgetSwitcher.h"
+#include "Components/CircularThrobber.h"
+#include "Widgets/RTSOActiveMainMenu.h"
+#include "Widgets/Layout/SWrapBox.h"
+#include "RTSOSaveEditorWidget.generated.h"
 
-class UCommonTextBlock;
+class SRTSOSaveEditorBase;
+struct FUserMissionTagsStruct;
+struct FConversationStateStruct;
+struct FUserInventoriesStruct;
+struct FPlayerLocationStruct;
+class URTSOpenSaveGame;
+class SRTSOSaveEditor;
 
-/** @brief Save/load game delegate, used with the pop-up dialogs defined further down this file */
-DECLARE_DELEGATE_TwoParams(FRTSOSavegameDelegate, const FString&, bool)
-
-/** @brief Save type enum*/
-UENUM()
-enum ERTSOSaveType
-{
-	SAVE,
-	LOAD
-};
-
-/** @brief Game Menu - Base menu button
- * @note Moved all necessary logic to UPDGenericButton, keeping this subclassed o we don't break any uasset widgets that derive from this
- */
 UCLASS(Blueprintable)
-class URTSOMenuButton : public UPDGenericButton
+class URTSOSaveEditorInnerWidget : public UWidget
 {
 	GENERATED_BODY()
 
 public:
-	/* Reserved */
-};
+	void CopyData(URTSOpenSaveGame* InSaveGame);
+	void OnFailedCopyData();
+	void OnCompletedCopyData();
+	void UpdateInnerEditor();
+	virtual TSharedRef<SWidget> RebuildWidget() override;
+	virtual void ReleaseSlateResources(bool bReleaseChildren) override;
 
-/** @brief Game Menu - Save dialog
- * @note Moved most necessary logic to UPDGenericDialog,
- * keeping this subclassed so can override the 'DialogReplyContinue' and so we also don't break any uasset widgets that derive from this
- */
-UCLASS(Blueprintable)
-class URTSOSaveGameDialog : public UPDGenericDialog
-{
-	GENERATED_BODY()
+	UFUNCTION() void SelectEditor(EPDSaveDataThreadSelector NewEditorType);
+	void ResetFieldData(EPDSaveDataThreadSelector SaveDataGroupSelector);
 
-public:
+	TSharedPtr<SWrapBox> InnerSlateWrapbox;
+	TSharedPtr<SRTSOSaveEditorBase> SharedExistingSaveEditor;
 
-	/** @brief Calls SuccessCallback.Execute with the passthrough parameters*/
-	virtual void DialogReplyContinue(const bool bSuccess) const override; // declared as ufunction in parent class
-
-	/** @brief Pass-through for the ERTSOSaveType */
-	UPROPERTY()
-	TEnumAsByte<ERTSOSaveType> Type = ERTSOSaveType::LOAD;
-
-	/** @brief Pass-through for the slotidx */
-	UPROPERTY()
-	int32 SlotIdx = INDEX_NONE;
-
-	/** @brief Callback that we want to fire on success (replying yes to the dialog)*/
-	FRTSOSavegameDelegate SaveSuccessCallback{};
-
-	/** @brief Callback that we want to fire on success (replying yes to the dialog)*/
-	FRTSOSavegameDelegate SaveFailCallback{};	
-};
-
-/** @brief Game Menu - Save widget*/
-UCLASS(Blueprintable)
-class URTSOMenuWidget_SaveGame : public UCommonActivatableWidget
-{
-	GENERATED_BODY()
-
-public:
-	/** @brief Unimplemented. Reserved for later use */
-	void ClearDelegates() const {};
-
-	/** @brief Only Calls super for now. Reserved for later use */
-	virtual void NativePreConstruct() override;
+	EPDSaveDataThreadSelector EditorType = EPDSaveDataThreadSelector::EPlayers;
 	
-	/** @brief (root) Base canvas panel */
-	UPROPERTY(BlueprintReadWrite, Meta=(BindWidget))
-	class UCanvasPanel* BaseCanvas = nullptr;
+	TArray<TSharedPtr<FPlayerLocationStruct>>    LocationsAsSharedTupleArray;
+	TArray<TSharedPtr<FRTSSavedInteractable>>    InteractableAsSharedArray;
+	TArray<TSharedPtr<FRTSSavedWorldUnits>>      EntitiesAsSharedArray;
+	TArray<TSharedPtr<FUserInventoriesStruct>>   AllUserInventoriesAsSharedTupleArray;
+	TArray<TSharedPtr<FConversationStateStruct>> ConversationStatesAsSharedArray;
+	TArray<TSharedPtr<FUserMissionTagsStruct>>   UserMissionTagsAsSharedArray;
 
-	/** @brief The box in which the banner and the inner box should contain */
-	UPROPERTY(BlueprintReadWrite, Meta=(BindWidget))
-	class UVerticalBox* MainBox = nullptr;
+	UPROPERTY()
+	URTSOpenSaveGame* SaveGamePtr = nullptr;
+	UPROPERTY()
+	FRTSSaveData CopiedSaveData;
+};
 
-	/** @brief Canvas panel of the widget banner, for orienting elements within the banner */
-	UPROPERTY(BlueprintReadWrite, Meta=(BindWidget))
-	class UCanvasPanel* BannerCanvas = nullptr;
+UCLASS(Blueprintable)
+class URTSOSaveEditorUserWidget : public UCommonActivatableWidget
+{
+	GENERATED_BODY()
 
-	/** @brief Text of the widget banner */
-	UPROPERTY(BlueprintReadWrite, Meta=(BindWidget))
-	class UTextBlock* BannerText = nullptr;
+public:
+	UFUNCTION()
+	void BindButtonDelegates(AActor* ActorToBindAt);
 
-	/** @brief Image of the widget banner */
-	UPROPERTY(BlueprintReadWrite, Meta=(BindWidget))
-	class UImage* BannerImage = nullptr;
+	UFUNCTION()
+	void LoadSlotData(int32 SlotIdx);
+	
+	UFUNCTION()
+	void LoadSlotData0();
+	UFUNCTION()
+	void LoadSlotData1();	
+	UFUNCTION()
+	void LoadSlotData2();
+	UFUNCTION()
+	void LoadSlotData3();
+	UFUNCTION()
+	void LoadSlotData4();
 
-	/** @brief Button that is bound (in URTSOMainMenuBase::SaveTargetWidget & URTSOMainMenuBase::LoadTargetWidget) ot close the open 'URTSOMenuWidget_SaveGame'*/
-	UPROPERTY(BlueprintReadWrite, Meta=(BindWidget))
-	class URTSOMenuButton* ExitButton = nullptr;
+	UButton* GetCategoryButton(EPDSaveDataThreadSelector Button) const;
+	void Category_ResetButtonState(EPDSaveDataThreadSelector PreviousButton) const;
+	void Category_ActivateButtonState(EPDSaveDataThreadSelector NewButton) const;
+	void SelectCategory(EPDSaveDataThreadSelector CategoryButton) const;
+	void SelectCategoryAndInvalidateCache(EPDSaveDataThreadSelector CategoryButton);
+	UFUNCTION() void Category_WorldBaseData();
+	UFUNCTION() void Category_PlayerBaseData();
+	UFUNCTION() void Category_InteractableData();
+	UFUNCTION() void Category_EntityData();
+	UFUNCTION() void Category_PlayerInventoriesData();
+	UFUNCTION() void Category_ConversationStateData();
+	UFUNCTION() void Category_MissionProgressTagsData();
 
-	/** @brief Box that should hold all slots of type URTSOMenuButton. @todo replace with ulistview of slots */
-	UPROPERTY(BlueprintReadWrite, Meta=(BindWidget))
-	class UVerticalBox* InnerBox = nullptr;
+	virtual void OnAnimationStarted_Implementation(const UWidgetAnimation* Animation) override;
+	virtual void OnAnimationFinished_Implementation(const UWidgetAnimation* Animation) override;
+	
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Meta = (BindWidget))
+	UCanvasPanel* BaseCanvas = nullptr;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Meta = (BindWidget))
+	URTSOMenuButton* ExitButton = nullptr;	
+	
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Meta = (BindWidget))
+	URTSOSaveEditorInnerWidget* Inner = nullptr;
+
+	UPROPERTY(Transient, EditAnywhere, BlueprintReadWrite, Meta = (BindWidgetAnim))
+	UWidgetAnimation* CategoryLoadingAnimation = nullptr;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Meta = (BindWidget))
+	UWidgetSwitcher* LoadViewWidgetSwitch = nullptr;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Meta = (BindWidget))
+	UWidgetSwitcher* TabsLoadViewWidgetSwitch = nullptr;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Meta = (BindWidget))
+	UOverlay* DataViewLoaderAnimationLayer = nullptr;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Meta = (BindWidget))
+	UOverlay* TabsLoaderAnimationLayer = nullptr;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Meta = (BindWidget))
+	UOverlay* CategoryButtonOverlay = nullptr;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Meta = (BindWidget))
+	UOverlay* DataViewOverlay = nullptr;
+	
+
+	/** @defgroup SaveDataEditorTabButtons  */
+	UPROPERTY(BlueprintReadWrite, Meta=(BindWidget)) class URTSOMenuButton* Btn_WorldBaseData = nullptr; /**< @brief Button that invoked the WorldBase Data view. @ingroup SaveDataEditorTabButtons */
+	UPROPERTY(BlueprintReadWrite, Meta=(BindWidget)) class URTSOMenuButton* Btn_PlayerBaseData = nullptr; /**< @brief Button that invoked the WorldBase Data view. @ingroup SaveDataEditorTabButtons */
+	UPROPERTY(BlueprintReadWrite, Meta=(BindWidget)) class URTSOMenuButton* Btn_InteractableData = nullptr; /**< @brief Button that invoked the WorldBase Data view. @ingroup SaveDataEditorTabButtons */
+	UPROPERTY(BlueprintReadWrite, Meta=(BindWidget)) class URTSOMenuButton* Btn_EntityData = nullptr; /**< @brief Button that invoked the WorldBase Data view. @ingroup SaveDataEditorTabButtons */
+	UPROPERTY(BlueprintReadWrite, Meta=(BindWidget)) class URTSOMenuButton* Btn_PlayerInventoriesData = nullptr; /**< @brief Button that invoked the WorldBase Data view. @ingroup SaveDataEditorTabButtons */
+	UPROPERTY(BlueprintReadWrite, Meta=(BindWidget)) class URTSOMenuButton* Btn_ConversationStateData = nullptr; /**< @brief Button that invoked the WorldBase Data view. @ingroup SaveDataEditorTabButtons */
+	UPROPERTY(BlueprintReadWrite, Meta=(BindWidget)) class URTSOMenuButton* Btn_MissionProgressTagsData = nullptr; /**< @brief Button that invoked the WorldBase Data view. @ingroup SaveDataEditorTabButtons */
+	
 
 	/** @defgroup MenuButtonGroup
-	 *  @todo replace with ulistview of slots */
+	 *  @todo replace with ulistview of available slots */
 	UPROPERTY(BlueprintReadWrite, Meta=(BindWidget))
 	class URTSOMenuButton* Slot0 = nullptr; /**< @brief Self-explanatory. @ingroup MenuButtonGroup */
 	UPROPERTY(BlueprintReadWrite, Meta=(BindWidget))
@@ -117,62 +141,13 @@ public:
 	class URTSOMenuButton* Slot3 = nullptr; /**< @brief Self-explanatory. @ingroup MenuButtonGroup */
 	UPROPERTY(BlueprintReadWrite, Meta=(BindWidget))
 	class URTSOMenuButton* Slot4 = nullptr; /**< @brief Self-explanatory. @ingroup MenuButtonGroup */
+
+	UPROPERTY(VisibleInstanceOnly)
+	URTSOpenSaveGame* LoadedGameSaveForModification = nullptr;
 	
-	/** @brief Unused for now, reserve for later use */
-	UPROPERTY()
-	class URTSOMainMenuBase* OwningStack = nullptr;	
 };
 
-/** @brief Game Start Menu base widget*/
-UCLASS(Blueprintable)
-class URTSOMenuWidget : public UCommonActivatableWidget
-{
-	GENERATED_BODY()
-
-public:
-	/** @brief Clears delegates on the buttons hitboxes */
-	void ClearDelegates() const;
-	
-	/** @brief The resume button,
-	 *  @note is bound by the OwningMenuBaseWidget to to a function which removes the menu and resumes the game */
-	UPROPERTY(BlueprintReadWrite, Meta=(BindWidget))
-	class URTSOMenuButton* ResumeButton = nullptr;
-
-	/** @brief The settings button,
-	 *  @note will add the settings menu to the widget stack of the owning menu widget base */
-	UPROPERTY(BlueprintReadWrite, Meta=(BindWidget))
-	class URTSOMenuButton* SettingsButton = nullptr;
-
-	/** @brief Invoking the save-game editor,
-	 *  @note will add the save menu editor to the widget stack of the owning menu widget base */
-	UPROPERTY(BlueprintReadWrite, Meta=(BindWidget))
-	class URTSOMenuButton* SaveEditor = nullptr;	
-	
-	/** @brief The save-game button,
-	 *  @note will add the save menu to the widget stack of the owning menu widget base */
-	UPROPERTY(BlueprintReadWrite, Meta=(BindWidget))
-	class URTSOMenuButton* SaveButton = nullptr;
-
-	/** @brief The load-game button,
-	 *  @brief add the load menu to the widget stack of the owning menu widget base */
-	UPROPERTY(BlueprintReadWrite, Meta=(BindWidget))
-	class URTSOMenuButton* LoadButton = nullptr;
-
-	/** @brief The quit-game button quits the actual game
-	 *  @todo set up dialog widget to make sure the player wants to quit if they have not saved the game */
-	UPROPERTY(BlueprintReadWrite, Meta=(BindWidget))
-	class URTSOMenuButton* QuitButton = nullptr;
-
-	/** @brief Contains the buttons in a vertical direction */
-	UPROPERTY(BlueprintReadWrite, Meta=(BindWidget))
-	class UVerticalBox* VerticalBoxContainer = nullptr;
-
-	/** @brief Unused for now, reserve for later use */
-	UPROPERTY()
-	class URTSOMainMenuBase* OwningMenuBaseWidget = nullptr;	
-};
-
-/**
+/*
 Business Source License 1.1
 
 Parameters

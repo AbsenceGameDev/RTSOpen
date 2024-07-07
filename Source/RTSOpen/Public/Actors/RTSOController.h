@@ -14,6 +14,7 @@
 #include "Interfaces/PDRTSBuilderInterface.h"
 #include "RTSOController.generated.h"
 
+class URTSOSaveEditorUserWidget;
 // Fwd decl.
 class URTSOConversationWidget;
 class UPDBuildWidgetBase;
@@ -105,6 +106,8 @@ class RTSOPEN_API ARTSOController
 	/* RTSO Menu interface - Start, @todo move to actual interface if we start making more menus*/
 	UFUNCTION() void OnReleased_Resume();
 	UFUNCTION() void OnReleased_QuitGame();	
+	UFUNCTION() void OpenSaveEditor();	
+	UFUNCTION() void CloseSaveEditor();	
 	/*Handled via the buttons target widget class*/ // UFUNCTION() void OnReleased_Settings(); 
 	/*Handled via the buttons target widget class*/ // UFUNCTION() void OnReleased_Save();
 	/*Handled via the buttons target widget class*/ // UFUNCTION() void OnReleased_Load();
@@ -298,6 +301,14 @@ protected:
 	/** @brief Instantiated conversation widget */
 	UPROPERTY(VisibleInstanceOnly)
 	URTSOConversationWidget* ConversationWidget = nullptr;
+
+	/** @brief Conversation widget base class */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	TSubclassOf<URTSOSaveEditorUserWidget> SaveEditorWidgetClass = nullptr;
+	/** @brief Instantiated conversation widget */
+	UPROPERTY(VisibleInstanceOnly)
+	URTSOSaveEditorUserWidget* SaveEditorWidget = nullptr;
+	
 	
 	/** @brief Build menu widget base class */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)

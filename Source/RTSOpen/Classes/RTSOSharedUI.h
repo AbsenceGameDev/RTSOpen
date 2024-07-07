@@ -10,27 +10,6 @@
 
 DECLARE_LOG_CATEGORY_CLASS(PDLog_RTSOSharedUI, Log, All);
 
-// @was moved some time back out of the game module layer, and jsut some days ago moved again into a module for 'shared ui'
-// /** @brief Mouse event wrapper */
-// USTRUCT(Blueprintable)
-// struct FRTSOMouseEventDelegateWrapper
-// {
-// 	GENERATED_BODY()
-//
-// 	/** @brief On Move */
-// 	UPROPERTY(EditAnywhere, Category = "Events", Meta = (IsBindableEvent="True"))
-// 	UWidget::FOnPointerEvent OnMouseMoveEvent;
-// 	/** @brief (Btn) Down */
-// 	UPROPERTY(EditAnywhere, Category = "Events", Meta = (IsBindableEvent="True"))
-// 	UWidget::FOnPointerEvent OnMouseButtonDownEvent;
-// 	/** @brief (Btn) Up */
-// 	UPROPERTY(EditAnywhere, Category = "Events", Meta = (IsBindableEvent="True"))
-// 	UWidget::FOnPointerEvent OnMouseButtonUpEvent;
-// 	/** @brief (Btn) Double Click */
-// 	UPROPERTY(EditAnywhere, Category = "Events", Meta = (IsBindableEvent="True"))
-// 	UWidget::FOnPointerEvent OnMouseDoubleClickEvent;
-// };
-
 /** @brief Tile view object type for loading conversation/choice data */
 UCLASS(Blueprintable)
 class URTSOStructWrapper : public UObject

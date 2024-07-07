@@ -1,82 +1,99 @@
 ﻿/* @author: Ario Amin @ Permafrost Development. @copyright: Full BSL(1.1) License included at bottom of the file  */
+#include "SaveEditor/SRTSOSaveEditor_WorldBaseData.h"
+
+#include "Textures/SlateIcon.h"
+#include "Framework/Commands/UIAction.h"
+
+#include "Widgets/SBoxPanel.h"
+#include "Widgets/Input/SButton.h"
+#include "Widgets/Input/SComboButton.h"
+#include "Widgets/Input/SNumericEntryBox.h"
+#include "Widgets/Input/SVectorInputBox.h"
+#include "Widgets/Text/STextBlock.h"
+#include "Widgets/Images/SImage.h"
+#include "Widgets/Layout/SBorder.h"
+#include "Widgets/Layout/SBox.h"
+#include "Widgets/Layout/SSplitter.h"
+#include "Widgets/Views/SListView.h"
+#include "Styling/AppStyle.h"
+#include "GameplayTagContainer.h"
+
+#define LOCTEXT_NAMESPACE "SRTSOSaveEditor_WorldBaseData"
+
+typedef SNumericVectorInputBox<int32, UE::Math::TVector<int32>, 3> SNumericV3i;
+typedef SNumericVectorInputBox<double, FVector, 3> SNumericV3d;
+typedef SNumericEntryBox<int32> SNumericS1i;
+typedef SNumericEntryBox<double> SNumericS1d;
 
 
-#include "Widgets/RTSOActiveMainMenu.h"
-
-#include "Components/TextBlock.h"
-#include "Core/RTSOBaseGM.h"
-#include "Widgets/CommonActivatableWidgetContainer.h"
-// #include "Components/CanvasPanel.h"
-// #include "Components/VerticalBox.h"
-// #include "Components/TextBlock.h"
-// #include "Components/Image.h"
-
-void URTSOSaveGameDialog::DialogReplyContinue(const bool bSuccess) const
+//
+// SAVE EDITOR MAIN
+void SRTSOSaveEditor_WorldBaseData::Construct(const FArguments& InArgs)
 {
-	// ARTSOBaseGM* GM = GetWorld() != nullptr ? GetWorld()->GetAuthGameMode<ARTSOBaseGM>() : nullptr;
-	// if (GM == nullptr) { return; }
+	UpdateChildSlot(nullptr);
+}
 
-	if (bSuccess) { SaveSuccessCallback.Execute(FString::FromInt(SlotIdx), true); }
-	else { SaveFailCallback.Execute(FString::FromInt(SlotIdx), true); }
+void SRTSOSaveEditor_WorldBaseData::UpdateChildSlot(void* OpaqueData)
+{
+	// Covers representing below fields
+	// CopiedSaveData.Seeder;
+	// CopiedSaveData.GameTime;
 	
+	ChildSlot
+	.HAlign(HAlign_Center)
+	.VAlign(VAlign_Center)
+	[
+		SNew(SHorizontalBox)
+		+ INSET_HORIZONTAL_SLOT(0)
+		[
+			SNew(SVerticalBox)
+			+ INSET_VERTICAL_SLOT(0)
+			[
+				SNew(STextBlock).Text(FText::FromString("WORLD BASE DATA: "))
+			]
+			
+			+ INSET_VERTICAL_SLOT(0)
+			[
+				SNew(SHorizontalBox)
+				+ INSET_HORIZONTAL_SLOT(0)
+				[
+					SNew(STextBlock).Text(FText::FromString("Game Seed: "))
+				]
+				+ INSET_HORIZONTAL_SLOT(0)
+				[
+					SNew(SNumericEntryBox<int32>)
+						.Value(LinkedSaveDataCopy->Seeder.GetCurrentSeed())
+						.OnValueChanged(this, &SRTSOSaveEditor_WorldBaseData::OnSeedValueChanged)
+				]
+				+ HORIZONTAL_SEPARATOR(10.f)
+			
+				+ INSET_HORIZONTAL_SLOT(0)
+				[
+					SNew(STextBlock).Text(FText::FromString("Elapsed Game Time: "))
+				]
+				+ INSET_HORIZONTAL_SLOT(0)
+				[
+					SNew(SNumericEntryBox<float>)
+						.Value(LinkedSaveDataCopy->GameTime)
+						.OnValueChanged(this, &SRTSOSaveEditor_WorldBaseData::OnGameTimeValueChanged)
+				]	
+			]
+		]
+	];	
 }
 
-// void URTSOSaveGameDialog::SetupDelegates()
-// {
-// 	YesButton->Hitbox->OnReleased.AddDynamic(this, &URTSOSaveGameDialog::Reply_Yes);
-// 	NoButton->Hitbox->OnReleased.AddDynamic(this, &URTSOSaveGameDialog::Reply_No);
-//
-// 	if (DialogContent == nullptr) { return; }
-// 	DialogContent->SetText(DialogMessage);
-// }
-
-// void URTSOSaveGameDialog::Reply_Yes()
-// {
-// 	DialogReplyContinue();
-// 	RemoveFromParent();
-// }
-//
-// void URTSOSaveGameDialog::Reply_No()
-// {
-// 	RemoveFromParent();
-// }
-
-void URTSOMenuWidget_SaveGame::NativePreConstruct()
+void SRTSOSaveEditor_WorldBaseData::OnSeedValueChanged(int32 NewSeed)
 {
-	// BaseCanvas->AddChildToCanvas(MainBox);
-	// MainBox->AddChildToVerticalBox(BannerCanvas);
-	// BannerCanvas->AddChildToCanvas(BannerText);
-	// BannerCanvas->AddChildToCanvas(BannerImage);
-	// BannerCanvas->AddChildToCanvas(ExitButton);
-	// MainBox->AddChildToVerticalBox(InnerBox);
-	// InnerBox->AddChildToVerticalBox(Slot0);
-	// InnerBox->AddChildToVerticalBox(Slot1);
-	// InnerBox->AddChildToVerticalBox(Slot2);
-	// InnerBox->AddChildToVerticalBox(Slot3);
-	// InnerBox->AddChildToVerticalBox(Slot4);
-	Super::NativePreConstruct();
+	LinkedSaveDataCopy->Seeder = FRandomStream(NewSeed); 
 }
 
-void URTSOMenuWidget::ClearDelegates() const
+void SRTSOSaveEditor_WorldBaseData::OnGameTimeValueChanged(float NewGameTime)
 {
-	ResumeButton->Hitbox->OnPressed.Clear();
-	ResumeButton->Hitbox->OnReleased.Clear();
-
-	SettingsButton->Hitbox->OnPressed.Clear();
-	SettingsButton->Hitbox->OnReleased.Clear();
-
-	SaveButton->Hitbox->OnPressed.Clear();
-	SaveButton->Hitbox->OnReleased.Clear();
-
-	LoadButton->Hitbox->OnPressed.Clear();
-	LoadButton->Hitbox->OnReleased.Clear();
-
-	QuitButton->Hitbox->OnPressed.Clear();
-	QuitButton->Hitbox->OnReleased.Clear();
-
-	SaveEditor->Hitbox->OnPressed.Clear();
-	SaveEditor->Hitbox->OnReleased.Clear();
+	LinkedSaveDataCopy->GameTime = NewGameTime;
 }
+
+#undef LOCTEXT_NAMESPACE
+
 
 /**
 Business Source License 1.1
@@ -188,3 +205,4 @@ other recipients of the licensed work to be provided by Licensor:
 
 4. Not to modify this License in any other way.
  **/
+

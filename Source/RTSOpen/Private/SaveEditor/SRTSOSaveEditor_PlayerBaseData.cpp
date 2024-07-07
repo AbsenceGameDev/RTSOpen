@@ -1,82 +1,147 @@
 ﻿/* @author: Ario Amin @ Permafrost Development. @copyright: Full BSL(1.1) License included at bottom of the file  */
+#include "SaveEditor/SRTSOSaveEditor_PlayerBaseData.h"
+
+#include "Textures/SlateIcon.h"
+#include "Framework/Commands/UIAction.h"
+
+#include "Widgets/SBoxPanel.h"
+#include "Widgets/Input/SButton.h"
+#include "Widgets/Input/SComboButton.h"
+#include "Widgets/Input/SVectorInputBox.h"
+#include "Widgets/Text/STextBlock.h"
+#include "Widgets/Images/SImage.h"
+#include "Widgets/Layout/SBorder.h"
+#include "Widgets/Layout/SBox.h"
+#include "Widgets/Layout/SSplitter.h"
+#include "Widgets/Views/SListView.h"
+#include "Styling/AppStyle.h"
+
+#include "GameplayTagContainer.h"
+
+#define LOCTEXT_NAMESPACE "SRTSOSaveEditor_PlayerBaseData"
+
+typedef SNumericVectorInputBox<int32, UE::Math::TVector<int32>, 3> SNumericV3i;
+typedef SNumericVectorInputBox<double, FVector, 3> SNumericV3d;
+typedef SNumericEntryBox<int32> SNumericS1i;
+typedef SNumericEntryBox<double> SNumericS1d;
 
 
-#include "Widgets/RTSOActiveMainMenu.h"
-
-#include "Components/TextBlock.h"
-#include "Core/RTSOBaseGM.h"
-#include "Widgets/CommonActivatableWidgetContainer.h"
-// #include "Components/CanvasPanel.h"
-// #include "Components/VerticalBox.h"
-// #include "Components/TextBlock.h"
-// #include "Components/Image.h"
-
-void URTSOSaveGameDialog::DialogReplyContinue(const bool bSuccess) const
+//
+// SAVE EDITOR MAIN
+void SRTSOSaveEditor_PlayerBaseData::Construct(const FArguments& InArgs)
 {
-	// ARTSOBaseGM* GM = GetWorld() != nullptr ? GetWorld()->GetAuthGameMode<ARTSOBaseGM>() : nullptr;
-	// if (GM == nullptr) { return; }
+	UpdateChildSlot(nullptr);
+}
 
-	if (bSuccess) { SaveSuccessCallback.Execute(FString::FromInt(SlotIdx), true); }
-	else { SaveFailCallback.Execute(FString::FromInt(SlotIdx), true); }
+void SRTSOSaveEditor_PlayerBaseData::UpdateChildSlot(void* OpaqueData)
+{
+	// Covers representing below fields
+	// CopiedSaveData.PlayerLocations;
+
+	LocationsAsSharedTupleArray = static_cast<TArray<TSharedPtr<FPlayerLocationStruct>>*>(OpaqueData);
 	
+	ChildSlot
+	.HAlign(HAlign_Center)
+	.VAlign(VAlign_Center)
+	[
+		SNew(SHorizontalBox)
+		+ INSET_HORIZONTAL_SLOT(0)
+		[
+
+			SNew(SVerticalBox)
+			+ INSET_VERTICAL_SLOT(0)
+			[
+				SNew(STextBlock).Text(FText::FromString("PLAYER BASE DATA: "))
+			]
+			
+			+ INSET_VERTICAL_SLOT(0)
+			[
+				SNew(SListView<TSharedPtr<FPlayerLocationStruct>>)
+					.ListItemsSource(LocationsAsSharedTupleArray)
+					.OnGenerateRow( this, &SRTSOSaveEditor_PlayerBaseData::MakeListViewWidget_PlayerData )
+					.OnSelectionChanged( this, &SRTSOSaveEditor_PlayerBaseData::OnComponentSelected_PlayerData )
+			]
+		]
+	];	
 }
 
-// void URTSOSaveGameDialog::SetupDelegates()
-// {
-// 	YesButton->Hitbox->OnReleased.AddDynamic(this, &URTSOSaveGameDialog::Reply_Yes);
-// 	NoButton->Hitbox->OnReleased.AddDynamic(this, &URTSOSaveGameDialog::Reply_No);
-//
-// 	if (DialogContent == nullptr) { return; }
-// 	DialogContent->SetText(DialogMessage);
-// }
-
-// void URTSOSaveGameDialog::Reply_Yes()
-// {
-// 	DialogReplyContinue();
-// 	RemoveFromParent();
-// }
-//
-// void URTSOSaveGameDialog::Reply_No()
-// {
-// 	RemoveFromParent();
-// }
-
-void URTSOMenuWidget_SaveGame::NativePreConstruct()
+TSharedRef<ITableRow> SRTSOSaveEditor_PlayerBaseData::MakeListViewWidget_PlayerData(TSharedPtr<FPlayerLocationStruct> InItem, const TSharedRef<STableViewBase>& OwnerTable) const
 {
-	// BaseCanvas->AddChildToCanvas(MainBox);
-	// MainBox->AddChildToVerticalBox(BannerCanvas);
-	// BannerCanvas->AddChildToCanvas(BannerText);
-	// BannerCanvas->AddChildToCanvas(BannerImage);
-	// BannerCanvas->AddChildToCanvas(ExitButton);
-	// MainBox->AddChildToVerticalBox(InnerBox);
-	// InnerBox->AddChildToVerticalBox(Slot0);
-	// InnerBox->AddChildToVerticalBox(Slot1);
-	// InnerBox->AddChildToVerticalBox(Slot2);
-	// InnerBox->AddChildToVerticalBox(Slot3);
-	// InnerBox->AddChildToVerticalBox(Slot4);
-	Super::NativePreConstruct();
+	const FPlayerLocationStruct& PlayerLocationTuple = *InItem.Get();
+	
+	SNumericV3d::FOnVectorValueChanged OnVectorValueChanged;
+	OnVectorValueChanged.BindLambda(
+		[ThisPtr = this, UserID = PlayerLocationTuple.Key](const FVector& UpdatedVector)
+		{
+			check(ThisPtr != nullptr) 
+			if (ThisPtr->LinkedSaveDataCopy->PlayerLocations.Contains(UserID))
+			{
+				// @todo this might be problematic
+				FVector& MutableLocation = *const_cast<FVector*>(ThisPtr->LinkedSaveDataCopy->PlayerLocations.Find(UserID));
+				MutableLocation = UpdatedVector;
+			}
+		});
+	
+
+	return SNew( STableRow< TSharedPtr<FPlayerLocationStruct> >, OwnerTable )
+		[
+			SNew(SHorizontalBox)
+			+ INSET_HORIZONTAL_SLOT(0)
+			[
+				SNew(SHorizontalBox)
+				+ INSET_HORIZONTAL_SLOT(0)
+				[
+					SNew(STextBlock).Text(FText::FromString("User ID: "))
+				]
+				+ INSET_HORIZONTAL_SLOT(0)
+				[
+					SNew(STextBlock).Text(FText::FromString(FString::FromInt(PlayerLocationTuple.Key)))
+				]	
+			
+			]
+			+ INSET_HORIZONTAL_SLOT(0)
+			[
+				SNew(SHorizontalBox)
+				+ INSET_HORIZONTAL_SLOT(0)
+				[
+					SNew(STextBlock).Text(FText::FromString("User Location: "))
+				]
+				+ INSET_HORIZONTAL_SLOT(0)
+				[
+					SNew(SNumericV3d)
+						.Vector(PlayerLocationTuple.Value)
+						.OnVectorChanged(OnVectorValueChanged)
+				]			
+			]
+		];
 }
 
-void URTSOMenuWidget::ClearDelegates() const
+void SRTSOSaveEditor_PlayerBaseData::OnComponentSelected_PlayerData(TSharedPtr<FPlayerLocationStruct> InItem, ESelectInfo::Type InSelectInfo)
 {
-	ResumeButton->Hitbox->OnPressed.Clear();
-	ResumeButton->Hitbox->OnReleased.Clear();
+	FSlateApplication::Get().DismissAllMenus();
 
-	SettingsButton->Hitbox->OnPressed.Clear();
-	SettingsButton->Hitbox->OnReleased.Clear();
 
-	SaveButton->Hitbox->OnPressed.Clear();
-	SaveButton->Hitbox->OnReleased.Clear();
-
-	LoadButton->Hitbox->OnPressed.Clear();
-	LoadButton->Hitbox->OnReleased.Clear();
-
-	QuitButton->Hitbox->OnPressed.Clear();
-	QuitButton->Hitbox->OnReleased.Clear();
-
-	SaveEditor->Hitbox->OnPressed.Clear();
-	SaveEditor->Hitbox->OnReleased.Clear();
+	switch (InSelectInfo)
+	{
+	case ESelectInfo::OnKeyPress:
+		break;
+	case ESelectInfo::OnNavigation:
+		break;
+	case ESelectInfo::OnMouseClick:
+		break;
+	case ESelectInfo::Direct:
+		break;
+	}
+	
+	if(OnPlayerDataChosen.IsBound())
+	{
+		OnPlayerDataChosen.Execute(*InItem.Get());
+	}
 }
+
+
+#undef LOCTEXT_NAMESPACE
+
 
 /**
 Business Source License 1.1
@@ -188,3 +253,4 @@ other recipients of the licensed work to be provided by Licensor:
 
 4. Not to modify this License in any other way.
  **/
+

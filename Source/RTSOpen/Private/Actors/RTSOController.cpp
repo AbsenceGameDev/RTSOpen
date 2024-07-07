@@ -26,6 +26,7 @@
 #include "Components/TileView.h"
 #include "Kismet/KismetMathLibrary.h"
 #include "Misc/CString.h"
+#include "SaveEditor/RTSOSaveEditorWidget.h"
 
 ARTSOController::ARTSOController(const FObjectInitializer& ObjectInitializer)
 	: Super(ObjectInitializer), bIsDrawingMarquee(0)
@@ -69,6 +70,13 @@ void ARTSOController::BeginPlay()
 		ConversationWidget = NewObject<URTSOConversationWidget>(this, ConversationWidgetClass);
 		ConversationWidget->SetOwningPlayer(this);
 	}
+	
+	if (SaveEditorWidgetClass->IsValidLowLevelFast())
+	{
+		SaveEditorWidget = NewObject<URTSOSaveEditorUserWidget>(this, SaveEditorWidgetClass);
+		SaveEditorWidget->SetOwningPlayer(this);
+	}
+	
 
 	if (BuildMenuWidgetClass->IsValidLowLevelFast())
 	{
@@ -464,6 +472,14 @@ void ARTSOController::ActionToggleMainMenu_Implementation(const FInputActionValu
 		MainMenuWidget->BindButtonDelegates(this);
 		return;
 	}
+
+	if (SaveEditorWidget->IsInViewport())
+	{
+		UE_LOG(PDLog_RTSO, Warning, TEXT("%s -- Removing save-editor menu from parent/viewport"), *BuildString);
+		CloseSaveEditor();
+		return;
+	}	
+	
 	
 	UE_LOG(PDLog_RTSO, Warning, TEXT("%s -- Removing widget from parent/viewport"), *BuildString);
 	OnReleased_Resume();
@@ -485,6 +501,22 @@ void ARTSOController::OnReleased_QuitGame()
 {
 	// @todo (backlog) Warn if progress is not saved
 	ConsoleCommand("quit");
+}
+
+void ARTSOController::OpenSaveEditor()
+{
+	if (SaveEditorWidget == nullptr) { return; }
+
+	SaveEditorWidget->AddToViewport();
+	SaveEditorWidget->BindButtonDelegates(this);
+	SaveEditorWidget->ActivateWidget();
+}
+
+void ARTSOController::CloseSaveEditor()
+{
+	if (SaveEditorWidget == nullptr) { return; }
+
+	SaveEditorWidget->RemoveFromParent();
 }
 
 #if WITH_EDITOR

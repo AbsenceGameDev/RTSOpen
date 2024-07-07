@@ -1,82 +1,38 @@
 ﻿/* @author: Ario Amin @ Permafrost Development. @copyright: Full BSL(1.1) License included at bottom of the file  */
 
+#pragma once
 
-#include "Widgets/RTSOActiveMainMenu.h"
+#include "CoreMinimal.h"
+#include "GameplayTagContainer.h"
+#include "Subsystems/EngineSubsystem.h"
 
-#include "Components/TextBlock.h"
-#include "Core/RTSOBaseGM.h"
-#include "Widgets/CommonActivatableWidgetContainer.h"
-// #include "Components/CanvasPanel.h"
-// #include "Components/VerticalBox.h"
-// #include "Components/TextBlock.h"
-// #include "Components/Image.h"
+#include "RTSOpenCommon.h"
+#include "SRTSOSaveEditor.h"
 
-void URTSOSaveGameDialog::DialogReplyContinue(const bool bSuccess) const
+/**
+ * @brief  Loads custom tags that may have been added by a player/user
+*/
+class RTSOPEN_API SRTSOSaveEditor_WorldBaseData : public SRTSOSaveEditorBase
 {
-	// ARTSOBaseGM* GM = GetWorld() != nullptr ? GetWorld()->GetAuthGameMode<ARTSOBaseGM>() : nullptr;
-	// if (GM == nullptr) { return; }
-
-	if (bSuccess) { SaveSuccessCallback.Execute(FString::FromInt(SlotIdx), true); }
-	else { SaveFailCallback.Execute(FString::FromInt(SlotIdx), true); }
+public:
+	SLATE_BEGIN_ARGS(SRTSOSaveEditor_WorldBaseData) { }
 	
-}
+ 		/** @todo Called when the save editor window is scrolled. */
+ 		SLATE_EVENT(FOnUserScrolled, OnUserScrolled)
 
-// void URTSOSaveGameDialog::SetupDelegates()
-// {
-// 	YesButton->Hitbox->OnReleased.AddDynamic(this, &URTSOSaveGameDialog::Reply_Yes);
-// 	NoButton->Hitbox->OnReleased.AddDynamic(this, &URTSOSaveGameDialog::Reply_No);
-//
-// 	if (DialogContent == nullptr) { return; }
-// 	DialogContent->SetText(DialogMessage);
-// }
+ 		/** @todo Called when an element is clicked. */
+ 		SLATE_EVENT(FOnClicked, OnUserClicked)
+	
+	SLATE_END_ARGS()
 
-// void URTSOSaveGameDialog::Reply_Yes()
-// {
-// 	DialogReplyContinue();
-// 	RemoveFromParent();
-// }
-//
-// void URTSOSaveGameDialog::Reply_No()
-// {
-// 	RemoveFromParent();
-// }
+	void Construct(const FArguments& InArgs);
+	virtual void UpdateChildSlot(void* OpaqueData) final override;
 
-void URTSOMenuWidget_SaveGame::NativePreConstruct()
-{
-	// BaseCanvas->AddChildToCanvas(MainBox);
-	// MainBox->AddChildToVerticalBox(BannerCanvas);
-	// BannerCanvas->AddChildToCanvas(BannerText);
-	// BannerCanvas->AddChildToCanvas(BannerImage);
-	// BannerCanvas->AddChildToCanvas(ExitButton);
-	// MainBox->AddChildToVerticalBox(InnerBox);
-	// InnerBox->AddChildToVerticalBox(Slot0);
-	// InnerBox->AddChildToVerticalBox(Slot1);
-	// InnerBox->AddChildToVerticalBox(Slot2);
-	// InnerBox->AddChildToVerticalBox(Slot3);
-	// InnerBox->AddChildToVerticalBox(Slot4);
-	Super::NativePreConstruct();
-}
+	void OnSeedValueChanged(int32 NewSeed);
+	void OnGameTimeValueChanged(float NewGameTime);
+	
+};
 
-void URTSOMenuWidget::ClearDelegates() const
-{
-	ResumeButton->Hitbox->OnPressed.Clear();
-	ResumeButton->Hitbox->OnReleased.Clear();
-
-	SettingsButton->Hitbox->OnPressed.Clear();
-	SettingsButton->Hitbox->OnReleased.Clear();
-
-	SaveButton->Hitbox->OnPressed.Clear();
-	SaveButton->Hitbox->OnReleased.Clear();
-
-	LoadButton->Hitbox->OnPressed.Clear();
-	LoadButton->Hitbox->OnReleased.Clear();
-
-	QuitButton->Hitbox->OnPressed.Clear();
-	QuitButton->Hitbox->OnReleased.Clear();
-
-	SaveEditor->Hitbox->OnPressed.Clear();
-	SaveEditor->Hitbox->OnReleased.Clear();
-}
 
 /**
 Business Source License 1.1

@@ -47,6 +47,7 @@ void URTSOMainMenuBase::BindButtonDelegates(AActor* ActorToBindAt)
 		AsMenu->ClearDelegates();
 		AsMenu->ResumeButton->Hitbox->OnReleased.AddUniqueDynamic(AsController, &ARTSOController::OnReleased_Resume);
 		AsMenu->QuitButton->Hitbox->OnReleased.AddUniqueDynamic(AsController, &ARTSOController::OnReleased_QuitGame);
+		AsMenu->SaveEditor->Hitbox->OnPressed.AddUniqueDynamic(AsController, &ARTSOController::OpenSaveEditor);
 		SetupInnerMenuDelegates(AsMenu);
 	}
 }

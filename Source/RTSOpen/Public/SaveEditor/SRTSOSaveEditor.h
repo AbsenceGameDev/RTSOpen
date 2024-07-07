@@ -11,176 +11,23 @@
 
 DECLARE_LOG_CATEGORY_CLASS(PDLog_SaveEditor, Log, All);
 
-USTRUCT()
-struct FPlayerLocationStruct 
-{ 
-	GENERATED_BODY() 
-	int32 /*UserID*/ Key; 
-	FVector /*User Location*/ Value;
-};
-USTRUCT()
-struct FUserInventoriesStruct 
-{ 
-	GENERATED_BODY() 
-	int32 /*UserID*/ Key; 
-	FRTSSavedItems /*User Inventory Wrapper*/ Value;
-};
-USTRUCT()
-struct FConversationStateStruct 
-{ 
-	GENERATED_BODY() 
-	int32 /*ActorID*/ Key; 
-	FRTSSavedConversationActorData Value;
-};
-USTRUCT()
-struct FConversationProgressionInnerStruct 
-{ 
-	GENERATED_BODY() 
-	int32 /*UserID*/ Key; 
-	FRTSOConversationMetaProgressionListWrapper /*ProgressionLevel*/ Value;
-};
-USTRUCT()
-struct FUserMissionTagsStruct 
-{ 
-	GENERATED_BODY() 
-	int32 Key /*PlayerID*/; 
-	FGameplayTagContainer /*AccumulatedMissionTags*/ Value;
-};
-USTRUCT()
-struct FStacksStruct 
-{ 
-	GENERATED_BODY() 
-	int32 Key /*StackIndex*/; 
-	int32 /*ItemCount*/ Value;
-};
+USTRUCT() struct FPlayerLocationStruct { GENERATED_BODY()  int32 /*UserID*/ Key;  FVector /*User Location*/ Value; };
+USTRUCT() struct FUserInventoriesStruct { GENERATED_BODY()  int32 /*UserID*/ Key;  FRTSSavedItems /*User Inventory Wrapper*/ Value; };
+USTRUCT() struct FConversationStateStruct  { GENERATED_BODY()  int32 /*ActorID*/ Key;  FRTSSavedConversationActorData Value; };
+USTRUCT() struct FConversationProgressionInnerStruct { GENERATED_BODY()  int32 /*UserID*/ Key;  FRTSOConversationMetaProgressionListWrapper /*ProgressionLevel*/ Value; };
+USTRUCT() struct FUserMissionTagsStruct  { GENERATED_BODY()  int32 Key /*PlayerID*/;  FGameplayTagContainer /*AccumulatedMissionTags*/ Value; };
+USTRUCT() struct FStacksStruct  { GENERATED_BODY()  int32 Key /*StackIndex*/;  int32 /*ItemCount*/ Value; };
 
 /**
  * @brief  Loads custom tags that may have been added by a player/user
 */
-class RTSOPEN_API SRTSOSaveEditor : public SCompoundWidget
+class RTSOPEN_API SRTSOSaveEditorBase : public SCompoundWidget
 {
 public:
-	DECLARE_DELEGATE_OneParam( FOnPlayerDataChosen, const FPlayerLocationStruct&);
-	DECLARE_DELEGATE_OneParam( FOnInteractableDataChosen, const FRTSSavedInteractable&);
-	DECLARE_DELEGATE_OneParam( FOnEntityDataChosen, const FRTSSavedWorldUnits&);
-	DECLARE_DELEGATE_OneParam( FOnInventoryOverviewDataChosen, const FUserInventoriesStruct&);
-	DECLARE_DELEGATE_OneParam( FOnItemDataChosen, const FPDItemNetDatum&);
-	DECLARE_DELEGATE_OneParam( FOnConverstionStateDataChosen, const FConversationStateStruct&);
-	DECLARE_DELEGATE_OneParam( FOnMissionTagsDataChosen, const FUserMissionTagsStruct&);
-	DECLARE_DELEGATE_OneParam( FOnInteractableClassPicked, const TOptional<EMouseCursor::Type>&);
-
+	virtual void UpdateChildSlot(void* OpaqueData) {}
 	
-	SLATE_BEGIN_ARGS(SRTSOSaveEditor) { }
-
-	
- 		/** @todo Called when the save editor window is scrolled. */
- 		SLATE_EVENT(FOnUserScrolled, OnUserScrolled)
-
- 		/** @todo Called when an element is clicked. */
- 		SLATE_EVENT(FOnClicked, OnUserClicked)
-	
-	SLATE_END_ARGS()
-
-	void Construct(const FArguments& InArgs);
-	void HandleValueChange(FGameplayTag Submenu, int32 MenuItem, int32 NewValue) const;
-
-	void CopyData(URTSOpenSaveGame* InSaveGame);
-	void OnCompletedCopyData();
-	void OnFailedCopyData();
-
-	void OnSeedValueChanged(int32 NewSeed);
-	void OnGameTimeValueChanged(float NewGameTime);
-
-	void ResetFieldData(EPDSaveDataThreadSelector SaveDataGroupSelector);
-
-	TSharedRef<ITableRow> MakeListViewWidget_PlayerData(TSharedPtr<FPlayerLocationStruct> InItem, const TSharedRef<STableViewBase>& OwnerTable) const;
-	void OnComponentSelected_PlayerData(TSharedPtr<FPlayerLocationStruct> InItem, ESelectInfo::Type InSelectInfo);
-
-	void OnInteractableUsabilityChanged(int32 ActorID, float NewUsability) const;
-	
-	TSharedRef<ITableRow> MakeListViewWidget_InteractableData(TSharedPtr<FRTSSavedInteractable> InItem, const TSharedRef<STableViewBase>& OwnerTable) const;
-	void OnComponentSelected_InteractableData(TSharedPtr<FRTSSavedInteractable> InItem, ESelectInfo::Type InSelectInfo);
-
-	TSharedRef<ITableRow> MakeListViewWidget_EntityData(TSharedPtr<FRTSSavedWorldUnits> InItem, const TSharedRef<STableViewBase>& OwnerTable) const;
-	void OnComponentSelected_EntityData(TSharedPtr<FRTSSavedWorldUnits> InItem, ESelectInfo::Type InSelectInfo);
-
-	TSharedRef<ITableRow> MakeListViewWidget_InventoryOverviewData(TSharedPtr<FUserInventoriesStruct> InItem, const TSharedRef<STableViewBase>& OwnerTable) const;
-	void OnComponentSelected_InventoryOverviewData(TSharedPtr<FUserInventoriesStruct> InItem, ESelectInfo::Type InSelectInfo);
-
-	TSharedRef<ITableRow> MakeListViewWidget_ItemData(TSharedPtr<FPDItemNetDatum> InItem, const TSharedRef<STableViewBase>& OwnerTable) const;
-	void OnComponentSelected_ItemData(TSharedPtr<FPDItemNetDatum> InItem, ESelectInfo::Type InSelectInfo) const;
-
-	TSharedRef<ITableRow> MakeListViewWidget_ConversationStateData(TSharedPtr<FConversationStateStruct> InItem, const TSharedRef<STableViewBase>& OwnerTable) const;
-	void OnComponentSelected_ConversationStateData(TSharedPtr<FConversationStateStruct> InItem, ESelectInfo::Type InSelectInfo);
-	
-	TSharedRef<ITableRow> MakeListViewWidget_UserMissionTags(TSharedPtr<FUserMissionTagsStruct> InItem, const TSharedRef<STableViewBase>& OwnerTable) const;
-	void OnComponentSelected_UserMissionTags(TSharedPtr<FUserMissionTagsStruct> InItem, ESelectInfo::Type InSelectInfo);	
-	
-	
-	URTSOpenSaveGame* SaveGamePtr = nullptr;
-	FRTSSaveData CopiedSaveData;
-
-	// Views
-	TArray<TSharedPtr<FPlayerLocationStruct>>    LocationsAsSharedTupleArray;
-	TArray<TSharedPtr<FRTSSavedInteractable>>   InteractableAsSharedArray;
-	TArray<TSharedPtr<FRTSSavedWorldUnits>>     EntitiesAsSharedArray;
-	TArray<TSharedPtr<FUserInventoriesStruct>>   AllUserInventoriesAsSharedTupleArray;
-	TArray<TSharedPtr<FConversationStateStruct>> ConversationStatesAsSharedArray;
-	TArray<TSharedPtr<FUserMissionTagsStruct>>   UserMissionTagsAsSharedArray;
-	
-
-	// Callbacks
-	FOnPlayerDataChosen OnPlayerDataChosen{};
-	FOnInteractableDataChosen OnInteractableDataChosen{};
-	FOnEntityDataChosen OnEntityDataChosen{};
-	FOnInventoryOverviewDataChosen OnInventoryOverviewDataChosen{};
-	FOnItemDataChosen OnItemDataChosen{};
-	FOnConverstionStateDataChosen OnConversationStateDataChosen{};
-	FOnMissionTagsDataChosen OnOnMissionTagsDataChosen{};
-
-	UClass* SelectedClass = nullptr;
-
-	// View Tables
-	TSharedPtr<STableRow< TSharedPtr<FRTSSavedInteractable>>> InteractableTable;
-	TSharedPtr<STableRow< TSharedPtr<FRTSSavedWorldUnits>>> EntityTable;
-	TSharedPtr<STableRow< TSharedPtr<FUserInventoriesStruct>>> InventoryTable;
-	TSharedPtr<STableRow< TSharedPtr<FConversationStateStruct>>> ConversationStateTable;
-	TSharedPtr<STableRow< TSharedPtr<FUserMissionTagsStruct>>> MissionTagsTable;
+	FRTSSaveData* LinkedSaveDataCopy = nullptr;	
 };
-
-class SRTSOSaveEditorSubmenu : public SCompoundWidget
-{
-public:
-	DECLARE_DELEGATE(FOnValueChange);
-	SLATE_BEGIN_ARGS(SRTSOSaveEditorSubmenu)
-		: _SubmenuTag(FGameplayTag())
-	{}
-	SLATE_ARGUMENT(FGameplayTag, SubmenuTag)
-
-	SLATE_EVENT(FOnValueChange, OnValueChanged)
-SLATE_END_ARGS()
-
-	/**  */
-	SRTSOSaveEditorSubmenu() 
-		: SubmenuTag(FGameplayTag::EmptyTag) {}
-
-	/** 
-	 * Builds the slate UI for SRTSOSaveEditorSubmenu (as well as caches off any
-	 * important data that was supplied as part of the FArguments struct).
-	 *
-	 * @param  Args	 The set of slate arguments that are used to customize this panel.
-	 */
-	void Construct(const FArguments& Args);
-
-private:
-	TSharedRef<SWidget> MakeSubmenu();
-	FText  GetSubmenuTextValue() const;
-	FReply OnUseSelectedItemClick();
-	
-	FGameplayTag SubmenuTag;
-	FOnValueChange OnValueChanged;
-};
-
 
 class FRTSSaveEd_InteractableClassFilter : public IClassViewerFilter
 {
@@ -236,6 +83,49 @@ private:
 		return false;
 	}
 };
+
+
+#define VERTICAL_SEPARATOR(thickness) \
+SVerticalBox::Slot() \
+[ \
+	SNew(SSeparator) \
+	.Thickness(thickness) \
+	.Orientation(Orient_Vertical) \
+]
+
+#define HORIZONTAL_SEPARATOR(thickness) \
+SHorizontalBox::Slot() \
+[ \
+	SNew(SSeparator) \
+	.Thickness(thickness) \
+	.Orientation(Orient_Horizontal) \
+]
+
+#define INSET_VERTICAL_SLOT(VerticalPadding) \
+SVerticalBox::Slot() \
+	.Padding(FMargin{0, VerticalPadding}) \
+	.AutoHeight() 
+
+#define INSET_HORIZONTAL_SLOT(HorizontalPadding) \
+SHorizontalBox::Slot() \
+	.Padding(FMargin{HorizontalPadding, 0}) \
+	.AutoWidth() 
+
+#define INSET_VERTICAL_SLOT_CL(VerticalPadding) \
+SVerticalBox::Slot() \
+	.Padding(FMargin{0, VerticalPadding}) \
+	.AutoHeight() \
+	.HAlign(HAlign_Center) \
+	.VAlign(VAlign_Center)
+
+#define INSET_HORIZONTAL_SLOT_CL(HorizontalPadding) \
+SHorizontalBox::Slot() \
+	.Padding(FMargin{HorizontalPadding, 0}) \
+	.AutoWidth() \
+	.HAlign(HAlign_Center) \
+	.VAlign(VAlign_Center) 
+
+
 
 /**
 Business Source License 1.1

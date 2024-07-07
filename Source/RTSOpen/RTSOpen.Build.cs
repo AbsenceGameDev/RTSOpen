@@ -13,9 +13,12 @@ public class RTSOpen : ModuleRules
 		
 		PublicDependencyModuleNames.AddRange(new string[] 
 		{ 
-			"Core", "CoreUObject", "Engine", "InputCore", "NetCore", "DeveloperSettings",
-			"GameplayTags", "EnhancedInput", "CommonConversationRuntime", 
-			"PDRTSBase", "PDInventory", "PDConversationHelper", "PDSharedUI"
+			/*Core*/         "Engine", "Core", "CoreUObject", "NetCore", 
+			/*Settings*/     "DeveloperSettings", 
+			/*Tag*/          "GameplayTags", 
+			/*Input*/        "InputCore",  "EnhancedInput", 
+			/*Conversation*/ "CommonConversationRuntime", 
+			/*PermaDev*/     "PDRTSBase", "PDInventory", "PDConversationHelper", "PDSharedUI"
 		});
 
 		PublicDependencyModuleNames.AddRange(new string[]
@@ -30,8 +33,9 @@ public class RTSOpen : ModuleRules
 		
 		PrivateDependencyModuleNames.AddRange(new string[] 
 		{ 
-			/*Editor*/    "UnrealEd",			
-			"GameplayTags", "EnhancedInput", 
+			/*Editor*/       "UnrealEd",			
+			/*Tag*/          "GameplayTags", 
+			/*Input*/        "EnhancedInput", 
 			/*Widget*/       "SlateCore", "Slate", "CommonUI", "UMG", 
 			/*Effects*/      "Niagara", "MassCrowd", 
             /*Conversation*/ "CommonConversationRuntime", 

@@ -23,7 +23,7 @@ class APDInteractActor;
 class UPDRTSBaseUnit;
 class ARTSOInteractableConversationActor;
 
-
+UENUM()
 enum class EPDSaveDataThreadSelector : int8
 {
 	// Things we want to handle on different threads
@@ -35,9 +35,8 @@ enum class EPDSaveDataThreadSelector : int8
 	EPlayerConversationProgress,
 	EEnd,
 
-	// Needed for other work that does not involve threads, felt unnecessary to keep in another enum when  
-	ESeeder = -2,
-	EGameTime = -1
+	// Needed for other work that does not involve threads, felt unnecessary to keep in another enum when this enum ha all the other fields we are looking for
+	EWorldBaseData = -1
 };
 
 
