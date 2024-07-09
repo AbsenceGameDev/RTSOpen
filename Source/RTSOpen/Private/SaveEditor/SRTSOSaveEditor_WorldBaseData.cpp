@@ -28,8 +28,9 @@ typedef SNumericEntryBox<double> SNumericS1d;
 
 //
 // SAVE EDITOR MAIN
-void SRTSOSaveEditor_WorldBaseData::Construct(const FArguments& InArgs)
+void SRTSOSaveEditor_WorldBaseData::Construct(const FArguments& InArgs, FRTSSaveData* InLinkedData)
 {
+	LinkedSaveDataCopy = InLinkedData;
 	UpdateChildSlot(nullptr);
 }
 

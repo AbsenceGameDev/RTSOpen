@@ -6,6 +6,8 @@
 #include "GameplayTagContainer.h"
 #include "RTSOpenCommon.h"
 #include "ClassViewerFilter.h"
+#include "ClassViewerModule.h"
+#include "Interfaces/PDInteractInterface.h"
 #include "Subsystems/EngineSubsystem.h"
 #include "SRTSOSaveEditor.generated.h"
 
@@ -15,19 +17,9 @@ USTRUCT() struct FPlayerLocationStruct { GENERATED_BODY()  int32 /*UserID*/ Key;
 USTRUCT() struct FUserInventoriesStruct { GENERATED_BODY()  int32 /*UserID*/ Key;  FRTSSavedItems /*User Inventory Wrapper*/ Value; };
 USTRUCT() struct FConversationStateStruct  { GENERATED_BODY()  int32 /*ActorID*/ Key;  FRTSSavedConversationActorData Value; };
 USTRUCT() struct FConversationProgressionInnerStruct { GENERATED_BODY()  int32 /*UserID*/ Key;  FRTSOConversationMetaProgressionListWrapper /*ProgressionLevel*/ Value; };
-USTRUCT() struct FUserMissionTagsStruct  { GENERATED_BODY()  int32 Key /*PlayerID*/;  FGameplayTagContainer /*AccumulatedMissionTags*/ Value; };
-USTRUCT() struct FStacksStruct  { GENERATED_BODY()  int32 Key /*StackIndex*/;  int32 /*ItemCount*/ Value; };
+USTRUCT() struct FUserMissionTagsStruct { GENERATED_BODY()  int32 Key /*PlayerID*/;  FGameplayTagContainer /*AccumulatedMissionTags*/ Value; };
+USTRUCT() struct FStacksStruct { GENERATED_BODY()  int32 Key /*StackIndex*/;  int32 /*ItemCount*/ Value; };
 
-/**
- * @brief  Loads custom tags that may have been added by a player/user
-*/
-class RTSOPEN_API SRTSOSaveEditorBase : public SCompoundWidget
-{
-public:
-	virtual void UpdateChildSlot(void* OpaqueData) {}
-	
-	FRTSSaveData* LinkedSaveDataCopy = nullptr;	
-};
 
 class FRTSSaveEd_InteractableClassFilter : public IClassViewerFilter
 {
@@ -84,6 +76,56 @@ private:
 	}
 };
 
+
+/**
+ * @brief  Loads custom tags that may have been added by a player/user
+*/
+class RTSOPEN_API SRTSOSaveEditorBase : public SCompoundWidget
+{
+public:
+	virtual void UpdateChildSlot(void* OpaqueData) {}
+
+	template<typename TPickerClass>
+	TSharedRef<SWindow> CreatePickerDialog(TSharedRef<SWindow>& PickerWindow, UClass* FilterInterfaceClass)
+	{
+		FClassViewerInitializationOptions InitOptions;
+		InitOptions.Mode = EClassViewerMode::ClassPicker;
+		InitOptions.DisplayMode = EClassViewerDisplayMode::TreeView;
+
+		const TSharedRef<FRTSSaveEd_InteractableClassFilter> SaveEd_InteractableClassFilter = MakeShared<FRTSSaveEd_InteractableClassFilter>();
+		SaveEd_InteractableClassFilter->InterfaceThatMustBeImplemented = FilterInterfaceClass;
+		InitOptions.ClassFilters.Add(SaveEd_InteractableClassFilter);
+	
+		return SNew(TPickerClass)
+				.ParentWindow(PickerWindow)
+				.Options(InitOptions)
+				.AssetType(nullptr);		
+	}
+	template<typename TPickerClass>
+	TSharedRef<SWindow> CreatePickerWindow()
+	{
+		// Create the window to pick the class
+		TSharedRef<SWindow> PickerWindow = SNew(SWindow)
+			.Title(FText())
+			.SizingRule( ESizingRule::Autosized )
+			.ClientSize( FVector2D( 0.f, 300.f ))
+			.SupportsMaximize(false)
+			.SupportsMinimize(false);
+
+		TSharedRef<TPickerClass> PickerDialog = CreatePickerDialog<TPickerClass>(PickerWindow, UPDInteractInterface::StaticClass());
+		PickerWindow->SetContent(PickerDialog);
+
+		const TSharedPtr<SWindow> ParentWindow = FSlateApplication::Get().GetActiveTopLevelRegularWindow();
+		if( ParentWindow.IsValid() )
+		{
+			FSlateApplication::Get().AddModalWindow(PickerWindow, ParentWindow );
+		}
+
+		return PickerWindow;		
+	}
+	
+	FRTSSaveData* LinkedSaveDataCopy = nullptr;	
+};
 
 #define VERTICAL_SEPARATOR(thickness) \
 SVerticalBox::Slot() \

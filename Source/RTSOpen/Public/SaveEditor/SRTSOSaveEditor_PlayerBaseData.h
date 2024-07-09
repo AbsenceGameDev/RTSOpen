@@ -18,14 +18,11 @@ public:
 	DECLARE_DELEGATE_OneParam( FOnPlayerDataChosen, const FPlayerLocationStruct&);
 	
 	SLATE_BEGIN_ARGS(SRTSOSaveEditor_PlayerBaseData) { }
- 		/** @todo Called when the save editor window is scrolled. */
  		SLATE_EVENT(FOnUserScrolled, OnUserScrolled)
-
- 		/** @todo Called when an element is clicked. */
  		SLATE_EVENT(FOnClicked, OnUserClicked)
 	SLATE_END_ARGS()
 
-	void Construct(const FArguments& InArgs);
+	void Construct(const FArguments& InArgs, FRTSSaveData* InLinkedData);
 	virtual void UpdateChildSlot(void* OpaqueData) final override;
 
 	TSharedRef<ITableRow> MakeListViewWidget_PlayerData(TSharedPtr<FPlayerLocationStruct> InItem, const TSharedRef<STableViewBase>& OwnerTable) const;

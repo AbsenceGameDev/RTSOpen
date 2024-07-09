@@ -9,6 +9,7 @@
 #include "RTSOpenCommon.h"
 #include "SRTSOSaveEditor.h"
 
+class SRTSOTagPicker;
 /**
  * @brief  Loads custom tags that may have been added by a player/user
 */
@@ -19,17 +20,11 @@ public:
 	DECLARE_DELEGATE_OneParam( FOnItemDataChosen, const FPDItemNetDatum&);
 	
 	SLATE_BEGIN_ARGS(SRTSOSaveEditor_PlayerInventoryData) { }
-
-	
- 		/** @todo Called when the save editor window is scrolled. */
  		SLATE_EVENT(FOnUserScrolled, OnUserScrolled)
-
- 		/** @todo Called when an element is clicked. */
  		SLATE_EVENT(FOnClicked, OnUserClicked)
-	
 	SLATE_END_ARGS()
 
-	void Construct(const FArguments& InArgs);
+	void Construct(const FArguments& InArgs, FRTSSaveData* InLinkedData);
 	virtual void UpdateChildSlot(void* OpaqueData) final override;
 
 	TSharedRef<ITableRow> MakeListViewWidget_InventoryOverviewData(TSharedPtr<FUserInventoriesStruct> InItem, const TSharedRef<STableViewBase>& OwnerTable) const;
@@ -50,6 +45,9 @@ public:
 
 	// View Tables
 	TSharedPtr<STableRow< TSharedPtr<FUserInventoriesStruct>>> InventoryTable;
+
+	// Tag Picker
+	TSharedPtr<SRTSOTagPicker> TagPicker;	
 };
 
 /**

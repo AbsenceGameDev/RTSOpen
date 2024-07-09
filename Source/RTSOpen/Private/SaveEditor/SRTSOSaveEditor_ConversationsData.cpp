@@ -35,8 +35,9 @@ typedef SNumericEntryBox<double> SNumericS1d;
 
 //
 // SAVE EDITOR MAIN
-void SRTSOSaveEditor_ConversationsData::Construct(const FArguments& InArgs)
+void SRTSOSaveEditor_ConversationsData::Construct(const FArguments& InArgs, FRTSSaveData* InLinkedData)
 {
+	LinkedSaveDataCopy = InLinkedData;
 	UpdateChildSlot(nullptr);
 }
 
@@ -45,7 +46,10 @@ void SRTSOSaveEditor_ConversationsData::UpdateChildSlot(void* OpaqueData)
 	// Covers representing below fields
 	// CopiedSaveData.ConversationActorState;
 
-	ConversationStatesAsSharedArray = static_cast<TArray<TSharedPtr<FConversationStateStruct>>*>(OpaqueData);
+	if (OpaqueData != nullptr)
+	{
+		ConversationStatesAsSharedArray = static_cast<TArray<TSharedPtr<FConversationStateStruct>>*>(OpaqueData);
+	}	
 	
 	ChildSlot
 	.HAlign(HAlign_Center)

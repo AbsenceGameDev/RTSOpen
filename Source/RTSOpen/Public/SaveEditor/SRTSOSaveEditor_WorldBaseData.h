@@ -16,16 +16,11 @@ class RTSOPEN_API SRTSOSaveEditor_WorldBaseData : public SRTSOSaveEditorBase
 {
 public:
 	SLATE_BEGIN_ARGS(SRTSOSaveEditor_WorldBaseData) { }
-	
- 		/** @todo Called when the save editor window is scrolled. */
- 		SLATE_EVENT(FOnUserScrolled, OnUserScrolled)
-
- 		/** @todo Called when an element is clicked. */
- 		SLATE_EVENT(FOnClicked, OnUserClicked)
-	
+	SLATE_EVENT(FOnUserScrolled, OnUserScrolled)
+	SLATE_EVENT(FOnClicked, OnUserClicked)
 	SLATE_END_ARGS()
-
-	void Construct(const FArguments& InArgs);
+	
+	void Construct(const FArguments& InArgs, FRTSSaveData* InLinkedData);
 	virtual void UpdateChildSlot(void* OpaqueData) final override;
 
 	void OnSeedValueChanged(int32 NewSeed);

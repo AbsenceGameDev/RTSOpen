@@ -35,14 +35,18 @@ typedef SNumericEntryBox<double> SNumericS1d;
 
 //
 // SAVE EDITOR MAIN
-void SRTSOSaveEditor_InteractableData::Construct(const FArguments& InArgs)
+void SRTSOSaveEditor_InteractableData::Construct(const FArguments& InArgs, FRTSSaveData* InLinkedData)
 {
+	LinkedSaveDataCopy = InLinkedData;
 	UpdateChildSlot(nullptr);
 }
 
 void SRTSOSaveEditor_InteractableData::UpdateChildSlot(void* OpaqueData)
 {
-	InteractableAsSharedArray = static_cast<TArray<TSharedPtr<FRTSSavedInteractable>>*>(OpaqueData);
+	if (OpaqueData != nullptr)
+	{
+		InteractableAsSharedArray = static_cast<TArray<TSharedPtr<FRTSSavedInteractable>>*>(OpaqueData);
+	}
 	
 	ChildSlot
 	.HAlign(HAlign_Center)

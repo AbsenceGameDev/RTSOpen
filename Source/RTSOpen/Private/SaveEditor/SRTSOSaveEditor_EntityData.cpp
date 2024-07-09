@@ -24,6 +24,7 @@
 
 #include "GameplayTagContainer.h"
 #include "Interfaces/PDInteractInterface.h"
+#include "SaveEditor/SRTSOTagPicker.h"
 
 #define LOCTEXT_NAMESPACE "SRTSOSaveEditor_EntityData"
 
@@ -35,8 +36,9 @@ typedef SNumericEntryBox<double> SNumericS1d;
 
 //
 // SAVE EDITOR MAIN
-void SRTSOSaveEditor_EntityData::Construct(const FArguments& InArgs)
+void SRTSOSaveEditor_EntityData::Construct(const FArguments& InArgs, FRTSSaveData* InLinkedData)
 {
+	LinkedSaveDataCopy = InLinkedData;
 	UpdateChildSlot(nullptr);
 }
 
@@ -45,7 +47,11 @@ void SRTSOSaveEditor_EntityData::UpdateChildSlot(void* OpaqueData)
 	// Covers representing below fields
 	// CopiedSaveData.EntityUnits;
 
-	EntitiesAsSharedArray = static_cast<TArray<TSharedPtr<FRTSSavedWorldUnits>>*>(OpaqueData);
+	if (OpaqueData != nullptr)
+	{
+		EntitiesAsSharedArray = static_cast<TArray<TSharedPtr<FRTSSavedWorldUnits>>*>(OpaqueData);
+	}
+	
 	
 	ChildSlot
 	.HAlign(HAlign_Center)
@@ -69,50 +75,6 @@ void SRTSOSaveEditor_EntityData::UpdateChildSlot(void* OpaqueData)
 			]			
 		]
 	];	
-}
-
-// @todo implement SLightGameplayTagPicker then change return type
-static TSharedRef<SWindow> CreatePickerDialog(TSharedRef<SWindow>& PickerWindow)
-{
-	FClassViewerInitializationOptions InitOptions;
-	InitOptions.Mode = EClassViewerMode::ClassPicker;
-	InitOptions.DisplayMode = EClassViewerDisplayMode::TreeView;
-
-	const TSharedRef<FRTSSaveEd_InteractableClassFilter> SaveEd_InteractableClassFilter = MakeShared<FRTSSaveEd_InteractableClassFilter>();
-	SaveEd_InteractableClassFilter->InterfaceThatMustBeImplemented = UPDInteractInterface::StaticClass();
-	InitOptions.ClassFilters.Add(SaveEd_InteractableClassFilter);
-	
-	// @todo implement SLightGameplayTagPicker then uncomment below
-	// return TSharedRef<SLightGameplayTagPicker> GameplayTagPickerDialog = SNew(SLightGameplayTagPicker)
-	// 	.ParentWindow(PickerWindow)
-	// 	.Options(InitOptions)
-	// 	.AssetType(nullptr);
-	//
-
-	return SNew(SWindow);	
-}
-
-static TSharedRef<SWindow> CreatePickerWindow()
-{
-	// Create the window to pick the class
-	TSharedRef<SWindow> PickerWindow = SNew(SWindow)
-		.Title(FText())
-		.SizingRule( ESizingRule::Autosized )
-		.ClientSize( FVector2D( 0.f, 300.f ))
-		.SupportsMaximize(false)
-		.SupportsMinimize(false);
-
-	// @todo implement SLightGameplayTagPicker then uncomment below
-	// TSharedRef<SLightGameplayTagPicker> GameplayTagPickerDialog = CreatePickerDialog();
-	// PickerWindow->SetContent(GameplayTagPickerDialog);
-
-	const TSharedPtr<SWindow> ParentWindow = FSlateApplication::Get().GetActiveTopLevelRegularWindow();
-	if( ParentWindow.IsValid() )
-	{
-		FSlateApplication::Get().AddModalWindow(PickerWindow, ParentWindow );
-	}
-
-	return PickerWindow;
 }
 
 TSharedRef<ITableRow> SRTSOSaveEditor_EntityData::MakeListViewWidget_EntityData(TSharedPtr<FRTSSavedWorldUnits> InItem, const TSharedRef<STableViewBase>& OwnerTable) const
@@ -142,11 +104,16 @@ TSharedRef<ITableRow> SRTSOSaveEditor_EntityData::MakeListViewWidget_EntityData(
 		FOnClicked::CreateLambda(
 			[&]() -> FReply
 			{
-				// @todo associate with picker window, to assign result in below member
-				SavedEntityDatum.EntityUnitTag;
-				
 				// Create the window to pick the class
-				TSharedRef<SWindow> PickerWindow = CreatePickerWindow();
+				if (TagPicker.IsValid() == false)
+				{
+					TSharedRef<SRTSOTagPicker> InstancedTagPicker = SNew(SRTSOTagPicker);
+					(TSharedPtr<SRTSOTagPicker>)TagPicker = (TSharedPtr<SRTSOTagPicker>)InstancedTagPicker.ToSharedPtr();
+				}
+		
+				TagPicker->SetVisibility(TagPicker->GetVisibility().IsVisible() ? EVisibility::Collapsed : EVisibility::Visible);
+				TagPicker->RequestScrollToView(SavedEntityDatum.EntityUnitTag);
+				
 				return FReply::Handled();
 			});
 
@@ -154,11 +121,16 @@ TSharedRef<ITableRow> SRTSOSaveEditor_EntityData::MakeListViewWidget_EntityData(
 		FOnClicked::CreateLambda(
 			[&]() -> FReply
 			{
-				// @todo associate with picker window, to assign result in below member
-				SavedEntityDatum.CurrentAction.ActionTag;
-				
 				// Create the window to pick the class
-				TSharedRef<SWindow> PickerWindow = CreatePickerWindow();
+				if (TagPicker.IsValid() == false)
+				{
+					TSharedRef<SRTSOTagPicker> InstancedTagPicker = SNew(SRTSOTagPicker);
+					(TSharedPtr<SRTSOTagPicker>)TagPicker = (TSharedPtr<SRTSOTagPicker>)InstancedTagPicker.ToSharedPtr();
+				}
+		
+				TagPicker->SetVisibility(TagPicker->GetVisibility().IsVisible() ? EVisibility::Collapsed : EVisibility::Visible);
+				TagPicker->RequestScrollToView(SavedEntityDatum.CurrentAction.ActionTag);
+				
 				return FReply::Handled();
 			});
 
@@ -166,11 +138,16 @@ TSharedRef<ITableRow> SRTSOSaveEditor_EntityData::MakeListViewWidget_EntityData(
 		FOnClicked::CreateLambda(
 			[&]() -> FReply
 			{
-				// @todo associate with picker window, to assign result in below member
-				SavedEntityDatum.CurrentAction.Reward;
-				
 				// Create the window to pick the class
-				TSharedRef<SWindow> PickerWindow = CreatePickerWindow();
+				if (TagPicker.IsValid() == false)
+				{
+					TSharedRef<SRTSOTagPicker> InstancedTagPicker = SNew(SRTSOTagPicker);
+					(TSharedPtr<SRTSOTagPicker>)TagPicker = (TSharedPtr<SRTSOTagPicker>)InstancedTagPicker.ToSharedPtr();
+				}
+		
+				TagPicker->SetVisibility(TagPicker->GetVisibility().IsVisible() ? EVisibility::Collapsed : EVisibility::Visible);
+				TagPicker->RequestScrollToView(SavedEntityDatum.CurrentAction.Reward);
+				
 				return FReply::Handled();
 			});		
 	

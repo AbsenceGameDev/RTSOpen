@@ -1,5 +1,8 @@
 ﻿/* @author: Ario Amin @ Permafrost Development. @copyright: Full BSL(1.1) License included at bottom of the file  */
 #include "SaveEditor/SRTSOSaveEditor.h"
+
+#include "ClassViewerModule.h"
+#include "Interfaces/PDInteractInterface.h"
 #define LOCTEXT_NAMESPACE "SRTSOSaveEditor"
 
 

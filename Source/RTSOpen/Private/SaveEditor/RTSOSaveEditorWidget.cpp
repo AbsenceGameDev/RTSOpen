@@ -138,49 +138,49 @@ void URTSOSaveEditorInnerWidget::UpdateInnerEditor()
 		{
 		case EPDSaveDataThreadSelector::EPlayers:
 			{
-				const TSharedRef<SRTSOSaveEditor_PlayerBaseData> PlayerBaseDataRef = SNew(SRTSOSaveEditor_PlayerBaseData);
+				const TSharedRef<SRTSOSaveEditor_PlayerBaseData> PlayerBaseDataRef = SNew(SRTSOSaveEditor_PlayerBaseData, &CopiedSaveData);
 				PlayerBaseDataRef->LocationsAsSharedTupleArray = &LocationsAsSharedTupleArray;
 				SharedExistingSaveEditor	= PlayerBaseDataRef.ToSharedPtr();
 				break;
 			}
 		case EPDSaveDataThreadSelector::EInteractables:
 			{
-				const TSharedRef<SRTSOSaveEditor_InteractableData> DataRef = SNew(SRTSOSaveEditor_InteractableData);
+				const TSharedRef<SRTSOSaveEditor_InteractableData> DataRef = SNew(SRTSOSaveEditor_InteractableData, &CopiedSaveData);
 				DataRef->InteractableAsSharedArray = &InteractableAsSharedArray;
 				SharedExistingSaveEditor	= DataRef.ToSharedPtr();
 				break;
 			}
 		case EPDSaveDataThreadSelector::EEntities:
 			{
-				const TSharedRef<SRTSOSaveEditor_EntityData> DataRef = SNew(SRTSOSaveEditor_EntityData);
+				const TSharedRef<SRTSOSaveEditor_EntityData> DataRef = SNew(SRTSOSaveEditor_EntityData, &CopiedSaveData);
 				DataRef->EntitiesAsSharedArray = &EntitiesAsSharedArray;
 				SharedExistingSaveEditor	= DataRef.ToSharedPtr();
 				break;
 			}
 		case EPDSaveDataThreadSelector::EInventories:
 			{
-				const TSharedRef<SRTSOSaveEditor_PlayerInventoryData> DataRef = SNew(SRTSOSaveEditor_PlayerInventoryData);
+				const TSharedRef<SRTSOSaveEditor_PlayerInventoryData> DataRef = SNew(SRTSOSaveEditor_PlayerInventoryData, &CopiedSaveData);
 				DataRef->AllUserInventoriesAsSharedTupleArray = &AllUserInventoriesAsSharedTupleArray;
 				SharedExistingSaveEditor	= DataRef.ToSharedPtr();
 				break;
 			}
 		case EPDSaveDataThreadSelector::EConversationActors:
 			{
-				const TSharedRef<SRTSOSaveEditor_ConversationsData> DataRef = SNew(SRTSOSaveEditor_ConversationsData);
+				const TSharedRef<SRTSOSaveEditor_ConversationsData> DataRef = SNew(SRTSOSaveEditor_ConversationsData, &CopiedSaveData);
 				DataRef->ConversationStatesAsSharedArray = &ConversationStatesAsSharedArray;
 				SharedExistingSaveEditor	= DataRef.ToSharedPtr();
 				break;
 			}
 		case EPDSaveDataThreadSelector::EPlayerConversationProgress:
 			{
-				const TSharedRef<SRTSOSaveEditor_MissionTagsData> DataRef = SNew(SRTSOSaveEditor_MissionTagsData);
+				const TSharedRef<SRTSOSaveEditor_MissionTagsData> DataRef = SNew(SRTSOSaveEditor_MissionTagsData, &CopiedSaveData);
 				DataRef->UserMissionTagsAsSharedArray = &UserMissionTagsAsSharedArray;
 				SharedExistingSaveEditor	= DataRef.ToSharedPtr();
 				break;
 			}
 		case EPDSaveDataThreadSelector::EWorldBaseData:
 			{
-				const TSharedRef<SRTSOSaveEditor_WorldBaseData> DataRef = SNew(SRTSOSaveEditor_WorldBaseData);
+				const TSharedRef<SRTSOSaveEditor_WorldBaseData> DataRef = SNew(SRTSOSaveEditor_WorldBaseData, &CopiedSaveData);
 				SharedExistingSaveEditor	= DataRef.ToSharedPtr();
 				break;
 			}
@@ -223,7 +223,7 @@ void URTSOSaveEditorInnerWidget::SelectEditor(EPDSaveDataThreadSelector NewEdito
 {
 	EditorType = NewEditorType;
 
-	InnerSlateWrapbox.Reset();
+	InnerSlateWrapbox->ClearChildren();
 	SharedExistingSaveEditor.Reset();
 	
 	UpdateInnerEditor();
@@ -428,7 +428,7 @@ void URTSOSaveEditorUserWidget::LoadSlotData(int32 SlotIdx)
 	// Loading the slot might take a while, so we play a widget animation to cover it while waiting 
 	PlayAnimation(CategoryLoadingAnimation);
 
-	AsyncTask(ENamedThreads::AnyThread,
+	AsyncTask(ENamedThreads::GameThread,
 		[&, Slot = SlotIdx]()
 		{
 			LoadedGameSaveForModification = LOADSLOT(Slot);

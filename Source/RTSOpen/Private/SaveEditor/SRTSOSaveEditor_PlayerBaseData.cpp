@@ -28,8 +28,9 @@ typedef SNumericEntryBox<double> SNumericS1d;
 
 //
 // SAVE EDITOR MAIN
-void SRTSOSaveEditor_PlayerBaseData::Construct(const FArguments& InArgs)
+void SRTSOSaveEditor_PlayerBaseData::Construct(const FArguments& InArgs, FRTSSaveData* InLinkedData)
 {
+	LinkedSaveDataCopy = InLinkedData;
 	UpdateChildSlot(nullptr);
 }
 
@@ -38,7 +39,10 @@ void SRTSOSaveEditor_PlayerBaseData::UpdateChildSlot(void* OpaqueData)
 	// Covers representing below fields
 	// CopiedSaveData.PlayerLocations;
 
-	LocationsAsSharedTupleArray = static_cast<TArray<TSharedPtr<FPlayerLocationStruct>>*>(OpaqueData);
+	if (OpaqueData != nullptr)
+	{
+		LocationsAsSharedTupleArray = static_cast<TArray<TSharedPtr<FPlayerLocationStruct>>*>(OpaqueData);
+	}
 	
 	ChildSlot
 	.HAlign(HAlign_Center)
