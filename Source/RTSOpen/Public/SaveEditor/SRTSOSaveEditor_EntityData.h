@@ -22,8 +22,8 @@ public:
  		SLATE_EVENT(FOnUserScrolled, OnUserScrolled)
  		SLATE_EVENT(FOnClicked, OnUserClicked)
 	SLATE_END_ARGS()
-
-	void Construct(const FArguments& InArgs, FRTSSaveData* InLinkedData);
+	
+	void Construct(const FArguments& InArgs, FRTSSaveData* InLinkedData, TArray<TSharedPtr<FRTSSavedWorldUnits>>& ArrayRef);
 	virtual void UpdateChildSlot(void* OpaqueData) final override;
 
 	TSharedRef<ITableRow> MakeListViewWidget_EntityData(TSharedPtr<FRTSSavedWorldUnits> InItem, const TSharedRef<STableViewBase>& OwnerTable) const;
@@ -41,7 +41,30 @@ public:
 	TSharedPtr<STableRow< TSharedPtr<FRTSSavedWorldUnits>>> EntityTable;
 
 	// Tag Picker
-	TSharedPtr<SRTSOTagPicker> TagPicker;	
+	TSharedPtr<SRTSOTagPicker> TagPicker;
+	
+	// Localized Text
+	static FText WorldEntities_TitleText;
+	static FText Entity_BaseData_TitleText;
+	static FText Entity_TitleText;
+	static FText Entity_BaseData_Index_TitleText;
+	static FText Entity_BaseData_Type_TitleText;
+	static FText Entity_StateData_TitleText;
+	static FText Entity_StateData_Location_TitleText;
+	static FText Entity_StateData_Health_TitleText;
+	static FText Entity_OwnerData_TitleText;
+	static FText Entity_OwnerData_OwnerID_TitleText;
+	static FText Entity_OwnerData_SelectionGroup_TitleText;
+	static FText Entity_ActionData_TitleText;
+	static FText Entity_ActionData_BaseData_TitleText;
+	static FText Entity_ActionData_BaseData_ActionType_TitleText;
+	static FText Entity_ActionData_RewardData_TitleText;
+	static FText Entity_ActionData_RewardData_Type_TitleText;
+	static FText Entity_ActionData_RewardData_Amount_TitleText;
+	static FText Entity_ActionData_TargetData_TitleText;
+	static FText Entity_ActionData_TargetData_AsEntity_TitleText;
+	static FText Entity_ActionData_TargetData_AsActor_TitleText;
+	static FText Entity_ActionData_TargetData_AsPureLocation_TitleText;	
 };
 
 

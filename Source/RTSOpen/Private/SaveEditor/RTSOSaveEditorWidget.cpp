@@ -138,43 +138,37 @@ void URTSOSaveEditorInnerWidget::UpdateInnerEditor()
 		{
 		case EPDSaveDataThreadSelector::EPlayers:
 			{
-				const TSharedRef<SRTSOSaveEditor_PlayerBaseData> PlayerBaseDataRef = SNew(SRTSOSaveEditor_PlayerBaseData, &CopiedSaveData);
-				PlayerBaseDataRef->LocationsAsSharedTupleArray = &LocationsAsSharedTupleArray;
+				const TSharedRef<SRTSOSaveEditor_PlayerBaseData> PlayerBaseDataRef = SNew(SRTSOSaveEditor_PlayerBaseData, &CopiedSaveData, LocationsAsSharedTupleArray);
 				SharedExistingSaveEditor	= PlayerBaseDataRef.ToSharedPtr();
 				break;
 			}
 		case EPDSaveDataThreadSelector::EInteractables:
 			{
-				const TSharedRef<SRTSOSaveEditor_InteractableData> DataRef = SNew(SRTSOSaveEditor_InteractableData, &CopiedSaveData);
-				DataRef->InteractableAsSharedArray = &InteractableAsSharedArray;
+				const TSharedRef<SRTSOSaveEditor_InteractableData> DataRef = SNew(SRTSOSaveEditor_InteractableData, &CopiedSaveData, InteractableAsSharedArray);
 				SharedExistingSaveEditor	= DataRef.ToSharedPtr();
 				break;
 			}
 		case EPDSaveDataThreadSelector::EEntities:
 			{
-				const TSharedRef<SRTSOSaveEditor_EntityData> DataRef = SNew(SRTSOSaveEditor_EntityData, &CopiedSaveData);
-				DataRef->EntitiesAsSharedArray = &EntitiesAsSharedArray;
+				const TSharedRef<SRTSOSaveEditor_EntityData> DataRef = SNew(SRTSOSaveEditor_EntityData, &CopiedSaveData, EntitiesAsSharedArray);
 				SharedExistingSaveEditor	= DataRef.ToSharedPtr();
 				break;
 			}
 		case EPDSaveDataThreadSelector::EInventories:
 			{
-				const TSharedRef<SRTSOSaveEditor_PlayerInventoryData> DataRef = SNew(SRTSOSaveEditor_PlayerInventoryData, &CopiedSaveData);
-				DataRef->AllUserInventoriesAsSharedTupleArray = &AllUserInventoriesAsSharedTupleArray;
+				const TSharedRef<SRTSOSaveEditor_PlayerInventoryData> DataRef = SNew(SRTSOSaveEditor_PlayerInventoryData, &CopiedSaveData, AllUserInventoriesAsSharedTupleArray);
 				SharedExistingSaveEditor	= DataRef.ToSharedPtr();
 				break;
 			}
 		case EPDSaveDataThreadSelector::EConversationActors:
 			{
-				const TSharedRef<SRTSOSaveEditor_ConversationsData> DataRef = SNew(SRTSOSaveEditor_ConversationsData, &CopiedSaveData);
-				DataRef->ConversationStatesAsSharedArray = &ConversationStatesAsSharedArray;
+				const TSharedRef<SRTSOSaveEditor_ConversationsData> DataRef = SNew(SRTSOSaveEditor_ConversationsData, &CopiedSaveData, ConversationStatesAsSharedArray);
 				SharedExistingSaveEditor	= DataRef.ToSharedPtr();
 				break;
 			}
 		case EPDSaveDataThreadSelector::EPlayerConversationProgress:
 			{
-				const TSharedRef<SRTSOSaveEditor_MissionTagsData> DataRef = SNew(SRTSOSaveEditor_MissionTagsData, &CopiedSaveData);
-				DataRef->UserMissionTagsAsSharedArray = &UserMissionTagsAsSharedArray;
+				const TSharedRef<SRTSOSaveEditor_MissionTagsData> DataRef = SNew(SRTSOSaveEditor_MissionTagsData, &CopiedSaveData, UserMissionTagsAsSharedArray);
 				SharedExistingSaveEditor	= DataRef.ToSharedPtr();
 				break;
 			}
@@ -405,22 +399,21 @@ void URTSOSaveEditorUserWidget::BindButtonDelegates(AActor* ActorToBindAt)
 	if (AsController == nullptr) { return; }
 
 	// @todo Spawn confirm dialog if we have unsaved changes, do it within ARTSOController::CloseSaveEditor!
-	ExitButton->Hitbox->OnPressed.AddDynamic(AsController, &ARTSOController::CloseSaveEditor);
+	ExitButton->Hitbox->OnPressed.AddUniqueDynamic(AsController, &ARTSOController::CloseSaveEditor);
 
-	Slot0->Hitbox->OnReleased.AddDynamic(this, &URTSOSaveEditorUserWidget::LoadSlotData0);
-	Slot1->Hitbox->OnReleased.AddDynamic(this, &URTSOSaveEditorUserWidget::LoadSlotData1);
-	Slot2->Hitbox->OnReleased.AddDynamic(this, &URTSOSaveEditorUserWidget::LoadSlotData2);
-	Slot3->Hitbox->OnReleased.AddDynamic(this, &URTSOSaveEditorUserWidget::LoadSlotData3);
-	Slot4->Hitbox->OnReleased.AddDynamic(this, &URTSOSaveEditorUserWidget::LoadSlotData4);
+	Slot0->Hitbox->OnReleased.AddUniqueDynamic(this, &URTSOSaveEditorUserWidget::LoadSlotData0);
+	Slot1->Hitbox->OnReleased.AddUniqueDynamic(this, &URTSOSaveEditorUserWidget::LoadSlotData1);
+	Slot2->Hitbox->OnReleased.AddUniqueDynamic(this, &URTSOSaveEditorUserWidget::LoadSlotData2);
+	Slot3->Hitbox->OnReleased.AddUniqueDynamic(this, &URTSOSaveEditorUserWidget::LoadSlotData3);
+	Slot4->Hitbox->OnReleased.AddUniqueDynamic(this, &URTSOSaveEditorUserWidget::LoadSlotData4);
 
-
-	Btn_WorldBaseData->Hitbox->OnPressed.AddDynamic(this, &URTSOSaveEditorUserWidget::Category_WorldBaseData);
-	Btn_PlayerBaseData->Hitbox->OnPressed.AddDynamic(this, &URTSOSaveEditorUserWidget::Category_PlayerBaseData);
-	Btn_InteractableData->Hitbox->OnPressed.AddDynamic(this, &URTSOSaveEditorUserWidget::Category_InteractableData);
-	Btn_EntityData->Hitbox->OnPressed.AddDynamic(this, &URTSOSaveEditorUserWidget::Category_EntityData);
-	Btn_PlayerInventoriesData->Hitbox->OnPressed.AddDynamic(this, &URTSOSaveEditorUserWidget::Category_PlayerInventoriesData);
-	Btn_ConversationStateData->Hitbox->OnPressed.AddDynamic(this, &URTSOSaveEditorUserWidget::Category_ConversationStateData);
-	Btn_MissionProgressTagsData->Hitbox->OnPressed.AddDynamic(this, &URTSOSaveEditorUserWidget::Category_MissionProgressTagsData);	
+	Btn_WorldBaseData->Hitbox->OnPressed.AddUniqueDynamic(this, &URTSOSaveEditorUserWidget::Category_WorldBaseData);
+	Btn_PlayerBaseData->Hitbox->OnPressed.AddUniqueDynamic(this, &URTSOSaveEditorUserWidget::Category_PlayerBaseData);
+	Btn_InteractableData->Hitbox->OnPressed.AddUniqueDynamic(this, &URTSOSaveEditorUserWidget::Category_InteractableData);
+	Btn_EntityData->Hitbox->OnPressed.AddUniqueDynamic(this, &URTSOSaveEditorUserWidget::Category_EntityData);
+	Btn_PlayerInventoriesData->Hitbox->OnPressed.AddUniqueDynamic(this, &URTSOSaveEditorUserWidget::Category_PlayerInventoriesData);
+	Btn_ConversationStateData->Hitbox->OnPressed.AddUniqueDynamic(this, &URTSOSaveEditorUserWidget::Category_ConversationStateData);
+	Btn_MissionProgressTagsData->Hitbox->OnPressed.AddUniqueDynamic(this, &URTSOSaveEditorUserWidget::Category_MissionProgressTagsData);	
 }
 
 void URTSOSaveEditorUserWidget::LoadSlotData(int32 SlotIdx)

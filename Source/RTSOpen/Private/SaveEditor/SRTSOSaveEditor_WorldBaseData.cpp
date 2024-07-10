@@ -34,11 +34,21 @@ void SRTSOSaveEditor_WorldBaseData::Construct(const FArguments& InArgs, FRTSSave
 	UpdateChildSlot(nullptr);
 }
 
+FText SRTSOSaveEditor_WorldBaseData::WorldBaseData_TitleText = LOCTEXT("TitleText_WorldBase", "WORLD BASE DATA");
+FText SRTSOSaveEditor_WorldBaseData::GameSeed_TitleText = LOCTEXT("TitleText_Seed", "Game Seed: ");
+FText SRTSOSaveEditor_WorldBaseData::GameTime_TitleText = LOCTEXT("TitleText_Time", "Elapsed Game Time: ");
+FText SRTSOSaveEditor_WorldBaseData::GenerateSeed_ButtonText = LOCTEXT("ButtonText_Seed", "Generate New Seed");
+
 void SRTSOSaveEditor_WorldBaseData::UpdateChildSlot(void* OpaqueData)
 {
+	SRTSOSaveEditorBase::UpdateChildSlot(OpaqueData);
+	
 	// Covers representing below fields
 	// CopiedSaveData.Seeder;
 	// CopiedSaveData.GameTime;
+	
+	const SNumericEntryBox<int32>::FOnValueCommitted CallbackOnCommitValue = SNumericEntryBox<int32>::FOnValueCommitted::CreateRaw(this, &SRTSOSaveEditor_WorldBaseData::OnSeedValueChanged);
+	FOnClicked CallbackOnClickGenerate = FOnClicked::CreateRaw(this, &SRTSOSaveEditor_WorldBaseData::OnSeedValueGenerated);
 	
 	ChildSlot
 	.HAlign(HAlign_Center)
@@ -50,47 +60,93 @@ void SRTSOSaveEditor_WorldBaseData::UpdateChildSlot(void* OpaqueData)
 			SNew(SVerticalBox)
 			+ INSET_VERTICAL_SLOT(0)
 			[
-				SNew(STextBlock).Text(FText::FromString("WORLD BASE DATA: "))
+				SNew(STextBlock)
+					.Font(TitleFont)
+					.Text(WorldBaseData_TitleText)
 			]
-			
 			+ INSET_VERTICAL_SLOT(0)
 			[
 				SNew(SHorizontalBox)
 				+ INSET_HORIZONTAL_SLOT(0)
 				[
-					SNew(STextBlock).Text(FText::FromString("Game Seed: "))
+					SNew(STextBlock)
+						.Text(GameSeed_TitleText)
 				]
 				+ INSET_HORIZONTAL_SLOT(0)
 				[
-					SNew(SNumericEntryBox<int32>)
-						.Value(LinkedSaveDataCopy->Seeder.GetCurrentSeed())
-						.OnValueChanged(this, &SRTSOSaveEditor_WorldBaseData::OnSeedValueChanged)
+					SNew(SHorizontalBox)
+					+ INSET_HORIZONTAL_SLOT(0)
+					[
+						SNew(SNumericEntryBox<int32>)
+							.Value(this, &SRTSOSaveEditor_WorldBaseData::GeCurrentSeedValue)
+							.OnValueCommitted(CallbackOnCommitValue)
+					]
+					+ INSET_HORIZONTAL_SLOT(0)
+					[
+						SNew(SButton)
+							.Text(GenerateSeed_ButtonText)
+							.OnClicked(this, &SRTSOSaveEditor_WorldBaseData::OnSeedValueGenerated)
+					]
 				]
 				+ HORIZONTAL_SEPARATOR(10.f)
 			
 				+ INSET_HORIZONTAL_SLOT(0)
 				[
-					SNew(STextBlock).Text(FText::FromString("Elapsed Game Time: "))
+					SNew(STextBlock)
+						.Text(GameTime_TitleText)
 				]
 				+ INSET_HORIZONTAL_SLOT(0)
 				[
-					SNew(SNumericEntryBox<float>)
-						.Value(LinkedSaveDataCopy->GameTime)
-						.OnValueChanged(this, &SRTSOSaveEditor_WorldBaseData::OnGameTimeValueChanged)
+					SNew(SNumericEntryBox<double>)
+						.Value(this, &SRTSOSaveEditor_WorldBaseData::GeCurrentTimeValue)
+						.OnValueCommitted(this, &SRTSOSaveEditor_WorldBaseData::OnGameTimeValueChanged)
 				]	
 			]
 		]
 	];	
 }
 
-void SRTSOSaveEditor_WorldBaseData::OnSeedValueChanged(int32 NewSeed)
+TOptional<int32> SRTSOSaveEditor_WorldBaseData::GeCurrentSeedValue() const
 {
-	LinkedSaveDataCopy->Seeder = FRandomStream(NewSeed); 
+	return LinkedSaveDataCopy->Seeder.GetCurrentSeed();
+}
+TOptional<double> SRTSOSaveEditor_WorldBaseData::GeCurrentTimeValue() const
+{
+	return LinkedSaveDataCopy->GameTime;
 }
 
-void SRTSOSaveEditor_WorldBaseData::OnGameTimeValueChanged(float NewGameTime)
+
+void SRTSOSaveEditor_WorldBaseData::OnSeedValueChanged(int32 NewSeed, ETextCommit::Type CommitType)
 {
-	LinkedSaveDataCopy->GameTime = NewGameTime;
+	switch (CommitType)
+	{
+		case ETextCommit::OnEnter:
+		LinkedSaveDataCopy->Seeder = FRandomStream(NewSeed);
+		UE_LOG(PDLog_SaveEditor, Warning, TEXT("SRTSOSaveEditor_WorldBaseData::OnSeedValueChanged -- New Seed Value: %i"), LinkedSaveDataCopy->Seeder.GetCurrentSeed())
+	
+		default: break;
+	}
+}
+
+FReply SRTSOSaveEditor_WorldBaseData::OnSeedValueGenerated()
+{
+	const int32 NewSeed = FMath::Rand();
+	LinkedSaveDataCopy->Seeder = FRandomStream(NewSeed);
+	UE_LOG(PDLog_SaveEditor, Warning, TEXT("SRTSOSaveEditor_WorldBaseData::OnSeedValueGenerated -- New Seed Value: %i, RandSeedSource: %i"), LinkedSaveDataCopy->Seeder.GetCurrentSeed(), NewSeed)
+
+	return FReply::Handled();
+}
+
+void SRTSOSaveEditor_WorldBaseData::OnGameTimeValueChanged(double NewGameTime, ETextCommit::Type CommitType)
+{
+	switch (CommitType)
+	{
+	case ETextCommit::OnEnter:
+		LinkedSaveDataCopy->GameTime = NewGameTime;
+		UE_LOG(PDLog_SaveEditor, Warning, TEXT("SRTSOSaveEditor_WorldBaseData::OnGameTimeValueChanged -- New Game Time Value: %f"), LinkedSaveDataCopy->GameTime)
+		
+	default: break;
+	}	
 }
 
 #undef LOCTEXT_NAMESPACE

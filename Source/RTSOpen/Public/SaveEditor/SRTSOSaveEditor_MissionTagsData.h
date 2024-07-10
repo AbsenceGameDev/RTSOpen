@@ -22,8 +22,8 @@ public:
  		SLATE_EVENT(FOnUserScrolled, OnUserScrolled)
  		SLATE_EVENT(FOnClicked, OnUserClicked)
 	SLATE_END_ARGS()
-
-	void Construct(const FArguments& InArgs, FRTSSaveData* InLinkedData);
+	
+	void Construct(const FArguments& InArgs, FRTSSaveData* InLinkedData, TArray<TSharedPtr<FUserMissionTagsStruct>>& ArrayRef);
 	virtual void UpdateChildSlot(void* OpaqueData) final override;
 	
 	TSharedRef<ITableRow> MakeListViewWidget_UserMissionTags(TSharedPtr<FUserMissionTagsStruct> InItem, const TSharedRef<STableViewBase>& OwnerTable) const;
@@ -39,10 +39,17 @@ public:
 
 	// View Tables
 	TSharedPtr<STableRow< TSharedPtr<FUserMissionTagsStruct>>> MissionTagsTable;
-
-
+	
 	// Tag Picker
 	TSharedPtr<SRTSOTagPicker> TagPicker;
+
+	// Localized Text
+	static FText MissionProgressTags_TitleText;
+	static FText MissionProgress_TitleText;
+	static FText MissionProgress_BaseData_TitleText;
+	static FText MissionProgress_BaseData_OwnerIDText;
+	static FText MissionProgress_ProgressData_Title;
+	static FText MissionProgress_ProgressData_TagList;	
 };
 
 

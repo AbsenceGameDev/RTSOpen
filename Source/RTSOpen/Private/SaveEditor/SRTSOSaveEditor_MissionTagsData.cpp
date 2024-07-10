@@ -27,19 +27,25 @@ typedef SNumericVectorInputBox<double, FVector, 3> SNumericV3d;
 typedef SNumericEntryBox<int32> SNumericS1i;
 typedef SNumericEntryBox<double> SNumericS1d;
 
+FText SRTSOSaveEditor_MissionTagsData::MissionProgressTags_TitleText = LOCTEXT("TitleText_MissionProgressTags", "MISSION PROGRESS TAGS");
+FText SRTSOSaveEditor_MissionTagsData::MissionProgress_TitleText = LOCTEXT("TitleText_User", "USER");
+FText SRTSOSaveEditor_MissionTagsData::MissionProgress_BaseData_TitleText = LOCTEXT("TitleText_User_BaseData", "BASE DATA");
+FText SRTSOSaveEditor_MissionTagsData::MissionProgress_BaseData_OwnerIDText = LOCTEXT("UserID_User_BaseData", "UserID: ");
+FText SRTSOSaveEditor_MissionTagsData::MissionProgress_ProgressData_Title = LOCTEXT("TitleText_User_ProgressData", "PROGRESS DATA");
+FText SRTSOSaveEditor_MissionTagsData::MissionProgress_ProgressData_TagList = LOCTEXT("TagList_User_ProgressData", "Tags: ");
 
-/** @brief SRTSOSaveEditor_MissionTagsDataSubmenu */
 
 //
 // SAVE EDITOR MAIN
-void SRTSOSaveEditor_MissionTagsData::Construct(const FArguments& InArgs, FRTSSaveData* InLinkedData)
+void SRTSOSaveEditor_MissionTagsData::Construct(const FArguments& InArgs, FRTSSaveData* InLinkedData, TArray<TSharedPtr<FUserMissionTagsStruct>>& ArrayRef)
 {
 	LinkedSaveDataCopy = InLinkedData;
-	UpdateChildSlot(nullptr);
+	UpdateChildSlot(&ArrayRef);
 }
 
 void SRTSOSaveEditor_MissionTagsData::UpdateChildSlot(void* OpaqueData)
 {
+	SRTSOSaveEditorBase::UpdateChildSlot(OpaqueData);
 	// Covers representing below fields
 	// CopiedSaveData.PlayersAndConversationTags;
 
@@ -58,7 +64,9 @@ void SRTSOSaveEditor_MissionTagsData::UpdateChildSlot(void* OpaqueData)
 			SNew(SVerticalBox)
 			+ INSET_VERTICAL_SLOT(0)
 			[
-				SNew(STextBlock).Text(FText::FromString("MISSION PROGRESS TAG DATA: "))
+				SNew(STextBlock)
+					.Font(TitleFont)
+					.Text(MissionProgressTags_TitleText)
 			]
 			
 			+ INSET_VERTICAL_SLOT(0)
@@ -94,10 +102,11 @@ TSharedRef<ITableRow> SRTSOSaveEditor_MissionTagsData::MakeListViewWidget_UserMi
 	
 	//
 	// Callbacks
-	SNumericS1i::FOnValueChanged OnUserIDChanged;
-	OnUserIDChanged.BindLambda(
-		[ImmutableThis = this, OldUserID = UserID](int NewUserID)
+	const SNumericS1i::FOnValueCommitted OnUserIDChanged = SNumericS1i::FOnValueCommitted::CreateLambda(
+		[ImmutableThis = this, OldUserID = UserID](int NewUserID, ETextCommit::Type CommitType)
 		{
+			if (CommitType != ETextCommit::OnEnter)  { return; }
+			
 			SRTSOSaveEditor_MissionTagsData* MutableThis = const_cast<SRTSOSaveEditor_MissionTagsData*>(ImmutableThis);
 			check(MutableThis != nullptr)
 			FRTSSaveData* MutableSaveData = MutableThis->LinkedSaveDataCopy;
@@ -159,6 +168,12 @@ TSharedRef<ITableRow> SRTSOSaveEditor_MissionTagsData::MakeListViewWidget_UserMi
 		}
 	);
 
+
+	const auto ResolveUserID = [CopiedUserID = UserID]() -> int32
+	{
+		return CopiedUserID;
+	};	
+
 	//
 	// Widget layout
 	MutableThis->MissionTagsTable = SNew( STableRow< TSharedPtr<FUserMissionTagsStruct> >, OwnerTable )
@@ -167,7 +182,7 @@ TSharedRef<ITableRow> SRTSOSaveEditor_MissionTagsData::MakeListViewWidget_UserMi
 			+ INSET_VERTICAL_SLOT(0)
 			[
 				SNew(STextBlock)
-					.Text(FText::FromString("MISSION PROGRESS"))
+					.Text(MissionProgress_TitleText)
 			]
 			+ VERTICAL_SEPARATOR(5.0f)
 
@@ -175,7 +190,7 @@ TSharedRef<ITableRow> SRTSOSaveEditor_MissionTagsData::MakeListViewWidget_UserMi
 			+ INSET_VERTICAL_SLOT(20)
 			[
 				SNew(STextBlock)
-					.Text(FText::FromString("BASE DATA"))
+					.Text(MissionProgress_BaseData_TitleText)
 			]	
 			+ INSET_VERTICAL_SLOT(40)
 			[
@@ -186,13 +201,13 @@ TSharedRef<ITableRow> SRTSOSaveEditor_MissionTagsData::MakeListViewWidget_UserMi
 					+ INSET_HORIZONTAL_SLOT(0)
 					[
 						SNew(STextBlock)
-							.Text(FText::FromString("User ID: "))
+							.Text(MissionProgress_BaseData_OwnerIDText)
 					]
 					+ INSET_HORIZONTAL_SLOT(0)
 					[
 						SNew(SNumericEntryBox<int32>)
-							.Value(UserID)
-							.OnValueChanged(OnUserIDChanged)							
+							.Value_Lambda(ResolveUserID)
+							.OnValueCommitted(OnUserIDChanged)							
 					]
 				]
 			]
@@ -202,7 +217,7 @@ TSharedRef<ITableRow> SRTSOSaveEditor_MissionTagsData::MakeListViewWidget_UserMi
 			+ INSET_VERTICAL_SLOT(20)
 			[
 				SNew(STextBlock)
-					.Text(FText::FromString("PROGRESS DATA"))
+					.Text(MissionProgress_ProgressData_Title)
 			]				
 			+ INSET_VERTICAL_SLOT(40)
 			[
@@ -210,7 +225,7 @@ TSharedRef<ITableRow> SRTSOSaveEditor_MissionTagsData::MakeListViewWidget_UserMi
 				+ INSET_HORIZONTAL_SLOT(0)
 				[
 					SNew(STextBlock)
-						.Text(FText::FromString("Tags: "))
+						.Text(MissionProgress_ProgressData_TagList)
 				]
 				+ INSET_HORIZONTAL_SLOT(0)
 				[

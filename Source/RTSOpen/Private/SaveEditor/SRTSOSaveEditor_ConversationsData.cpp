@@ -23,6 +23,8 @@
 
 
 #include "GameplayTagContainer.h"
+#include "Chaos/AABB.h"
+#include "Chaos/AABB.h"
 #include "Interfaces/PDInteractInterface.h"
 
 #define LOCTEXT_NAMESPACE "SRTSOSaveEditor_ConversationsData"
@@ -32,24 +34,39 @@ typedef SNumericVectorInputBox<double, FVector, 3> SNumericV3d;
 typedef SNumericEntryBox<int32> SNumericS1i;
 typedef SNumericEntryBox<double> SNumericS1d;
 
+FText SRTSOSaveEditor_ConversationsData::WorldConversations_TitleText = LOCTEXT("TitleText_WorldConversations", "WORLD CONVERSATIONS");
+FText SRTSOSaveEditor_ConversationsData::ConversationActor_TitleText = LOCTEXT("TitleText_SingleConversation", "CONVERSATION");
+FText SRTSOSaveEditor_ConversationsData::ConversationActor_BaseData_TitleText = LOCTEXT("TitleText_SingleConversation_BaseData", "BASE DATA");
+FText SRTSOSaveEditor_ConversationsData::ConversationActor_BaseData_ActorID_TitleText = LOCTEXT("ActorID_SingleConversation_BaseData", "Conversation Actor ID: ");
+FText SRTSOSaveEditor_ConversationsData::ConversationActor_BaseData_Type_TitleText = LOCTEXT("Type_SingleConversation_BaseData", "Type: ");
+
+FText SRTSOSaveEditor_ConversationsData::ConversationActor_StateData_TitleText = LOCTEXT("TitleText_SingleConversation_StateData", "STATE DATA");
+FText SRTSOSaveEditor_ConversationsData::ConversationActor_StateData_Location_TitleText = LOCTEXT("Location_SingleConversation_StateData", "Location: ");
+FText SRTSOSaveEditor_ConversationsData::ConversationActor_StateData_Health_TitleText = LOCTEXT("Health_SingleConversation_StateData", "Health: ");
+
+FText SRTSOSaveEditor_ConversationsData::ConversationActor_MissionData_TitleText = LOCTEXT("TitleText_SingleConversation_MissionData", "MISSION DATA");
+FText SRTSOSaveEditor_ConversationsData::ConversationActor_MissionData_MissionList_TitleText = LOCTEXT("MissionList_SingleConversation_MissionData", "Mission List: ");
+FText SRTSOSaveEditor_ConversationsData::ConversationActor_MissionData_ProgressionPerPlayer_TitleText = LOCTEXT("PlayerProgress_SingleConversation_MissionData", "Progression Per Player: ");
 
 //
 // SAVE EDITOR MAIN
-void SRTSOSaveEditor_ConversationsData::Construct(const FArguments& InArgs, FRTSSaveData* InLinkedData)
+void SRTSOSaveEditor_ConversationsData::Construct(const FArguments& InArgs, FRTSSaveData* InLinkedData, TArray<TSharedPtr<FConversationStateStruct>>& ArrayRef)
 {
 	LinkedSaveDataCopy = InLinkedData;
-	UpdateChildSlot(nullptr);
+	UpdateChildSlot(&ArrayRef);
 }
 
 void SRTSOSaveEditor_ConversationsData::UpdateChildSlot(void* OpaqueData)
 {
+	SRTSOSaveEditorBase::UpdateChildSlot(OpaqueData);
 	// Covers representing below fields
 	// CopiedSaveData.ConversationActorState;
 
 	if (OpaqueData != nullptr)
 	{
 		ConversationStatesAsSharedArray = static_cast<TArray<TSharedPtr<FConversationStateStruct>>*>(OpaqueData);
-	}	
+	}
+	
 	
 	ChildSlot
 	.HAlign(HAlign_Center)
@@ -61,7 +78,9 @@ void SRTSOSaveEditor_ConversationsData::UpdateChildSlot(void* OpaqueData)
 			SNew(SVerticalBox)
 			+ INSET_VERTICAL_SLOT(0)
 			[
-				SNew(STextBlock).Text(FText::FromString("CONVERSATIONS STATE DATA: "))
+				SNew(STextBlock)
+					.Font(TitleFont)
+					.Text(WorldConversations_TitleText)
 			]
 			
 			+ INSET_VERTICAL_SLOT(0)
@@ -148,10 +167,12 @@ TSharedRef<ITableRow> SRTSOSaveEditor_ConversationsData::MakeListViewWidget_Conv
 			return FReply::Handled();
 		});
 
-	SNumericS1i::FOnValueChanged OnConversationActorIDChanged;
+	SNumericS1i::FOnValueCommitted OnConversationActorIDChanged;
 	OnConversationActorIDChanged.BindLambda(
-		[ImmutableThis = this, ConversationActorID = SavedConversationStateDatum.Key](int NewActorID)
+		[ImmutableThis = this, ConversationActorID = SavedConversationStateDatum.Key](int NewActorID, ETextCommit::Type CommitType)
 		{
+			if (CommitType != ETextCommit::OnEnter) { return; }
+			
 			SRTSOSaveEditor_ConversationsData* MutableThis = const_cast<SRTSOSaveEditor_ConversationsData*>(ImmutableThis);
 			check(MutableThis != nullptr)
 			FRTSSaveData* MutableSaveData = MutableThis->LinkedSaveDataCopy;
@@ -170,10 +191,12 @@ TSharedRef<ITableRow> SRTSOSaveEditor_ConversationsData::MakeListViewWidget_Conv
 			MutableSaveData->ConversationActorState.Emplace(NewActorID, DataToMove);
 		});
 
-	SNumericV3d::FOnVectorValueChanged OnConversationActorLocationChanged;
+	SNumericV3d::FOnVectorValueCommitted OnConversationActorLocationChanged;
 	OnConversationActorLocationChanged.BindLambda(
-		[ImmutableThis = this, ConversationActorID = SavedConversationStateDatum.Key](const FVector& UpdatedVector)
+		[ImmutableThis = this, ConversationActorID = SavedConversationStateDatum.Key](const FVector& UpdatedVector, ETextCommit::Type CommitType)
 		{
+			if (CommitType != ETextCommit::OnEnter) { return; }
+		
 			SRTSOSaveEditor_ConversationsData* MutableThis = const_cast<SRTSOSaveEditor_ConversationsData*>(ImmutableThis);
 			check(MutableThis != nullptr)
 			FRTSSaveData* MutableSaveData = MutableThis->LinkedSaveDataCopy;
@@ -181,17 +204,18 @@ TSharedRef<ITableRow> SRTSOSaveEditor_ConversationsData::MakeListViewWidget_Conv
 			MutableSaveData->ConversationActorState.Find(ConversationActorID)->Location = UpdatedVector;
 		});	
 	
-	SNumericS1d::FOnValueChanged OnConversationActorHealthChanged;
+	SNumericS1d::FOnValueCommitted OnConversationActorHealthChanged;
 	OnConversationActorHealthChanged.BindLambda(
-		[ImmutableThis = this, ConversationActorID = SavedConversationStateDatum.Key](double NewActorHealth)
+		[ImmutableThis = this, ConversationActorID = SavedConversationStateDatum.Key](double NewActorHealth, ETextCommit::Type CommitType)
 		{
+			if (CommitType != ETextCommit::OnEnter) { return; }
+			
 			SRTSOSaveEditor_ConversationsData* MutableThis = const_cast<SRTSOSaveEditor_ConversationsData*>(ImmutableThis);
 			check(MutableThis != nullptr)
 			FRTSSaveData* MutableSaveData = MutableThis->LinkedSaveDataCopy;
 
 			MutableSaveData->ConversationActorState.Find(ConversationActorID)->Health = NewActorHealth;
 		});
-
 	
 	const SListView<TSharedPtr<FName>>::FOnGenerateRow OnGenerateMissionRowWidget =
 		SListView<TSharedPtr<FName>>::FOnGenerateRow::CreateLambda(
@@ -200,7 +224,6 @@ TSharedRef<ITableRow> SRTSOSaveEditor_ConversationsData::MakeListViewWidget_Conv
 		// @todo Write impl
 		return SNew( STableRow< TSharedPtr<FName> >, OwnerTable );
 	});
-
 	
 	const SListView<TSharedPtr<FName>>::FOnSelectionChanged OnSelectMissionComponent =
 	SListView<TSharedPtr<FName>>::FOnSelectionChanged::CreateLambda(
@@ -227,15 +250,13 @@ TSharedRef<ITableRow> SRTSOSaveEditor_ConversationsData::MakeListViewWidget_Conv
 		// }		
 	});
 	
-
 	const SListView<TSharedPtr<FConversationProgressionInnerStruct>>::FOnGenerateRow OnGeneratePlayerMissionProgressRowWidget =
 		SListView<TSharedPtr<FConversationProgressionInnerStruct>>::FOnGenerateRow::CreateLambda(
 			[] (TSharedPtr<FConversationProgressionInnerStruct> InItem, const TSharedRef<STableViewBase>& OwnerTable) -> TSharedRef<ITableRow>
 	{
-		// @todo
+		// @todo, need to expand InItem
 		return SNew( STableRow< TSharedPtr<FConversationProgressionInnerStruct> >, OwnerTable );
 	});
-
 	
 	const SListView<TSharedPtr<FConversationProgressionInnerStruct>>::FOnSelectionChanged OnSelectPlayerMissionProgressComponent =
 	SListView<TSharedPtr<FConversationProgressionInnerStruct>>::FOnSelectionChanged::CreateLambda(
@@ -261,9 +282,21 @@ TSharedRef<ITableRow> SRTSOSaveEditor_ConversationsData::MakeListViewWidget_Conv
 		// 	OnItemStackChosen.Execute(*InItem.Get());
 		// }		
 	});
-		
 
-
+	// @todo need to ensure this works as intended, if not then it means the result is cached and not updated each frame and in that case another strategy has to be employed
+	const auto ResolveLocation = [CopiedLocation = SavedConversationStateDatum.Value.Location]() -> FVector
+	{
+		return CopiedLocation;
+	};	
+	const auto ResolveUsability = [CopiedUsability = SavedConversationStateDatum.Value.Health]() -> double
+	{
+		return CopiedUsability;
+	};
+	const auto ResolveConvActorID = [CopiedID = SavedConversationStateDatum.Key]() -> int32
+	{
+		return CopiedID;
+	};	
+	
 	//
 	// Widget layout
 	MutableThis->ConversationStateTable = SNew( STableRow< TSharedPtr<FConversationStateStruct> >, OwnerTable )
@@ -272,7 +305,7 @@ TSharedRef<ITableRow> SRTSOSaveEditor_ConversationsData::MakeListViewWidget_Conv
 			+ INSET_VERTICAL_SLOT(0)
 			[
 				SNew(STextBlock)
-					.Text(FText::FromString("CONVERSATION"))
+					.Text(ConversationActor_TitleText)
 			]
 			+ VERTICAL_SEPARATOR(5.0f)
 
@@ -280,7 +313,7 @@ TSharedRef<ITableRow> SRTSOSaveEditor_ConversationsData::MakeListViewWidget_Conv
 			+ INSET_VERTICAL_SLOT(20)
 			[
 				SNew(STextBlock)
-					.Text(FText::FromString("BASE DATA"))
+					.Text(ConversationActor_BaseData_TitleText)
 			]	
 			+ INSET_VERTICAL_SLOT(40)
 			[
@@ -291,13 +324,13 @@ TSharedRef<ITableRow> SRTSOSaveEditor_ConversationsData::MakeListViewWidget_Conv
 					+ INSET_HORIZONTAL_SLOT(0)
 					[
 						SNew(STextBlock)
-							.Text(FText::FromString("Conversation Actor ID: "))
+							.Text(ConversationActor_BaseData_ActorID_TitleText)
 					]
 					+ INSET_HORIZONTAL_SLOT(0)
 					[
 						SNew(SNumericEntryBox<int32>)
-							.Value(SavedConversationStateDatum.Key)
-							.OnValueChanged(OnConversationActorIDChanged)							
+							.Value_Lambda(ResolveConvActorID)
+							.OnValueCommitted(OnConversationActorIDChanged)							
 					]
 				]
 			]
@@ -310,7 +343,7 @@ TSharedRef<ITableRow> SRTSOSaveEditor_ConversationsData::MakeListViewWidget_Conv
 					+ INSET_HORIZONTAL_SLOT(0)
 					[
 						SNew(STextBlock)
-							.Text(FText::FromString("Actor Class Type: "))
+							.Text(ConversationActor_BaseData_Type_TitleText)
 					]
 					+ INSET_HORIZONTAL_SLOT(0)
 					[
@@ -326,7 +359,7 @@ TSharedRef<ITableRow> SRTSOSaveEditor_ConversationsData::MakeListViewWidget_Conv
 			+ INSET_VERTICAL_SLOT(20)
 			[
 				SNew(STextBlock)
-					.Text(FText::FromString("STATE DATA"))
+					.Text(ConversationActor_StateData_TitleText)
 			]				
 			+ INSET_VERTICAL_SLOT(40)
 			[
@@ -334,13 +367,13 @@ TSharedRef<ITableRow> SRTSOSaveEditor_ConversationsData::MakeListViewWidget_Conv
 				+ INSET_HORIZONTAL_SLOT(0)
 				[
 					SNew(STextBlock)
-						.Text(FText::FromString("Location: "))
+						.Text(ConversationActor_StateData_Location_TitleText)
 				]
 				+ INSET_HORIZONTAL_SLOT(0)
 				[
 					SNew(SNumericV3d)
-						.Vector(SavedConversationStateDatum.Value.Location)
-						.OnVectorChanged(OnConversationActorLocationChanged)
+						.Vector_Lambda(ResolveLocation)
+						.OnVectorCommitted(OnConversationActorLocationChanged)
 				]
 				+ HORIZONTAL_SEPARATOR(5.0f)
 				
@@ -350,24 +383,23 @@ TSharedRef<ITableRow> SRTSOSaveEditor_ConversationsData::MakeListViewWidget_Conv
 					+ INSET_HORIZONTAL_SLOT(0)
 					[
 						SNew(STextBlock)
-							.Text(FText::FromString("Health: "))
+							.Text(ConversationActor_StateData_Health_TitleText)
 					]
 					+ INSET_HORIZONTAL_SLOT(0)
 					[
 						SNew(SNumericEntryBox<double>)
-							.Value(SavedConversationStateDatum.Value.Health)
-							.OnValueChanged(OnConversationActorHealthChanged)	 
+							.Value_Lambda(ResolveUsability) 
+							.OnValueCommitted(OnConversationActorHealthChanged)	 
 					]			
 				]					
 			]
 			+ VERTICAL_SEPARATOR(5.0f) 
 			
-
 			
 			+ INSET_VERTICAL_SLOT(20)
 			[
 				SNew(STextBlock)
-					.Text(FText::FromString("MISSION DATA"))
+					.Text(ConversationActor_MissionData_TitleText)
 			]				
 			+ INSET_VERTICAL_SLOT(40)
 			[
@@ -378,7 +410,7 @@ TSharedRef<ITableRow> SRTSOSaveEditor_ConversationsData::MakeListViewWidget_Conv
 					+ INSET_HORIZONTAL_SLOT(0)
 					[
 						SNew(STextBlock)
-							.Text(FText::FromString("Mission List: "))
+							.Text(ConversationActor_MissionData_MissionList_TitleText)
 					]
 					+ INSET_HORIZONTAL_SLOT(0)
 					[
@@ -396,7 +428,7 @@ TSharedRef<ITableRow> SRTSOSaveEditor_ConversationsData::MakeListViewWidget_Conv
 					+ INSET_HORIZONTAL_SLOT(0)
 					[
 						SNew(STextBlock)
-							.Text(FText::FromString("Progression Per Player: "))
+							.Text(ConversationActor_MissionData_ProgressionPerPlayer_TitleText)
 					]
 					+ INSET_HORIZONTAL_SLOT(0)
 					[

@@ -23,8 +23,18 @@ public:
 	void Construct(const FArguments& InArgs, FRTSSaveData* InLinkedData);
 	virtual void UpdateChildSlot(void* OpaqueData) final override;
 
-	void OnSeedValueChanged(int32 NewSeed);
-	void OnGameTimeValueChanged(float NewGameTime);
+	TOptional<int32> GeCurrentSeedValue() const;
+	TOptional<double> GeCurrentTimeValue() const;
+
+	void OnSeedValueChanged(int32 NewSeed, ETextCommit::Type);
+	FReply OnSeedValueGenerated();
+	void OnGameTimeValueChanged(double NewGameTime, ETextCommit::Type CommitType);
+	
+	// Localized Text
+	static FText WorldBaseData_TitleText;
+	static FText GameSeed_TitleText;
+	static FText GenerateSeed_ButtonText;
+	static FText GameTime_TitleText;
 	
 };
 

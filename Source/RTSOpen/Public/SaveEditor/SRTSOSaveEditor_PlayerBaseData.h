@@ -22,7 +22,7 @@ public:
  		SLATE_EVENT(FOnClicked, OnUserClicked)
 	SLATE_END_ARGS()
 
-	void Construct(const FArguments& InArgs, FRTSSaveData* InLinkedData);
+	void Construct(const FArguments& InArgs, FRTSSaveData* InLinkedData, TArray<TSharedPtr<FPlayerLocationStruct>>& ArrayRef);
 	virtual void UpdateChildSlot(void* OpaqueData) final override;
 
 	TSharedRef<ITableRow> MakeListViewWidget_PlayerData(TSharedPtr<FPlayerLocationStruct> InItem, const TSharedRef<STableViewBase>& OwnerTable) const;
@@ -35,6 +35,11 @@ public:
 	FOnPlayerDataChosen OnPlayerDataChosen{};
 	
 	UClass* SelectedClass = nullptr;
+
+	// Localized Text
+	static FText PlayerBase_TitleText;
+	static FText PlayerBase_UserID;
+	static FText PlayerBase_UserLocation;
 };
 
 

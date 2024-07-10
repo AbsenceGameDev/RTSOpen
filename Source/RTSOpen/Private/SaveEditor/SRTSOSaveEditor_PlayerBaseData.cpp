@@ -25,17 +25,24 @@ typedef SNumericVectorInputBox<double, FVector, 3> SNumericV3d;
 typedef SNumericEntryBox<int32> SNumericS1i;
 typedef SNumericEntryBox<double> SNumericS1d;
 
+FText SRTSOSaveEditor_PlayerBaseData::PlayerBase_TitleText = LOCTEXT("TitleText_PlayerBaseData", "PLAYER BASE DATA");
+FText SRTSOSaveEditor_PlayerBaseData::PlayerBase_UserID = LOCTEXT("UserID_PlayerBaseData", "User ID: ");
+FText SRTSOSaveEditor_PlayerBaseData::PlayerBase_UserLocation = LOCTEXT("UserLocation_PlayerBaseData", "User Location: ");
+
+
 
 //
 // SAVE EDITOR MAIN
-void SRTSOSaveEditor_PlayerBaseData::Construct(const FArguments& InArgs, FRTSSaveData* InLinkedData)
+void SRTSOSaveEditor_PlayerBaseData::Construct(const FArguments& InArgs, FRTSSaveData* InLinkedData, TArray<TSharedPtr<FPlayerLocationStruct>>& ArrayRef)
 {
 	LinkedSaveDataCopy = InLinkedData;
-	UpdateChildSlot(nullptr);
+	UpdateChildSlot(&ArrayRef);
 }
 
 void SRTSOSaveEditor_PlayerBaseData::UpdateChildSlot(void* OpaqueData)
 {
+	SRTSOSaveEditorBase::UpdateChildSlot(OpaqueData);
+	
 	// Covers representing below fields
 	// CopiedSaveData.PlayerLocations;
 
@@ -55,7 +62,9 @@ void SRTSOSaveEditor_PlayerBaseData::UpdateChildSlot(void* OpaqueData)
 			SNew(SVerticalBox)
 			+ INSET_VERTICAL_SLOT(0)
 			[
-				SNew(STextBlock).Text(FText::FromString("PLAYER BASE DATA: "))
+				SNew(STextBlock)
+					.Font(TitleFont)
+					.Text(PlayerBase_TitleText)
 			]
 			
 			+ INSET_VERTICAL_SLOT(0)
@@ -73,10 +82,12 @@ TSharedRef<ITableRow> SRTSOSaveEditor_PlayerBaseData::MakeListViewWidget_PlayerD
 {
 	const FPlayerLocationStruct& PlayerLocationTuple = *InItem.Get();
 	
-	SNumericV3d::FOnVectorValueChanged OnVectorValueChanged;
+	SNumericV3d::FOnVectorValueCommitted OnVectorValueChanged;
 	OnVectorValueChanged.BindLambda(
-		[ThisPtr = this, UserID = PlayerLocationTuple.Key](const FVector& UpdatedVector)
+		[ThisPtr = this, UserID = PlayerLocationTuple.Key](const FVector& UpdatedVector, ETextCommit::Type CommitType)
 		{
+			if (CommitType != ETextCommit::OnEnter) { return; }
+			
 			check(ThisPtr != nullptr) 
 			if (ThisPtr->LinkedSaveDataCopy->PlayerLocations.Contains(UserID))
 			{
@@ -85,6 +96,12 @@ TSharedRef<ITableRow> SRTSOSaveEditor_PlayerBaseData::MakeListViewWidget_PlayerD
 				MutableLocation = UpdatedVector;
 			}
 		});
+
+	// @todo need to ensure this works as intended, if not then it means the result is cached and not updated each frame and in that case another strategy has to be employed
+	const auto ResolveUserLocation = [CopiedUserLocation = PlayerLocationTuple.Value]() -> FVector
+	{
+		return CopiedUserLocation;
+	};
 	
 
 	return SNew( STableRow< TSharedPtr<FPlayerLocationStruct> >, OwnerTable )
@@ -95,11 +112,13 @@ TSharedRef<ITableRow> SRTSOSaveEditor_PlayerBaseData::MakeListViewWidget_PlayerD
 				SNew(SHorizontalBox)
 				+ INSET_HORIZONTAL_SLOT(0)
 				[
-					SNew(STextBlock).Text(FText::FromString("User ID: "))
+					SNew(STextBlock)
+						.Text(PlayerBase_UserID)
 				]
 				+ INSET_HORIZONTAL_SLOT(0)
 				[
-					SNew(STextBlock).Text(FText::FromString(FString::FromInt(PlayerLocationTuple.Key)))
+					SNew(STextBlock).
+						Text(FText::FromString(FString::FromInt(PlayerLocationTuple.Key)))
 				]	
 			
 			]
@@ -108,13 +127,14 @@ TSharedRef<ITableRow> SRTSOSaveEditor_PlayerBaseData::MakeListViewWidget_PlayerD
 				SNew(SHorizontalBox)
 				+ INSET_HORIZONTAL_SLOT(0)
 				[
-					SNew(STextBlock).Text(FText::FromString("User Location: "))
+					SNew(STextBlock)
+						.Text(PlayerBase_UserLocation)
 				]
 				+ INSET_HORIZONTAL_SLOT(0)
 				[
 					SNew(SNumericV3d)
-						.Vector(PlayerLocationTuple.Value)
-						.OnVectorChanged(OnVectorValueChanged)
+						.Vector_Lambda(ResolveUserLocation)
+						.OnVectorCommitted(OnVectorValueChanged)
 				]			
 			]
 		];

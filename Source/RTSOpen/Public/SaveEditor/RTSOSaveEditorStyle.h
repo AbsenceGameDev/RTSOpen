@@ -1,55 +1,99 @@
 ﻿/* @author: Ario Amin @ Permafrost Development. @copyright: Full BSL(1.1) License included at bottom of the file  */
 
 #pragma once
-
 #include "CoreMinimal.h"
-#include "GameplayTagContainer.h"
-#include "Subsystems/EngineSubsystem.h"
-
 #include "RTSOpenCommon.h"
-#include "SRTSOSaveEditor.h"
-
+#include "Styling/SlateColor.h"
+#include "Styling/SlateStyle.h"
+#include "Styling/SlateTypes.h"
 
 /**
- * @brief  Loads custom tags that may have been added by a player/user
-*/
-class RTSOPEN_API SRTSOSaveEditor_InteractableData : public SRTSOSaveEditorBase
+ * Declares the Save Editor's visual style.
+ */
+class FRTSOSaveEditorStyle
+	: public FCoreStyle
 {
 public:
-	DECLARE_DELEGATE_OneParam( FOnInteractableDataChosen, const FRTSSavedInteractable&);
-	
-	SLATE_BEGIN_ARGS(SRTSOSaveEditor_InteractableData) { }
- 		SLATE_EVENT(FOnUserScrolled, OnUserScrolled)
- 		SLATE_EVENT(FOnClicked, OnUserClicked)
-	SLATE_END_ARGS()
-	
-	void Construct(const FArguments& InArgs, FRTSSaveData* InLinkedData, TArray<TSharedPtr<FRTSSavedInteractable>>& ArrayRef);
-	virtual void UpdateChildSlot(void* OpaqueData) final override;
-	
-	void OnInteractableUsabilityChanged(int32 ActorID, float NewUsability) const;
-	
-	TSharedRef<ITableRow> MakeListViewWidget_InteractableData(TSharedPtr<FRTSSavedInteractable> InItem, const TSharedRef<STableViewBase>& OwnerTable) const;
-	void OnComponentSelected_InteractableData(TSharedPtr<FRTSSavedInteractable> InItem, ESelectInfo::Type InSelectInfo);
 
-	// Views
-	TArray<TSharedPtr<FRTSSavedInteractable>>* InteractableAsSharedArray;
+	static void Initialize();
+	static void Shutdown();
+
+	static const FName& GetStyleSetName();
+
+	class FStyle : public FSlateStyleSet
+	{
+	public:
+		FStyle();
+		~FStyle();
+
+		void Initialize();
+		void SetupSaveEditorStyles();
+		void SetupGeneralIcons();
+		
+		static void SetColor(const TSharedRef<FLinearColor>& Source, const FLinearColor& Value);
+
+		const FVector2D Icon7x16;
+		const FVector2D Icon8x4;
+		const FVector2D Icon16x4;
+		const FVector2D Icon8x8;
+		const FVector2D Icon10x10;
+		const FVector2D Icon12x12;
+		const FVector2D Icon12x16;
+		const FVector2D Icon14x14;
+		const FVector2D Icon16x16;
+		const FVector2D Icon16x20;
+		const FVector2D Icon20x20;
+		const FVector2D Icon22x22;
+		const FVector2D Icon24x24;
+		const FVector2D Icon25x25;
+		const FVector2D Icon32x32;
+		const FVector2D Icon40x40;
+		const FVector2D Icon48x48;
+		const FVector2D Icon64x64;
+		const FVector2D Icon36x24;
+		const FVector2D Icon128x128;
+
+		// These are the colors that are updated by the user style customizations
+		const TSharedRef< FLinearColor > SelectionColor_Subdued_LinearRef;
+		const TSharedRef< FLinearColor > HighlightColor_LinearRef;
+		const TSharedRef< FLinearColor > WindowHighlightColor_LinearRef;
+
+		// These are the Slate colors which reference those above; these are the colors to put into the style
+		// Most of these are owned by our parent style
+		FSlateColor DefaultForeground;
+		FSlateColor InvertedForeground;
+		FSlateColor SelectorColor;
+		FSlateColor SelectionColor;
+		FSlateColor SelectionColor_Inactive;
+		FSlateColor SelectionColor_Pressed;
+
+		const FSlateColor SelectionColor_Subdued;
+		const FSlateColor HighlightColor;
+		const FSlateColor WindowHighlightColor;
+
+		// These are common colors used throughout the editor in multiple style elements
+		const FSlateColor InheritedFromBlueprintTextColor;
+
+		// Styles inherited from the parent style
+		FTextBlockStyle NormalText;
+		FEditableTextBoxStyle NormalEditableTextBoxStyle;
+		FTableRowStyle NormalTableRowStyle;
+		FButtonStyle Button;
+		FButtonStyle HoverHintOnly;
+		FButtonStyle NoBorder;
+		FScrollBarStyle ScrollBar;
+		FSlateFontInfo NormalFont;
+
+		FSlateBrush* WindowTitleOverride;
+
+		FDelegateHandle SettingChangedHandler;
+	};
 	
-	// Callbacks
-	FOnInteractableDataChosen OnInteractableDataChosen{};
-	UClass* SelectedClass = nullptr;
-
-	// View Tables
-	TSharedPtr<STableRow< TSharedPtr<FRTSSavedInteractable>>> InteractableTable;
-
-	// Localized Text
-	static FText Interactable_TitleText;
-	static FText Interactable_BaseData_ActorID_TitleText;
-	static FText Interactable_BaseData_ClassType_TitleText;
-	static FText Interactable_BaseData_Location_TitleText;
-	static FText Interactable_BaseData_Usability_TitleText;	
+	static FName StyleSetName;
 };
 
-/**
+
+/*
 Business Source License 1.1
 
 Parameters

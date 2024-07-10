@@ -33,25 +33,53 @@ typedef SNumericVectorInputBox<double, FVector, 3> SNumericV3d;
 typedef SNumericEntryBox<int32> SNumericS1i;
 typedef SNumericEntryBox<double> SNumericS1d;
 
+FText SRTSOSaveEditor_EntityData::WorldEntities_TitleText = LOCTEXT("TitleText_WorldEntity", "WORLD ENTITIES");
+FText SRTSOSaveEditor_EntityData::Entity_TitleText = LOCTEXT("TitleText_SingleEntity", "ENTITY");
+FText SRTSOSaveEditor_EntityData::Entity_BaseData_TitleText = LOCTEXT("TitleText_InteractableData_BaseData", "BASE DATA");
+FText SRTSOSaveEditor_EntityData::Entity_BaseData_Index_TitleText = LOCTEXT("EntityIndex_InteractableData_BaseData", "Index: ");
+FText SRTSOSaveEditor_EntityData::Entity_BaseData_Type_TitleText = LOCTEXT("Type_InteractableData_BaseData", "Type: ");
+
+FText SRTSOSaveEditor_EntityData::Entity_StateData_TitleText = LOCTEXT("TitleText_InteractableData_StateData", "STATE DATA");
+FText SRTSOSaveEditor_EntityData::Entity_StateData_Location_TitleText = LOCTEXT("Location_InteractableData_StateData", "Location: ");
+FText SRTSOSaveEditor_EntityData::Entity_StateData_Health_TitleText = LOCTEXT("Health_InteractableData_StateData", "Health: ");
+
+FText SRTSOSaveEditor_EntityData::Entity_OwnerData_TitleText = LOCTEXT("TitleText_InteractableData_OwnerData", "OWNER DATA");
+FText SRTSOSaveEditor_EntityData::Entity_OwnerData_OwnerID_TitleText = LOCTEXT("UserID_InteractableData_StateData", "Owner UserID: ");
+FText SRTSOSaveEditor_EntityData::Entity_OwnerData_SelectionGroup_TitleText = LOCTEXT("SelectionGroup_InteractableData_StateData", "Selection Group: ");
+
+FText SRTSOSaveEditor_EntityData::Entity_ActionData_TitleText = LOCTEXT("TitleText_InteractableData_ActionData", "ACTION DATA");
+FText SRTSOSaveEditor_EntityData::Entity_ActionData_BaseData_TitleText = LOCTEXT("TitleText_InteractableData_ActionData_BaseData", "BASE DATA");
+FText SRTSOSaveEditor_EntityData::Entity_ActionData_BaseData_ActionType_TitleText = LOCTEXT("Type_InteractableData_ActionData_BaseData", "Action Type: ");
+
+FText SRTSOSaveEditor_EntityData::Entity_ActionData_RewardData_TitleText = LOCTEXT("TitleText_InteractableData_ActionData_OptionalReward", "OPTIONAL REWARD");
+FText SRTSOSaveEditor_EntityData::Entity_ActionData_RewardData_Type_TitleText = LOCTEXT("Type_InteractableData_ActionData_OptionalReward", "Type: ");
+FText SRTSOSaveEditor_EntityData::Entity_ActionData_RewardData_Amount_TitleText = LOCTEXT("Amount_InteractableData_ActionData_OptionalReward", "Amount: ");
+
+FText SRTSOSaveEditor_EntityData::Entity_ActionData_TargetData_TitleText = LOCTEXT("TitleText_InteractableData_ActionData_OptionalTargets", "OPTIONAL TARGETS");
+FText SRTSOSaveEditor_EntityData::Entity_ActionData_TargetData_AsEntity_TitleText = LOCTEXT("AsEntity_InteractableData_ActionData_OptionalTargets", "As Entity: ");
+FText SRTSOSaveEditor_EntityData::Entity_ActionData_TargetData_AsActor_TitleText = LOCTEXT("AsActor_InteractableData_ActionData_OptionalTargets", "As Actor: ");
+FText SRTSOSaveEditor_EntityData::Entity_ActionData_TargetData_AsPureLocation_TitleText = LOCTEXT("AsPureLoc_InteractableData_ActionData_OptionalTargets", "As Pure Location: ");
+
 
 //
 // SAVE EDITOR MAIN
-void SRTSOSaveEditor_EntityData::Construct(const FArguments& InArgs, FRTSSaveData* InLinkedData)
+void SRTSOSaveEditor_EntityData::Construct(const FArguments& InArgs, FRTSSaveData* InLinkedData, TArray<TSharedPtr<FRTSSavedWorldUnits>>& ArrayRef)
 {
 	LinkedSaveDataCopy = InLinkedData;
-	UpdateChildSlot(nullptr);
+	UpdateChildSlot(&ArrayRef);
 }
 
 void SRTSOSaveEditor_EntityData::UpdateChildSlot(void* OpaqueData)
 {
+	SRTSOSaveEditorBase::UpdateChildSlot(OpaqueData);
 	// Covers representing below fields
 	// CopiedSaveData.EntityUnits;
+
 
 	if (OpaqueData != nullptr)
 	{
 		EntitiesAsSharedArray = static_cast<TArray<TSharedPtr<FRTSSavedWorldUnits>>*>(OpaqueData);
 	}
-	
 	
 	ChildSlot
 	.HAlign(HAlign_Center)
@@ -63,7 +91,9 @@ void SRTSOSaveEditor_EntityData::UpdateChildSlot(void* OpaqueData)
 			SNew(SVerticalBox)
 			+ INSET_VERTICAL_SLOT(0)
 			[
-				SNew(STextBlock).Text(FText::FromString("ENTITY DATA: "))
+				SNew(STextBlock)
+					.Font(TitleFont)
+					.Text(WorldEntities_TitleText)
 			]
 			
 			+ INSET_VERTICAL_SLOT(0)
@@ -83,21 +113,6 @@ TSharedRef<ITableRow> SRTSOSaveEditor_EntityData::MakeListViewWidget_EntityData(
 	check(MutableThis != nullptr)
 
 	const FRTSSavedWorldUnits& SavedEntityDatum = *InItem.Get();
-
-	// ENTITY BASE DATA
-	// @done SavedEntityDatum.InstanceIndex;
-	// @done SavedEntityDatum.EntityUnitTag;
-
-	// ENTITY STATE DATA
-	// @done SavedEntityDatum.Location;
-	// @done SavedEntityDatum.Health;
-	
-	// ENTITY OWNER DATA
-	// @done SavedEntityDatum.OwnerID;
-	// @done SavedEntityDatum.SelectionIndex;
-	
-	// ENTITY ACTION DATA
-	// @done SavedEntityDatum.CurrentAction;
 
 	// @todo IMPLEMENT CALLBACKS
 	const FOnClicked OnEntityTypeClicked =
@@ -151,11 +166,12 @@ TSharedRef<ITableRow> SRTSOSaveEditor_EntityData::MakeListViewWidget_EntityData(
 				return FReply::Handled();
 			});		
 	
-
-	SNumericV3d::FOnVectorValueChanged OnEntityLocationChanged;
+	SNumericV3d::FOnVectorValueCommitted OnEntityLocationChanged;
 	OnEntityLocationChanged.BindLambda(
-		[ImmutableThis = this, InstanceIndex = SavedEntityDatum.InstanceIndex](const FVector& UpdatedVector)
+		[ImmutableThis = this, InstanceIndex = SavedEntityDatum.InstanceIndex](const FVector& UpdatedVector, ETextCommit::Type CommitType)
 		{
+			if (CommitType != ETextCommit::OnEnter) { return; }
+			
 			SRTSOSaveEditor_EntityData* MutableThis = const_cast<SRTSOSaveEditor_EntityData*>(ImmutableThis);
 			check(MutableThis != nullptr)
 			FRTSSaveData* MutableSaveData = MutableThis->LinkedSaveDataCopy;
@@ -170,12 +186,13 @@ TSharedRef<ITableRow> SRTSOSaveEditor_EntityData::MakeListViewWidget_EntityData(
 				break;
 			}
 		});
-
 	
-	SNumericS1d::FOnValueChanged OnEntityHealthChanged;
+	SNumericS1d::FOnValueCommitted OnEntityHealthChanged;
 	OnEntityHealthChanged.BindLambda(
-		[ImmutableThis = this, InstanceIndex = SavedEntityDatum.InstanceIndex](double UpdatedValue)
+		[ImmutableThis = this, InstanceIndex = SavedEntityDatum.InstanceIndex](double UpdatedValue, ETextCommit::Type CommitType)
 		{
+			if (CommitType != ETextCommit::OnEnter) { return; }
+			
 			const SRTSOSaveEditor_EntityData* MutableThis = const_cast<SRTSOSaveEditor_EntityData*>(ImmutableThis);
 			check(MutableThis != nullptr)
 			FRTSSaveData* MutableSaveData = MutableThis->LinkedSaveDataCopy;
@@ -189,12 +206,13 @@ TSharedRef<ITableRow> SRTSOSaveEditor_EntityData::MakeListViewWidget_EntityData(
 				break;
 			}
 		});
-
 	
-	SNumericS1i::FOnValueChanged OnEntityOwnerIDChanged;
+	SNumericS1i::FOnValueCommitted OnEntityOwnerIDChanged;
 	OnEntityOwnerIDChanged.BindLambda(
-		[ImmutableThis = this, InstanceIndex = SavedEntityDatum.InstanceIndex](int32 NewOwnerID)
+		[ImmutableThis = this, InstanceIndex = SavedEntityDatum.InstanceIndex](int32 NewOwnerID, ETextCommit::Type CommitType)
 		{
+			if (CommitType != ETextCommit::OnEnter) { return; }
+			
 			const SRTSOSaveEditor_EntityData* MutableThis = const_cast<SRTSOSaveEditor_EntityData*>(ImmutableThis);
 			check(MutableThis != nullptr)
 			FRTSSaveData* MutableSaveData = MutableThis->LinkedSaveDataCopy;
@@ -208,12 +226,13 @@ TSharedRef<ITableRow> SRTSOSaveEditor_EntityData::MakeListViewWidget_EntityData(
 				break;
 			}
 		});	
-
 	
-	SNumericS1i::FOnValueChanged OnEntityOwnerSelectionGroupChanged;
+	SNumericS1i::FOnValueCommitted OnEntityOwnerSelectionGroupChanged;
 	OnEntityOwnerSelectionGroupChanged.BindLambda(
-		[ImmutableThis = this, InstanceIndex = SavedEntityDatum.InstanceIndex](int32 NewOwnerSelectionGroup)
+		[ImmutableThis = this, InstanceIndex = SavedEntityDatum.InstanceIndex](int32 NewOwnerSelectionGroup, ETextCommit::Type CommitType)
 		{
+			if (CommitType != ETextCommit::OnEnter) { return; }
+			
 			const SRTSOSaveEditor_EntityData* MutableThis = const_cast<SRTSOSaveEditor_EntityData*>(ImmutableThis);
 			check(MutableThis != nullptr)
 			FRTSSaveData* MutableSaveData = MutableThis->LinkedSaveDataCopy;
@@ -228,11 +247,12 @@ TSharedRef<ITableRow> SRTSOSaveEditor_EntityData::MakeListViewWidget_EntityData(
 			}
 		});
 	
-	
-	SNumericS1i::FOnValueChanged OnOptionalRewardAmountChanged;
+	SNumericS1i::FOnValueCommitted OnOptionalRewardAmountChanged;
 	OnOptionalRewardAmountChanged.BindLambda(
-		[ImmutableThis = this, InstanceIndex = SavedEntityDatum.InstanceIndex](int32 NewOptRewardAmount)
+		[ImmutableThis = this, InstanceIndex = SavedEntityDatum.InstanceIndex](int32 NewOptRewardAmount, ETextCommit::Type CommitType)
 		{
+			if (CommitType != ETextCommit::OnEnter) { return; }
+			
 			const SRTSOSaveEditor_EntityData* MutableThis = const_cast<SRTSOSaveEditor_EntityData*>(ImmutableThis);
 			check(MutableThis != nullptr)
 			FRTSSaveData* MutableSaveData = MutableThis->LinkedSaveDataCopy;
@@ -246,12 +266,13 @@ TSharedRef<ITableRow> SRTSOSaveEditor_EntityData::MakeListViewWidget_EntityData(
 				break;
 			}
 		});
-
-
-	SNumericS1i::FOnValueChanged OnSavedEntityIndexChanged;
+	
+	SNumericS1i::FOnValueCommitted OnSavedEntityIndexChanged;
 	OnSavedEntityIndexChanged.BindLambda(
-		[ImmutableThis = this, InstanceIndex = SavedEntityDatum.InstanceIndex](const int32& NewSavedEntityIndex)
+		[ImmutableThis = this, InstanceIndex = SavedEntityDatum.InstanceIndex](const int32& NewSavedEntityIndex, ETextCommit::Type CommitType)
 		{
+			if (CommitType != ETextCommit::OnEnter) { return; }
+			
 			const SRTSOSaveEditor_EntityData* MutableThis = const_cast<SRTSOSaveEditor_EntityData*>(ImmutableThis);
 			check(MutableThis != nullptr)
 			FRTSSaveData* MutableSaveData = MutableThis->LinkedSaveDataCopy;
@@ -266,10 +287,12 @@ TSharedRef<ITableRow> SRTSOSaveEditor_EntityData::MakeListViewWidget_EntityData(
 			}
 		});	
 	
-	SNumericS1i::FOnValueChanged OnOptTargetEntityIndexChanged;
+	SNumericS1i::FOnValueCommitted OnOptTargetEntityIndexChanged;
 	OnOptTargetEntityIndexChanged.BindLambda(
-		[ImmutableThis = this, InstanceIndex = SavedEntityDatum.InstanceIndex](const int32& NewTargetEntityIndex)
+		[ImmutableThis = this, InstanceIndex = SavedEntityDatum.InstanceIndex](const int32& NewTargetEntityIndex, ETextCommit::Type CommitType)
 		{
+			if (CommitType != ETextCommit::OnEnter) { return; }
+			
 			const SRTSOSaveEditor_EntityData* MutableThis = const_cast<SRTSOSaveEditor_EntityData*>(ImmutableThis);
 			check(MutableThis != nullptr)
 			FRTSSaveData* MutableSaveData = MutableThis->LinkedSaveDataCopy;
@@ -284,10 +307,12 @@ TSharedRef<ITableRow> SRTSOSaveEditor_EntityData::MakeListViewWidget_EntityData(
 			}
 		});	
 	
-	SNumericV3d::FOnVectorValueChanged OnEntityTargetLocationChanged;
+	SNumericV3d::FOnVectorValueCommitted OnEntityTargetLocationChanged;
 	OnEntityTargetLocationChanged.BindLambda(
-		[ImmutableThis = this, InstanceIndex = SavedEntityDatum.InstanceIndex](const FVector& UpdatedVector)
+		[ImmutableThis = this, InstanceIndex = SavedEntityDatum.InstanceIndex](const FVector& UpdatedVector, ETextCommit::Type CommitType)
 		{
+			if (CommitType != ETextCommit::OnEnter) { return; }
+			
 			const SRTSOSaveEditor_EntityData* MutableThis = const_cast<SRTSOSaveEditor_EntityData*>(ImmutableThis);
 			check(MutableThis != nullptr)
 			FRTSSaveData* MutableSaveData = MutableThis->LinkedSaveDataCopy;
@@ -300,7 +325,43 @@ TSharedRef<ITableRow> SRTSOSaveEditor_EntityData::MakeListViewWidget_EntityData(
 				CurrentUnit.CurrentAction.OptTargets.ActionTargetAsLocation = UpdatedVector;
 				break;
 			}
-		});	
+		});
+
+
+	// @todo need to ensure this works as intended, if not then it means the result is cached and not updated each frame and in that case another strategy has to be employed
+	const auto ResolveLocation = [CopiedLocation = SavedEntityDatum.Location]() -> FVector
+	{
+		return CopiedLocation;
+	};	
+	const auto ResolveUsability = [CopiedUsability = SavedEntityDatum.Health]() -> double
+	{
+		return CopiedUsability;
+	};
+	const auto ResolveSelfEntityIndex = [CopiedTargetIndex = SavedEntityDatum.InstanceIndex.Index]()-> int32
+	{
+		return CopiedTargetIndex;
+	};	
+	const auto ResolveOwnerID = [CopiedID = SavedEntityDatum.OwnerID]() -> int32
+	{
+		return CopiedID;
+	};	
+	const auto ResolveOwnerSelectionGroup = [CopiedSelectionGroupIdx = SavedEntityDatum.SelectionIndex]() -> int32
+	{
+		return CopiedSelectionGroupIdx;
+	};
+	const auto ResolveRewardAmount = [CopiedRewardAmount = SavedEntityDatum.CurrentAction.RewardAmount]()-> int32
+	{
+		return CopiedRewardAmount;
+	};
+	const auto ResolveActionTarget_Entity = [CopiedTargetIndex = SavedEntityDatum.CurrentAction.OptTargets.ActionTargetAsEntity.Index]()-> int32
+	{
+		return CopiedTargetIndex;
+	};
+	const auto ResolveActionTarget_PureLocation = [CopiedTargetLocation = SavedEntityDatum.CurrentAction.OptTargets.ActionTargetAsLocation.Get()]()-> FVector
+	{
+		return CopiedTargetLocation;
+	};
+	
 	
 	MutableThis->EntityTable = SNew( STableRow< TSharedPtr<FRTSSavedWorldUnits> >, OwnerTable )
 		[
@@ -308,7 +369,7 @@ TSharedRef<ITableRow> SRTSOSaveEditor_EntityData::MakeListViewWidget_EntityData(
 			+ INSET_VERTICAL_SLOT(0)
 			[
 				SNew(STextBlock)
-					.Text(FText::FromString("ENTITY"))
+					.Text(Entity_TitleText)
 			]
 			+ VERTICAL_SEPARATOR(5.0f)
 
@@ -316,7 +377,7 @@ TSharedRef<ITableRow> SRTSOSaveEditor_EntityData::MakeListViewWidget_EntityData(
 			+ INSET_VERTICAL_SLOT(20)
 			[
 				SNew(STextBlock)
-					.Text(FText::FromString("ENTITY BASE DATA"))
+					.Text(Entity_BaseData_TitleText)
 			]	
 			+ INSET_VERTICAL_SLOT(40)
 			[
@@ -327,13 +388,13 @@ TSharedRef<ITableRow> SRTSOSaveEditor_EntityData::MakeListViewWidget_EntityData(
 					+ INSET_HORIZONTAL_SLOT(0)
 					[
 						SNew(STextBlock)
-							.Text(FText::FromString("Index: "))
+							.Text(Entity_BaseData_Index_TitleText)
 					]
 					+ INSET_HORIZONTAL_SLOT(0)
 					[
 						SNew(SNumericEntryBox<int32>)
-							.Value(SavedEntityDatum.InstanceIndex.Index)
-							.OnValueChanged(OnSavedEntityIndexChanged)							
+							.Value_Lambda(ResolveSelfEntityIndex)
+							.OnValueCommitted(OnSavedEntityIndexChanged)							
 					]
 				]
 			]
@@ -346,7 +407,7 @@ TSharedRef<ITableRow> SRTSOSaveEditor_EntityData::MakeListViewWidget_EntityData(
 					+ INSET_HORIZONTAL_SLOT(0)
 					[
 						SNew(STextBlock)
-							.Text(FText::FromString("Type: "))
+							.Text(Entity_BaseData_Type_TitleText)
 					]
 					+ INSET_HORIZONTAL_SLOT(0)
 					[
@@ -362,7 +423,7 @@ TSharedRef<ITableRow> SRTSOSaveEditor_EntityData::MakeListViewWidget_EntityData(
 			+ INSET_VERTICAL_SLOT(20)
 			[
 				SNew(STextBlock)
-					.Text(FText::FromString("ENTITY STATE DATA"))
+					.Text(Entity_StateData_TitleText)
 			]				
 			+ INSET_VERTICAL_SLOT(40)
 			[
@@ -370,13 +431,13 @@ TSharedRef<ITableRow> SRTSOSaveEditor_EntityData::MakeListViewWidget_EntityData(
 				+ INSET_HORIZONTAL_SLOT(0)
 				[
 					SNew(STextBlock)
-						.Text(FText::FromString("Location: "))
+						.Text(Entity_StateData_Location_TitleText)
 				]
 				+ INSET_HORIZONTAL_SLOT(0)
 				[
 					SNew(SNumericV3d)
-						.Vector(SavedEntityDatum.Location)
-						.OnVectorChanged(OnEntityLocationChanged)
+						.Vector_Lambda(ResolveLocation)
+						.OnVectorCommitted(OnEntityLocationChanged)
 				]
 				+ HORIZONTAL_SEPARATOR(5.0f)
 				
@@ -386,24 +447,23 @@ TSharedRef<ITableRow> SRTSOSaveEditor_EntityData::MakeListViewWidget_EntityData(
 					+ INSET_HORIZONTAL_SLOT(0)
 					[
 						SNew(STextBlock)
-							.Text(FText::FromString("Health: "))
+							.Text(Entity_StateData_Health_TitleText)
 					]
 					+ INSET_HORIZONTAL_SLOT(0)
 					[
 						SNew(SNumericEntryBox<double>)
-							.Value(SavedEntityDatum.Health)
-							.OnValueChanged(OnEntityHealthChanged)	 
+							.Value_Lambda(ResolveUsability)
+							.OnValueCommitted(OnEntityHealthChanged)	 
 					]			
 				]					
 			]
 			+ VERTICAL_SEPARATOR(5.0f) 
 			
-
 			
 			+ INSET_VERTICAL_SLOT(20)
 			[
 				SNew(STextBlock)
-					.Text(FText::FromString("ENTITY OWNER DATA"))
+					.Text(Entity_OwnerData_TitleText)
 			]				
 			+ INSET_VERTICAL_SLOT(40)
 			[
@@ -414,13 +474,13 @@ TSharedRef<ITableRow> SRTSOSaveEditor_EntityData::MakeListViewWidget_EntityData(
 					+ INSET_HORIZONTAL_SLOT(0)
 					[
 						SNew(STextBlock)
-							.Text(FText::FromString("OwnerID: "))
+							.Text(Entity_OwnerData_OwnerID_TitleText)
 					]
 					+ INSET_HORIZONTAL_SLOT(0)
 					[
 						SNew(SNumericS1i)
-							.Value(SavedEntityDatum.OwnerID)
-							.OnValueChanged(OnEntityOwnerIDChanged)
+							.Value_Lambda(ResolveOwnerID)
+							.OnValueCommitted(OnEntityOwnerIDChanged)
 					]
 				]
 				+ HORIZONTAL_SEPARATOR(5.0f)
@@ -431,29 +491,28 @@ TSharedRef<ITableRow> SRTSOSaveEditor_EntityData::MakeListViewWidget_EntityData(
 					+ INSET_HORIZONTAL_SLOT(0)
 					[
 						SNew(STextBlock)
-							.Text(FText::FromString("SelectionGroup: "))
+							.Text(Entity_OwnerData_SelectionGroup_TitleText)
 					]
 					+ INSET_HORIZONTAL_SLOT(0)
 					[
 						SNew(SNumericS1i)
-							.Value(SavedEntityDatum.SelectionIndex)
-							.OnValueChanged(OnEntityOwnerSelectionGroupChanged)
+							.Value_Lambda(ResolveOwnerSelectionGroup)
+							.OnValueCommitted(OnEntityOwnerSelectionGroupChanged)
 					]
 				]
 			]
 			+ VERTICAL_SEPARATOR(5.0f) 
-
-
+			
 			
 			+ INSET_VERTICAL_SLOT(20)
 			[
 				SNew(STextBlock)
-					.Text(FText::FromString("ACTION DATA"))
+					.Text(Entity_ActionData_TitleText)
 			]
 			+ INSET_VERTICAL_SLOT(40)
 			[
 				SNew(STextBlock)
-					.Text(FText::FromString("BASE"))
+					.Text(Entity_ActionData_BaseData_TitleText)
 			]					
 			+ INSET_VERTICAL_SLOT(40)
 			[
@@ -461,7 +520,7 @@ TSharedRef<ITableRow> SRTSOSaveEditor_EntityData::MakeListViewWidget_EntityData(
 				+ INSET_HORIZONTAL_SLOT(0)
 				[
 					SNew(STextBlock)
-						.Text(FText::FromString("Action Type: "))
+						.Text(Entity_ActionData_BaseData_ActionType_TitleText)
 				]
 				+ INSET_HORIZONTAL_SLOT(0)
 				[
@@ -479,7 +538,7 @@ TSharedRef<ITableRow> SRTSOSaveEditor_EntityData::MakeListViewWidget_EntityData(
 			+ INSET_VERTICAL_SLOT(40)
 			[
 					SNew(STextBlock)
-						.Text(FText::FromString("OPTIONAL REWARD"))
+						.Text(Entity_ActionData_RewardData_TitleText)
 			]			
 			+ INSET_VERTICAL_SLOT(40)
 			[
@@ -487,7 +546,7 @@ TSharedRef<ITableRow> SRTSOSaveEditor_EntityData::MakeListViewWidget_EntityData(
 				+ INSET_HORIZONTAL_SLOT(0)
 				[
 					SNew(STextBlock)
-						.Text(FText::FromString("Type: "))
+						.Text(Entity_ActionData_RewardData_Type_TitleText)
 				]
 				+ INSET_HORIZONTAL_SLOT(0)
 				[
@@ -502,13 +561,13 @@ TSharedRef<ITableRow> SRTSOSaveEditor_EntityData::MakeListViewWidget_EntityData(
 				+ INSET_HORIZONTAL_SLOT(0)
 				[
 					SNew(STextBlock)
-						.Text(FText::FromString("Amount: "))
+						.Text(Entity_ActionData_RewardData_Amount_TitleText)
 				]
 				+ INSET_HORIZONTAL_SLOT(0)
 				[
 					SNew(SNumericS1i)
-						.Value(SavedEntityDatum.CurrentAction.RewardAmount)
-						.OnValueChanged(OnOptionalRewardAmountChanged)
+						.Value_Lambda(ResolveRewardAmount)
+						.OnValueCommitted(OnOptionalRewardAmountChanged)
 				]				
 			]
 			+ VERTICAL_SEPARATOR(2.0f) 
@@ -517,7 +576,7 @@ TSharedRef<ITableRow> SRTSOSaveEditor_EntityData::MakeListViewWidget_EntityData(
 			+ INSET_VERTICAL_SLOT(40)
 			[
 				SNew(STextBlock)
-					.Text(FText::FromString("OPTIONAL TARGETS"))
+					.Text(Entity_ActionData_TargetData_TitleText)
 			]			
 			+ INSET_VERTICAL_SLOT(40)
 			[
@@ -525,13 +584,13 @@ TSharedRef<ITableRow> SRTSOSaveEditor_EntityData::MakeListViewWidget_EntityData(
 				+ INSET_HORIZONTAL_SLOT(0)
 				[
 					SNew(STextBlock)
-						.Text(FText::FromString("As Entity: "))
+						.Text(Entity_ActionData_TargetData_AsEntity_TitleText)
 				]
 				+ INSET_HORIZONTAL_SLOT(0)
 				[
 					SNew(SNumericEntryBox<int32>)
-						.Value(SavedEntityDatum.CurrentAction.OptTargets.ActionTargetAsEntity.Index)
-						.OnValueChanged(OnOptTargetEntityIndexChanged)
+						.Value_Lambda(ResolveActionTarget_Entity) 
+						.OnValueCommitted(OnOptTargetEntityIndexChanged)
 				]
 				+ HORIZONTAL_SEPARATOR(5.0f) 
 
@@ -539,7 +598,7 @@ TSharedRef<ITableRow> SRTSOSaveEditor_EntityData::MakeListViewWidget_EntityData(
 				+ INSET_HORIZONTAL_SLOT(0)
 				[
 					SNew(STextBlock)
-						.Text(FText::FromString("As Actor: "))
+						.Text(Entity_ActionData_TargetData_AsActor_TitleText)
 
 				]
 				+ INSET_HORIZONTAL_SLOT(0)
@@ -554,14 +613,14 @@ TSharedRef<ITableRow> SRTSOSaveEditor_EntityData::MakeListViewWidget_EntityData(
 				+ INSET_HORIZONTAL_SLOT(0)
 				[
 					SNew(STextBlock)
-						.Text(FText::FromString("As Pure Location: "))
+						.Text(Entity_ActionData_TargetData_AsPureLocation_TitleText)
 
 				]
 				+ INSET_HORIZONTAL_SLOT(0)
 				[
 					SNew(SNumericV3d)
-						.Vector(SavedEntityDatum.CurrentAction.OptTargets.ActionTargetAsLocation.Get())
-						.OnVectorChanged(OnEntityTargetLocationChanged)
+						.Vector_Lambda(ResolveActionTarget_PureLocation)
+						.OnVectorCommitted(OnEntityTargetLocationChanged)
 				]			
 			]				
 			

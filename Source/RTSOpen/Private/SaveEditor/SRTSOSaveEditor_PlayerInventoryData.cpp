@@ -18,9 +18,6 @@
 #include "Styling/AppStyle.h"
 
 // Class picker 
-#include "Kismet2/SClassPickerDialog.h"
-
-
 #include "GameplayTagContainer.h"
 #include "Interfaces/PDInteractInterface.h"
 #include "SaveEditor/SRTSOTagPicker.h"
@@ -33,17 +30,33 @@ typedef SNumericVectorInputBox<double, FVector, 3> SNumericV3d;
 typedef SNumericEntryBox<int32> SNumericS1i;
 typedef SNumericEntryBox<double> SNumericS1d;
 
+FText SRTSOSaveEditor_PlayerInventoryData::InventoryWidget_TitleText = LOCTEXT("TitleText_PlayerInventories", "PLAYER INVENTORY DATA");
+FText SRTSOSaveEditor_PlayerInventoryData::InventoryInner_TitleText = LOCTEXT("TitleText_SelectedInventory", "INVENTORY");
+FText SRTSOSaveEditor_PlayerInventoryData::InventoryInner_BaseData_TitleText = LOCTEXT("TitleText_SelectedInventory_BaseData", "BASE DATA");
+FText SRTSOSaveEditor_PlayerInventoryData::InventoryInner_BaseData_OwnerIDText = LOCTEXT("UserID_SelectedInventory_BaseData", "Owning UserID: ");
+FText SRTSOSaveEditor_PlayerInventoryData::InventoryInner_StateData_TitleText = LOCTEXT("TitleText_SelectedInventory_StateData", "STATE DATA");
+FText SRTSOSaveEditor_PlayerInventoryData::InventoryInner_ItemList_TitleText = LOCTEXT("Items_SelectedInventory_StateData", "Items: ");
+
+FText SRTSOSaveEditor_PlayerInventoryData::ItemElement_TitleText = LOCTEXT("TitleText_ItemElement", "ITEM");
+FText SRTSOSaveEditor_PlayerInventoryData::ItemElement_BaseData_TitleText = LOCTEXT("TitleText_ItemElement_BaseData", "BASE DATA");
+FText SRTSOSaveEditor_PlayerInventoryData::ItemElement_BaseData_Type_TitleText = LOCTEXT("Type_ItemElement_BaseData", "Type: ");
+FText SRTSOSaveEditor_PlayerInventoryData::ItemElement_BaseData_TotalCount_TitleText = LOCTEXT("TotalCount_ItemElement_BaseData", "TotalCount: ");
+FText SRTSOSaveEditor_PlayerInventoryData::ItemElement_StackData_TitleText = LOCTEXT("TitleText_ItemElement_StackData", "ITEM STACK DATA");
+FText SRTSOSaveEditor_PlayerInventoryData::ItemElement_StackData_LastEditedStackText = LOCTEXT("LastEditedStack_ItemElement_StackData", "Last Edited Stack: ");
+FText SRTSOSaveEditor_PlayerInventoryData::ItemElement_StackData_StackListText = LOCTEXT("StackList_ItemElement_StackData", "Stacks: ");
 
 //
 // SAVE EDITOR MAIN
-void SRTSOSaveEditor_PlayerInventoryData::Construct(const FArguments& InArgs, FRTSSaveData* InLinkedData)
+void SRTSOSaveEditor_PlayerInventoryData::Construct(const FArguments& InArgs, FRTSSaveData* InLinkedData, TArray<TSharedPtr<FUserInventoriesStruct>>& ArrayRef)
 {
 	LinkedSaveDataCopy = InLinkedData;
-	UpdateChildSlot(nullptr);
+	UpdateChildSlot(&ArrayRef);
 }
 
 void SRTSOSaveEditor_PlayerInventoryData::UpdateChildSlot(void* OpaqueData)
 {
+	SRTSOSaveEditorBase::UpdateChildSlot(OpaqueData);
+	
 	// Covers representing below fields
 	// CopiedSaveData.Inventories;
 
@@ -62,7 +75,9 @@ void SRTSOSaveEditor_PlayerInventoryData::UpdateChildSlot(void* OpaqueData)
 			SNew(SVerticalBox)
 			+ INSET_VERTICAL_SLOT(0)
 			[
-				SNew(STextBlock).Text(FText::FromString("PLAYER INVENTORY DATA: "))
+				SNew(STextBlock)
+					.Font(TitleFont)
+					.Text(InventoryWidget_TitleText)
 			]
 			
 			+ INSET_VERTICAL_SLOT(0)
@@ -85,11 +100,13 @@ TSharedRef<ITableRow> SRTSOSaveEditor_PlayerInventoryData::MakeListViewWidget_In
 
 	const int32 UserID = SavedInventoryDatum.Key; // 
 	const TArray<FPDItemNetDatum>& UserItems = SavedInventoryDatum.Value.Items; //
-
-	const SNumericS1i::FOnValueChanged OnInventoryOwningUserIDChanged =
-		SNumericS1i::FOnValueChanged::CreateLambda(
-			[&](int32 NewUserID)
+	
+	const SNumericS1i::FOnValueCommitted OnInventoryOwningUserIDChanged =
+		SNumericS1i::FOnValueCommitted::CreateLambda(
+			[&](int32 NewUserID, ETextCommit::Type CommitType)
 			{
+				if (CommitType != ETextCommit::OnEnter) { return; }
+				
 				// Slow, @todo come back to this
 				for (TTuple<int32, FRTSSavedItems>& CurrentInventory : MutableThis->LinkedSaveDataCopy->Inventories)
 				{
@@ -108,6 +125,11 @@ TSharedRef<ITableRow> SRTSOSaveEditor_PlayerInventoryData::MakeListViewWidget_In
 		CurrentInventoriesAsSharedTupleArray.Emplace(MakeShared<FPDItemNetDatum>(InventoryItem).ToSharedPtr());
 	}	
 	
+	// @todo need to ensure this works as intended, if not then it means the result is cached and not updated each frame and in that case another strategy has to be employed
+	const auto ResolveUserID = [CopiedUserID = UserID]() -> int32
+	{
+		return CopiedUserID;
+	};
 	
 	MutableThis->InventoryTable = SNew( STableRow< TSharedPtr<FUserInventoriesStruct> >, OwnerTable )
 		[
@@ -115,7 +137,7 @@ TSharedRef<ITableRow> SRTSOSaveEditor_PlayerInventoryData::MakeListViewWidget_In
 			+ INSET_VERTICAL_SLOT(0)
 			[
 				SNew(STextBlock)
-					.Text(FText::FromString("INVENTORY"))
+					.Text(InventoryInner_TitleText)
 			]
 			+ VERTICAL_SEPARATOR(5.0f)
 
@@ -123,7 +145,7 @@ TSharedRef<ITableRow> SRTSOSaveEditor_PlayerInventoryData::MakeListViewWidget_In
 			+ INSET_VERTICAL_SLOT(20)
 			[
 				SNew(STextBlock)
-					.Text(FText::FromString("INVENTORY BASE DATA"))
+					.Text(InventoryInner_BaseData_TitleText)
 			]	
 			+ INSET_VERTICAL_SLOT(40)
 			[
@@ -134,13 +156,13 @@ TSharedRef<ITableRow> SRTSOSaveEditor_PlayerInventoryData::MakeListViewWidget_In
 					+ INSET_HORIZONTAL_SLOT(0)
 					[
 						SNew(STextBlock)
-							.Text(FText::FromString("Owning UserID: "))
+							.Text(InventoryInner_BaseData_OwnerIDText)
 					]
 					+ INSET_HORIZONTAL_SLOT(0)
 					[
 						SNew(SNumericEntryBox<int32>)
-							.Value(UserID)
-							.OnValueChanged(OnInventoryOwningUserIDChanged)
+							.Value_Lambda(ResolveUserID)
+							.OnValueCommitted(OnInventoryOwningUserIDChanged)
 					]
 				]
 			]
@@ -150,7 +172,7 @@ TSharedRef<ITableRow> SRTSOSaveEditor_PlayerInventoryData::MakeListViewWidget_In
 			+ INSET_VERTICAL_SLOT(20)
 			[
 				SNew(STextBlock)
-					.Text(FText::FromString("INVENTORY STATE DATA"))
+					.Text(InventoryInner_StateData_TitleText)
 			]				
 			+ INSET_VERTICAL_SLOT(40)
 			[
@@ -158,7 +180,7 @@ TSharedRef<ITableRow> SRTSOSaveEditor_PlayerInventoryData::MakeListViewWidget_In
 				+ INSET_HORIZONTAL_SLOT(0)
 				[
 					SNew(STextBlock)
-						.Text(FText::FromString("Items: "))
+						.Text(InventoryInner_ItemList_TitleText)
 				]
 				+ INSET_HORIZONTAL_SLOT(0)
 				[
@@ -230,16 +252,20 @@ TSharedRef<ITableRow> SRTSOSaveEditor_PlayerInventoryData::MakeListViewWidget_It
 				return FReply::Handled();
 			});
 
-	const SNumericEntryBox<int32>::FOnValueChanged OnTotalItemCountChanged = SNumericEntryBox<int32>::FOnValueChanged::CreateLambda(
-		[ImmutableItemDatum = SavedItemDatum](const int32 UpdatedTotalCount)
+	const SNumericEntryBox<int32>::FOnValueCommitted OnTotalItemCountChanged = SNumericEntryBox<int32>::FOnValueCommitted::CreateLambda(
+		[ImmutableItemDatum = SavedItemDatum](const int32 UpdatedTotalCount, ETextCommit::Type CommitType)
 		{
+			if (CommitType != ETextCommit::OnEnter) { return; }
+			
 			FPDItemNetDatum& MutableItemDatum = const_cast<FPDItemNetDatum&>(ImmutableItemDatum);
 			MutableItemDatum.TotalItemCount = UpdatedTotalCount;
 		});
 
-	const SNumericEntryBox<int32>::FOnValueChanged OnLastEditedStackChanged = SNumericEntryBox<int32>::FOnValueChanged::CreateLambda(
-		[ImmutableItemDatum = SavedItemDatum](const int32 UpdatedLastStackIndex)
+	const SNumericEntryBox<int32>::FOnValueCommitted OnLastEditedStackChanged = SNumericEntryBox<int32>::FOnValueCommitted::CreateLambda(
+		[ImmutableItemDatum = SavedItemDatum](const int32 UpdatedLastStackIndex, ETextCommit::Type CommitType)
 		{
+			if (CommitType != ETextCommit::OnEnter) { return; }
+
 			FPDItemNetDatum& MutableItemDatum = const_cast<FPDItemNetDatum&>(ImmutableItemDatum);
 			MutableItemDatum.LastEditedStackIndex = UpdatedLastStackIndex;
 		});
@@ -278,6 +304,15 @@ TSharedRef<ITableRow> SRTSOSaveEditor_PlayerInventoryData::MakeListViewWidget_It
 		// }		
 	});
 	
+	const auto ResolveTotalItemCount = [CopiedItemCount = SavedItemDatum.TotalItemCount]() -> int32
+	{
+		return CopiedItemCount;
+	};	
+	const auto ResolveLastEditedStackIndex = [CopiedLastEditedStackIdx = SavedItemDatum.LastEditedStackIndex]() -> int32
+	{
+		return CopiedLastEditedStackIdx;
+	};	
+	
 	
 	TSharedRef<STableRow<TSharedPtr<FPDItemNetDatum>>> ItemTable = SNew(STableRow<TSharedPtr<FPDItemNetDatum>>, OwnerTable )
 	[
@@ -285,14 +320,14 @@ TSharedRef<ITableRow> SRTSOSaveEditor_PlayerInventoryData::MakeListViewWidget_It
 		+ INSET_VERTICAL_SLOT(0)
 		[
 			SNew(STextBlock)
-				.Text(FText::FromString("ITEM"))
+				.Text(ItemElement_TitleText)
 		]
 		+ VERTICAL_SEPARATOR(5.0f)
 		
 		+ INSET_VERTICAL_SLOT(20)
 		[
 			SNew(STextBlock)
-				.Text(FText::FromString("BASE DATA"))
+				.Text(ItemElement_BaseData_TitleText)
 		]	
 		+ INSET_VERTICAL_SLOT(40)
 		[
@@ -303,7 +338,7 @@ TSharedRef<ITableRow> SRTSOSaveEditor_PlayerInventoryData::MakeListViewWidget_It
 				+ INSET_HORIZONTAL_SLOT(0)
 				[
 					SNew(STextBlock)
-						.Text(FText::FromString("Type: "))
+						.Text(ItemElement_BaseData_Type_TitleText)
 				]
 				+ INSET_HORIZONTAL_SLOT(0)
 				[
@@ -314,13 +349,13 @@ TSharedRef<ITableRow> SRTSOSaveEditor_PlayerInventoryData::MakeListViewWidget_It
 				+ INSET_HORIZONTAL_SLOT(10)
 				[
 					SNew(STextBlock)
-						.Text(FText::FromString("Total Count: "))
+						.Text(ItemElement_BaseData_TotalCount_TitleText)
 				]
 				+ INSET_HORIZONTAL_SLOT(0)
 				[
 					SNew(SNumericEntryBox<int32>)
-						.Value(SavedItemDatum.TotalItemCount)
-						.OnValueChanged(OnTotalItemCountChanged) 
+						.Value_Lambda(ResolveTotalItemCount)
+						.OnValueCommitted(OnTotalItemCountChanged) 
 				]	
 				
 			]
@@ -331,7 +366,7 @@ TSharedRef<ITableRow> SRTSOSaveEditor_PlayerInventoryData::MakeListViewWidget_It
 		+ INSET_VERTICAL_SLOT(20)
 		[
 			SNew(STextBlock)
-				.Text(FText::FromString("ENTITY STACK DATA"))
+				.Text(ItemElement_StackData_TitleText)
 		]				
 		+ INSET_VERTICAL_SLOT(40)
 		[
@@ -339,13 +374,13 @@ TSharedRef<ITableRow> SRTSOSaveEditor_PlayerInventoryData::MakeListViewWidget_It
 			+ INSET_HORIZONTAL_SLOT(0)
 			[
 				SNew(STextBlock)
-					.Text(FText::FromString("Last Edited Stack: "))
+					.Text(ItemElement_StackData_LastEditedStackText)
 			]
 			+ INSET_HORIZONTAL_SLOT(0)
 			[
 				SNew(SNumericEntryBox<int32>)
-					.Value(SavedItemDatum.LastEditedStackIndex)
-					.OnValueChanged(OnLastEditedStackChanged)
+					.Value_Lambda(ResolveLastEditedStackIndex)
+					.OnValueCommitted(OnLastEditedStackChanged)
 			]
 			+ HORIZONTAL_SEPARATOR(5.0f)
 			
@@ -355,7 +390,7 @@ TSharedRef<ITableRow> SRTSOSaveEditor_PlayerInventoryData::MakeListViewWidget_It
 				+ INSET_HORIZONTAL_SLOT(0)
 				[
 					SNew(STextBlock)
-						.Text(FText::FromString("Stacks: "))
+						.Text(ItemElement_StackData_StackListText)
 				]
 				+ INSET_HORIZONTAL_SLOT(0)
 				[

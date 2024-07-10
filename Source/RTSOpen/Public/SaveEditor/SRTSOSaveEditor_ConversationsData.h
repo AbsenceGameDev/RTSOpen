@@ -21,8 +21,8 @@ public:
  		SLATE_EVENT(FOnUserScrolled, OnUserScrolled)
  		SLATE_EVENT(FOnClicked, OnUserClicked)
 	SLATE_END_ARGS()
-
-	void Construct(const FArguments& InArgs, FRTSSaveData* InLinkedData);
+	
+	void Construct(const FArguments& InArgs, FRTSSaveData* InLinkedData,  TArray<TSharedPtr<FConversationStateStruct>>& ArrayRef);
 	virtual void UpdateChildSlot(void* OpaqueData) final override;
 
 	TSharedRef<ITableRow> MakeListViewWidget_ConversationStateData(TSharedPtr<FConversationStateStruct> InItem, const TSharedRef<STableViewBase>& OwnerTable) const;
@@ -38,6 +38,19 @@ public:
 
 	// View Tables
 	TSharedPtr<STableRow< TSharedPtr<FConversationStateStruct>>> ConversationStateTable;
+
+	// Localized text
+	static FText WorldConversations_TitleText;
+	static FText ConversationActor_TitleText;
+	static FText ConversationActor_BaseData_TitleText;
+	static FText ConversationActor_BaseData_ActorID_TitleText;
+	static FText ConversationActor_BaseData_Type_TitleText;
+	static FText ConversationActor_StateData_TitleText;
+	static FText ConversationActor_StateData_Location_TitleText;
+	static FText ConversationActor_StateData_Health_TitleText;
+	static FText ConversationActor_MissionData_TitleText;
+	static FText ConversationActor_MissionData_MissionList_TitleText;
+	static FText ConversationActor_MissionData_ProgressionPerPlayer_TitleText;
 };
 
 

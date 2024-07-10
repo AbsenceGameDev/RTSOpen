@@ -33,16 +33,24 @@ typedef SNumericEntryBox<int32> SNumericS1i;
 typedef SNumericEntryBox<double> SNumericS1d;
 
 
+FText SRTSOSaveEditor_InteractableData::Interactable_TitleText = LOCTEXT("TitleText_InteractableData", "INTERACTABLE DATA");
+FText SRTSOSaveEditor_InteractableData::Interactable_BaseData_ActorID_TitleText = LOCTEXT("ActorID_InteractableData", "Actor ID: ");
+FText SRTSOSaveEditor_InteractableData::Interactable_BaseData_ClassType_TitleText = LOCTEXT("Class_InteractableData", "Class: ");
+FText SRTSOSaveEditor_InteractableData::Interactable_BaseData_Location_TitleText = LOCTEXT("Location_InteractableData", "Location: ");
+FText SRTSOSaveEditor_InteractableData::Interactable_BaseData_Usability_TitleText = LOCTEXT("Usability_InteractableData", "Usability: ");
+
 //
 // SAVE EDITOR MAIN
-void SRTSOSaveEditor_InteractableData::Construct(const FArguments& InArgs, FRTSSaveData* InLinkedData)
+void SRTSOSaveEditor_InteractableData::Construct(const FArguments& InArgs, FRTSSaveData* InLinkedData, TArray<TSharedPtr<FRTSSavedInteractable>>& ArrayRef)
 {
 	LinkedSaveDataCopy = InLinkedData;
-	UpdateChildSlot(nullptr);
+	UpdateChildSlot(&ArrayRef);
 }
 
 void SRTSOSaveEditor_InteractableData::UpdateChildSlot(void* OpaqueData)
 {
+	SRTSOSaveEditorBase::UpdateChildSlot(OpaqueData);
+
 	if (OpaqueData != nullptr)
 	{
 		InteractableAsSharedArray = static_cast<TArray<TSharedPtr<FRTSSavedInteractable>>*>(OpaqueData);
@@ -58,7 +66,9 @@ void SRTSOSaveEditor_InteractableData::UpdateChildSlot(void* OpaqueData)
 			SNew(SVerticalBox)
 			+ INSET_VERTICAL_SLOT(0)
 			[
-				SNew(STextBlock).Text(FText::FromString("INTERACTABLE DATA: "))
+				SNew(STextBlock)
+					.Font(TitleFont)
+					.Text(Interactable_TitleText)
 			]
 			
 			+ INSET_VERTICAL_SLOT(0)
@@ -83,16 +93,13 @@ TSharedRef<ITableRow> SRTSOSaveEditor_InteractableData::MakeListViewWidget_Inter
 	check(MutableThis != nullptr)
 	
 	const FRTSSavedInteractable& SavedInteractableDatum = *InItem.Get();
-
-	// @done SavedInteractableDatum.Location;
-	// @done SavedInteractableDatum.Usability;
-	// @done SavedInteractableDatum.ActorClass;
-	// @done SavedInteractableDatum.InstanceIndex;
 	
-	SNumericV3d::FOnVectorValueChanged OnPlayerLocationChanged;
+	SNumericV3d::FOnVectorValueCommitted OnPlayerLocationChanged;
 	OnPlayerLocationChanged.BindLambda(
-		[ImmutableThis = this, InstanceIndex = SavedInteractableDatum.InstanceIndex](const FVector& UpdatedVector)
+		[ImmutableThis = this, InstanceIndex = SavedInteractableDatum.InstanceIndex](const FVector& UpdatedVector, ETextCommit::Type CommitType)
 		{
+			if (CommitType != ETextCommit::OnEnter) { return; }
+			
 			SRTSOSaveEditor_InteractableData* MutableThis = const_cast<SRTSOSaveEditor_InteractableData*>(ImmutableThis);
 			check(MutableThis != nullptr)
 			FRTSSaveData* MutableSaveData = MutableThis->LinkedSaveDataCopy;
@@ -107,10 +114,12 @@ TSharedRef<ITableRow> SRTSOSaveEditor_InteractableData::MakeListViewWidget_Inter
 			}
 		});
 
-	SNumericS1d::FOnValueChanged OnUsabilityChanged;
+	SNumericS1d::FOnValueCommitted OnUsabilityChanged;
 	OnUsabilityChanged.BindLambda(
-		[ImmutableThis = this, InstanceIndex = SavedInteractableDatum.InstanceIndex](double UpdatedValue)
+		[ImmutableThis = this, InstanceIndex = SavedInteractableDatum.InstanceIndex](double UpdatedValue, ETextCommit::Type CommitType)
 		{
+			if (CommitType != ETextCommit::OnEnter) { return; }
+			
 			SRTSOSaveEditor_InteractableData* MutableThis = const_cast<SRTSOSaveEditor_InteractableData*>(ImmutableThis);
 			check(MutableThis != nullptr)
 			FRTSSaveData* MutableSaveData = MutableThis->LinkedSaveDataCopy;
@@ -174,6 +183,16 @@ TSharedRef<ITableRow> SRTSOSaveEditor_InteractableData::MakeListViewWidget_Inter
 #endif // WITH_EDITOR
 			return FReply::Handled();
 		});
+
+	// @todo need to ensure this works as intended, if not then it means the result is cached and not updated each frame and in that case another strategy has to be employed
+	const auto ResolveLocation = [CopiedLocation = SavedInteractableDatum.Location]() -> FVector
+	{
+		return CopiedLocation;
+	};	
+	const auto ResolveUsability = [CopiedUsability = SavedInteractableDatum.Usability]() -> double
+	{
+		return CopiedUsability;
+	};
 			
 	MutableThis->InteractableTable = SNew( STableRow< TSharedPtr<FRTSSavedInteractable>>, OwnerTable )
 		[
@@ -187,7 +206,7 @@ TSharedRef<ITableRow> SRTSOSaveEditor_InteractableData::MakeListViewWidget_Inter
 					+ INSET_HORIZONTAL_SLOT(0)
 					[
 						SNew(STextBlock)
-							.Text(FText::FromString("ID: "))
+							.Text(Interactable_BaseData_ActorID_TitleText)
 					]
 					+ INSET_HORIZONTAL_SLOT(0)
 					[
@@ -205,7 +224,7 @@ TSharedRef<ITableRow> SRTSOSaveEditor_InteractableData::MakeListViewWidget_Inter
 					+ INSET_HORIZONTAL_SLOT(0)
 					[
 						SNew(STextBlock)
-							.Text(FText::FromString("Class: "))
+							.Text(Interactable_BaseData_ClassType_TitleText)
 					]
 					+ INSET_HORIZONTAL_SLOT(0)
 					[
@@ -225,13 +244,13 @@ TSharedRef<ITableRow> SRTSOSaveEditor_InteractableData::MakeListViewWidget_Inter
 					+ INSET_HORIZONTAL_SLOT(0)
 					[
 						SNew(STextBlock)
-							.Text(FText::FromString("Location: "))
+							.Text(Interactable_BaseData_Location_TitleText)
 					]
 					+ INSET_HORIZONTAL_SLOT(0)
 					[
 						SNew(SNumericV3d)
-							.Vector(SavedInteractableDatum.Location)
-							.OnVectorChanged(OnPlayerLocationChanged)
+							.Vector_Lambda(ResolveLocation)
+							.OnVectorCommitted(OnPlayerLocationChanged)
 					]			
 				]
 			]
@@ -245,13 +264,13 @@ TSharedRef<ITableRow> SRTSOSaveEditor_InteractableData::MakeListViewWidget_Inter
 					+ INSET_HORIZONTAL_SLOT(0)
 					[
 						SNew(STextBlock)
-							.Text(FText::FromString("Usability: "))
+							.Text(Interactable_BaseData_Usability_TitleText)
 					]
 					+ INSET_HORIZONTAL_SLOT(0)
 					[
 						SNew(SNumericEntryBox<double>)
-								.Value(SavedInteractableDatum.Usability)
-								.OnValueChanged(OnUsabilityChanged)	 
+							.Value_Lambda(ResolveUsability)
+							.OnValueCommitted(OnUsabilityChanged)	 
 					]			
 				]				
 				

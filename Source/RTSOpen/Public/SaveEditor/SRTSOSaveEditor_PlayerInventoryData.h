@@ -23,8 +23,8 @@ public:
  		SLATE_EVENT(FOnUserScrolled, OnUserScrolled)
  		SLATE_EVENT(FOnClicked, OnUserClicked)
 	SLATE_END_ARGS()
-
-	void Construct(const FArguments& InArgs, FRTSSaveData* InLinkedData);
+	
+	void Construct(const FArguments& InArgs, FRTSSaveData* InLinkedData, TArray<TSharedPtr<FUserInventoriesStruct>>& ArrayRef);
 	virtual void UpdateChildSlot(void* OpaqueData) final override;
 
 	TSharedRef<ITableRow> MakeListViewWidget_InventoryOverviewData(TSharedPtr<FUserInventoriesStruct> InItem, const TSharedRef<STableViewBase>& OwnerTable) const;
@@ -47,7 +47,23 @@ public:
 	TSharedPtr<STableRow< TSharedPtr<FUserInventoriesStruct>>> InventoryTable;
 
 	// Tag Picker
-	TSharedPtr<SRTSOTagPicker> TagPicker;	
+	TSharedPtr<SRTSOTagPicker> TagPicker;
+
+	// Localized text
+	static FText InventoryWidget_TitleText;
+	static FText InventoryInner_TitleText;
+	static FText InventoryInner_BaseData_TitleText;
+	static FText InventoryInner_BaseData_OwnerIDText;
+	static FText InventoryInner_StateData_TitleText;
+	static FText InventoryInner_ItemList_TitleText;
+	
+	static FText ItemElement_TitleText;
+	static FText ItemElement_BaseData_TitleText;
+	static FText ItemElement_BaseData_Type_TitleText;
+	static FText ItemElement_BaseData_TotalCount_TitleText;
+	static FText ItemElement_StackData_TitleText;
+	static FText ItemElement_StackData_LastEditedStackText;
+	static FText ItemElement_StackData_StackListText;
 };
 
 /**

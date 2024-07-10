@@ -83,7 +83,15 @@ private:
 class RTSOPEN_API SRTSOSaveEditorBase : public SCompoundWidget
 {
 public:
-	virtual void UpdateChildSlot(void* OpaqueData) {}
+	virtual void UpdateChildSlot(void* OpaqueData)
+	{
+		if (TitleFont.TypefaceFontName.IsNone())
+		{
+			// @todo Set up a custom slate styleset for the saveeditors fonts and icons 
+			TitleFont = FAppStyle::GetFontStyle( TEXT("PropertyWindow.NormalFont"));
+			TitleFont.Size *= 8;
+		}
+	}
 
 	template<typename TPickerClass>
 	TSharedRef<SWindow> CreatePickerDialog(TSharedRef<SWindow>& PickerWindow, UClass* FilterInterfaceClass)
@@ -123,7 +131,8 @@ public:
 
 		return PickerWindow;		
 	}
-	
+
+	FSlateFontInfo TitleFont;	
 	FRTSSaveData* LinkedSaveDataCopy = nullptr;	
 };
 
