@@ -57,6 +57,8 @@ public:
 	/** @brief  Constructs the widget and caches relevant data */
 	void Construct(const FArguments& InArgs);
 	
+	void InitializeData();
+	
 	/** @brief  Ticks the radar/minimap */
 	virtual void Tick(const FGeometry& AllottedGeometry, const double InCurrentTime, const float InDeltaTime) override;
 	/** @brief  Paints the radar/minimap visuals */
@@ -86,7 +88,7 @@ public:
 	FVector2D WorldToScreen2D(FVector& WorldLocation) const;
 
 	/** @brief  Creates a new slate brush on the fly*/
-	const TSharedPtr<FSlateBrush> MakeRadarBGBrush(double UniformBoxSize) const;
+	static inline void SetBrushSettings(FSlateBrush& Target, UObject* InResourceObject, ESlateBrushImageType::Type ImageType, UE::Slate::FDeprecateVector2DParameter ImageSize, FLinearColor& TintColour);
 
 
 public:
@@ -130,9 +132,14 @@ public:
 	/** @brief  Slate instance data to pass inners into certain slate functions */
 	struct SlateInstanceData
 	{
-		const TSharedPtr<FSlateBrush> ConstructedBackgroundBrush = nullptr;
-		const TSharedPtr<FSlateBrush> OwnerIconBrush = nullptr;
-		const TSharedPtr<FSlateBrush> GenericIconBrush = nullptr;
+		FSlateBrush ConstructedBackgroundBrush{};
+		FLinearColor BGColour = FLinearColor(0, 0, 0, 0.3f);
+
+		FSlateBrush OwnerIconBrush{};
+		FLinearColor OwnerIconColour = FLinearColor(0, 0, 0, 0.3f);
+
+		FSlateBrush GenericIconBrush{};
+		FLinearColor GenericIconColour = FLinearColor(0, 0, 0, 0.3f);
 	};
 
 	/** @brief  Current radar slate instance data */

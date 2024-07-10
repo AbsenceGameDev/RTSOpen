@@ -5,24 +5,15 @@
 
 TSharedRef<SWidget> URTSOMiniMap::RebuildWidget()
 {
-	return Super::RebuildWidget();
+	const TSharedRef<SRTSOMiniMap> SlateMiniMapRef = SNew(SRTSOMiniMap);
+	SlateMiniMap = SlateMiniMapRef.ToSharedPtr();
+	return SlateMiniMap.ToSharedRef();
 }
 
 void URTSOMiniMap::OnWidgetRebuilt()
 {
-	if (SlateMiniMap != nullptr)
-	{
-		Super::OnWidgetRebuilt();
-		return;
-	}
-	
-	SlateMiniMap = MakeShared<SRTSOMiniMap>().ToSharedPtr();
 	Super::OnWidgetRebuilt();
 }
-
-
-
-
 
 
 /**

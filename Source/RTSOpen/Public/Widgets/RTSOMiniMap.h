@@ -19,7 +19,7 @@ public:
 	virtual TSharedRef<SWidget> RebuildWidget() override;
 	virtual void OnWidgetRebuilt() override;
 	
-	TSharedPtr<SRTSOMiniMap> SlateMiniMap = nullptr;
+	TSharedPtr<SRTSOMiniMap> SlateMiniMap;
 	
 };
 

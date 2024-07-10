@@ -16,8 +16,8 @@ void URTSOSaveGameDialog::DialogReplyContinue(const bool bSuccess) const
 	// ARTSOBaseGM* GM = GetWorld() != nullptr ? GetWorld()->GetAuthGameMode<ARTSOBaseGM>() : nullptr;
 	// if (GM == nullptr) { return; }
 
-	if (bSuccess) { SaveSuccessCallback.Execute(FString::FromInt(SlotIdx), true); }
-	else { SaveFailCallback.Execute(FString::FromInt(SlotIdx), true); }
+	if (bSuccess) { SaveSuccessCallback.ExecuteIfBound(FString::FromInt(SlotIdx), true); }
+	else { SaveFailCallback.ExecuteIfBound(FString::FromInt(SlotIdx), true); }
 	
 }
 

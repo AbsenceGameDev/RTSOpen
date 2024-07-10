@@ -11,12 +11,36 @@
 
 void SRTSOMiniMap::Construct(const FArguments& InArgs)
 {
+	InitializeData();
+	
 	this->ChildSlot
 	.HAlign( InArgs._HAlign)
 	.VAlign( InArgs._VAlign)
 	[
 		SNew(SBorder) // @todo rewrite below manual radar line and box rendering into a constructed slate compound 
 	];
+}
+
+void SRTSOMiniMap::InitializeData()
+{
+	const URTSOMinimapDeveloperSettings* ImmutableMinimapSettings = GetDefault<URTSOMinimapDeveloperSettings>();
+	MiniMapData = ImmutableMinimapSettings->DefaultMinimapData.LoadSynchronous();
+	if (MiniMapData == nullptr)
+	{
+		UE_LOG(PDLog_RTSO, Error, TEXT("SRTSOMiniMap::InitializeData -- URTSOMinimapDeveloperSettings::DefaultMinimapData is not set! Go into your editor config settings and assign a table to it"))
+		return;
+	}
+	
+	const UE::Slate::FDeprecateVector2DParameter GenericIcon_RadarSize{RadarSize};
+	SetBrushSettings(InstanceData.ConstructedBackgroundBrush, nullptr, ESlateBrushImageType::Linear, GenericIcon_RadarSize, InstanceData.BGColour);
+	
+	const UE::Slate::FDeprecateVector2DParameter GenericIcon_ImageSize{GenericMinimapIconRectSize};
+	SetBrushSettings(InstanceData.GenericIconBrush, nullptr, ESlateBrushImageType::Linear, GenericIcon_ImageSize, InstanceData.GenericIconColour);
+	
+	const float TextureWidth = MiniMapData->ArrowTexture->GetSurfaceWidth();
+	const float TextureHeight = MiniMapData->ArrowTexture->GetSurfaceHeight();
+	const UE::Slate::FDeprecateVector2DParameter OwnerIcon_ImageSize{TextureWidth, TextureHeight};
+	SetBrushSettings(InstanceData.OwnerIconBrush, MiniMapData->ArrowTexture, ESlateBrushImageType::FullColor, OwnerIcon_ImageSize, InstanceData.OwnerIconColour);
 }
 
 void SRTSOMiniMap::Tick(
@@ -43,8 +67,12 @@ int32 SRTSOMiniMap::OnPaint(
 {
 	const int32 SuperResult =SCompoundWidget::OnPaint(Args, AllottedGeometry, MyCullingRect, OutDrawElements, LayerId, InWidgetStyle, bParentEnabled);
 
-	// Update positions. Call 'PaintRadarMiniMap'
-	PaintRadarMiniMap(OutDrawElements, AllottedGeometry, LayerId);
+	constexpr bool bTemporary = false; // @todo remove and debug why Paint is painting over the full screen, likely fgeometry related
+	if (MiniMapData != nullptr && bTemporary)
+	{
+		// Update positions. Call 'PaintRadarMiniMap'
+		PaintRadarMiniMap(OutDrawElements, AllottedGeometry, LayerId);
+	}	
 	
 	return SuperResult;
 }
@@ -53,7 +81,7 @@ int32 SRTSOMiniMap::OnPaint(
 // Paint functions
 void SRTSOMiniMap::PaintRadarMiniMap(FSlateWindowElementList& OutDrawElements, const FGeometry& AllottedGeometry, int32 LayerId) const
 {
-	PaintRadar(OutDrawElements, AllottedGeometry, LayerId ,FLinearColor::Gray);
+	PaintRadar(OutDrawElements, AllottedGeometry, LayerId, FLinearColor::Gray);
 	PaintOwnerOnMiniMap(OutDrawElements, AllottedGeometry, LayerId);
 	PaintActorsOnMiniMap(OutDrawElements, AllottedGeometry, LayerId);
 	PaintEntitiesOnMiniMap(OutDrawElements, AllottedGeometry, LayerId);
@@ -86,10 +114,6 @@ void SRTSOMiniMap::PaintActorsOnMiniMap(FSlateWindowElementList& OutDrawElements
 	FLinearColor OffsetAlpha(0,0,0, 0);
 	
 	const FGeometry DerivedGeometry = AllottedGeometry;
-	TSharedPtr<FSlateBrush> MutableGenericIconBrush = InstanceData.GenericIconBrush;
-	UE::Slate::FDeprecateVector2DParameter ImageSize{GenericMinimapIconRectSize};
-	MutableGenericIconBrush->SetImageSize(ImageSize);	
-	
 	for (const AActor* It : OnWorldActors)
 	{
 		const FVector2D Location2D = WorldToScreen2D(It, OwnerPawn);
@@ -109,7 +133,7 @@ void SRTSOMiniMap::PaintActorsOnMiniMap(FSlateWindowElementList& OutDrawElements
 
 		const FLinearColor EntityColour = Cast<APawn>(It) != nullptr ? EnemyLinearColour: GenericActorLinearColour; 
 		OffsetAlpha.A = Alpha / Distance * 4;
-
+		
 		// Paint box element
 		const FSlateRenderTransform RT{{1.0},{static_cast<float>(GetRadarCenter().X + NewX), static_cast<float>(GetRadarCenter().Y + NewY)}};
 		DerivedGeometry.ToPaintGeometry().SetRenderTransform(RT);
@@ -117,7 +141,7 @@ void SRTSOMiniMap::PaintActorsOnMiniMap(FSlateWindowElementList& OutDrawElements
 			OutDrawElements,
 			LayerId,
 			DerivedGeometry.ToPaintGeometry(),
-			InstanceData.ConstructedBackgroundBrush.Get(),
+			&InstanceData.GenericIconBrush,
 			ESlateDrawEffect::None,
 			EntityColour + OffsetAlpha);
 	}
@@ -156,14 +180,9 @@ void SRTSOMiniMap::PaintEntitiesOnMiniMap(FSlateWindowElementList& OutDrawElemen
 	const FVector PlayerLocation = OwnerPawn->GetActorLocation();
 	const FVector2D RadarCenter  = GetRadarCenter();
 	const int32 CallerID         = RTSOController->GetActorID();
-
-
-	const FGeometry DerivedGeometry = AllottedGeometry;
-	TSharedPtr<FSlateBrush> MutableGenericIconBrush = InstanceData.GenericIconBrush;
-	UE::Slate::FDeprecateVector2DParameter ImageSize{GenericMinimapIconRectSize};
-	MutableGenericIconBrush->SetImageSize(ImageSize);	
 	
 	// Iterate all found entities and draw boxes on screen to display them
+	const FGeometry DerivedGeometry = AllottedGeometry;
 	for (FLEntityCompound& EntityCompound : *MinimapEntityBuffer)
 	{
 		FVector EntityLocation = EntityCompound.Location;
@@ -181,7 +200,7 @@ void SRTSOMiniMap::PaintEntitiesOnMiniMap(FSlateWindowElementList& OutDrawElemen
 		
 		const FLinearColor EntityColour = CallerID != EntityCompound.OwnerID ? EnemyLinearColour: OwnerLinearColour; 
 		OffsetAlpha.A = Alpha / Distance * 4;
-
+		
 		// Paint box element
 		const FSlateRenderTransform RT{{1.0},{static_cast<float>(RadarCenter.X + NewX), static_cast<float>(RadarCenter.Y + NewY)}};
 		DerivedGeometry.ToPaintGeometry().SetRenderTransform(RT);
@@ -189,7 +208,7 @@ void SRTSOMiniMap::PaintEntitiesOnMiniMap(FSlateWindowElementList& OutDrawElemen
 			OutDrawElements,
 			LayerId,
 			DerivedGeometry.ToPaintGeometry(),
-			InstanceData.ConstructedBackgroundBrush.Get(),
+			&InstanceData.GenericIconBrush,
 			ESlateDrawEffect::None,
 			EntityColour + OffsetAlpha);
 	}
@@ -197,43 +216,21 @@ void SRTSOMiniMap::PaintEntitiesOnMiniMap(FSlateWindowElementList& OutDrawElemen
 
 void SRTSOMiniMap::PaintOwnerOnMiniMap(FSlateWindowElementList& OutDrawElements, const FGeometry& AllottedGeometry, int32 LayerId) const
 {
-	const FGeometry DerivedGeometry = AllottedGeometry;
-	const FSlateRenderTransform RT{{1.0},{static_cast<float>(GetRadarCenter().X), static_cast<float>(GetRadarCenter().Y)}};
-	DerivedGeometry.ToPaintGeometry().SetRenderTransform(RT);
-	
-	//Clamp positions in between the minimap size so they are not out of bounds
-	if (MiniMapData == nullptr || MiniMapData->ArrowTexture == nullptr)
+	if (MiniMapData->ArrowTexture == nullptr)
 	{
-		// Draw Background Colour @todo replace with background material 
-		static_cast<TSharedPtr<FSlateBrush>>(InstanceData.ConstructedBackgroundBrush) = MakeRadarBGBrush(GenericMinimapIconRectSize);
-
-		// Paint box element		
-		FSlateDrawElement::MakeBox(
-			OutDrawElements,
-			LayerId,
-			DerivedGeometry.ToPaintGeometry(),
-			InstanceData.ConstructedBackgroundBrush.Get(),
-			ESlateDrawEffect::None,
-			FLinearColor::White);
 		return;
 	}
-
-	const float TextureWidth = MiniMapData->ArrowTexture->GetSurfaceWidth();
-	const float TextureHeight = MiniMapData->ArrowTexture->GetSurfaceHeight();
-
-	// Draw Background Colour @todo replace with background material
-	TSharedPtr<FSlateBrush> MutableOwnerIconBrush = InstanceData.OwnerIconBrush;
-
-	UE::Slate::FDeprecateVector2DParameter ImageSize{TextureWidth,TextureHeight};
-	MutableOwnerIconBrush->SetImageSize(ImageSize);
-	MutableOwnerIconBrush->ImageType = ESlateBrushImageType::FullColor;
-	MutableOwnerIconBrush->SetResourceObject(MiniMapData->ArrowTexture);
-			
+	
+	const FGeometry DerivedGeometry = AllottedGeometry;
+	const FSlateRenderTransform RT{{0.0},{static_cast<float>(GetRadarCenter().X), static_cast<float>(GetRadarCenter().Y)}};
+	DerivedGeometry.ToPaintGeometry().SetRenderTransform(RT);
+	//Clamp positions in between the minimap size so they are not out of bounds
+	
 	FSlateDrawElement::MakeBox(
 		OutDrawElements,
 		LayerId,
 		DerivedGeometry.ToPaintGeometry(),
-		InstanceData.OwnerIconBrush.Get(),
+		&InstanceData.OwnerIconBrush,
 		ESlateDrawEffect::None,
 		FLinearColor::White);	
 }
@@ -292,15 +289,12 @@ void SRTSOMiniMap::PaintRadar(FSlateWindowElementList& OutDrawElements, const FG
 		true,
 		2.0
 		);
-	
-	// Draw Background Colour @todo replace with background material 
-	static_cast<TSharedPtr<FSlateBrush>>(InstanceData.ConstructedBackgroundBrush) = MakeRadarBGBrush(RadarSize);
-	
+
 	FSlateDrawElement::MakeBox(
 		OutDrawElements,
 		LayerId,
 		AllottedGeometry.ToPaintGeometry(),
-		InstanceData.ConstructedBackgroundBrush.Get(),
+		&InstanceData.ConstructedBackgroundBrush,
 		ESlateDrawEffect::None,
 		FLinearColor(0,0,0,0.3));
 }
@@ -336,20 +330,15 @@ FVector2D SRTSOMiniMap::WorldToScreen2D(FVector& WorldLocation) const
 	return FVector2D(WorldLocation);	
 }
 
-const TSharedPtr<FSlateBrush> SRTSOMiniMap::MakeRadarBGBrush(double UniformBoxSize) const
+void SRTSOMiniMap::SetBrushSettings(FSlateBrush& Target, UObject* InResourceObject, ESlateBrushImageType::Type ImageType, UE::Slate::FDeprecateVector2DParameter ImageSize, FLinearColor& TintColour)
 {
-	static const FName RadarBGName = TEXT("RadarBackground");
-	UE::Slate::FDeprecateVector2DParameter ImageSize{UniformBoxSize};
-
-	TSharedPtr<FSlateBrush> SlateBrush = MakeShared<FSlateBrush>();
-	SlateBrush->DrawAs = ESlateBrushDrawType::Box;
-	SlateBrush->Margin = FMargin();
-	SlateBrush->Tiling = ESlateBrushTileType::Both;
-	SlateBrush->ImageType = ESlateBrushImageType::Linear;
-	SlateBrush->SetImageSize(ImageSize);
-	SlateBrush->TintColor = FLinearColor(0, 0, 0, 0.3f);
-	
-	return SlateBrush;
+	Target.ImageType = ImageType;
+	Target.DrawAs = ESlateBrushDrawType::Box;
+	Target.Margin = FMargin();
+	Target.Tiling = ESlateBrushTileType::Both;
+	Target.SetImageSize(ImageSize);
+	Target.TintColor = TintColour;
+	Target.SetResourceObject(InResourceObject);
 }
 
 
