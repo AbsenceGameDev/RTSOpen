@@ -28,6 +28,7 @@ public:
 	void CopyData(URTSOpenSaveGame* InSaveGame);
 	void OnFailedCopyData();
 	void OnCompletedCopyData();
+	void OnCompletedCopyData_Debug();
 	void UpdateInnerEditor();
 	virtual TSharedRef<SWidget> RebuildWidget() override;
 	virtual void ReleaseSlateResources(bool bReleaseChildren) override;
@@ -60,10 +61,10 @@ class URTSOSaveEditorUserWidget : public UCommonActivatableWidget
 
 public:
 	UFUNCTION()
-	void BindButtonDelegates(AActor* ActorToBindAt);
+	void BindButtonDelegates();
 
 	UFUNCTION()
-	void LoadSlotData(int32 SlotIdx);
+	void LoadSlotData(int32 SlotIdx, bool bFirstLoad = false);
 	
 	UFUNCTION()
 	void LoadSlotData0();
@@ -117,6 +118,9 @@ public:
 	UOverlay* CategoryButtonOverlay = nullptr;
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Meta = (BindWidget))
 	UOverlay* DataViewOverlay = nullptr;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadWrite)
+	AActor* ActorToBindAt = nullptr;
 	
 
 	/** @defgroup SaveDataEditorTabButtons  */

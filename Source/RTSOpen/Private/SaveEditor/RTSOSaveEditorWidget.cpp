@@ -19,7 +19,7 @@
 
 void URTSOSaveEditorInnerWidget::CopyData(URTSOpenSaveGame* InSaveGame)
 {
-	AsyncTask(ENamedThreads::AnyThread,
+	AsyncTask(ENamedThreads::GameThread,
 		[this, InSaveGame]()
 		{
 			if (InSaveGame == nullptr)
@@ -32,7 +32,6 @@ void URTSOSaveEditorInnerWidget::CopyData(URTSOpenSaveGame* InSaveGame)
 			CopiedSaveData = SaveGamePtr->Data;
 			OnCompletedCopyData();
 		});
-	
 }
 
 void URTSOSaveEditorInnerWidget::OnFailedCopyData()
@@ -41,6 +40,9 @@ void URTSOSaveEditorInnerWidget::OnFailedCopyData()
 
 void URTSOSaveEditorInnerWidget::OnCompletedCopyData()
 {
+	UE_LOG(PDLog_SaveEditor, Warning, TEXT("URTSOSaveEditorInnerWidget::OnCompletedCopyData"))
+
+	// OnCompletedCopyData_Debug();
 	
 	// @todo  Rethink design here, want to avoid having to iterate the maps here,
 	// ^@todo some of them are large enough it will be a performance penalty if I keep it like this
@@ -75,6 +77,38 @@ void URTSOSaveEditorInnerWidget::OnCompletedCopyData()
 	{
 		FConversationStateStruct ConversationStateDatum{ConversationStateTuple.Key, ConversationStateTuple.Value};
 		ConversationStatesAsSharedArray.Emplace(MakeShared<FConversationStateStruct>(ConversationStateDatum).ToSharedPtr());
+	}
+
+	SelectEditor(EditorType); // ensure we update data
+}
+
+void URTSOSaveEditorInnerWidget::OnCompletedCopyData_Debug()
+{
+	// @todo  Rethink design here, want to avoid having to iterate the maps here,
+	// ^@todo some of them are large enough it will be a performance penalty if I keep it like this
+	for (const TTuple<int, UE::Math::TVector<double>>& PlayerLocationTuple : CopiedSaveData.PlayerLocations)
+	{
+		UE_LOG(PDLog_SaveEditor, Warning, TEXT("URTSOSaveEditorInnerWidget::OnCompletedCopyData -- Player Base Data Iter: ID(%i) "), PlayerLocationTuple.Key)
+	}
+
+	for (const FRTSSavedInteractable& Interactable : CopiedSaveData.Interactables)
+	{
+		UE_LOG(PDLog_SaveEditor, Warning, TEXT("URTSOSaveEditorInnerWidget::OnCompletedCopyData -- Interactable Data Iter: ID(%i) "), Interactable.InstanceIndex)
+	}
+
+	for (const FRTSSavedWorldUnits& EntityUnit : CopiedSaveData.EntityUnits)
+	{
+		UE_LOG(PDLog_SaveEditor, Warning, TEXT("URTSOSaveEditorInnerWidget::OnCompletedCopyData -- Entity Data Iter: ID(%i) "), EntityUnit.InstanceIndex.Index)
+	}
+
+	for (const TTuple<int32, FRTSSavedItems>& UserInventoryTuple : CopiedSaveData.Inventories)
+	{
+		UE_LOG(PDLog_SaveEditor, Warning, TEXT("URTSOSaveEditorInnerWidget::OnCompletedCopyData -- Inv. Data Iter: ID(%i) "), UserInventoryTuple.Key)
+	}
+
+	for (const TTuple<int32, FRTSSavedConversationActorData>& ConversationStateTuple : CopiedSaveData.ConversationActorState)
+	{
+		UE_LOG(PDLog_SaveEditor, Warning, TEXT("URTSOSaveEditorInnerWidget::OnCompletedCopyData -- Conv. Data Iter: ID(%i) "), ConversationStateTuple.Key)
 	}
 }
 
@@ -218,7 +252,11 @@ void URTSOSaveEditorInnerWidget::SelectEditor(EPDSaveDataThreadSelector NewEdito
 	EditorType = NewEditorType;
 
 	InnerSlateWrapbox->ClearChildren();
-	SharedExistingSaveEditor.Reset();
+
+	if (SharedExistingSaveEditor.IsValid())
+	{
+		SharedExistingSaveEditor.Reset();
+	}
 	
 	UpdateInnerEditor();
 }
@@ -393,7 +431,7 @@ void URTSOSaveEditorUserWidget::OnAnimationFinished_Implementation(const UWidget
 }
 
 
-void URTSOSaveEditorUserWidget::BindButtonDelegates(AActor* ActorToBindAt)
+void URTSOSaveEditorUserWidget::BindButtonDelegates()
 {
 	ARTSOController* AsController = Cast<ARTSOController>(ActorToBindAt);
 	if (AsController == nullptr) { return; }
@@ -416,14 +454,18 @@ void URTSOSaveEditorUserWidget::BindButtonDelegates(AActor* ActorToBindAt)
 	Btn_MissionProgressTagsData->Hitbox->OnPressed.AddUniqueDynamic(this, &URTSOSaveEditorUserWidget::Category_MissionProgressTagsData);	
 }
 
-void URTSOSaveEditorUserWidget::LoadSlotData(int32 SlotIdx)
+void URTSOSaveEditorUserWidget::LoadSlotData(int32 SlotIdx, bool bFirstLoad)
 {
 	// Loading the slot might take a while, so we play a widget animation to cover it while waiting 
 	PlayAnimation(CategoryLoadingAnimation);
-
 	AsyncTask(ENamedThreads::GameThread,
-		[&, Slot = SlotIdx]()
+		[&, Slot = SlotIdx, bFirstLoad]()
 		{
+			if (bFirstLoad)
+			{
+				BindButtonDelegates();
+			}
+			
 			LoadedGameSaveForModification = LOADSLOT(Slot);
 			Inner->CopyData(LoadedGameSaveForModification);
 			StopAnimation(CategoryLoadingAnimation);

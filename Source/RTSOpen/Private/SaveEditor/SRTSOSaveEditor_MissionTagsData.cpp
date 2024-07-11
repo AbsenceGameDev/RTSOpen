@@ -75,6 +75,7 @@ void SRTSOSaveEditor_MissionTagsData::UpdateChildSlot(void* OpaqueData)
 					.ListItemsSource(UserMissionTagsAsSharedArray)
 					.OnGenerateRow( this, &SRTSOSaveEditor_MissionTagsData::MakeListViewWidget_UserMissionTags )
 					.OnSelectionChanged( this, &SRTSOSaveEditor_MissionTagsData::OnComponentSelected_UserMissionTags )
+					.ScrollbarVisibility(EVisibility::Visible)
 			]
 		]	
 	];	
@@ -234,6 +235,7 @@ TSharedRef<ITableRow> SRTSOSaveEditor_MissionTagsData::MakeListViewWidget_UserMi
 						.OnGenerateRow(OnGenerateMissionTagRowWidget)
 						.OnSelectionChanged(OnSelectMissionTagComponent)
 						.OnMouseButtonDoubleClick(OnBtnDblClick)
+						.ScrollbarVisibility(EVisibility::Visible)
 				]
 			]
 			+ INSET_VERTICAL_SLOT(40)

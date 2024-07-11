@@ -77,6 +77,7 @@ void SRTSOSaveEditor_InteractableData::UpdateChildSlot(void* OpaqueData)
 					.ListItemsSource(InteractableAsSharedArray)
 					.OnGenerateRow( this, &SRTSOSaveEditor_InteractableData::MakeListViewWidget_InteractableData )
 					.OnSelectionChanged( this, &SRTSOSaveEditor_InteractableData::OnComponentSelected_InteractableData )
+					.ScrollbarVisibility(EVisibility::Visible)
 			]
 		]
 	];	

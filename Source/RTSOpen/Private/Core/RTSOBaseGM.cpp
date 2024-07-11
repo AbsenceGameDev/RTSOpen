@@ -56,6 +56,7 @@ void ARTSOBaseGM::TickActor(float DeltaTime, ELevelTick TickType, FActorTickFunc
 	{
 		SaveConversationActorStates();
 		SaveInteractables();
+		SaveAllPlayerStates();
 		SaveEntities();
 		SaveAllItems();
 		AutoSave.ElapsedTimeSinceSave = 0.0;
@@ -265,7 +266,10 @@ void ARTSOBaseGM::SaveEntities_Implementation()
 		[&](const FPDEntityOctreeCell& Cell)
 		{
 			// 2. Store entities per active player
-			if (EntityManager->IsEntityValid(Cell.EntityHandle)) { return; }
+			if (EntityManager->IsEntityValid(Cell.EntityHandle) == false)
+			{
+				return;
+			}
 
 			FRTSSavedWorldUnits UnitDatum{};
 			const FPDMFragment_RTSEntityBase& EntityBaseFragment = EntityManager->GetFragmentDataChecked<FPDMFragment_RTSEntityBase>(Cell.EntityHandle);
@@ -294,7 +298,6 @@ void LoadArray(const TArray<TInnerType>& OldData, const TArray<TInnerType>& NewD
 	TArray<TInnerType>& DeleteContainer, // : Anything which is in OldData that isn't in NewData (Intersection of OldData and the Complement of NewData)
 	TArray<TInnerType>& AddContainer,    // : Anything which is in NewData that isn't in OldData (Intersection of NewData and the Complement of OldData)
 	TArray<TInnerType>& ModifyContainer) // : Anything updated from the intersection of OldData and NewData (Modified elements in the intersection of NewData and OldData)
-
 {
 	// Slow compare, needed if compare type is an array, 
 	for (const TInnerType& OldDatum : OldData)

@@ -508,8 +508,15 @@ void ARTSOController::OpenSaveEditor()
 	if (SaveEditorWidget == nullptr) { return; }
 
 	SaveEditorWidget->AddToViewport();
-	SaveEditorWidget->BindButtonDelegates(this);
 	SaveEditorWidget->ActivateWidget();
+	SaveEditorWidget->PlayAnimation(SaveEditorWidget->CategoryLoadingAnimation); // stops after successful data has been loaded
+	
+	// todo replace with a property for the latest loaded slot, so we can load back into the proper slot last slot we edited if we want to, and a developer-settingx which defaults to this but has an option to force load the first entry 
+	SaveEditorWidget->ActorToBindAt = this;
+	SaveEditorWidget->LoadSlotData(0, true);
+
+	// Moved to LoadSlotData
+	// SaveEditorWidget->BindButtonDelegates(this);
 }
 
 void ARTSOController::CloseSaveEditor()

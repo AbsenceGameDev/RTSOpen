@@ -49,6 +49,10 @@ public:
 	// Tag Picker
 	TSharedPtr<SRTSOTagPicker> TagPicker;
 
+
+	TMap<int32, TArray<TSharedPtr<FPDItemNetDatum>>> MapInventoriesAsSharedTupleArray;
+	
+
 	// Localized text
 	static FText InventoryWidget_TitleText;
 	static FText InventoryInner_TitleText;
@@ -64,6 +68,7 @@ public:
 	static FText ItemElement_StackData_TitleText;
 	static FText ItemElement_StackData_LastEditedStackText;
 	static FText ItemElement_StackData_StackListText;
+	
 };
 
 /**

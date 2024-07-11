@@ -102,6 +102,7 @@ void SRTSOSaveEditor_EntityData::UpdateChildSlot(void* OpaqueData)
 					.ListItemsSource(EntitiesAsSharedArray)
 					.OnGenerateRow( this, &SRTSOSaveEditor_EntityData::MakeListViewWidget_EntityData )
 					.OnSelectionChanged( this, &SRTSOSaveEditor_EntityData::OnComponentSelected_EntityData )
+					.ScrollbarVisibility(EVisibility::Visible)
 			]			
 		]
 	];	

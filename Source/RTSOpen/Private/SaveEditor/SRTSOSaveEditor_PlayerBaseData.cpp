@@ -73,6 +73,7 @@ void SRTSOSaveEditor_PlayerBaseData::UpdateChildSlot(void* OpaqueData)
 					.ListItemsSource(LocationsAsSharedTupleArray)
 					.OnGenerateRow( this, &SRTSOSaveEditor_PlayerBaseData::MakeListViewWidget_PlayerData )
 					.OnSelectionChanged( this, &SRTSOSaveEditor_PlayerBaseData::OnComponentSelected_PlayerData )
+					.ScrollbarVisibility(EVisibility::Visible)
 			]
 		]
 	];	

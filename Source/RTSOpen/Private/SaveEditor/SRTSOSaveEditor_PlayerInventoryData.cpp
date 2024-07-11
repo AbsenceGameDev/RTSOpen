@@ -86,6 +86,7 @@ void SRTSOSaveEditor_PlayerInventoryData::UpdateChildSlot(void* OpaqueData)
 					.ListItemsSource(AllUserInventoriesAsSharedTupleArray)
 					.OnGenerateRow( this, &SRTSOSaveEditor_PlayerInventoryData::MakeListViewWidget_InventoryOverviewData )
 					.OnSelectionChanged( this, &SRTSOSaveEditor_PlayerInventoryData::OnComponentSelected_InventoryOverviewData )
+					.ScrollbarVisibility(EVisibility::Visible)
 			]
 		]
 	];	
@@ -119,11 +120,19 @@ TSharedRef<ITableRow> SRTSOSaveEditor_PlayerInventoryData::MakeListViewWidget_In
 				
 			});
 
-	TArray<TSharedPtr<FPDItemNetDatum>> CurrentInventoriesAsSharedTupleArray;
+
+	InItem.Get()->Key;
+
+	TMap<int32, TArray<TSharedPtr<FPDItemNetDatum>>>& MutableMapInventoriesAsSharedTupleArray = const_cast<TMap<int32, TArray<TSharedPtr<FPDItemNetDatum>>>&>(MapInventoriesAsSharedTupleArray);
+	MutableMapInventoriesAsSharedTupleArray.Emplace(InItem.Get()->Key);
+
+	TArray<TSharedPtr<FPDItemNetDatum>>& CurrentInventoriesAsSharedTupleArray = *MutableMapInventoriesAsSharedTupleArray.Find(InItem.Get()->Key);
+	CurrentInventoriesAsSharedTupleArray.Empty();
+	
 	for (const FPDItemNetDatum& InventoryItem : UserItems)
 	{
 		CurrentInventoriesAsSharedTupleArray.Emplace(MakeShared<FPDItemNetDatum>(InventoryItem).ToSharedPtr());
-	}	
+	}
 	
 	// @todo need to ensure this works as intended, if not then it means the result is cached and not updated each frame and in that case another strategy has to be employed
 	const auto ResolveUserID = [CopiedUserID = UserID]() -> int32
@@ -189,6 +198,7 @@ TSharedRef<ITableRow> SRTSOSaveEditor_PlayerInventoryData::MakeListViewWidget_In
 						.ListItemsSource( &CurrentInventoriesAsSharedTupleArray)
 						.OnGenerateRow( this, &SRTSOSaveEditor_PlayerInventoryData::MakeListViewWidget_ItemData )
 						.OnSelectionChanged( this, &SRTSOSaveEditor_PlayerInventoryData::OnComponentSelected_ItemData )
+						.ScrollbarVisibility(EVisibility::Visible)
 				]
 				+ HORIZONTAL_SEPARATOR(5.0f)
 			]
@@ -398,6 +408,7 @@ TSharedRef<ITableRow> SRTSOSaveEditor_PlayerInventoryData::MakeListViewWidget_It
 						.ListItemsSource(&CurrentStacksAsSharedTupleArray)
 						.OnGenerateRow(OnGenerateStacksElement)
 						.OnSelectionChanged(OnSelectedStackElement)
+						.ScrollbarVisibility(EVisibility::Visible)
 				]			
 			]					
 		]
