@@ -52,7 +52,7 @@ public:
 
 	TMap<int32, TArray<TSharedPtr<FPDItemNetDatum>>> MapInventoriesAsSharedTupleArray;
 	
-
+	
 	// Localized text
 	static FText InventoryWidget_TitleText;
 	static FText InventoryInner_TitleText;

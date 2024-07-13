@@ -73,7 +73,7 @@ void SRTSOSaveEditor_PlayerInventoryData::UpdateChildSlot(void* OpaqueData)
 		+ INSET_HORIZONTAL_SLOT(0)
 		[
 			SNew(SVerticalBox)
-			+ INSET_VERTICAL_SLOT(0)
+			+ INSET_AUTO_VERTICAL_SLOT(0)
 			[
 				SNew(STextBlock)
 					.Font(TitleFont)
@@ -82,12 +82,20 @@ void SRTSOSaveEditor_PlayerInventoryData::UpdateChildSlot(void* OpaqueData)
 			
 			+ INSET_VERTICAL_SLOT(0)
 			[
-				SNew(SListView<TSharedPtr<FUserInventoriesStruct>>)
-					.ListItemsSource(AllUserInventoriesAsSharedTupleArray)
-					.OnGenerateRow( this, &SRTSOSaveEditor_PlayerInventoryData::MakeListViewWidget_InventoryOverviewData )
-					.OnSelectionChanged( this, &SRTSOSaveEditor_PlayerInventoryData::OnComponentSelected_InventoryOverviewData )
-					.ScrollbarVisibility(EVisibility::Visible)
+				SNew(SScrollBox)
+				.ScrollBarAlwaysVisible(true)
+				.ScrollBarVisibility(EVisibility::Visible)
+				.ScrollBarThickness(UE::Slate::FDeprecateVector2DParameter(10))
+				.Orientation(EOrientation::Orient_Vertical)
+				+SScrollBox::Slot()
+				[
+					SNew(SListView<TSharedPtr<FUserInventoriesStruct>>)
+						.ListItemsSource(AllUserInventoriesAsSharedTupleArray)
+						.OnGenerateRow( this, &SRTSOSaveEditor_PlayerInventoryData::MakeListViewWidget_InventoryOverviewData )
+						.OnSelectionChanged( this, &SRTSOSaveEditor_PlayerInventoryData::OnComponentSelected_InventoryOverviewData )
+				]
 			]
+			+ INSET_VERTICAL_SLOT(FMath::Clamp(AllUserInventoriesAsSharedTupleArray->Num() * 4.f, 0.f, 30.f))
 		]
 	];	
 }
@@ -140,23 +148,24 @@ TSharedRef<ITableRow> SRTSOSaveEditor_PlayerInventoryData::MakeListViewWidget_In
 		return CopiedUserID;
 	};
 	
+	
 	MutableThis->InventoryTable = SNew( STableRow< TSharedPtr<FUserInventoriesStruct> >, OwnerTable )
 		[
 			SNew(SVerticalBox)
-			+ INSET_VERTICAL_SLOT(0)
+			+ INSET_VERTICAL_SLOT(4)
 			[
 				SNew(STextBlock)
 					.Text(InventoryInner_TitleText)
 			]
-			+ VERTICAL_SEPARATOR(5.0f)
+			+ VERTICAL_SEPARATOR(1)
 
 
-			+ INSET_VERTICAL_SLOT(20)
+			+ INSET_VERTICAL_SLOT(4)
 			[
 				SNew(STextBlock)
 					.Text(InventoryInner_BaseData_TitleText)
 			]	
-			+ INSET_VERTICAL_SLOT(40)
+			+ INSET_VERTICAL_SLOT(2)
 			[
 				SNew(SHorizontalBox)
 				+ INSET_HORIZONTAL_SLOT(0)
@@ -175,15 +184,15 @@ TSharedRef<ITableRow> SRTSOSaveEditor_PlayerInventoryData::MakeListViewWidget_In
 					]
 				]
 			]
-			+ VERTICAL_SEPARATOR(5.0f)
+			+ VERTICAL_SEPARATOR(1)
 			
 			
-			+ INSET_VERTICAL_SLOT(20)
+			+ INSET_VERTICAL_SLOT(4)
 			[
 				SNew(STextBlock)
 					.Text(InventoryInner_StateData_TitleText)
 			]				
-			+ INSET_VERTICAL_SLOT(40)
+			+ INSET_VERTICAL_SLOT(2)
 			[
 				SNew(SHorizontalBox)
 				+ INSET_HORIZONTAL_SLOT(0)
@@ -198,12 +207,12 @@ TSharedRef<ITableRow> SRTSOSaveEditor_PlayerInventoryData::MakeListViewWidget_In
 						.ListItemsSource( &CurrentInventoriesAsSharedTupleArray)
 						.OnGenerateRow( this, &SRTSOSaveEditor_PlayerInventoryData::MakeListViewWidget_ItemData )
 						.OnSelectionChanged( this, &SRTSOSaveEditor_PlayerInventoryData::OnComponentSelected_ItemData )
+						.ExternalScrollbar(ExternalScrollbar)
 						.ScrollbarVisibility(EVisibility::Visible)
 				]
-				+ HORIZONTAL_SEPARATOR(5.0f)
+				+ HORIZONTAL_SEPARATOR(1)
 			]
-			+ VERTICAL_SEPARATOR(5.0f) 
-			
+			+ INSET_VERTICAL_SLOT(4)
 		];
 
 	return MutableThis->InventoryTable.ToSharedRef();	
@@ -332,7 +341,7 @@ TSharedRef<ITableRow> SRTSOSaveEditor_PlayerInventoryData::MakeListViewWidget_It
 			SNew(STextBlock)
 				.Text(ItemElement_TitleText)
 		]
-		+ VERTICAL_SEPARATOR(5.0f)
+		+ VERTICAL_SEPARATOR(1)
 		
 		+ INSET_VERTICAL_SLOT(20)
 		[
@@ -370,7 +379,7 @@ TSharedRef<ITableRow> SRTSOSaveEditor_PlayerInventoryData::MakeListViewWidget_It
 				
 			]
 		]
-		+ VERTICAL_SEPARATOR(5.0f)
+		+ VERTICAL_SEPARATOR(1)
 		
 		
 		+ INSET_VERTICAL_SLOT(20)
@@ -408,6 +417,7 @@ TSharedRef<ITableRow> SRTSOSaveEditor_PlayerInventoryData::MakeListViewWidget_It
 						.ListItemsSource(&CurrentStacksAsSharedTupleArray)
 						.OnGenerateRow(OnGenerateStacksElement)
 						.OnSelectionChanged(OnSelectedStackElement)
+						.ExternalScrollbar(ExternalScrollbar)
 						.ScrollbarVisibility(EVisibility::Visible)
 				]			
 			]					

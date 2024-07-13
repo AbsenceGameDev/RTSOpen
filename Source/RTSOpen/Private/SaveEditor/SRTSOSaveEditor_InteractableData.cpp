@@ -64,7 +64,7 @@ void SRTSOSaveEditor_InteractableData::UpdateChildSlot(void* OpaqueData)
 		+ INSET_HORIZONTAL_SLOT(0)
 		[
 			SNew(SVerticalBox)
-			+ INSET_VERTICAL_SLOT(0)
+			+ INSET_AUTO_VERTICAL_SLOT(0)
 			[
 				SNew(STextBlock)
 					.Font(TitleFont)
@@ -73,12 +73,21 @@ void SRTSOSaveEditor_InteractableData::UpdateChildSlot(void* OpaqueData)
 			
 			+ INSET_VERTICAL_SLOT(0)
 			[
-				SNew(SListView<TSharedPtr<FRTSSavedInteractable>>)
-					.ListItemsSource(InteractableAsSharedArray)
-					.OnGenerateRow( this, &SRTSOSaveEditor_InteractableData::MakeListViewWidget_InteractableData )
-					.OnSelectionChanged( this, &SRTSOSaveEditor_InteractableData::OnComponentSelected_InteractableData )
-					.ScrollbarVisibility(EVisibility::Visible)
+				SNew(SScrollBox)
+				.ScrollBarAlwaysVisible(true)
+				.ScrollBarVisibility(EVisibility::Visible)
+				.ScrollBarThickness(UE::Slate::FDeprecateVector2DParameter(10))
+				.Orientation(EOrientation::Orient_Vertical)
+				+SScrollBox::Slot()
+				[
+					SNew(SListView<TSharedPtr<FRTSSavedInteractable>>)
+						.ListItemsSource(InteractableAsSharedArray)
+						.OnGenerateRow( this, &SRTSOSaveEditor_InteractableData::MakeListViewWidget_InteractableData )
+						.OnSelectionChanged( this, &SRTSOSaveEditor_InteractableData::OnComponentSelected_InteractableData )
+				]
 			]
+			+ INSET_VERTICAL_SLOT(FMath::Clamp(InteractableAsSharedArray->Num() * 30.f, 0.f, 300.f))
+			+ INSET_VERTICAL_SLOT(FMath::Clamp(InteractableAsSharedArray->Num() * 30.f, 0.f, 300.f))
 		]
 	];	
 }
@@ -198,7 +207,7 @@ TSharedRef<ITableRow> SRTSOSaveEditor_InteractableData::MakeListViewWidget_Inter
 	MutableThis->InteractableTable = SNew( STableRow< TSharedPtr<FRTSSavedInteractable>>, OwnerTable )
 		[
 			SNew(SVerticalBox)
-			+ INSET_VERTICAL_SLOT(0)
+			+ INSET_VERTICAL_SLOT(2)
 			[
 				SNew(SHorizontalBox)
 				+ INSET_HORIZONTAL_SLOT(0)
@@ -216,7 +225,9 @@ TSharedRef<ITableRow> SRTSOSaveEditor_InteractableData::MakeListViewWidget_Inter
 					]
 				]
 			]
-			+ INSET_VERTICAL_SLOT(0)
+			+ VERTICAL_SEPARATOR(1)
+			
+			+ INSET_VERTICAL_SLOT(2)
 			[
 				SNew(SHorizontalBox)
 				+ INSET_HORIZONTAL_SLOT(0)
@@ -230,15 +241,12 @@ TSharedRef<ITableRow> SRTSOSaveEditor_InteractableData::MakeListViewWidget_Inter
 					+ INSET_HORIZONTAL_SLOT(0)
 					[
 						SNew(SButton)
-							.OnClicked(OnActorClassClicked)
-					]
-					+ INSET_HORIZONTAL_SLOT(0)
-					[
-						SNew(SButton)
 							.Text(FText::FromString(SavedInteractableDatum.ActorClass.ToString()))
 							.OnClicked(OnActorClassClicked)
+							.VAlign(VAlign_Fill)
 					]			
 				]
+				
 				+ INSET_HORIZONTAL_SLOT(0)
 				[
 					SNew(SHorizontalBox)
@@ -255,9 +263,10 @@ TSharedRef<ITableRow> SRTSOSaveEditor_InteractableData::MakeListViewWidget_Inter
 					]			
 				]
 			]
-			+ INSET_VERTICAL_SLOT(0)
+			+ VERTICAL_SEPARATOR(1)
+			
+			+ INSET_VERTICAL_SLOT(2)
 			[
-
 				SNew(SHorizontalBox)
 				+ INSET_HORIZONTAL_SLOT(0)
 				[
@@ -271,11 +280,12 @@ TSharedRef<ITableRow> SRTSOSaveEditor_InteractableData::MakeListViewWidget_Inter
 					[
 						SNew(SNumericEntryBox<double>)
 							.Value_Lambda(ResolveUsability)
-							.OnValueCommitted(OnUsabilityChanged)	 
-					]			
-				]				
-				
+							.OnValueCommitted(OnUsabilityChanged)
+					]
+				]
 			]
+			+ INSET_VERTICAL_SLOT(2)
+			
 		];
 
 

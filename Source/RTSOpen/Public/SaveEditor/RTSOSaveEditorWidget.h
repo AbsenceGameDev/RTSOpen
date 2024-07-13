@@ -106,6 +106,9 @@ public:
 	UWidgetAnimation* CategoryLoadingAnimation = nullptr;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Meta = (BindWidget))
+	UTextBlock* DataViewTitle = nullptr;
+	
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Meta = (BindWidget))
 	UWidgetSwitcher* LoadViewWidgetSwitch = nullptr;
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Meta = (BindWidget))
 	UWidgetSwitcher* TabsLoadViewWidgetSwitch = nullptr;
@@ -149,6 +152,7 @@ public:
 	UPROPERTY(VisibleInstanceOnly)
 	URTSOpenSaveGame* LoadedGameSaveForModification = nullptr;
 	
+	static FText LoadedSlot_TitleText;
 };
 
 /*

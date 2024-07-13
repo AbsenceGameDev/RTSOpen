@@ -58,16 +58,16 @@ void SRTSOSaveEditor_WorldBaseData::UpdateChildSlot(void* OpaqueData)
 		+ INSET_HORIZONTAL_SLOT(0)
 		[
 			SNew(SVerticalBox)
-			+ INSET_VERTICAL_SLOT(0)
+			+ INSET_AUTO_VERTICAL_SLOT(0)
 			[
 				SNew(STextBlock)
 					.Font(TitleFont)
 					.Text(WorldBaseData_TitleText)
 			]
-			+ INSET_VERTICAL_SLOT(0)
+			+ INSET_VERTICAL_SLOT(4)
 			[
 				SNew(SHorizontalBox)
-				+ INSET_HORIZONTAL_SLOT(0)
+				+ INSET_AUTO_HORIZONTAL_SLOT(0)
 				[
 					SNew(STextBlock)
 						.Text(GameSeed_TitleText)
@@ -75,27 +75,27 @@ void SRTSOSaveEditor_WorldBaseData::UpdateChildSlot(void* OpaqueData)
 				+ INSET_HORIZONTAL_SLOT(0)
 				[
 					SNew(SHorizontalBox)
-					+ INSET_HORIZONTAL_SLOT(0)
+					+ INSET_AUTO_HORIZONTAL_SLOT(0)
 					[
 						SNew(SNumericEntryBox<int32>)
 							.Value(this, &SRTSOSaveEditor_WorldBaseData::GeCurrentSeedValue)
 							.OnValueCommitted(CallbackOnCommitValue)
 					]
-					+ INSET_HORIZONTAL_SLOT(0)
+					+ INSET_AUTO_HORIZONTAL_SLOT(0)
 					[
 						SNew(SButton)
 							.Text(GenerateSeed_ButtonText)
 							.OnClicked(this, &SRTSOSaveEditor_WorldBaseData::OnSeedValueGenerated)
 					]
 				]
-				+ HORIZONTAL_SEPARATOR(10.f)
+				+ HORIZONTAL_SEPARATOR(10)
 			
-				+ INSET_HORIZONTAL_SLOT(0)
+				+ INSET_AUTO_HORIZONTAL_SLOT(0)
 				[
 					SNew(STextBlock)
 						.Text(GameTime_TitleText)
 				]
-				+ INSET_HORIZONTAL_SLOT(0)
+				+ INSET_AUTO_HORIZONTAL_SLOT(0)
 				[
 					SNew(SNumericEntryBox<double>)
 						.Value(this, &SRTSOSaveEditor_WorldBaseData::GeCurrentTimeValue)

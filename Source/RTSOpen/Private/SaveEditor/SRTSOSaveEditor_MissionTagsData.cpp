@@ -62,21 +62,29 @@ void SRTSOSaveEditor_MissionTagsData::UpdateChildSlot(void* OpaqueData)
 		+ INSET_HORIZONTAL_SLOT(0)
 		[
 			SNew(SVerticalBox)
-			+ INSET_VERTICAL_SLOT(0)
+			+ INSET_AUTO_VERTICAL_SLOT(0)
 			[
 				SNew(STextBlock)
 					.Font(TitleFont)
 					.Text(MissionProgressTags_TitleText)
 			]
 			
-			+ INSET_VERTICAL_SLOT(0)
+			+ INSET_VERTICAL_SLOT(2)
 			[
-				SNew(SListView<TSharedPtr<FUserMissionTagsStruct>>)
-					.ListItemsSource(UserMissionTagsAsSharedArray)
-					.OnGenerateRow( this, &SRTSOSaveEditor_MissionTagsData::MakeListViewWidget_UserMissionTags )
-					.OnSelectionChanged( this, &SRTSOSaveEditor_MissionTagsData::OnComponentSelected_UserMissionTags )
-					.ScrollbarVisibility(EVisibility::Visible)
+				SNew(SScrollBox)
+				.ScrollBarAlwaysVisible(true)
+				.ScrollBarVisibility(EVisibility::Visible)
+				.ScrollBarThickness(UE::Slate::FDeprecateVector2DParameter(10))
+				.Orientation(EOrientation::Orient_Vertical)
+				+SScrollBox::Slot()
+				[
+					SNew(SListView<TSharedPtr<FUserMissionTagsStruct>>)
+						.ListItemsSource(UserMissionTagsAsSharedArray)
+						.OnGenerateRow( this, &SRTSOSaveEditor_MissionTagsData::MakeListViewWidget_UserMissionTags )
+						.OnSelectionChanged( this, &SRTSOSaveEditor_MissionTagsData::OnComponentSelected_UserMissionTags )
+				]
 			]
+			+ INSET_VERTICAL_SLOT(FMath::Clamp(UserMissionTagsAsSharedArray->Num() * 4.f, 0.f, 30.f))
 		]	
 	];	
 }
@@ -180,20 +188,20 @@ TSharedRef<ITableRow> SRTSOSaveEditor_MissionTagsData::MakeListViewWidget_UserMi
 	MutableThis->MissionTagsTable = SNew( STableRow< TSharedPtr<FUserMissionTagsStruct> >, OwnerTable )
 		[
 			SNew(SVerticalBox)
-			+ INSET_VERTICAL_SLOT(0)
+			+ INSET_VERTICAL_SLOT(4)
 			[
 				SNew(STextBlock)
 					.Text(MissionProgress_TitleText)
 			]
-			+ VERTICAL_SEPARATOR(5.0f)
+			+ VERTICAL_SEPARATOR(1)
 
 
-			+ INSET_VERTICAL_SLOT(20)
+			+ INSET_VERTICAL_SLOT(4)
 			[
 				SNew(STextBlock)
 					.Text(MissionProgress_BaseData_TitleText)
 			]	
-			+ INSET_VERTICAL_SLOT(40)
+			+ INSET_VERTICAL_SLOT(2)
 			[
 				SNew(SHorizontalBox)
 				+ INSET_HORIZONTAL_SLOT(0)
@@ -212,15 +220,15 @@ TSharedRef<ITableRow> SRTSOSaveEditor_MissionTagsData::MakeListViewWidget_UserMi
 					]
 				]
 			]
-			+ VERTICAL_SEPARATOR(5.0f)
+			+ VERTICAL_SEPARATOR(1)
 			
 			
-			+ INSET_VERTICAL_SLOT(20)
+			+ INSET_VERTICAL_SLOT(4)
 			[
 				SNew(STextBlock)
 					.Text(MissionProgress_ProgressData_Title)
 			]				
-			+ INSET_VERTICAL_SLOT(40)
+			+ INSET_VERTICAL_SLOT(2)
 			[
 				SNew(SHorizontalBox)
 				+ INSET_HORIZONTAL_SLOT(0)
@@ -235,10 +243,11 @@ TSharedRef<ITableRow> SRTSOSaveEditor_MissionTagsData::MakeListViewWidget_UserMi
 						.OnGenerateRow(OnGenerateMissionTagRowWidget)
 						.OnSelectionChanged(OnSelectMissionTagComponent)
 						.OnMouseButtonDoubleClick(OnBtnDblClick)
+						.ExternalScrollbar(ExternalScrollbar)
 						.ScrollbarVisibility(EVisibility::Visible)
 				]
 			]
-			+ INSET_VERTICAL_SLOT(40)
+			+ INSET_VERTICAL_SLOT(2)
 			[
 				SNew(SHorizontalBox)
 				+ INSET_HORIZONTAL_SLOT(0)
@@ -246,6 +255,7 @@ TSharedRef<ITableRow> SRTSOSaveEditor_MissionTagsData::MakeListViewWidget_UserMi
 					TagPicker.ToSharedRef()
 				]
 			]
+			+ INSET_VERTICAL_SLOT(4)
 			
 		];
 

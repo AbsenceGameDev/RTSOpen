@@ -4,6 +4,7 @@
 
 #include "Actors/RTSOController.h"
 #include "Animation/WidgetAnimation.h"
+#include "Components/TextBlock.h"
 #include "Kismet/GameplayStatics.h"
 #include "SaveEditor/SRTSOSaveEditor.h"
 #include "SaveEditor/SRTSOSaveEditor_ConversationsData.h"
@@ -15,6 +16,10 @@
 #include "SaveEditor/SRTSOSaveEditor_WorldBaseData.h"
 
 #define LOADSLOT(SlotIdx) Cast<URTSOpenSaveGame>(UGameplayStatics::LoadGameFromSlot(FString::FromInt(SlotIdx), SlotIdx))
+
+#define LOCTEXT_NAMESPACE "SRTSOSaveEditor"
+
+FText URTSOSaveEditorUserWidget::LoadedSlot_TitleText = LOCTEXT("TitleText_PlayerInventories", "LOADED SLOT");
 
 
 void URTSOSaveEditorInnerWidget::CopyData(URTSOpenSaveGame* InSaveGame)
@@ -115,7 +120,7 @@ void URTSOSaveEditorInnerWidget::OnCompletedCopyData_Debug()
 void URTSOSaveEditorInnerWidget::UpdateInnerEditor()
 {
 	//
-	// Check if we already have a child with our slate save editor class 
+	// Check if we already have a child with our slate save editor class
 	FChildren* WrappedChildren = InnerSlateWrapbox->GetChildren();
 	const int32 Limit = WrappedChildren->Num();
 	for (int32 Step = 0; Step < Limit; )
@@ -216,9 +221,11 @@ void URTSOSaveEditorInnerWidget::UpdateInnerEditor()
 			break;
 		}
 		
-		
 		TPanelChildren<SWrapBox::FSlot>::FScopedWidgetSlotArguments ScopedArgs = InnerSlateWrapbox->AddSlot();
 		ScopedArgs.AttachWidget(SharedExistingSaveEditor.ToSharedRef());
+		// ScopedArgs.HAlign(HAlign_Fill);
+		// ScopedArgs.VAlign(VAlign_Top);
+		// ScopedArgs.FillEmptySpace(true);
 	}
 }
 
@@ -235,7 +242,6 @@ TSharedRef<SWidget> URTSOSaveEditorInnerWidget::RebuildWidget()
 		SharedExistingSaveEditor->UpdateChildSlot(nullptr); 
 	}
 	
-
 	return InnerSlateWrapbox.ToSharedRef();
 }
 
@@ -252,7 +258,6 @@ void URTSOSaveEditorInnerWidget::SelectEditor(EPDSaveDataThreadSelector NewEdito
 	EditorType = NewEditorType;
 
 	InnerSlateWrapbox->ClearChildren();
-
 	if (SharedExistingSaveEditor.IsValid())
 	{
 		SharedExistingSaveEditor.Reset();
@@ -371,7 +376,6 @@ void URTSOSaveEditorUserWidget::SelectCategory(EPDSaveDataThreadSelector Categor
 void URTSOSaveEditorUserWidget::SelectCategoryAndInvalidateCache(EPDSaveDataThreadSelector CategoryButton) 
 {
 	SelectCategory(CategoryButton);
-
 	InvalidateLayoutAndVolatility();
 }
 
@@ -458,6 +462,9 @@ void URTSOSaveEditorUserWidget::LoadSlotData(int32 SlotIdx, bool bFirstLoad)
 {
 	// Loading the slot might take a while, so we play a widget animation to cover it while waiting 
 	PlayAnimation(CategoryLoadingAnimation);
+
+	const FText SlotIdxText = FText::FromString(LoadedSlot_TitleText.ToString() + ": #" + FString::FromInt(SlotIdx));
+	DataViewTitle->SetText(SlotIdxText);
 	AsyncTask(ENamedThreads::GameThread,
 		[&, Slot = SlotIdx, bFirstLoad]()
 		{
@@ -478,6 +485,8 @@ void URTSOSaveEditorUserWidget::LoadSlotData2() { LoadSlotData(2); }
 void URTSOSaveEditorUserWidget::LoadSlotData3() { LoadSlotData(3); }
 void URTSOSaveEditorUserWidget::LoadSlotData4() { LoadSlotData(4); }
 
+
+#undef LOCTEXT_NAMESPACE
 
 /*
 Business Source License 1.1

@@ -58,9 +58,8 @@ void SRTSOSaveEditor_PlayerBaseData::UpdateChildSlot(void* OpaqueData)
 		SNew(SHorizontalBox)
 		+ INSET_HORIZONTAL_SLOT(0)
 		[
-
 			SNew(SVerticalBox)
-			+ INSET_VERTICAL_SLOT(0)
+			+ INSET_AUTO_VERTICAL_SLOT(0)
 			[
 				SNew(STextBlock)
 					.Font(TitleFont)
@@ -69,12 +68,20 @@ void SRTSOSaveEditor_PlayerBaseData::UpdateChildSlot(void* OpaqueData)
 			
 			+ INSET_VERTICAL_SLOT(0)
 			[
-				SNew(SListView<TSharedPtr<FPlayerLocationStruct>>)
-					.ListItemsSource(LocationsAsSharedTupleArray)
-					.OnGenerateRow( this, &SRTSOSaveEditor_PlayerBaseData::MakeListViewWidget_PlayerData )
-					.OnSelectionChanged( this, &SRTSOSaveEditor_PlayerBaseData::OnComponentSelected_PlayerData )
-					.ScrollbarVisibility(EVisibility::Visible)
+				SNew(SScrollBox)
+				.ScrollBarAlwaysVisible(true)
+				.ScrollBarVisibility(EVisibility::Visible)
+				.ScrollBarThickness(UE::Slate::FDeprecateVector2DParameter(10))
+				.Orientation(EOrientation::Orient_Vertical)
+				+SScrollBox::Slot()
+				[
+					SNew(SListView<TSharedPtr<FPlayerLocationStruct>>)
+						.ListItemsSource(LocationsAsSharedTupleArray)
+						.OnGenerateRow( this, &SRTSOSaveEditor_PlayerBaseData::MakeListViewWidget_PlayerData )
+						.OnSelectionChanged( this, &SRTSOSaveEditor_PlayerBaseData::OnComponentSelected_PlayerData )
+				]				
 			]
+			+ INSET_VERTICAL_SLOT(FMath::Clamp(LocationsAsSharedTupleArray->Num() * 1.f, 0.f, 30.f))
 		]
 	];	
 }
@@ -107,37 +114,42 @@ TSharedRef<ITableRow> SRTSOSaveEditor_PlayerBaseData::MakeListViewWidget_PlayerD
 
 	return SNew( STableRow< TSharedPtr<FPlayerLocationStruct> >, OwnerTable )
 		[
-			SNew(SHorizontalBox)
-			+ INSET_HORIZONTAL_SLOT(0)
+			SNew(SVerticalBox)
+			+ INSET_VERTICAL_SLOT(0)
 			[
 				SNew(SHorizontalBox)
 				+ INSET_HORIZONTAL_SLOT(0)
 				[
-					SNew(STextBlock)
-						.Text(PlayerBase_UserID)
+					SNew(SHorizontalBox)
+					+ INSET_HORIZONTAL_SLOT(0)
+					[
+						SNew(STextBlock)
+							.Text(PlayerBase_UserID)
+					]
+					+ INSET_HORIZONTAL_SLOT(0)
+					[
+						SNew(STextBlock).
+							Text(FText::FromString(FString::FromInt(PlayerLocationTuple.Key)))
+					]	
+				
 				]
 				+ INSET_HORIZONTAL_SLOT(0)
 				[
-					SNew(STextBlock).
-						Text(FText::FromString(FString::FromInt(PlayerLocationTuple.Key)))
-				]	
-			
-			]
-			+ INSET_HORIZONTAL_SLOT(0)
-			[
-				SNew(SHorizontalBox)
-				+ INSET_HORIZONTAL_SLOT(0)
-				[
-					SNew(STextBlock)
-						.Text(PlayerBase_UserLocation)
+					SNew(SHorizontalBox)
+					+ INSET_HORIZONTAL_SLOT(0)
+					[
+						SNew(STextBlock)
+							.Text(PlayerBase_UserLocation)
+					]
+					+ INSET_HORIZONTAL_SLOT(0)
+					[
+						SNew(SNumericV3d)
+							.Vector_Lambda(ResolveUserLocation)
+							.OnVectorCommitted(OnVectorValueChanged)
+					]			
 				]
-				+ INSET_HORIZONTAL_SLOT(0)
-				[
-					SNew(SNumericV3d)
-						.Vector_Lambda(ResolveUserLocation)
-						.OnVectorCommitted(OnVectorValueChanged)
-				]			
 			]
+			+ INSET_VERTICAL_SLOT(0)
 		];
 }
 

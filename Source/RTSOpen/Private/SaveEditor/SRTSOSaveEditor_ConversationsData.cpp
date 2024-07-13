@@ -76,7 +76,7 @@ void SRTSOSaveEditor_ConversationsData::UpdateChildSlot(void* OpaqueData)
 		+ INSET_HORIZONTAL_SLOT(0)
 		[
 			SNew(SVerticalBox)
-			+ INSET_VERTICAL_SLOT(0)
+			+ INSET_AUTO_VERTICAL_SLOT(0)
 			[
 				SNew(STextBlock)
 					.Font(TitleFont)
@@ -85,12 +85,23 @@ void SRTSOSaveEditor_ConversationsData::UpdateChildSlot(void* OpaqueData)
 			
 			+ INSET_VERTICAL_SLOT(0)
 			[
-				SNew(SListView<TSharedPtr<FConversationStateStruct>>)
-					.ListItemsSource(ConversationStatesAsSharedArray)
-					.OnGenerateRow( this, &SRTSOSaveEditor_ConversationsData::MakeListViewWidget_ConversationStateData )
-					.OnSelectionChanged( this, &SRTSOSaveEditor_ConversationsData::OnComponentSelected_ConversationStateData )
-					.ScrollbarVisibility(EVisibility::Visible)
+				SNew(SScrollBox)
+				.ScrollBarAlwaysVisible(true)
+				.ScrollBarVisibility(EVisibility::Visible)
+				.ScrollBarThickness(UE::Slate::FDeprecateVector2DParameter(10))
+				.Orientation(EOrientation::Orient_Vertical)
+				+SScrollBox::Slot()
+				[
+					SNew(SListView<TSharedPtr<FConversationStateStruct>>)
+						.ListItemsSource(ConversationStatesAsSharedArray)
+						.OnGenerateRow( this, &SRTSOSaveEditor_ConversationsData::MakeListViewWidget_ConversationStateData )
+						.OnSelectionChanged( this, &SRTSOSaveEditor_ConversationsData::OnComponentSelected_ConversationStateData )
+						.ExternalScrollbar(ExternalScrollbar)
+						.ScrollbarVisibility(EVisibility::Visible)
+				]
+
 			]
+			+ INSET_VERTICAL_SLOT(FMath::Clamp(ConversationStatesAsSharedArray->Num() * 4.f, 0.f, 30.f))
 		]
 	];	
 }
@@ -303,20 +314,20 @@ TSharedRef<ITableRow> SRTSOSaveEditor_ConversationsData::MakeListViewWidget_Conv
 	MutableThis->ConversationStateTable = SNew( STableRow< TSharedPtr<FConversationStateStruct> >, OwnerTable )
 		[
 			SNew(SVerticalBox)
-			+ INSET_VERTICAL_SLOT(0)
+			+ INSET_VERTICAL_SLOT(4)
 			[
 				SNew(STextBlock)
 					.Text(ConversationActor_TitleText)
 			]
-			+ VERTICAL_SEPARATOR(5.0f)
+			+ VERTICAL_SEPARATOR(1)
 
 
-			+ INSET_VERTICAL_SLOT(20)
+			+ INSET_VERTICAL_SLOT(2)
 			[
 				SNew(STextBlock)
 					.Text(ConversationActor_BaseData_TitleText)
 			]	
-			+ INSET_VERTICAL_SLOT(40)
+			+ INSET_VERTICAL_SLOT(2)
 			[
 				SNew(SHorizontalBox)
 				+ INSET_HORIZONTAL_SLOT(0)
@@ -335,7 +346,7 @@ TSharedRef<ITableRow> SRTSOSaveEditor_ConversationsData::MakeListViewWidget_Conv
 					]
 				]
 			]
-			+ INSET_VERTICAL_SLOT(40)
+			+ INSET_VERTICAL_SLOT(2)
 			[
 				SNew(SHorizontalBox)
 				+ INSET_HORIZONTAL_SLOT(0)
@@ -354,15 +365,15 @@ TSharedRef<ITableRow> SRTSOSaveEditor_ConversationsData::MakeListViewWidget_Conv
 					]			
 				]
 			]
-			+ VERTICAL_SEPARATOR(5.0f)
+			+ VERTICAL_SEPARATOR(1)
 			
 			
-			+ INSET_VERTICAL_SLOT(20)
+			+ INSET_VERTICAL_SLOT(4)
 			[
 				SNew(STextBlock)
 					.Text(ConversationActor_StateData_TitleText)
 			]				
-			+ INSET_VERTICAL_SLOT(40)
+			+ INSET_VERTICAL_SLOT(2)
 			[
 				SNew(SHorizontalBox)
 				+ INSET_HORIZONTAL_SLOT(0)
@@ -376,7 +387,7 @@ TSharedRef<ITableRow> SRTSOSaveEditor_ConversationsData::MakeListViewWidget_Conv
 						.Vector_Lambda(ResolveLocation)
 						.OnVectorCommitted(OnConversationActorLocationChanged)
 				]
-				+ HORIZONTAL_SEPARATOR(5.0f)
+				+ HORIZONTAL_SEPARATOR(1)
 				
 				+ INSET_HORIZONTAL_SLOT(0)
 				[
@@ -394,15 +405,15 @@ TSharedRef<ITableRow> SRTSOSaveEditor_ConversationsData::MakeListViewWidget_Conv
 					]			
 				]					
 			]
-			+ VERTICAL_SEPARATOR(5.0f) 
+			+ VERTICAL_SEPARATOR(1) 
 			
 			
-			+ INSET_VERTICAL_SLOT(20)
+			+ INSET_VERTICAL_SLOT(4)
 			[
 				SNew(STextBlock)
 					.Text(ConversationActor_MissionData_TitleText)
 			]				
-			+ INSET_VERTICAL_SLOT(40)
+			+ INSET_VERTICAL_SLOT(2)
 			[
 				SNew(SHorizontalBox)
 				+ INSET_HORIZONTAL_SLOT(0)
@@ -419,11 +430,9 @@ TSharedRef<ITableRow> SRTSOSaveEditor_ConversationsData::MakeListViewWidget_Conv
 							.ListItemsSource(&CurrentMissionsAsSharedTupleArray)
 							.OnGenerateRow(OnGenerateMissionRowWidget)
 							.OnSelectionChanged(OnSelectMissionComponent)
-							.ScrollbarVisibility(EVisibility::Visible)
-
 					]
 				]
-				+ HORIZONTAL_SEPARATOR(5.0f)
+				+ HORIZONTAL_SEPARATOR(1)
 
 				+ INSET_HORIZONTAL_SLOT(0)
 				[
@@ -439,10 +448,12 @@ TSharedRef<ITableRow> SRTSOSaveEditor_ConversationsData::MakeListViewWidget_Conv
 							.ListItemsSource(&PlayerProgressForCurrentActorAsSharedTupleArray)
 							.OnGenerateRow(OnGeneratePlayerMissionProgressRowWidget)
 							.OnSelectionChanged(OnSelectPlayerMissionProgressComponent)
+							.ExternalScrollbar(ExternalScrollbar)
 							.ScrollbarVisibility(EVisibility::Visible)
 					]
 				]
 			]
+			+ INSET_VERTICAL_SLOT(4)
 		];
 
 	return MutableThis->ConversationStateTable.ToSharedRef();	

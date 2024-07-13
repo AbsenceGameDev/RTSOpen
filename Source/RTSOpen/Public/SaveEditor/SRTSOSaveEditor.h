@@ -91,6 +91,19 @@ public:
 			TitleFont = FAppStyle::GetFontStyle( TEXT("PropertyWindow.NormalFont"));
 			TitleFont.Size *= 8;
 		}
+		
+		if (ExternalScrollbar.IsValid() == false)
+		{
+			TSharedRef<SScrollBar> ExtScrollbar =
+				SNew(SScrollBar)
+				.RenderOpacity(0.85f)
+				.Orientation(Orient_Vertical)
+				.Thickness(FVector2D(10.0f))
+				.AlwaysShowScrollbarTrack(true)
+				.AlwaysShowScrollbar(true);
+			ExternalScrollbar = ExtScrollbar.ToSharedPtr();
+		}
+		
 	}
 
 	template<typename TPickerClass>
@@ -131,7 +144,8 @@ public:
 
 		return PickerWindow;		
 	}
-
+	
+	TSharedPtr<SScrollBar> ExternalScrollbar;
 	FSlateFontInfo TitleFont;	
 	FRTSSaveData* LinkedSaveDataCopy = nullptr;	
 };
@@ -152,27 +166,37 @@ SHorizontalBox::Slot() \
 	.Orientation(Orient_Horizontal) \
 ]
 
+#define INSET_AUTO_VERTICAL_SLOT(VerticalPadding) \
+SVerticalBox::Slot() \
+	.Padding(FMargin{0, VerticalPadding}) \
+	.AutoHeight()
+
 #define INSET_VERTICAL_SLOT(VerticalPadding) \
 SVerticalBox::Slot() \
 	.Padding(FMargin{0, VerticalPadding}) \
-	.AutoHeight() 
+	.FillHeight(10) 
 
 #define INSET_HORIZONTAL_SLOT(HorizontalPadding) \
 SHorizontalBox::Slot() \
 	.Padding(FMargin{HorizontalPadding, 0}) \
-	.AutoWidth() 
+	.FillWidth(1)
+
+#define INSET_AUTO_HORIZONTAL_SLOT(HorizontalPadding) \
+SHorizontalBox::Slot() \
+	.Padding(FMargin{HorizontalPadding, 0}) \
+	.AutoWidth()
 
 #define INSET_VERTICAL_SLOT_CL(VerticalPadding) \
 SVerticalBox::Slot() \
 	.Padding(FMargin{0, VerticalPadding}) \
-	.AutoHeight() \
+	.FillHeight(1) \
 	.HAlign(HAlign_Center) \
 	.VAlign(VAlign_Center)
 
 #define INSET_HORIZONTAL_SLOT_CL(HorizontalPadding) \
 SHorizontalBox::Slot() \
 	.Padding(FMargin{HorizontalPadding, 0}) \
-	.AutoWidth() \
+	.FillWidth(1) \
 	.HAlign(HAlign_Center) \
 	.VAlign(VAlign_Center) 
 

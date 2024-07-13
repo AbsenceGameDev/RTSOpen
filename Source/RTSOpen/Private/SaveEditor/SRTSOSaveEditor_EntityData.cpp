@@ -89,7 +89,7 @@ void SRTSOSaveEditor_EntityData::UpdateChildSlot(void* OpaqueData)
 		+ INSET_HORIZONTAL_SLOT(0)
 		[
 			SNew(SVerticalBox)
-			+ INSET_VERTICAL_SLOT(0)
+			+ INSET_AUTO_VERTICAL_SLOT(0)
 			[
 				SNew(STextBlock)
 					.Font(TitleFont)
@@ -98,13 +98,22 @@ void SRTSOSaveEditor_EntityData::UpdateChildSlot(void* OpaqueData)
 			
 			+ INSET_VERTICAL_SLOT(0)
 			[
-				SNew(SListView<TSharedPtr<FRTSSavedWorldUnits>>)
-					.ListItemsSource(EntitiesAsSharedArray)
-					.OnGenerateRow( this, &SRTSOSaveEditor_EntityData::MakeListViewWidget_EntityData )
-					.OnSelectionChanged( this, &SRTSOSaveEditor_EntityData::OnComponentSelected_EntityData )
-					.ScrollbarVisibility(EVisibility::Visible)
-			]			
+				SNew(SScrollBox)
+				.ScrollBarAlwaysVisible(true)
+				.ScrollBarVisibility(EVisibility::Visible)
+				.ScrollBarThickness(UE::Slate::FDeprecateVector2DParameter(10))
+				.Orientation(EOrientation::Orient_Vertical)
+				+SScrollBox::Slot()
+				[
+					SNew(SListView<TSharedPtr<FRTSSavedWorldUnits>>)
+						.ListItemsSource(EntitiesAsSharedArray)
+						.OnGenerateRow( this, &SRTSOSaveEditor_EntityData::MakeListViewWidget_EntityData )
+						.OnSelectionChanged( this, &SRTSOSaveEditor_EntityData::OnComponentSelected_EntityData )
+				]
+			]
+			+ INSET_VERTICAL_SLOT(FMath::Clamp(EntitiesAsSharedArray->Num() * 2.f, 0.f, 20.f))
 		]
+		
 	];	
 }
 
@@ -118,7 +127,7 @@ TSharedRef<ITableRow> SRTSOSaveEditor_EntityData::MakeListViewWidget_EntityData(
 	// @todo IMPLEMENT CALLBACKS
 	const FOnClicked OnEntityTypeClicked =
 		FOnClicked::CreateLambda(
-			[&]() -> FReply
+			[&, SavedEntityDatumCopy = SavedEntityDatum]() -> FReply
 			{
 				// Create the window to pick the class
 				if (TagPicker.IsValid() == false)
@@ -128,14 +137,14 @@ TSharedRef<ITableRow> SRTSOSaveEditor_EntityData::MakeListViewWidget_EntityData(
 				}
 		
 				TagPicker->SetVisibility(TagPicker->GetVisibility().IsVisible() ? EVisibility::Collapsed : EVisibility::Visible);
-				TagPicker->RequestScrollToView(SavedEntityDatum.EntityUnitTag);
+				TagPicker->RequestScrollToView(SavedEntityDatumCopy.EntityUnitTag);
 				
 				return FReply::Handled();
 			});
 
 	const FOnClicked OnEntityActionTagChanged =
 		FOnClicked::CreateLambda(
-			[&]() -> FReply
+			[&, SavedEntityDatumCopy = SavedEntityDatum]() -> FReply
 			{
 				// Create the window to pick the class
 				if (TagPicker.IsValid() == false)
@@ -145,14 +154,14 @@ TSharedRef<ITableRow> SRTSOSaveEditor_EntityData::MakeListViewWidget_EntityData(
 				}
 		
 				TagPicker->SetVisibility(TagPicker->GetVisibility().IsVisible() ? EVisibility::Collapsed : EVisibility::Visible);
-				TagPicker->RequestScrollToView(SavedEntityDatum.CurrentAction.ActionTag);
+				TagPicker->RequestScrollToView(SavedEntityDatumCopy.CurrentAction.ActionTag);
 				
 				return FReply::Handled();
 			});
 
 	const FOnClicked OnOptRewardItemTypeChanged =
 		FOnClicked::CreateLambda(
-			[&]() -> FReply
+			[&, SavedEntityDatumCopy = SavedEntityDatum]() -> FReply
 			{
 				// Create the window to pick the class
 				if (TagPicker.IsValid() == false)
@@ -162,7 +171,7 @@ TSharedRef<ITableRow> SRTSOSaveEditor_EntityData::MakeListViewWidget_EntityData(
 				}
 		
 				TagPicker->SetVisibility(TagPicker->GetVisibility().IsVisible() ? EVisibility::Collapsed : EVisibility::Visible);
-				TagPicker->RequestScrollToView(SavedEntityDatum.CurrentAction.Reward);
+				TagPicker->RequestScrollToView(SavedEntityDatumCopy.CurrentAction.Reward);
 				
 				return FReply::Handled();
 			});		
@@ -367,20 +376,20 @@ TSharedRef<ITableRow> SRTSOSaveEditor_EntityData::MakeListViewWidget_EntityData(
 	MutableThis->EntityTable = SNew( STableRow< TSharedPtr<FRTSSavedWorldUnits> >, OwnerTable )
 		[
 			SNew(SVerticalBox)
-			+ INSET_VERTICAL_SLOT(0)
+			+ INSET_VERTICAL_SLOT(4)
 			[
 				SNew(STextBlock)
 					.Text(Entity_TitleText)
 			]
-			+ VERTICAL_SEPARATOR(5.0f)
+			+ VERTICAL_SEPARATOR(1)
 
 
-			+ INSET_VERTICAL_SLOT(20)
+			+ INSET_VERTICAL_SLOT(4)
 			[
 				SNew(STextBlock)
 					.Text(Entity_BaseData_TitleText)
 			]	
-			+ INSET_VERTICAL_SLOT(40)
+			+ INSET_VERTICAL_SLOT(2)
 			[
 				SNew(SHorizontalBox)
 				+ INSET_HORIZONTAL_SLOT(0)
@@ -399,7 +408,7 @@ TSharedRef<ITableRow> SRTSOSaveEditor_EntityData::MakeListViewWidget_EntityData(
 					]
 				]
 			]
-			+ INSET_VERTICAL_SLOT(40)
+			+ INSET_VERTICAL_SLOT(2)
 			[
 				SNew(SHorizontalBox)
 				+ INSET_HORIZONTAL_SLOT(0)
@@ -418,15 +427,15 @@ TSharedRef<ITableRow> SRTSOSaveEditor_EntityData::MakeListViewWidget_EntityData(
 					]			
 				]
 			]
-			+ VERTICAL_SEPARATOR(5.0f)
+			+ VERTICAL_SEPARATOR(1)
 			
 			
-			+ INSET_VERTICAL_SLOT(20)
+			+ INSET_VERTICAL_SLOT(4)
 			[
 				SNew(STextBlock)
 					.Text(Entity_StateData_TitleText)
 			]				
-			+ INSET_VERTICAL_SLOT(40)
+			+ INSET_VERTICAL_SLOT(2)
 			[
 				SNew(SHorizontalBox)
 				+ INSET_HORIZONTAL_SLOT(0)
@@ -440,7 +449,7 @@ TSharedRef<ITableRow> SRTSOSaveEditor_EntityData::MakeListViewWidget_EntityData(
 						.Vector_Lambda(ResolveLocation)
 						.OnVectorCommitted(OnEntityLocationChanged)
 				]
-				+ HORIZONTAL_SEPARATOR(5.0f)
+				+ HORIZONTAL_SEPARATOR(1)
 				
 				+ INSET_HORIZONTAL_SLOT(0)
 				[
@@ -458,15 +467,15 @@ TSharedRef<ITableRow> SRTSOSaveEditor_EntityData::MakeListViewWidget_EntityData(
 					]			
 				]					
 			]
-			+ VERTICAL_SEPARATOR(5.0f) 
+			+ VERTICAL_SEPARATOR(1) 
 			
 			
-			+ INSET_VERTICAL_SLOT(20)
+			+ INSET_VERTICAL_SLOT(4)
 			[
 				SNew(STextBlock)
 					.Text(Entity_OwnerData_TitleText)
 			]				
-			+ INSET_VERTICAL_SLOT(40)
+			+ INSET_VERTICAL_SLOT(2)
 			[
 				SNew(SHorizontalBox)
 				+ INSET_HORIZONTAL_SLOT(0)
@@ -484,7 +493,7 @@ TSharedRef<ITableRow> SRTSOSaveEditor_EntityData::MakeListViewWidget_EntityData(
 							.OnValueCommitted(OnEntityOwnerIDChanged)
 					]
 				]
-				+ HORIZONTAL_SEPARATOR(5.0f)
+				+ HORIZONTAL_SEPARATOR(1)
 
 				+ INSET_HORIZONTAL_SLOT(0)
 				[
@@ -502,20 +511,20 @@ TSharedRef<ITableRow> SRTSOSaveEditor_EntityData::MakeListViewWidget_EntityData(
 					]
 				]
 			]
-			+ VERTICAL_SEPARATOR(5.0f) 
+			+ VERTICAL_SEPARATOR(1) 
 			
 			
-			+ INSET_VERTICAL_SLOT(20)
+			+ INSET_VERTICAL_SLOT(4)
 			[
 				SNew(STextBlock)
 					.Text(Entity_ActionData_TitleText)
 			]
-			+ INSET_VERTICAL_SLOT(40)
+			+ INSET_VERTICAL_SLOT(2)
 			[
 				SNew(STextBlock)
 					.Text(Entity_ActionData_BaseData_TitleText)
 			]					
-			+ INSET_VERTICAL_SLOT(40)
+			+ INSET_VERTICAL_SLOT(2)
 			[
 				SNew(SHorizontalBox)
 				+ INSET_HORIZONTAL_SLOT(0)
@@ -533,15 +542,15 @@ TSharedRef<ITableRow> SRTSOSaveEditor_EntityData::MakeListViewWidget_EntityData(
 					// 	.Text(FText::FromString(SavedEntityDatum.CurrentAction.ActionTag.ToString()))
 				]
 			]
-			+ VERTICAL_SEPARATOR(5.0f) 
+			+ VERTICAL_SEPARATOR(1) 
 			
 			
-			+ INSET_VERTICAL_SLOT(40)
+			+ INSET_VERTICAL_SLOT(4)
 			[
 					SNew(STextBlock)
 						.Text(Entity_ActionData_RewardData_TitleText)
 			]			
-			+ INSET_VERTICAL_SLOT(40)
+			+ INSET_VERTICAL_SLOT(2)
 			[
 				SNew(SHorizontalBox)
 				+ INSET_HORIZONTAL_SLOT(0)
@@ -556,8 +565,7 @@ TSharedRef<ITableRow> SRTSOSaveEditor_EntityData::MakeListViewWidget_EntityData(
 						.Text(FText::FromString(SavedEntityDatum.CurrentAction.Reward.ToString()))
 						.OnClicked(OnOptRewardItemTypeChanged)
 				]
-				+ HORIZONTAL_SEPARATOR(5.0f) 
-
+				+ HORIZONTAL_SEPARATOR(1) 
 				
 				+ INSET_HORIZONTAL_SLOT(0)
 				[
@@ -571,15 +579,15 @@ TSharedRef<ITableRow> SRTSOSaveEditor_EntityData::MakeListViewWidget_EntityData(
 						.OnValueCommitted(OnOptionalRewardAmountChanged)
 				]				
 			]
-			+ VERTICAL_SEPARATOR(2.0f) 
+			+ VERTICAL_SEPARATOR(2) 
 
 			
-			+ INSET_VERTICAL_SLOT(40)
+			+ INSET_VERTICAL_SLOT(4)
 			[
 				SNew(STextBlock)
 					.Text(Entity_ActionData_TargetData_TitleText)
 			]			
-			+ INSET_VERTICAL_SLOT(40)
+			+ INSET_VERTICAL_SLOT(2)
 			[
 				SNew(SHorizontalBox)
 				+ INSET_HORIZONTAL_SLOT(0)
@@ -593,8 +601,7 @@ TSharedRef<ITableRow> SRTSOSaveEditor_EntityData::MakeListViewWidget_EntityData(
 						.Value_Lambda(ResolveActionTarget_Entity) 
 						.OnValueCommitted(OnOptTargetEntityIndexChanged)
 				]
-				+ HORIZONTAL_SEPARATOR(5.0f) 
-
+				+ HORIZONTAL_SEPARATOR(1) 
 				
 				+ INSET_HORIZONTAL_SLOT(0)
 				[
@@ -609,7 +616,7 @@ TSharedRef<ITableRow> SRTSOSaveEditor_EntityData::MakeListViewWidget_EntityData(
 					SNew(STextBlock)
 						.Text(FText::FromString(SavedEntityDatum.CurrentAction.OptTargets.ActionTargetAsActor != nullptr ? SavedEntityDatum.CurrentAction.OptTargets.ActionTargetAsActor->GetName() : "N/A"))
 				]
-				+ HORIZONTAL_SEPARATOR(5.0f) 
+				+ HORIZONTAL_SEPARATOR(1) 
 				
 				+ INSET_HORIZONTAL_SLOT(0)
 				[
@@ -624,7 +631,7 @@ TSharedRef<ITableRow> SRTSOSaveEditor_EntityData::MakeListViewWidget_EntityData(
 						.OnVectorCommitted(OnEntityTargetLocationChanged)
 				]			
 			]				
-			
+			+ INSET_VERTICAL_SLOT(4)
 		];
 
 	return MutableThis->EntityTable.ToSharedRef();
