@@ -243,8 +243,6 @@ TSharedRef<ITableRow> SRTSOSaveEditor_MissionTagsData::MakeListViewWidget_UserMi
 						.OnGenerateRow(OnGenerateMissionTagRowWidget)
 						.OnSelectionChanged(OnSelectMissionTagComponent)
 						.OnMouseButtonDoubleClick(OnBtnDblClick)
-						.ExternalScrollbar(ExternalScrollbar)
-						.ScrollbarVisibility(EVisibility::Visible)
 				]
 			]
 			+ INSET_VERTICAL_SLOT(2)

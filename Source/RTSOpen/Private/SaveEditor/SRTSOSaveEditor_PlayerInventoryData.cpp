@@ -207,8 +207,6 @@ TSharedRef<ITableRow> SRTSOSaveEditor_PlayerInventoryData::MakeListViewWidget_In
 						.ListItemsSource( &CurrentInventoriesAsSharedTupleArray)
 						.OnGenerateRow( this, &SRTSOSaveEditor_PlayerInventoryData::MakeListViewWidget_ItemData )
 						.OnSelectionChanged( this, &SRTSOSaveEditor_PlayerInventoryData::OnComponentSelected_ItemData )
-						.ExternalScrollbar(ExternalScrollbar)
-						.ScrollbarVisibility(EVisibility::Visible)
 				]
 				+ HORIZONTAL_SEPARATOR(1)
 			]
@@ -417,8 +415,6 @@ TSharedRef<ITableRow> SRTSOSaveEditor_PlayerInventoryData::MakeListViewWidget_It
 						.ListItemsSource(&CurrentStacksAsSharedTupleArray)
 						.OnGenerateRow(OnGenerateStacksElement)
 						.OnSelectionChanged(OnSelectedStackElement)
-						.ExternalScrollbar(ExternalScrollbar)
-						.ScrollbarVisibility(EVisibility::Visible)
 				]			
 			]					
 		]

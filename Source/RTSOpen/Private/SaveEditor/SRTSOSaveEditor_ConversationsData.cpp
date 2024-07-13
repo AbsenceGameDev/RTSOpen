@@ -96,8 +96,6 @@ void SRTSOSaveEditor_ConversationsData::UpdateChildSlot(void* OpaqueData)
 						.ListItemsSource(ConversationStatesAsSharedArray)
 						.OnGenerateRow( this, &SRTSOSaveEditor_ConversationsData::MakeListViewWidget_ConversationStateData )
 						.OnSelectionChanged( this, &SRTSOSaveEditor_ConversationsData::OnComponentSelected_ConversationStateData )
-						.ExternalScrollbar(ExternalScrollbar)
-						.ScrollbarVisibility(EVisibility::Visible)
 				]
 
 			]
@@ -448,8 +446,6 @@ TSharedRef<ITableRow> SRTSOSaveEditor_ConversationsData::MakeListViewWidget_Conv
 							.ListItemsSource(&PlayerProgressForCurrentActorAsSharedTupleArray)
 							.OnGenerateRow(OnGeneratePlayerMissionProgressRowWidget)
 							.OnSelectionChanged(OnSelectPlayerMissionProgressComponent)
-							.ExternalScrollbar(ExternalScrollbar)
-							.ScrollbarVisibility(EVisibility::Visible)
 					]
 				]
 			]

@@ -91,19 +91,6 @@ public:
 			TitleFont = FAppStyle::GetFontStyle( TEXT("PropertyWindow.NormalFont"));
 			TitleFont.Size *= 8;
 		}
-		
-		if (ExternalScrollbar.IsValid() == false)
-		{
-			TSharedRef<SScrollBar> ExtScrollbar =
-				SNew(SScrollBar)
-				.RenderOpacity(0.85f)
-				.Orientation(Orient_Vertical)
-				.Thickness(FVector2D(10.0f))
-				.AlwaysShowScrollbarTrack(true)
-				.AlwaysShowScrollbar(true);
-			ExternalScrollbar = ExtScrollbar.ToSharedPtr();
-		}
-		
 	}
 
 	template<typename TPickerClass>
@@ -144,8 +131,7 @@ public:
 
 		return PickerWindow;		
 	}
-	
-	TSharedPtr<SScrollBar> ExternalScrollbar;
+
 	FSlateFontInfo TitleFont;	
 	FRTSSaveData* LinkedSaveDataCopy = nullptr;	
 };
