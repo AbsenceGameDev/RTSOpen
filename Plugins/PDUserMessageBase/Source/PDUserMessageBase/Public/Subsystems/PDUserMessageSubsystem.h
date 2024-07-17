@@ -7,6 +7,7 @@
 #include "Subsystems/EngineSubsystem.h"
 #include "PDUserMessageSubsystem.generated.h"
 
+class FNativeGameplayTag;
 class APDUserMessageNetworkManager;
 struct FGameplayTag;
 /** @brief Subsystem to handle octree size changes and to act as a manager for the entity workers */
