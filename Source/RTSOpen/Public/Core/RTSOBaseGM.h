@@ -177,7 +177,7 @@ public:
 		FEntityCompoundTuple>& EntityPool,
 		UPDRTSBaseSubsystem* RTSSubsystem,
 		UMassSpawnerSubsystem* SpawnerSystem);
-	static void ARTSOBaseGM::DispatchEntitySpawning(
+	static void DispatchEntitySpawning(
 		const TTuple<const FMassEntityTemplateID, FEntityCompoundTuple>& EntityTypeCompound,
 		const FMassEntityManager* EntityManager,
 		UMassSpawnerSubsystem* SpawnerSystem);

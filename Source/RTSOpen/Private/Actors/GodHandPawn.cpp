@@ -1251,7 +1251,6 @@ void AGodHandPawn::SelectActionMenuEntry_Implementation(ERTSBuildableActionMenuM
 
 					// @todo Need to generalize the spawn logic
 					UPDRTSBaseSubsystem* RTSSubsystem = UPDRTSBaseSubsystem::Get();
-					const FMassEntityManager* EntityManager = RTSSubsystem != nullptr ? RTSSubsystem->EntityManager : nullptr;
 					UMassSpawnerSubsystem* SpawnerSystem = UWorld::GetSubsystem<UMassSpawnerSubsystem>(GetWorld());
 					if (EntityManager == nullptr) { return; }
 				
