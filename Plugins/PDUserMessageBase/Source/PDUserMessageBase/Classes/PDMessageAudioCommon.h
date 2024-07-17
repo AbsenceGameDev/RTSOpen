@@ -70,20 +70,25 @@ struct FPDStartAudio
 public:
 };
 
+/** @brief Data table struct type for user message audio notification, these will be played when associated user messages ar displayed */
 USTRUCT(Blueprintable, BlueprintType)
 struct PDUSERMESSAGEBASE_API FPDGameMessageAudioRow : public FTableRowBase
 {
 	GENERATED_BODY()
 
+	/** @brief Audio to play when this user message errors out or the user selected something like 'Abort Action' */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
 	TSoftObjectPtr<UPDBaseAudioData> ErrorAudioData = nullptr;
 
+	/** @brief Audio to play when this user message waits for a response */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
 	TSoftObjectPtr<UPDBaseAudioData> WaitAudioData = nullptr;
 
+	/** @brief Audio to play when this user message starts displaying */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
 	TSoftObjectPtr<UPDBaseAudioData> StartAudioData = nullptr;
 
+	/** @brief Audio to play when this user message finishes, on press Yes for example */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
 	TSoftObjectPtr<UPDBaseAudioData> SuccessAudioData = nullptr;
 

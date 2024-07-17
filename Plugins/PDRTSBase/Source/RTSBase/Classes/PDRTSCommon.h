@@ -47,6 +47,7 @@ PDRTSBASE_API UE_DECLARE_GAMEPLAY_TAG_EXTERN(TAG_CTRL_Ctxt_ConversationMode);
 	struct FClassToOpaque::PImpl : TOpaqueImpl<FClassToOpaque>
 
 
+/** @brief Opaque class idea */
 template <typename TOpaqueClass>
 class TOpaqueImpl : public TOpaqueClass
 {
@@ -56,6 +57,7 @@ private:
 	TOpaqueImpl() {}
 };
 
+/** @brief Opaque class idea */
 template <typename TPImpl>
 struct TOpaqueSelf
 {
@@ -116,8 +118,10 @@ public:
 
 	UPDOctreeSettings(){}
 
+	/** @brief  Settings for the (buildable) actor octree */
 	UPROPERTY(Config, EditAnywhere, Category="Octree")
 	FPDOctreeSetting ActorOctreeSettings;
+	/** @brief  Settings for the (unit) entity octree */
 	UPROPERTY(Config, EditAnywhere, Category="Octree")
 	FPDOctreeSetting EntityOctreeSettings;
 };
@@ -136,6 +140,7 @@ public:
 	UPROPERTY(Config, EditAnywhere, Category = "Worker AI Subsystem", Meta = (RequiredAssetDataTags="RowStructure=/Script/PDRTSBase.PDWorkUnitDatum"))
 	TArray<TSoftObjectPtr<UDataTable>> WorkTables;
 
+	/** @brief Should we visualize a workers potential path? */
 	UPROPERTY(Config, EditAnywhere, Category = "Worker AI Subsystem")
 	bool bVisualizeWorkerPaths = true;
 	

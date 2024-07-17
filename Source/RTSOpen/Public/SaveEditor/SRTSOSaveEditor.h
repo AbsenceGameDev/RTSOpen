@@ -13,16 +13,39 @@
 
 DECLARE_LOG_CATEGORY_CLASS(PDLog_SaveEditor, Log, All);
 
-USTRUCT() struct FPlayerLocationStruct { GENERATED_BODY()  int32 /*UserID*/ Key;  FVector /*User Location*/ Value; };
-USTRUCT() struct FUserInventoriesStruct { GENERATED_BODY()  int32 /*UserID*/ Key;  FRTSSavedItems /*User Inventory Wrapper*/ Value; };
-USTRUCT() struct FConversationStateStruct
+/** @brief Player location struct, is planned to be expanded to keep other generic per-player data */
+USTRUCT()
+struct FPlayerLocationStruct
 {
 	GENERATED_BODY()
 
-	int32 /*ActorID*/ Key;
+	/** @brief UserID */
+	int32 Key;
+	/** @brief User Location */
+	FVector Value;
+};
+/** @brief Player inventory wrapper */
+USTRUCT()
+struct FUserInventoriesStruct
+{
+	GENERATED_BODY()
+	/** @brief UserID/Owning player */
+	int32 Key;
+	/** @brief User Inventory Wrapper */
+	FRTSSavedItems Value;
+};
+/** @brief Conversation Actor State wrapper */
+USTRUCT()
+struct FConversationStateStruct
+{
+	GENERATED_BODY()
+
+	/** @brief ActorID */
+	int32 Key;
+	/** @brief State date for conv actor */
 	FRTSSavedConversationActorData Value;
 	
-	// Copy selected class (_HiddenInstantiatedClass) to softobject if not already copied, clear _HiddenInstantiatedClass no matter if it was copied or not 
+	/** @brief Copy selected class (_HiddenInstantiatedClass) to softobject if not already copied, clear _HiddenInstantiatedClass no matter if it was copied or not */
 	void CopySelectedToSoftClass(UClass* PotentialOverrideHiddenClass = nullptr)
 	{
 		if (PotentialOverrideHiddenClass != nullptr || Value._HiddenInstantiatedClass == nullptr)
@@ -40,11 +63,41 @@ USTRUCT() struct FConversationStateStruct
 		}		
 	}
 };
-USTRUCT() struct FConversationProgressionInnerStruct { GENERATED_BODY()  int32 /*UserID*/ Key;  FRTSOConversationMetaProgressionListWrapper /*ProgressionLevel*/ Value; };
-USTRUCT() struct FUserMissionTagsStruct { GENERATED_BODY()  int32 Key /*PlayerID*/;  FGameplayTagContainer /*AccumulatedMissionTags*/ Value; };
-USTRUCT() struct FStacksStruct { GENERATED_BODY()  int32 Key /*StackIndex*/;  int32 /*ItemCount*/ Value; };
 
+/** @brief Conversation State InnerStruct, progression level per player/user */
+USTRUCT()
+struct FConversationProgressionInnerStruct
+{
+	GENERATED_BODY()
+	/** @brief UserID */
+	int32 Key;
+	/** @brief ProgressionLevel */
+	FRTSOConversationMetaProgressionListWrapper Value;
+};
+/** @brief The accumulated (mission) tags a player/user has, (milestones/subobjectives) */
+USTRUCT()
+struct FUserMissionTagsStruct
+{
+	GENERATED_BODY()
+	/** @brief PlayerID */
+	int32 Key;
+	/** @brief Accumulated Mission Tags */
+	FGameplayTagContainer Value;
+};
+/** @brief Inventory item stack wrapper  */
+USTRUCT()
+struct FStacksStruct
+{
+	GENERATED_BODY()
+	/** @brief StackIndex*/
+	int32 Key;
+	/** @brief ItemCount*/
+	int32 Value;
+};
 
+/** @brief Class filter for the save editor:
+ * @todo This might not be usable when moving away from the class picker.
+ * Note: the class picker is dependent on editor-only code*/
 class FRTSSaveEd_InteractableClassFilter : public IClassViewerFilter
 {
 public:
@@ -63,11 +116,13 @@ public:
 	/** Classes that can't be picked */
 	TArray<const UClass*> DisallowedClassFilters;
 
+	/** @brief Boilerplate condition helper */
 	virtual bool IsClassAllowed(const FClassViewerInitializationOptions& InInitOptions, const UClass* InClass, TSharedRef< FClassViewerFilterFuncs > InFilterFuncs ) override
 	{
 		return IsClassAllowedHelper(InClass);
 	}
 	
+	/** @brief Boilerplate condition helper */
 	virtual bool IsUnloadedClassAllowed(const FClassViewerInitializationOptions& InInitOptions, const TSharedRef< const IUnloadedBlueprintData > InBlueprint, TSharedRef< FClassViewerFilterFuncs > InFilterFuncs) override
 	{
 		return IsClassAllowedHelper(InBlueprint);
@@ -75,6 +130,7 @@ public:
 
 private:
 
+	/** @brief Boilerplate template condition helper */
 	template <typename TClass>
 	bool IsClassAllowedHelper(TClass InClass)
 	{
@@ -107,6 +163,7 @@ private:
 class RTSOPEN_API SRTSOSaveEditorBase : public SCompoundWidget
 {
 public:
+	/** @brief Base call, ensures we have a title-font loaded  */
 	virtual void UpdateChildSlot(void* OpaqueData)
 	{
 		if (TitleFont.TypefaceFontName.IsNone())
@@ -117,6 +174,7 @@ public:
 		}
 	}
 
+	/** @brief Generic call to create picker windows of differing types @todo finish impl. of related Picker classes  */
 	template<typename TPickerClass>
 	TSharedRef<SWindow> CreatePickerDialog(TSharedRef<SWindow>& PickerWindow, UClass* FilterInterfaceClass)
 	{
@@ -133,6 +191,8 @@ public:
 				.Options(InitOptions)
 				.AssetType(nullptr);		
 	}
+
+	/** @brief Generic call to create picker windows of differing types @todo finish impl. of related Picker classes  */
 	template<typename TPickerClass>
 	TSharedRef<SWindow> CreatePickerWindow()
 	{
@@ -156,7 +216,9 @@ public:
 		return PickerWindow;		
 	}
 
+	/** @brief Font we want to use for titles in teh save editor */
 	FSlateFontInfo TitleFont;	
+	/** @brief Linked copy of the selected savedata. Any changes will be on this copy until we want to commit them to the actual save-file */
 	FRTSSaveData* LinkedSaveDataCopy = nullptr;	
 };
 

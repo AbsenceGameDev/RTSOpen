@@ -63,10 +63,11 @@ struct PDRTSBASE_API FPDActorOctreeCell
 	/** @brief Tracked Entity Owner */
 	int32 OwnerID = INDEX_NONE;
 
-	/** @brief  */
+	/** @brief Flag used when starting a game, when we perform a pass on all world entities without valid owners
+	 * to decide if they belong to the owner of the given actor cell  */
 	uint8 bFirstCellAccess = false;
 
-	/** @brief  */
+	/** @brief The gameplaytag of this actor (buildable) */
 	FGameplayTag BuildingType = FGameplayTag{};		
 
 	/** @brief Found idle units within buildables sphere of inlfluence.
@@ -199,7 +200,9 @@ struct FLEntityCompound
 template<typename TDataType>
 struct TPDQueryBase 
 {
+	/** @brief Shape selector */
 	int32 Shape = 0; // 0= Box, 1 Sphere, 2 Ellipsoid? etc..
+	/** @brief  Center location of our shape, used when doing intersection checks */
 	UE::Math::TVector<TDataType> Location = UE::Math::TVector<TDataType>::ZeroVector;
 };	
 

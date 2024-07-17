@@ -9,7 +9,8 @@
 
 DECLARE_LOG_CATEGORY_CLASS(PDLog_TagLoader, Log, All);
 
-
+/** @brief Game user settings which allows for a simple way for users to inject new tags into a shipped game.
+ * Main use-case, or perhaps only use-case, is for modding purposes */
 UCLASS(Config="Game")
 class URTSOTagSettings : public UGameUserSettings
 {

@@ -12,9 +12,9 @@
 #include "PDUserMessageDatum.generated.h"
 
 struct FGameplayTag;
-
 struct FPDUserMessageFrameList; // Fwd decl for the message datum to use
 
+/** @brief The networked 'fastarray' item for our user messages */
 USTRUCT(Blueprintable)
 struct PDUSERMESSAGEBASE_API FPDUserMessageDatum : public FFastArraySerializerItem
 {
@@ -30,33 +30,39 @@ struct PDUSERMESSAGEBASE_API FPDUserMessageDatum : public FFastArraySerializerIt
 	void PostReplicatedAdd(const FPDUserMessageFrameList& OwningList);
 	void PostReplicatedChange(const FPDUserMessageFrameList& OwningList);
 
-	// This will increment for a player during a given session, just so we may dislay messages that have been recieved out of order, in order
+	/** @brief  This will increment for a player during a given session,
+	 * just so we may display messages that have been received out of order, in order */
 	UPROPERTY()
 	int32 MessageIdx = 0;
-	
+
+	/** @brief  The tag associated with this message */
 	UPROPERTY()
 	FGameplayTag MessageTag = FGameplayTag::EmptyTag;
-	
+
+	/** @brief The target player for this message
+	 * @note Should always resolve to nullptr if replicated to incorrect players */	
 	UPROPERTY()
-	APlayerController* Target = nullptr; // Should always be nullptr if replicated to the incorrect players
+	APlayerController* Target = nullptr;
 };
 
-
+/** @brief The 'fastarray' definition for the message frame */
 USTRUCT(Blueprintable)
 struct PDUSERMESSAGEBASE_API FPDUserMessageFrameList : public  FFastArraySerializer
 {
 	GENERATED_BODY()
-
-
+	/** @brief 'Fastarray' boiler-plate */
 	bool NetSerialize(FNetDeltaSerializeInfo& DeltaParams);
-	
+
+	/** @brief Clears the inner array  */
 	inline void Clear() { Items.Empty(); }
 
+	/** @brief Inner array of items that the 'fastarray' serializer handles */
 	UPROPERTY()
 	TArray<FPDUserMessageDatum> Items;
 	
 };
 
+/** @brief 'Fastarray' boiler-plate */
 template<>
 struct TStructOpsTypeTraits<FPDUserMessageFrameList> : TStructOpsTypeTraitsBase2<FPDUserMessageFrameList>
 {

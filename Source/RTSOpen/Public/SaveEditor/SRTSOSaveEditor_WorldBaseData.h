@@ -20,14 +20,23 @@ public:
 	SLATE_EVENT(FOnClicked, OnUserClicked)
 	SLATE_END_ARGS()
 	
+	/** @brief Stores a pointer to the copied save data and then Calls UpdateChildSlot */
 	void Construct(const FArguments& InArgs, FRTSSaveData* InLinkedData);
+	/** @brief Displays the copied save data fields: world seed and world gametime */
 	virtual void UpdateChildSlot(void* OpaqueData) final override;
 
+	/** @brief Returns the current seed value of the copied save data 
+	 * @note NumericEntryBox default values need to be sourced from functions with TOptional returns */
 	TOptional<int32> GeCurrentSeedValue() const;
+	/** @brief Returns the current world-time value of the copied save data 
+	 * @note NumericEntryBox default values need to be sourced from functions with TOptional returns */
 	TOptional<double> GeCurrentTimeValue() const;
 
+	/** @brief Updates the seed value in the copied save data on pressing enter, with the new seed */
 	void OnSeedValueChanged(int32 NewSeed, ETextCommit::Type);
+	/** @brief Called when we want to generate a random seed value instead of explicitly defining one */
 	FReply OnSeedValueGenerated();
+	/** @brief Updates the world-time value in the copied save data on pressing enter, with the new seed */
 	void OnGameTimeValueChanged(double NewGameTime, ETextCommit::Type CommitType);
 	
 	// Localized Text

@@ -57,6 +57,7 @@ public:
 	/** @brief  Constructs the widget and caches relevant data */
 	void Construct(const FArguments& InArgs);
 	
+	/** @brief Initializes the minimap data (setting different brush settings) from URTSOMinimapDeveloperSettings */
 	void InitializeData();
 	
 	/** @brief  Ticks the radar/minimap */
@@ -132,13 +133,19 @@ public:
 	/** @brief  Slate instance data to pass inners into certain slate functions */
 	struct SlateInstanceData
 	{
+		/** @brief The brush that will be used for the minimap BG */
 		FSlateBrush ConstructedBackgroundBrush{};
+		/** @brief The colour tint be used for the minimap BG */
 		FLinearColor BGColour = FLinearColor(0, 0, 0, 0.3f);
 
+		/** @brief The brush that will be used for the players own icon */
 		FSlateBrush OwnerIconBrush{};
+		/** @brief The colour tint that will be used for the players own icon */
 		FLinearColor OwnerIconColour = FLinearColor(0, 0, 0, 0.3f);
 
+		/** @brief The brush that will be used for generic object icons */
 		FSlateBrush GenericIconBrush{};
+		/** @brief The colour tint that will be used for generic object icons */
 		FLinearColor GenericIconColour = FLinearColor(0, 0, 0, 0.3f);
 	};
 

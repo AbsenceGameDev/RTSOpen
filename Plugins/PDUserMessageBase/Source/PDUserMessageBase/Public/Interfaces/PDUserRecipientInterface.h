@@ -22,17 +22,17 @@ struct FPDUserMessageProcess
 {
 	GENERATED_BODY()
 	
-	/** @brief  */
+	/** @todo Implement logic when finishing up the user message module */
 	void OnProcessFinished();
 
 	/** @brief  -1 implies closable dialog window */
 	UPROPERTY(BlueprintReadWrite)
 	float MessageDuration = -1; 
 	
-	/** @brief  */
+	/** @brief The results from processing the user message */
 	UPROPERTY(BlueprintReadWrite)
 	EPDUserMessageProcessResult Results;
-	/** @brief  */
+	/** @brief The tag associated with the user message */
 	UPROPERTY(BlueprintReadWrite)
 	FGameplayTag MessageTag;
 };

@@ -148,8 +148,11 @@ public:
 	UFUNCTION(BlueprintNativeEvent, BlueprintCallable)
 	void OnGeneratedLandscapeReady();
 
+	/** @brief Reserved. Only calls super for now */
 	virtual void Logout(AController* Exiting) override;
+	/** @brief  Spawns a default base for our player in case they do no have buildings in the world already. */
 	virtual void PostLogin(APlayerController* NewPlayer) override;
+	/** @brief @todo Load the player and ensure we associate teh player with their preloaded data, this also requires finishing up the preloaders */
 	virtual APlayerController* Login(UPlayer* NewPlayer, ENetRole InRemoteRole, const FString& Portal, const FString& Options, const FUniqueNetIdRepl& UniqueId, FString& ErrorMessage) override;
 	
 	/** @brief Load worker/units from current save data*/
@@ -168,15 +171,20 @@ public:
 	void FinalizeLoadPlayerMissionTags(const TMap<int32, AActor*>& OwnerIDMappings);
 	void OnThreadFinished_PlayerLoadDataSync(EPDSaveDataThreadSelector FinishedThread);
 
+	/** @brief Alias for an array view of unit/entity data */
 	using FInnerEntityData = TArray<const FRTSSavedWorldUnits*>;
+	/** @brief Alias for a tuple that associates a user and their world units/entities  */
 	using FEntityCompoundTuple = TTuple<int32, FInnerEntityData>;
+
+	/** @brief  Stores the given entity from 'EntityData' in the referenced 'EntityPool' */
 	static void GatherEntityToSpawn(
 		const UWorld& WorldRef,
 		const FRTSSavedWorldUnits& EntityData,
-		TMap<const FMassEntityTemplateID,
-		FEntityCompoundTuple>& EntityPool,
+		TMap<const FMassEntityTemplateID, FEntityCompoundTuple>& EntityPool,
 		UPDRTSBaseSubsystem* RTSSubsystem,
 		UMassSpawnerSubsystem* SpawnerSystem);
+
+	/** @brief  Dispatches the given entity from 'EntityTypeCompound' via the UMassSpawnerSubsystem */
 	static void DispatchEntitySpawning(
 		const TTuple<const FMassEntityTemplateID, FEntityCompoundTuple>& EntityTypeCompound,
 		const FMassEntityManager* EntityManager,
@@ -219,13 +227,20 @@ private:
 		TContainer<__VA_ARGS__> ToModify; \
 	} _##Name;
 	
+	/** @brief  Helpers for processing savedata changes, only overwrite what has been modified, only add/remove what is new/old */
 	TPDPreprocessLoadData(MProcessedInteractData, TArray, FRTSSavedInteractable);
+	/** @brief  Helpers for processing savedata changes, only overwrite what has been modified, only add/remove what is new/old */
 	TPDPreprocessLoadData(MProcessedUnits, TArray, FRTSSavedWorldUnits);
+	/** @brief  Helpers for processing savedata changes, only overwrite what has been modified, only add/remove what is new/old */
 	TPDPreprocessLoadData(MProcessedItems, TMap, int32, FRTSSavedItems);
+	/** @brief  Helpers for processing savedata changes, only overwrite what has been modified, only add/remove what is new/old */
 	TPDPreprocessLoadData(MProcessedLocations, TMap, int32, FVector);
+	/** @brief  Helpers for processing savedata changes, only overwrite what has been modified, only add/remove what is new/old */
 	TPDPreprocessLoadData(MProcessedConvos, TMap, int32, FRTSSavedConversationActorData);
+	/** @brief  Helpers for processing savedata changes, only overwrite what has been modified, only add/remove what is new/old */
 	TPDPreprocessLoadData(MProcessedTags, TMap, int32, FGameplayTagContainer);
 
+	/** @brief Union that helps us keep a smaller memory footprint when dispatching data chunks for threaded calculations */
 	union ProcessedLoadData
 	{
 		ProcessedLoadData() {}
@@ -238,8 +253,11 @@ private:
 		MProcessedTags      SavedConvoTags;		
 	};
 	
+	/** @brief State flag, so we don't prematurely finalize the loaded data until all threads are finished */
 	bool bProcessingLoadData = false;
+	/** @brief List of finished threads */
 	TStaticArray<bool, static_cast<uint8>(EPDSaveDataThreadSelector::EEnd), 8> FinishedLoadThreads;
+	/** @brief List of active/in-process threads */
 	TStaticArray<ProcessedLoadData, static_cast<uint8>(EPDSaveDataThreadSelector::EEnd), 8> LoadDataInProcess;
 };
 

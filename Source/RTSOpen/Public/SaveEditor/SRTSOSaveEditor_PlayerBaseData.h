@@ -22,24 +22,28 @@ public:
  		SLATE_EVENT(FOnClicked, OnUserClicked)
 	SLATE_END_ARGS()
 
+	/** @brief Stores a pointer to the copied save data and then Calls UpdateChildSlot, passing ArrayRef as the opaquedata parameter */
 	void Construct(const FArguments& InArgs, FRTSSaveData* InLinkedData, TArray<TSharedPtr<FPlayerLocationStruct>>& ArrayRef);
+	/** @brief Sets up the child slot, and passes in the data view array to an slistview wrapped in a scrollbox, OpaqueData needs to be pointing to type TArray<TSharedPtr<FPlayerLocationStruct>> to have any effect */
 	virtual void UpdateChildSlot(void* OpaqueData) final override;
 
+	/** @brief Displays the actual list item for each entry in LocationsAsSharedTupleArray, which in this case is whatever is in 'FPlayerLocationStruct' */
 	TSharedRef<ITableRow> MakeListViewWidget_PlayerData(TSharedPtr<FPlayerLocationStruct> InItem, const TSharedRef<STableViewBase>& OwnerTable) const;
 	void OnComponentSelected_PlayerData(TSharedPtr<FPlayerLocationStruct> InItem, ESelectInfo::Type InSelectInfo);
 	
-	// Views
+	/** @brief Array 'View' that is used to display the data related to this editor widget */
 	TArray<TSharedPtr<FPlayerLocationStruct>>* LocationsAsSharedTupleArray;
 
 	// Callbacks
 	FOnPlayerDataChosen OnPlayerDataChosen{};
 	
-	UClass* SelectedClass = nullptr;
-
 	// Localized Text
 	static FText PlayerBase_TitleText;
 	static FText PlayerBase_UserID;
 	static FText PlayerBase_UserLocation;
+
+private:
+	UClass* SelectedClass = nullptr;
 };
 
 

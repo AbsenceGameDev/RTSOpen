@@ -135,7 +135,8 @@ struct FRTSOConversationMetaProgressionListWrapper
 	/** @brief Map of progression datum per mission tag */
 	UPROPERTY(EditAnywhere)
 	TMap<FGameplayTag, FRTSOConversationMetaProgressionDatum> ProgressionDataMap;
-
+	
+	/** @brief Equality comparison, slow */
 	bool operator==(const FRTSOConversationMetaProgressionListWrapper& Other) const
 	{
 		TArray<FGameplayTag> ThisMetaProgressionKeyArray;
@@ -153,6 +154,7 @@ struct FRTSOConversationMetaProgressionListWrapper
 			&& ThisMetaProgressionValueArray == OtherMetaProgressionValueArray;		
 	}
 
+	/** @brief Inequality comparison, slow */
 	bool operator!=(const FRTSOConversationMetaProgressionListWrapper& Other) const
 	{
 		return (*this == Other) == false;
@@ -219,6 +221,7 @@ struct FRTSSavedConversationActorData
 		}		
 	}
 	
+	/** @brief Equality comparison, slow */
 	bool operator==(const FRTSSavedConversationActorData& Other) const
 	{
 		TArray<int32> ThisProgressionKeyArray;
@@ -241,6 +244,7 @@ struct FRTSSavedConversationActorData
 			&& (this->Location - Other.Location).IsNearlyZero(5.f);
 	}
 
+	/** @brief Inequality comparison, slow */
 	bool operator!=(const FRTSSavedConversationActorData& Other) const
 	{
 		return (*this == Other) == false;
@@ -282,6 +286,7 @@ struct FRTSSavedWorldUnits
 	UPROPERTY(EditAnywhere, Category = "GameInstance|Widgets")
 	FMassEntityHandle InstanceIndex = {INDEX_NONE, INDEX_NONE};
 
+	/** @brief Equality comparison, has certain slack in the health and location comparisons */
 	bool operator==(const FRTSSavedWorldUnits& Other) const
 	{
 		return 
@@ -295,6 +300,7 @@ struct FRTSSavedWorldUnits
 			&& (this->Location - Other.Location).IsNearlyZero(5.f);
 	}
 
+	/** @brief Inequality comparison, negates the result of the equality comparison */
 	bool operator!=(const FRTSSavedWorldUnits& Other) const
 	{
 		return (*this == Other) == false;

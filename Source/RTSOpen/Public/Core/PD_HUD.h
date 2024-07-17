@@ -7,7 +7,6 @@
 #include "Engine/DeveloperSettings.h"
 #include "PD_HUD.generated.h"
 
-
 /**
  * @brief Handles drawing things on the HUD mainly, is ued to draw the marquee rectangle on screen
  */
@@ -126,7 +125,7 @@ private:
 
 
 // Move the below classes into the shared UI under 'Classes' when moving his into it's own slate widget 
-
+/** @brief DEPRECATED */
 UCLASS()
 class RTSOPEN_API URTSOMinimapData_Deprecated : public UDataAsset
 {
@@ -137,6 +136,7 @@ public:
 	UTexture2D* ArrowTexture = nullptr;
 };
 
+/** @brief DEPRECATED */
 UCLASS(Config = "Game", DefaultConfig)
 class RTSOPEN_API URTSOMinimapDeveloperSettings_Deprecated : public UDeveloperSettings
 {

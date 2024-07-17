@@ -19,122 +19,180 @@ struct FPlayerLocationStruct;
 class URTSOpenSaveGame;
 class SRTSOSaveEditor;
 
+/** @brief The inner uwidget that routes data and decides which save editor slate widget to display */
 UCLASS(Blueprintable)
 class URTSOSaveEditorInnerWidget : public UWidget
 {
 	GENERATED_BODY()
 
 public:
+	/** @brief Copies the current save-data on an async game-thread */
 	void CopyData(URTSOpenSaveGame* InSaveGame);
+	/** @brief Does nothing. Reserved */
 	void OnFailedCopyData();
+	/** @brief Caches all copied data into different arrays, to separate data for the different slate widgets beforehand  */
 	void OnCompletedCopyData();
+	/** @brief Outputs the copied data to log  */
 	void OnCompletedCopyData_Debug();
+	/** @brief Updates the inner slate editors based on the selected 'EditorType' property,
+	 * @note Gives a pointer of the relevant array view to the selected slate editor  */
 	void UpdateInnerEditor();
+	/** @brief Ensures we have a SWrapBox then calls UpdateInnerEditor and call UpdateChildSlot on the selected save-editor slate widget */
 	virtual TSharedRef<SWidget> RebuildWidget() override;
+	/** @brief Ensures we release our shared pointers to the slate widgets */
 	virtual void ReleaseSlateResources(bool bReleaseChildren) override;
 
+	/** @brief Overwrites 'EditorType', resets 'SharedExistingSaveEditor' then calls 'UpdateInnerEditor()' */
 	UFUNCTION() void SelectEditor(EPDSaveDataThreadSelector NewEditorType);
+	/** @brief  Resets the modified copied data to the initial values in the SaveGamePtr */
 	void ResetFieldData(EPDSaveDataThreadSelector SaveDataGroupSelector);
 
+	/** @brief Wrapbox that wraps our SRTSOSaveEditorBase derived widgets */
 	TSharedPtr<SWrapBox> InnerSlateWrapbox;
+	/** @brief The currently selected save editor widget */
 	TSharedPtr<SRTSOSaveEditorBase> SharedExistingSaveEditor;
 
+	/** @brief The currently selected save editor type */
 	EPDSaveDataThreadSelector EditorType = EPDSaveDataThreadSelector::EPlayers;
 	
+	/** @brief Cached player base data for the PlayerBase Save-Editor, currently only consists of userid and location */
 	TArray<TSharedPtr<FPlayerLocationStruct>>    LocationsAsSharedTupleArray;
+	/** @brief Cached world interactables data for the Interactables Save-Editor */
 	TArray<TSharedPtr<FRTSSavedInteractable>>    InteractableAsSharedArray;
+	/** @brief Cached world unit/entity data for the Entity Save-Editor */
 	TArray<TSharedPtr<FRTSSavedWorldUnits>>      EntitiesAsSharedArray;
+	/** @brief Cached user inventory data for the Inventory Save-Editor */
 	TArray<TSharedPtr<FUserInventoriesStruct>>   AllUserInventoriesAsSharedTupleArray;
+	/** @brief Cached conversation actor state data for the Conversation State Save-Editor */
 	TArray<TSharedPtr<FConversationStateStruct>> ConversationStatesAsSharedArray;
+	/** @brief Cached user mission progress tags, for the Mission Tags Save-Editor */
 	TArray<TSharedPtr<FUserMissionTagsStruct>>   UserMissionTagsAsSharedArray;
 
+	/** @brief Pointer to the selected savegame slot */
 	UPROPERTY()
 	URTSOpenSaveGame* SaveGamePtr = nullptr;
+	/** @brief Copied save data that we are modifying. Only commit back tp the actual slot when finished editing */
 	UPROPERTY()
 	FRTSSaveData CopiedSaveData;
 };
 
+/** @brief  The actual user widget that wraps out uwidget and properly exposes the widgets to UMG */
 UCLASS(Blueprintable)
 class URTSOSaveEditorUserWidget : public UCommonActivatableWidget
 {
 	GENERATED_BODY()
 
 public:
+	/** @brief Binds callbacks for our save-game slot buttons and our save editor category buttons.
+	 * The latter types route into the inner save-editor which selects editor to display based on the pressed button */
 	UFUNCTION()
 	void BindButtonDelegates();
 
+	/** @brief Loads the selected savegame slot and copies it to our inner save editor uwidget */
 	UFUNCTION()
 	void LoadSlotData(int32 SlotIdx, bool bFirstLoad = false);
 	
+	/** @brief Bounded to Slot0 button. Calls LoadSlotData(0)' */
 	UFUNCTION()
 	void LoadSlotData0();
+	/** @brief Bounded to Slot1 button. Calls LoadSlotData(1)' */
 	UFUNCTION()
 	void LoadSlotData1();	
+	/** @brief Bounded to Slot2 button. Calls LoadSlotData(2)' */
 	UFUNCTION()
 	void LoadSlotData2();
+	/** @brief Bounded to Slot3 button. Calls LoadSlotData(3)' */
 	UFUNCTION()
 	void LoadSlotData3();
+	/** @brief Bounded to Slot4 button. Calls LoadSlotData(4)' */
 	UFUNCTION()
 	void LoadSlotData4();
 
+	/** @brief Helper to retrieve the button object based on a given selector enum */
 	UButton* GetCategoryButton(EPDSaveDataThreadSelector Button) const;
+	/** @brief Helper to reset a previous button state based on a given selector enum */
 	void Category_ResetButtonState(EPDSaveDataThreadSelector PreviousButton) const;
+	/** @brief Helper to activate a buttons state based on a given selector enum */
 	void Category_ActivateButtonState(EPDSaveDataThreadSelector NewButton) const;
+	/** @brief Helper that calls 'Category_ResetButtonState' & 'Category_ActivateButtonState'
+	 * in the correct order while ensuring functions that are needed inbetween are called  */
 	void SelectCategory(EPDSaveDataThreadSelector CategoryButton) const;
+	/** @brief Calls 'SelectCategory' followed by a call to 'InvalidateLayoutAndVolatility' */
 	void SelectCategoryAndInvalidateCache(EPDSaveDataThreadSelector CategoryButton);
+	/** @brief Calls 'SelectCategoryAndInvalidateCache(EPDSaveDataThreadSelector::EWorldBaseData)' */
 	UFUNCTION() void Category_WorldBaseData();
+	/** @brief Calls 'SelectCategoryAndInvalidateCache(EPDSaveDataThreadSelector::EPlayers)' */
 	UFUNCTION() void Category_PlayerBaseData();
+	/** @brief Calls 'SelectCategoryAndInvalidateCache(EPDSaveDataThreadSelector::EInteractables)' */
 	UFUNCTION() void Category_InteractableData();
+	/** @brief Calls 'SelectCategoryAndInvalidateCache(EPDSaveDataThreadSelector::EEntities)' */
 	UFUNCTION() void Category_EntityData();
+	/** @brief Calls 'SelectCategoryAndInvalidateCache(EPDSaveDataThreadSelector::EInventories)' */
 	UFUNCTION() void Category_PlayerInventoriesData();
+	/** @brief Calls 'SelectCategoryAndInvalidateCache(EPDSaveDataThreadSelector::EConversationActors)' */
 	UFUNCTION() void Category_ConversationStateData();
+	/** @brief Calls 'SelectCategoryAndInvalidateCache(EPDSaveDataThreadSelector::EPlayerConversationProgress)' */
 	UFUNCTION() void Category_MissionProgressTagsData();
 
+	/** @brief Sets out widget switches to the index for loading, said index houses teh elements that our animation is using */
 	virtual void OnAnimationStarted_Implementation(const UWidgetAnimation* Animation) override;
+	/** @brief Sets out widget switches back from the index that it uses for loading animations, back to normal */
 	virtual void OnAnimationFinished_Implementation(const UWidgetAnimation* Animation) override;
 	
+	/** @brief The base canvas that elements are painted on */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Meta = (BindWidget))
 	UCanvasPanel* BaseCanvas = nullptr;
 
+	/** @brief An exit button that closes the save editor */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Meta = (BindWidget))
 	URTSOMenuButton* ExitButton = nullptr;	
 	
+	/** @brief The inner saveeditor uwidget  */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Meta = (BindWidget))
 	URTSOSaveEditorInnerWidget* Inner = nullptr;
 
+	/** @brief The save editor category loading animation  */
 	UPROPERTY(Transient, EditAnywhere, BlueprintReadWrite, Meta = (BindWidgetAnim))
 	UWidgetAnimation* CategoryLoadingAnimation = nullptr;
 
+	/** @brief The title textblock that displays the current data-view and which save slot it is in */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Meta = (BindWidget))
 	UTextBlock* DataViewTitle = nullptr;
 	
+	/** @brief Widget switcher for the dataview,
+	 * @note only visible when loading in large enough data that it gets a chance to run the loading animation  */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Meta = (BindWidget))
 	UWidgetSwitcher* LoadViewWidgetSwitch = nullptr;
+	/** @brief Widget switcher for the saveeditor tabs/categories,
+	 * @note only visible when loading in large enough data that it gets a chance to run the loading animation  */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Meta = (BindWidget))
 	UWidgetSwitcher* TabsLoadViewWidgetSwitch = nullptr;
 
+	/** @brief  The actual overlay which houses the animation elements */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Meta = (BindWidget))
 	UOverlay* DataViewLoaderAnimationLayer = nullptr;
+	/** @brief  The actual overlay which houses the animation elements */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Meta = (BindWidget))
 	UOverlay* TabsLoaderAnimationLayer = nullptr;
+	/** @brief  The actual overlay which houses the category buttons */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Meta = (BindWidget))
 	UOverlay* CategoryButtonOverlay = nullptr;
+	/** @brief  The actual overlay which houses the current data-view */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Meta = (BindWidget))
 	UOverlay* DataViewOverlay = nullptr;
 
+	/** @brief Calling controller we want to bind the exit button to. Reserved for further bindings */
 	UPROPERTY(VisibleAnywhere, BlueprintReadWrite)
 	AActor* ActorToBindAt = nullptr;
-	
 
 	/** @defgroup SaveDataEditorTabButtons  */
-	UPROPERTY(BlueprintReadWrite, Meta=(BindWidget)) class URTSOMenuButton* Btn_WorldBaseData = nullptr; /**< @brief Button that invoked the WorldBase Data view. @ingroup SaveDataEditorTabButtons */
-	UPROPERTY(BlueprintReadWrite, Meta=(BindWidget)) class URTSOMenuButton* Btn_PlayerBaseData = nullptr; /**< @brief Button that invoked the WorldBase Data view. @ingroup SaveDataEditorTabButtons */
-	UPROPERTY(BlueprintReadWrite, Meta=(BindWidget)) class URTSOMenuButton* Btn_InteractableData = nullptr; /**< @brief Button that invoked the WorldBase Data view. @ingroup SaveDataEditorTabButtons */
-	UPROPERTY(BlueprintReadWrite, Meta=(BindWidget)) class URTSOMenuButton* Btn_EntityData = nullptr; /**< @brief Button that invoked the WorldBase Data view. @ingroup SaveDataEditorTabButtons */
-	UPROPERTY(BlueprintReadWrite, Meta=(BindWidget)) class URTSOMenuButton* Btn_PlayerInventoriesData = nullptr; /**< @brief Button that invoked the WorldBase Data view. @ingroup SaveDataEditorTabButtons */
-	UPROPERTY(BlueprintReadWrite, Meta=(BindWidget)) class URTSOMenuButton* Btn_ConversationStateData = nullptr; /**< @brief Button that invoked the WorldBase Data view. @ingroup SaveDataEditorTabButtons */
-	UPROPERTY(BlueprintReadWrite, Meta=(BindWidget)) class URTSOMenuButton* Btn_MissionProgressTagsData = nullptr; /**< @brief Button that invoked the WorldBase Data view. @ingroup SaveDataEditorTabButtons */
-	
+	UPROPERTY(BlueprintReadWrite, Meta=(BindWidget)) class URTSOMenuButton* Btn_WorldBaseData = nullptr; /**< @brief Button that invokes the WorldBase Editor Slate widget. @ingroup SaveDataEditorTabButtons */
+	UPROPERTY(BlueprintReadWrite, Meta=(BindWidget)) class URTSOMenuButton* Btn_PlayerBaseData = nullptr; /**< @brief Button that invokes the PlayerBase Editor Slate Widget. @ingroup SaveDataEditorTabButtons */
+	UPROPERTY(BlueprintReadWrite, Meta=(BindWidget)) class URTSOMenuButton* Btn_InteractableData = nullptr; /**< @brief Button that invokes the Interactable Editor Slate Widget. @ingroup SaveDataEditorTabButtons */
+	UPROPERTY(BlueprintReadWrite, Meta=(BindWidget)) class URTSOMenuButton* Btn_EntityData = nullptr; /**< @brief Button that invokes the Entity Editor SLate Widget . @ingroup SaveDataEditorTabButtons */
+	UPROPERTY(BlueprintReadWrite, Meta=(BindWidget)) class URTSOMenuButton* Btn_PlayerInventoriesData = nullptr; /**< @brief Button that invokes the Inventory Editor Slate Widget. @ingroup SaveDataEditorTabButtons */
+	UPROPERTY(BlueprintReadWrite, Meta=(BindWidget)) class URTSOMenuButton* Btn_ConversationStateData = nullptr; /**< @brief Button that invokes the Conversation-State Editor Slate Widget. @ingroup SaveDataEditorTabButtons */
+	UPROPERTY(BlueprintReadWrite, Meta=(BindWidget)) class URTSOMenuButton* Btn_MissionProgressTagsData = nullptr; /**< @brief Button that invokes the Mission Progress Mission Progress Slate Widget. @ingroup SaveDataEditorTabButtons */
 
 	/** @defgroup MenuButtonGroup
 	 *  @todo replace with ulistview of available slots */
@@ -149,9 +207,12 @@ public:
 	UPROPERTY(BlueprintReadWrite, Meta=(BindWidget))
 	class URTSOMenuButton* Slot4 = nullptr; /**< @brief Self-explanatory. @ingroup MenuButtonGroup */
 
+	/** @brief The currently loaded save data slot that we want to modify.
+	 * @note Will never be directly operated on, only moved into when editing a slot is finished */
 	UPROPERTY(VisibleInstanceOnly)
 	URTSOpenSaveGame* LoadedGameSaveForModification = nullptr;
 	
+	/** @brief The text that represents the currently loaded slot, so there is no ambiguity in which slot the user is modifying  */
 	static FText LoadedSlot_TitleText;
 };
 

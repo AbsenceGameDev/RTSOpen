@@ -22,13 +22,16 @@ public:
  		SLATE_EVENT(FOnClicked, OnUserClicked)
 	SLATE_END_ARGS()
 	
+	/** @brief Stores a pointer to the copied save data and then Calls UpdateChildSlot, passing ArrayRef as the opaquedata parameter */
 	void Construct(const FArguments& InArgs, FRTSSaveData* InLinkedData,  TArray<TSharedPtr<FConversationStateStruct>>& ArrayRef);
+	/** @brief Sets up the child slot, and passes in the data view array to an slistview wrapped in a scrollbox */
 	virtual void UpdateChildSlot(void* OpaqueData) final override;
 
+	/** @brief Displays the actual list item for each entry in ConversationStatesAsSharedArray, which in this case is the states in 'FConversationStateStruct' */
 	TSharedRef<ITableRow> MakeListViewWidget_ConversationStateData(TSharedPtr<FConversationStateStruct> InItem, const TSharedRef<STableViewBase>& OwnerTable) const;
 	void OnComponentSelected_ConversationStateData(TSharedPtr<FConversationStateStruct> InItem, ESelectInfo::Type InSelectInfo);
 	
-	// Views
+	/** @brief Array 'View' that is used to display the data related to this editor widget */
 	TArray<TSharedPtr<FConversationStateStruct>>* ConversationStatesAsSharedArray;
 
 	// Callbacks

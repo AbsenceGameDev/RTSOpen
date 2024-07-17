@@ -60,20 +60,25 @@ public:
 };
 
 
+/** @brief Data table struct type for user message widget pop-ups, these will be displayed when a user message is received */
 USTRUCT(Blueprintable, BlueprintType)
 struct PDUSERMESSAGEBASE_API FPDGameMessageWidgetRow : public FTableRowBase
 {
 	GENERATED_BODY()
 
+	/** @brief Widget to display when the associated user message errors out or the user selected something like 'Abort Action' */
 	UPROPERTY(EditAnywhere)
 	TObjectPtr<UPDErrorWidget> ErrorWidget = nullptr;
 
+	/** @brief Widget to display when the associated user message waits for a response */
 	UPROPERTY(EditAnywhere)
 	TObjectPtr<UPDWaitWidget> WaitWidget = nullptr;
 
+	/** @brief Widget to display when this user message starts */
 	UPROPERTY(EditAnywhere)
 	TObjectPtr<UPDStartWidget> StartWidget = nullptr;
 
+	/** @brief Widget to display when this user message succeeds */
 	UPROPERTY(EditAnywhere)
 	TObjectPtr<UPDSuccessWidget> SuccessWidget = nullptr;	
 };

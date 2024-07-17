@@ -236,11 +236,6 @@ bool ARTSOInteractableResourceBase::CanEditChange(const FProperty* InProperty) c
 	}
 
 	const FName PropertyName = InProperty->GetFName();
-	if (PropertyName == GET_MEMBER_NAME_CHECKED(ARTSOInteractableResourceBase, TradeArchetype))
-	{
-		return HasInfiniteInventory();
-	}
-
 	if (PropertyName == GET_MEMBER_NAME_CHECKED(ARTSOInteractableResourceBase, InventoryFragment))
 	{
 		return HasInfiniteInventory() == false;

@@ -133,6 +133,20 @@ public:
 	UFUNCTION()
 	void ApplySettings(int32 InMinimumCount, int32 InMaximumCount);
 
+	/** @brief If Min or Max is set to INDEX_NONE, changes to said member will be ignored */
+	virtual void OnRangeUpdated(int32 NewMin = INDEX_NONE, int32 NewMax = INDEX_NONE);
+
+	/** @brief  Updates the SelectedCount with the new value
+	 * @note is bound to 'RangedSlider->OnValueChanged' */
+	UFUNCTION()
+	void OnSliderValueChanged(float NewValue);
+
+	/** @brief  Updates the SelectedCount with the new value
+	 * @note is bound to 'RangedNumberBox->OnValueChanged' */
+	UFUNCTION()
+	void OnNumberBoxChanged(int32 NewValue);
+
+	
 	// @done Make configurable to use, via developer settings (UPDSharedUISettings), to use either a:
 	// @done 1. Ranged slider
 	// @done 2. Number box with user input, then validation to clamp it to a valid range
@@ -144,17 +158,9 @@ public:
 	/** @brief Range: Max */
 	UPROPERTY(BlueprintReadWrite, Meta=(ExposeOnSpawn))
 	int32 MaximumCount = 0;
+	/** @brief  The value selected by the number box*/
 	UPROPERTY(BlueprintReadWrite, Meta=(ExposeOnSpawn))
 	int32 SelectedCount = 0;
-	
-	/** @brief If Min or Max is set to INDEX_NONE, changes to said member will be ignored */
-	virtual void OnRangeUpdated(int32 NewMin = INDEX_NONE, int32 NewMax = INDEX_NONE);
-
-	UFUNCTION()
-	void OnSliderValueChanged(float NewValue);
-	
-	UFUNCTION()
-	void OnNumberBoxChanged(int32 NewValue); 
 	
 	/** @brief Ranged (Clamped) Slider */
 	UPROPERTY(BlueprintReadWrite, Meta=(BindWidget, ExposeOnSpawn))

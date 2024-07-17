@@ -24,12 +24,16 @@ public:
  		SLATE_EVENT(FOnClicked, OnUserClicked)
 	SLATE_END_ARGS()
 	
+	/** @brief Stores a pointer to the copied save data and then Calls UpdateChildSlot, passing ArrayRef as the opaquedata parameter */
 	void Construct(const FArguments& InArgs, FRTSSaveData* InLinkedData, TArray<TSharedPtr<FUserInventoriesStruct>>& ArrayRef);
+	/** @brief Sets up the child slot, and passes in the data view array to an slistview wrapped in a scrollbox */
 	virtual void UpdateChildSlot(void* OpaqueData) final override;
 
+	/** @brief Displays the actual list item for each entry in AllUserInventoriesAsSharedTupleArray, which in this case is inventories in 'FUserInventoriesStruct' */
 	TSharedRef<ITableRow> MakeListViewWidget_InventoryOverviewData(TSharedPtr<FUserInventoriesStruct> InItem, const TSharedRef<STableViewBase>& OwnerTable) const;
 	void OnComponentSelected_InventoryOverviewData(TSharedPtr<FUserInventoriesStruct> InItem, ESelectInfo::Type InSelectInfo);
 
+	/** @brief Displays the actual list item for each entry in in a players inventory, which in this case are of type 'FPDItemNetDatum' */
 	TSharedRef<ITableRow> MakeListViewWidget_ItemData(TSharedPtr<FPDItemNetDatum> InItem, const TSharedRef<STableViewBase>& OwnerTable) const;
 	void OnComponentSelected_ItemData(TSharedPtr<FPDItemNetDatum> InItem, ESelectInfo::Type InSelectInfo) const;
 

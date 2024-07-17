@@ -47,8 +47,13 @@ public:
 	/** @brief Base class just returns the harvest-time. could be extended to return modified or different values if needed */	
 	virtual double GetInteractionTime_Implementation() const override { return InteractionTime; };
 	
+	/** @brief Checks if we have infinite inventory, via the override settings or falls back to global settings */
 	UFUNCTION()
 	bool HasInfiniteInventory() const;
+
+#if WITH_EDITOR
+	virtual bool CanEditChange(const FProperty* InProperty) const override;
+#endif // WITH_EDITOR
 
 private:
 	/** @brief What job is this resource tied to, default value is set to TAG_AI_Job_GatherResource in this classes ctor */
@@ -65,13 +70,12 @@ private:
 	/** @brief Tick accumulator */
 	double RefreshTickAcc = 0.0;
 
-#if WITH_EDITOR
-	virtual bool CanEditChange(const FProperty* InProperty) const override;
-#endif // WITH_EDITOR
-
-	// @todo Move these override to a datatable
+	/** @brief Availability settings, does it have infinite or limited amounts?
+	 * @todo Move these overrides to a datatable*/
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Meta = (AllowPrivateAccess="true"))
 	ERTSResourceAvailability OverrideAvailability = PD::Interactable::Behaviour::Availability::EUndefined;
+	/** @brief Requirement settings, do we always allow trade or do we need to have the minimum amount available before allowing a trade?
+	 * @todo Move these overrides to a datatable */
 	UPROPERTY(Config, EditAnywhere, Category = "Interactable Resources Developer Settings")
 	ERTSResourceRequirement OverrideRequirements = PD::Interactable::Behaviour::Requirements::EUndefined;
 	

@@ -38,7 +38,6 @@ struct FRTSOConversationMetaState
 	/** @brief Required tags to progress through the mission phases */
 	UPROPERTY(EditAnywhere, BlueprintReadOnly)
 	TArray<FRTSOConversationRules> PhaseRequiredTags;
-	
 
 	/** @brief The currently active conversation instance. note@todo might need to map this, keyed by userID (players persistent ID/actorID, I really need to unify these names haha) */
 	UPROPERTY(BlueprintReadOnly)
@@ -120,7 +119,6 @@ public:
 	/** @brief Sets the current mission for the given player/user */
 	void SetCurrentPlayerMission(int32 UserID, const FGameplayTag& MissionTag);
 	
-	
 	/** @brief adds 'JobTag' to a 'FGameplayTagContainer' and returns it */
 	virtual FGameplayTagContainer GetGenericTagContainer_Implementation() const override;
 
@@ -147,10 +145,6 @@ public:
 	/** @brief Empty for now. Reserved for later use */
 	virtual void OnConversationPhaseStateChanged(const FGameplayTag& EntryTag, ERTSOConversationState NewState);
 	
-	// /** @brief The handle to the settings row entry we want to apply to the mission. */
-	// UPROPERTY(EditAnywhere, BlueprintReadWrite, Meta = (RowType = "/Script/RTSOpen.RTSOConversationMetaProgressionDatum"))
-	// FDataTableRowHandle ConversationSettingsHandle;	
-
 	/** @brief The handle to the settings row entry we want to apply to the mission. */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Meta = (RowType = "/Script/RTSOpen.RTSOConversationMetaProgressionDatum"))
 	TArray<FDataTableRowHandle> ConversationSettingsHandles;
@@ -158,21 +152,13 @@ public:
 	// @todo: Need replayable conversation as-well /** @brief The handle to the settings row entry we want to apply to the mission. */
 	// UPROPERTY(EditAnywhere, BlueprintReadWrite, Meta = (RowType = "/Script/RTSOpen.RTSOConversationMetaProgressionDatum"))
 	// TArray<FDataTableRowHandle> ReplayableConversationSettingsHandles;
-
 	
-	// /** @note This pointer is just so we can modify the underlying value without restrictions in const functions*/
-	// FRTSOConversationMetaState* InstanceDataPtr{};
-	// /** @deprecated The actual instance data. */
-	// UPROPERTY(VisibleInstanceOnly, BlueprintReadWrite)
-	// FRTSOConversationMetaState InstanceData{};
-
 	/** @brief The actual instance data */
 	UPROPERTY(VisibleInstanceOnly, BlueprintReadWrite)
 	TMap<FGameplayTag, FRTSOConversationMetaState> InstanceDataPerMission{};	// @todo replace above with this
 	
 	/** @note This pointer is just so we can modify the underlying value without restrictions in const functions*/
 	TMap<FGameplayTag, FRTSOConversationMetaState>* InstanceDataPerMissionPtr{};	// @todo replace above with this
-	
 	
 	/** @brief The owned participant component. */
 	UPROPERTY(VisibleInstanceOnly)
@@ -190,9 +176,7 @@ public:
 	UPROPERTY(EditAnywhere)
 	FPDPersistentID ConversationActorPersistentID;
 
-	// UPROPERTY(VisibleInstanceOnly)
-	// FGameplayTag CurrentMission = FGameplayTag{};
-
+	/** @brief questline progress per player, which mission/quest in the questline is the player on. */
 	UPROPERTY(VisibleInstanceOnly)
 	TMap<int32, FGameplayTag> CurrentMissionPerPlayer{};
 
@@ -216,6 +200,7 @@ class URTSOConversationActorTrackerSubsystem : public UWorldSubsystem
 	GENERATED_BODY()
 public:
 
+	/** @brief Static getter, singleton style  */
 	static URTSOConversationActorTrackerSubsystem* Get(UWorld* World);
 
 	// @todo start: make sure these actors copy their progression data before being destroyed

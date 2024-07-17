@@ -29,11 +29,14 @@ struct PDUSERMESSAGEBASE_API FPDGameErrorMessageRow : public FTableRowBase
 {
 	GENERATED_BODY()
 
+	/** @brief  The tag related to this error message */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
 	FGameplayTag GameMessageStyleTag = FGameplayTag{};
 	
+	/** @brief  The associated audio for different actions of this error message */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
 	FPDGameMessageAudioRow  GameMessageAudio = {};
+	/** @brief  The associated widgets for this error message */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
 	FPDGameMessageWidgetRow GameMessageWidgets = {};
 };

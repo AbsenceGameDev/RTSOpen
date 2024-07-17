@@ -23,9 +23,12 @@ public:
  		SLATE_EVENT(FOnClicked, OnUserClicked)
 	SLATE_END_ARGS()
 	
+	/** @brief Stores a pointer to the copied save data and then Calls UpdateChildSlot, passing ArrayRef as the opaquedata parameter */
 	void Construct(const FArguments& InArgs, FRTSSaveData* InLinkedData, TArray<TSharedPtr<FUserMissionTagsStruct>>& ArrayRef);
+	/** @brief Sets up the child slot, and passes in the data view array to an slistview wrapped in a scrollbox */
 	virtual void UpdateChildSlot(void* OpaqueData) final override;
 	
+	/** @brief Displays the actual list item for each entry in UserMissionTagsAsSharedArray, which in this case is tag containers in 'FUserMissionTagsStruct' */
 	TSharedRef<ITableRow> MakeListViewWidget_UserMissionTags(TSharedPtr<FUserMissionTagsStruct> InItem, const TSharedRef<STableViewBase>& OwnerTable) const;
 	void OnComponentSelected_UserMissionTags(TSharedPtr<FUserMissionTagsStruct> InItem, ESelectInfo::Type InSelectInfo);	
 

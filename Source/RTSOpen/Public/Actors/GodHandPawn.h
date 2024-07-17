@@ -78,17 +78,23 @@ public:
 	/** @brief Refreshes our pointer to our selected build context or selected buildable data based on the enum, and the tag finds the actual find the entry therein */
 	virtual void SelectBuildMenuEntry_Implementation(ERTSBuildMenuModules ActionMode, FGameplayTag ActionTag) override;
 
+	/** @brief  Destroys the currently selected buildable actor */
 	UFUNCTION()
 	void PerformAction_Destroy(const TArray<uint8>& Payload);
 	
+	/** @brief Selects a buildable action entry, may it be to spawn workers or to destroy the associated buildable */
 	virtual void SelectActionMenuEntry_Implementation(ERTSBuildableActionMenuModules ActionMode, FGameplayTag ActionTag, const TArray<uint8>& Payload) override;
+	/** @brief Passes the call to the controller and retrieves our persistent ID */
 	virtual int32 GetBuilderID_Implementation() override;
 
+	/** @brief Copies our 'SpawnedBuildings' array to the outarray */
 	UFUNCTION()
 	virtual void GetOwnedBuildings_Implementation(TArray<AActor*>& OutArray) override
 	{
 		OutArray = SpawnedBuildings;
 	}
+
+	/** @brief Adds a new building to our 'SpawnedBuildings' array */
 	UFUNCTION()
 	virtual void SetOwnedBuilding_Implementation(AActor* NewBuilding) override
 	{
@@ -289,13 +295,13 @@ public:
 	bool bJustPlacedBuildable = false;
 
 	
-	/** @brief  */
+	/** @brief Poor mans double click detection - Amount of clicks */
 	UPROPERTY()
 	int32 HitValidBuildableCounter = 0;
-	/** @brief  */
+	/** @brief Poor mans double click detection - Time since last click */
 	UPROPERTY()
 	float TimeBetweenClicks = 0.0;	
-	/** @brief  */
+	/** @brief Poor mans double click detection - Used to ensure our double clicks hit the same actor */
 	UPROPERTY()
 	AActor* LastClickedBuildable = nullptr;
 

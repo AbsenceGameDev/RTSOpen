@@ -305,6 +305,7 @@ public:
 	UPROPERTY(BlueprintReadOnly)
 	FHitResult HitResult;
 	
+	/** @brief Equality comparison, compares the resultflags and the hitresults */
 	bool operator==(const FPDTraceResult& Other) const
 	{
 		return ResultFlag == Other.ResultFlag
@@ -384,9 +385,12 @@ struct PDINTERACTION_API FRTSSavedInteractable
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "GameInstance|Widgets")
 	int32 InstanceIndex = INDEX_NONE;
 
+	/** @brief Hidden uclass pointer so the save editor may update the softclass field when we need it to */
 	UPROPERTY()
 	UClass* _HiddenInstantiatedClass = nullptr;
 
+	/** @brief Function to update the softclass field with _HiddenInstantiatedClass,
+	 * @note if _HiddenInstantiatedClass is nullptr we may optinoally override it as-well */
 	void CopySelectedToSoftClass(UClass* PotentialOverrideHiddenClass = nullptr)
 	{
 		if (PotentialOverrideHiddenClass != nullptr || _HiddenInstantiatedClass == nullptr)
@@ -404,6 +408,8 @@ struct PDINTERACTION_API FRTSSavedInteractable
 		}		
 	}
 	
+	/** @brief Equality comparison, compares the actor class, the instanced ID/index
+	 * alongside a slacked comparison of usability and location */
 	bool operator==(const FRTSSavedInteractable& Other) const
 	{
 		return 
@@ -413,13 +419,14 @@ struct PDINTERACTION_API FRTSSavedInteractable
 			&& (this->Location - Other.Location).IsNearlyZero(5.f);
 	}
 
+	/** @brief Inequality comparison, negates the result of the Equality comparison */
 	bool operator!=(const FRTSSavedInteractable& Other) const
 	{
 		return (*this == Other) == false;
 	}
 };
 
-
+/** @brief System Behaviours - Resource Availability */
 UENUM()
 enum class ERTSResourceAvailability : uint8
 {
@@ -428,6 +435,7 @@ enum class ERTSResourceAvailability : uint8
 	EUndefined,
 };
 
+/** @brief System Behaviours - Resource Action Requirements, for interactable resource containers */
 UENUM()
 enum class ERTSResourceRequirement : uint8
 {
@@ -436,7 +444,7 @@ enum class ERTSResourceRequirement : uint8
 	EUndefined,
 };
 
-
+/** @brief System Behaviours - namespace aliases */
 namespace PD::Interactable::Behaviour
 {
 	using Availability = ERTSResourceAvailability;
@@ -445,15 +453,18 @@ namespace PD::Interactable::Behaviour
 	
 }
 
+/** @brief Global/Fallback resource settings */
 UCLASS(Config = "Game", DefaultConfig)
 class PDINTERACTION_API URTSInteractableResourceSettings : public UDeveloperSettings
 {
 	GENERATED_BODY()
 public:
 	
+	/** @brief Default Resource Availability setting, resource interactables will fall back to this if no override value is set */
 	UPROPERTY(Config, EditAnywhere, Category = "Interactable Resources Developer Settings")
 	ERTSResourceAvailability DefaultAvailability = PD::Interactable::Behaviour::Availability::EInfinitelyAvailable;
 
+	/** @brief Default Resource Action Requirements setting, resource interactables will fall back to this if no override value is set */
 	UPROPERTY(Config, EditAnywhere, Category = "Interactable Resources Developer Settings")
 	ERTSResourceRequirement DefaultRequirements = PD::Interactable::Behaviour::Requirements::EAlwaysAllowTrade;	
 };

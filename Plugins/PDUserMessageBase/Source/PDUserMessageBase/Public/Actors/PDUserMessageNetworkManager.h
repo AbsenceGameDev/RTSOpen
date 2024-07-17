@@ -16,17 +16,24 @@ class PDUSERMESSAGEBASE_API APDUserMessageNetworkManager : public AActor
 {
 	GENERATED_UCLASS_BODY()
 public:
-	
+	/** @brief  Reserved for later use. Calls super for now */
 	UFUNCTION()
 	virtual void BeginPlay() override;
-
+	/** @brief Clears the latest message frame
+	 * @note Does nothing on client. */
 	virtual void TickActor(float DeltaTime, ELevelTick TickType, FActorTickFunction& ThisTickFunction) override;
 
+	/** @brief  Appends message tag (FGameplayTag) to latest message frame. Forces a net update
+	 * @note Does nothing on client */
 	UFUNCTION()
 	void AppendToMessageFrame(const FGameplayTag& NewMessageTag, APlayerController* TargetController);
+
+	/** @brief  Appends message tag (FNativeGameplayTag) to latest message frame. Forces a net update
+	 * @note Does nothing on client */
 	void AppendToMessageFrame(const FNativeGameplayTag& NewMessageTag, APlayerController* TargetController);
 	
-	
+	/** @brief Latest message frame, keeps all messages for all connected users
+	 * @todo optimize, don't force other users to take every message as it may easily over-saturate the network */
 	UPROPERTY(Replicated)
 	FPDUserMessageFrameList LatestFrame;
 	

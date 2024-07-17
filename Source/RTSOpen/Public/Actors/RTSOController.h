@@ -168,6 +168,8 @@ class RTSOPEN_API ARTSOController
 	 * @param  NewSelection is an array of MassEntity indices pointing to the entities queried from the octree */
 	UFUNCTION(BlueprintNativeEvent) void OnMarqueeSelectionUpdated(int32 SelectionGroup, const TArray<int32>& NewSelection) const;
 
+	/** @brief Gets the mouse coordinates if a mouse device is found,
+	 * otherwise it returns the coordinate for the upper right corner*/
 	FVector2D GetMouseScreenCoords() const;
 	/** @brief Marquee drawing/selection logic */
 	UFUNCTION(BlueprintCallable) void MarqueeSelection(EMarqueeSelectionEvent SelectionEvent);
@@ -191,9 +193,10 @@ class RTSOPEN_API ARTSOController
 	/** @brief Pipes through our persistent ActorID to the build system */
 	virtual int32 GetBuilderID_Implementation() override { return GetActorID(); };
 	
-	/** @brief Retrieve all owned buildings */
+	/** @brief Passes along to pawn, which retrieves all owned buildings, copy them into OutArray. */
 	UFUNCTION()
 	virtual void GetOwnedBuildings_Implementation(TArray<AActor*>& OutArray) override;
+	/** @brief Passes along to pawn, which will emplace the new building to their 'SpawnedBuildings' array  */
 	UFUNCTION()
 	virtual void SetOwnedBuilding_Implementation(AActor* NewBuilding) override;
 	/* PDRTS Builder Interface - End */

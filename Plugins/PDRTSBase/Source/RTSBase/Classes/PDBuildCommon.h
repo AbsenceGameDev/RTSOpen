@@ -51,6 +51,7 @@ PDRTSBASE_API UE_DECLARE_GAMEPLAY_TAG_EXTERN(TAG_BUILD_ActionContext_WorkerHut1)
 PDRTSBASE_API UE_DECLARE_GAMEPLAY_TAG_EXTERN(TAG_BUILD_ActionContext_Barracks0);
 PDRTSBASE_API UE_DECLARE_GAMEPLAY_TAG_EXTERN(TAG_BUILD_ActionContext_Barracks1);
 
+/** @brief Default Build messages  */
 UCLASS(Config = "Game", DefaultConfig)
 class PDRTSBASE_API UPDBuildMessages : public UDeveloperSettings
 {
@@ -60,7 +61,6 @@ public:
 	UPROPERTY()
 	FText ConfirmDestroyBuilding = FText::FromString("Are you sure you want to destroy this building?");
 };
-
 
 
 /** @brief Behaviours for how builds should be handled.
@@ -91,6 +91,7 @@ enum class PDBuildBehaviourCost
 	EFree       UMETA(DisplayName="PD::Build::Behaviour::Cost::Free"),
 };	
 
+/** @brief  Namespace aliasing */
 namespace PD::Build::Behaviour
 {
 	using Progress = PDBuildBehaviourProgress;
@@ -114,13 +115,15 @@ enum class EPDRTSGhostStageBehaviour
 	EOnEnd UMETA(DisplayName="OnEnd"),
 };
 
+/** @brief Namespace aliasing */
 namespace PD::Build::Ghost::Behaviour
 {
 	using Transition = EPDRTSGhostTransition;
 	using Stage      = EPDRTSGhostStageBehaviour;
 }
 
-// Move to real struct perhaps
+/** @brief Structure that is used to pass data to the build or ping subsystem,
+ * keeps an owner ID (actors persistent ID) and a pointer to that owners owned world actors (buildings)  */
 struct FPDActorCompound
 {
 	int32 OwnerID = INDEX_NONE;
@@ -244,6 +247,7 @@ enum class EPDRTSBuildCameraBehaviour
 	Place_NoCameraMovement,   /** @brief Processing: If no resources, put in waiting queue; when resources: send workers to gather to location */
 };
 
+/** @brief  Namespace aliasing */
 namespace PD::Build::Behaviour
 {
 	using Camera = EPDRTSBuildCameraBehaviour;
@@ -257,6 +261,7 @@ enum class EPDRTSDestroyBuildingBehaviour
 	ImmediateDestruction,   /** @brief Destroy immediately, for snappy feeling and in games where dialogs really mess up the flow of the game */
 };
 
+/** @brief Namespace Aliasing */
 namespace PD::Build::Behaviour
 {
 	using Destruction = EPDRTSDestroyBuildingBehaviour;
@@ -265,7 +270,7 @@ namespace PD::Build::Behaviour
 
 //
 // Buildables
-/** @rief Buildable data-asset, currently only keeps our widget related data in it  */
+/** @brief Buildable data-asset, currently only keeps our widget related data in it  */
 UCLASS(Blueprintable)
 class PDRTSBASE_API UPDBuildableDataAsset : public UDataAsset
 {
@@ -273,35 +278,35 @@ class PDRTSBASE_API UPDBuildableDataAsset : public UDataAsset
 public:
 	UPDBuildableDataAsset() = default;
 
-	/** @rief  Texture resource to apply on a buildable button (Does not take priority) */
+	/** @brief  Texture resource to apply on a buildable button (Does not take priority) */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
 	UTexture2D* Buildable_Texture = nullptr;
 
-	/** @rief  Material resource to apply on a buildable button (Takes priority) */
+	/** @brief  Material resource to apply on a buildable button (Takes priority) */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
 	UMaterialInstance* Buildable_MaterialInstance = nullptr;
 	
-	/** @rief  Audio resource to play when clicking a menu-button */
+	/** @brief  Audio resource to play when clicking a menu-button */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
 	USoundBase* Buildable_AudioLoop = nullptr;
 };
 
-/** @rief Buildable context data-asset, currently only keeps our widget related data in it  */
+/** @brief Buildable context data-asset, currently only keeps our widget related data in it  */
 UCLASS(Blueprintable)
 class PDRTSBASE_API UPDBuildContextDataAsset : public UDataAsset
 {
 	GENERATED_BODY()
 public:
-	/** @rief  Texture resource to apply on a buildable button (Does not take priority) */
+	/** @brief  Texture resource to apply on a buildable button (Does not take priority) */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
 	UTexture2D* BuildContext_Texture = nullptr;
 
-	/** @rief  Material resource to apply on a buildable button (Takes priority) */
+	/** @brief  Material resource to apply on a buildable button (Takes priority) */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
 	UMaterialInstance* BuildContext_MaterialInstance = nullptr;
 };
 
-/** @rief Main Buildable data, no tag associated  */
+/** @brief Main Buildable data, no tag associated  */
 USTRUCT(Blueprintable)
 struct PDRTSBASE_API FPDBuildableData
 {
@@ -324,6 +329,7 @@ struct PDRTSBASE_API FPDBuildableData
 	FPDRTSGhostDatum GhostData{};
 };
 
+/** @brief Non-critical data related to a build-menu context */
 USTRUCT(Blueprintable)
 struct PDRTSBASE_API FPDBuildContextData
 {
@@ -338,6 +344,7 @@ struct PDRTSBASE_API FPDBuildContextData
 	UPDBuildContextDataAsset* DABuildContextAsset = nullptr;
 };
 
+/** @brief Critical data related to a buildables inner actions (For example: Spawning units, upgrading self destruction) */
 USTRUCT(Blueprintable)
 struct PDRTSBASE_API FPDBuildAction : public FTableRowBase
 {
@@ -362,6 +369,7 @@ struct PDRTSBASE_API FPDBuildAction : public FTableRowBase
 	UPDBuildableDataAsset* DABuildAsset = nullptr;
 };
 
+/** @brief Critical data related to a buildables action context (Action contexts are grouped actions) */
 USTRUCT(Blueprintable)
 struct PDRTSBASE_API FPDBuildActionContext : public FTableRowBase
 {
@@ -452,6 +460,7 @@ struct PDRTSBASE_API FPDSharedBuildWidgetFlair : public FTableRowBase
 	FLinearColor NotSelectedBuildableTint = FLinearColor::Blue;	
 };
 
+/** @brief @note Will potentially be deprecated if I can't justify using it */
 UCLASS(Blueprintable)
 class PDRTSBASE_API UPDRTSUnitTypeDataAsset : public UDataAsset
 {

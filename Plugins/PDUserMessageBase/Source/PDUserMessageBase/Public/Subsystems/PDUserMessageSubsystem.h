@@ -19,17 +19,24 @@ public:
 	 * @note as the engine will instantiate these subsystem earlier than anything will reasonably call Get()  */
 	static UPDUserMessageSubsystem* Get();
 
+	/** @brief Static function that calls Get() then Internal_RegisterNetworkManager() to register the network manager*/
 	UFUNCTION(BlueprintCallable)
-	static void RegisterNetworkManager(APDUserMessageNetworkManager* NewNetworkManager);	
+	static void RegisterNetworkManager(APDUserMessageNetworkManager* NewNetworkManager);
+	/** @brief Registers the network manager with the message subsystem, so it may have access to it when dispatching messages */
 	void Internal_RegisterNetworkManager(APDUserMessageNetworkManager* NewNetworkManager);	
 
 	
-	/** Queues a message to the network manager 
+	/** Queues a message to the network manager, via a FGameplayTag 
 	 * @note Implementation only exists on the server */
 	UFUNCTION(BlueprintCallable)
 	static void SendMessageToUser_Server(FGameplayTag& MessageTag, APlayerController* Target);
+	/** Queues a message to the network manager, via a FNativeGameplayTag
+	 * @note Implementation only exists on the server */
 	static void SendMessageToUser_Server(FNativeGameplayTag& MessageTag, APlayerController* Target);
+
+	/** @brief  Handles actually dispatching the message via the network manager, is called by SendMessageToUser_Server */
 	void Internal_SendMessageToUser_Server(FGameplayTag& MessageTag, APlayerController* Target);
+	/** @brief  Handles actually dispatching the message via the network manager, is called by SendMessageToUser_Server */
 	void Internal_SendMessageToUser_Server(FNativeGameplayTag& MessageTag, APlayerController* Target);
 
 	UPROPERTY()

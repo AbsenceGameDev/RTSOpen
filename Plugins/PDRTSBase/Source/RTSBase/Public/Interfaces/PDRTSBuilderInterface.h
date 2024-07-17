@@ -88,7 +88,8 @@ public:
 	/** @brief @todo this is a temporary function signature,
 	 *   @todo cont: Must rewrite other code to manage actor IDs properly
 	 *   @todo cont: then replace this to return TArray<in32> instead of TArray<AActor*>,
-	 *   @todo cont: ActorIDs will be safe to use in save files, the Actor pointers will not be viable for save data*/
+	 *   @todo cont: ActorIDs will be safe to use in save files, the Actor pointers will not be viable for save data
+	 * @note it is up to the subclass implementation to ensure this actually does anything */
 	UFUNCTION(BlueprintNativeEvent, BlueprintCallable, Category = "Action|Interface")
 	void GetOwnedBuildings(TArray<AActor*>& OutArray);
 	virtual void GetOwnedBuildings_Implementation(TArray<AActor*>& OutArray)
@@ -97,10 +98,14 @@ public:
 		OutArray = Dummy;
 	};
 
+	/** @brief Pass an actor which we want to set as a new building,
+	 * @note it is up to the subclass implementation to ensure this actually does anything */
 	UFUNCTION(BlueprintNativeEvent, BlueprintCallable, Category = "Action|Interface")
 	void SetOwnedBuilding(AActor* NewBuilding);
 	virtual void SetOwnedBuilding_Implementation(AActor* NewBuilding) { }
-	
+
+	/** @brief Returns the default actor type (via tag), we wany for our default base types
+	 * Interface impl. returns TAG_BUILD_ActionContext_Base0, but this can be overriden if setting up races/factions that uses a different building for their default base */	
 	UFUNCTION(BlueprintNativeEvent, CallInEditor, Category = "Action|Interface")
 	FGameplayTag GetDefaultBaseType();
 	virtual FGameplayTag GetDefaultBaseType_Implementation()
