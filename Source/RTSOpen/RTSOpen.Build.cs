@@ -39,7 +39,7 @@ public class RTSOpen : ModuleRules
 			/*Widget*/       "SlateCore", "Slate", "CommonUI", "UMG", 
 			/*Effects*/      "Niagara", "MassCrowd", 
             /*Conversation*/ "CommonConversationRuntime", 
-			/*PermaDev*/     "PDInteraction", "PDInventory", "PDRTSBase", "PDConversationHelper",
+			/*PermaDev*/     "PDInteraction", "PDInventory", "PDRTSBase", "PDConversationHelper", "PDUserMessageBase",
 		});
 	}
 }

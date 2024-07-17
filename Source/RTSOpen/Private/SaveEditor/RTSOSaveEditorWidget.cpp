@@ -59,8 +59,9 @@ void URTSOSaveEditorInnerWidget::OnCompletedCopyData()
 	}
 
 	InteractableAsSharedArray.Empty();
-	for (const FRTSSavedInteractable& Interactable : CopiedSaveData.Interactables)
+	for (FRTSSavedInteractable& Interactable : CopiedSaveData.Interactables)
 	{
+		Interactable.CopySelectedToSoftClass();
 		InteractableAsSharedArray.Emplace(MakeShared<FRTSSavedInteractable>(Interactable).ToSharedPtr());
 	}
 
@@ -78,8 +79,9 @@ void URTSOSaveEditorInnerWidget::OnCompletedCopyData()
 	}
 
 	ConversationStatesAsSharedArray.Empty();
-	for (const TTuple<int32, FRTSSavedConversationActorData>& ConversationStateTuple : CopiedSaveData.ConversationActorState)
+	for (TTuple<int32, FRTSSavedConversationActorData>& ConversationStateTuple : CopiedSaveData.ConversationActorState)
 	{
+		ConversationStateTuple.Value.CopySelectedToSoftClass();
 		FConversationStateStruct ConversationStateDatum{ConversationStateTuple.Key, ConversationStateTuple.Value};
 		ConversationStatesAsSharedArray.Emplace(MakeShared<FConversationStateStruct>(ConversationStateDatum).ToSharedPtr());
 	}

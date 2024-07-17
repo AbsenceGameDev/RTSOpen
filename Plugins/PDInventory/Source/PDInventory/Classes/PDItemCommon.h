@@ -75,6 +75,13 @@ struct FPDItemDefaultDatum : public FTableRowBase
 	 * @note Deduction is as noted in the brief of the struct this property is contained within */
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly)
 	TEnumAsByte<EPDItemGroup> Type = EPDItemGroup::RESOURCE;
+
+	/** @brief Regeneration settings -- Allow regenerate when count is 0?  */	
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	bool bRegenerateResourceIfInContainer = false;
+	/** @brief Regeneration settings -- Time to wait (in seconds) if regeneration (of resources) is enabled  */	
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	int32 SecondsToWaitIfRegenerationIsEnabled = 30;
 	
 	/** @brief Tag associated with this item */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)

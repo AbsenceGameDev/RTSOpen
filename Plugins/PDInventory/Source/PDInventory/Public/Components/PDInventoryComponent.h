@@ -55,6 +55,10 @@ public:
 	
 	/** @brief Checks if we are at the last available stack in the inventory */
 	bool IsAtLastAvailableStack() const;
+	
+	/** @brief Checks if can afford to use the requested items */
+	bool CanAfford(const TMap<FGameplayTag, int32> RequestedItems);
+
 public:
 
 	/** @brief Is in cubic centimetres, if 'Volume.Max' is INDEX_NONE (-1) or below, then the volume is unlimited */

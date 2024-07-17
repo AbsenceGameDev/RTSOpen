@@ -803,6 +803,28 @@ void ARTSOController::SelectBuildMenuEntry_Implementation(ERTSBuildMenuModules A
 	IPDRTSBuilderInterface::Execute_SelectBuildMenuEntry(GetPawn(), ActionMode, ActionTag);
 }
 
+void ARTSOController::GetOwnedBuildings_Implementation(TArray<AActor*>& OutArray)
+{
+	if (GetPawn() == nullptr || GetPawn()->GetClass()->ImplementsInterface(UPDRTSBuilderInterface::StaticClass()) == false)
+	{
+		IPDRTSBuilderInterface::GetOwnedBuildings_Implementation(OutArray);
+		return;
+	}
+
+	IPDRTSBuilderInterface::Execute_GetOwnedBuildings(GetPawn(), OutArray); 
+}
+
+void ARTSOController::SetOwnedBuilding_Implementation(AActor* NewBuilding)
+{
+	if (GetPawn() == nullptr || GetPawn()->GetClass()->ImplementsInterface(UPDRTSBuilderInterface::StaticClass()) == false)
+	{
+		IPDRTSBuilderInterface::SetOwnedBuilding_Implementation(NewBuilding);
+		return;
+	}
+
+	IPDRTSBuilderInterface::Execute_SetOwnedBuilding(GetPawn(), NewBuilding); 
+}
+
 void ARTSOController::DrawBoxAndTextChaos(const FVector& BoundsCenter, const FQuat& Rotation, const FVector& DebugExtent, const FString& DebugBoxTitle, const FColor LineColour)
 {
 #if CHAOS_DEBUG_DRAW
@@ -870,7 +892,10 @@ void ARTSOController::AdjustMarqueeHitResultsToMinimumHeight(FHitResult& StartHi
 void ARTSOController::GetEntitiesOrActorsInMarqueeSelection()
 {
 	// Viewport halfsize
-	PD::Mass::Entity::Octree& WorldOctree =  UPDRTSBaseSubsystem::Get()->WorldEntityOctree;
+	UPDRTSBaseSubsystem* RTSSubSystem = UPDRTSBaseSubsystem::Get();
+	const FMassEntityManager* EntityManager = RTSSubSystem->EntityManager;
+	
+	PD::Mass::Entity::Octree& WorldOctree =  RTSSubSystem->WorldEntityOctree;
 
 	FCollisionQueryParams Params;
 	Params.MobilityType = EQueryMobilityType::Static;
@@ -927,8 +952,18 @@ void ARTSOController::GetEntitiesOrActorsInMarqueeSelection()
 	TMap<int32, FMassEntityHandle> Handles;
 	WorldOctree.FindElementsWithBoundsTest(QueryBounds, [&](const FPDEntityOctreeCell& Cell)
 	{
-		if (Cell.EntityHandle.Index == 0) { return; } 
+		if (Cell.EntityHandle.Index == 0 || EntityManager->IsEntityValid(Cell.EntityHandle) == false)
+		{
+			return;
+		}
 
+		// Don't allow selecting/handling entities we do not own
+		FPDMFragment_RTSEntityBase* EntityBaseFrag = EntityManager->GetFragmentDataPtr<FPDMFragment_RTSEntityBase>(Cell.EntityHandle);
+		if (EntityBaseFrag == nullptr || EntityBaseFrag->OwnerID != IPDRTSBuilderInterface::Execute_GetBuilderID(this))
+		{
+			return;
+		}
+		
 		Handles.Emplace(Cell.EntityHandle.Index, Cell.EntityHandle);
 	});
 

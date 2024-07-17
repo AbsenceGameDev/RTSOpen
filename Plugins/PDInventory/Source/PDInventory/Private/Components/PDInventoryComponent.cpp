@@ -100,6 +100,20 @@ bool UPDInventoryComponent::IsAtLastAvailableStack() const
 	return Stacks.Max != INDEX_NONE && Stacks.Max == Stacks.Current;
 }
 
+bool UPDInventoryComponent::CanAfford(const TMap<FGameplayTag, int32> RequestedItems)
+{
+	for (const TTuple<FGameplayTag, int32>& ItemRequest : RequestedItems)
+	{
+		const FPDItemNetDatum* FoundItem = ItemList.Items.FindByKey(ItemRequest.Key);
+		if (FoundItem == nullptr || FoundItem->TotalItemCount < ItemRequest.Value)
+		{
+			return false;
+		}
+	}
+
+	return true;
+}
+
 
 /**
 Business Source License 1.1

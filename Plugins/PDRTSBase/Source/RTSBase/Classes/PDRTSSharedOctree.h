@@ -3,6 +3,7 @@
 #pragma once
 
 #include "CoreMinimal.h"
+#include "GameplayTagContainer.h"
 #include "MassEntityTypes.h"
 #include "Containers/Deque.h"
 #include "PDRTSSharedOctree.generated.h"
@@ -61,6 +62,12 @@ struct PDRTSBASE_API FPDActorOctreeCell
 
 	/** @brief Tracked Entity Owner */
 	int32 OwnerID = INDEX_NONE;
+
+	/** @brief  */
+	uint8 bFirstCellAccess = false;
+
+	/** @brief  */
+	FGameplayTag BuildingType = FGameplayTag{};		
 
 	/** @brief Found idle units within buildables sphere of inlfluence.
 	 *  @note Sphere of influence is hardcoded for now to be 5 times the buildable actor extent

@@ -28,7 +28,9 @@ public:
 	 * @note Implementation only exists on the server */
 	UFUNCTION(BlueprintCallable)
 	static void SendMessageToUser_Server(FGameplayTag& MessageTag, APlayerController* Target);
+	static void SendMessageToUser_Server(FNativeGameplayTag& MessageTag, APlayerController* Target);
 	void Internal_SendMessageToUser_Server(FGameplayTag& MessageTag, APlayerController* Target);
+	void Internal_SendMessageToUser_Server(FNativeGameplayTag& MessageTag, APlayerController* Target);
 
 	UPROPERTY()
 	APDUserMessageNetworkManager* RegisteredNetworkManager = nullptr; 

@@ -2,6 +2,8 @@
 #pragma once
 
 #include "CoreMinimal.h"
+#include "MassSpawnerSubsystem.h"
+#include "PDRTSBaseSubsystem.h"
 #include "RTSOpenCommon.h"
 #include "GameFramework/GameModeBase.h"
 #include "GameFramework/GameUserSettings.h"
@@ -145,6 +147,10 @@ public:
 	/** @brief If making use of PCG */
 	UFUNCTION(BlueprintNativeEvent, BlueprintCallable)
 	void OnGeneratedLandscapeReady();
+
+	virtual void Logout(AController* Exiting) override;
+	virtual void PostLogin(APlayerController* NewPlayer) override;
+	virtual APlayerController* Login(UPlayer* NewPlayer, ENetRole InRemoteRole, const FString& Portal, const FString& Options, const FUniqueNetIdRepl& UniqueId, FString& ErrorMessage) override;
 	
 	/** @brief Load worker/units from current save data*/
 	UFUNCTION(BlueprintNativeEvent, BlueprintCallable)
@@ -161,6 +167,20 @@ public:
 	void FinalizeLoadConversationActors();
 	void FinalizeLoadPlayerMissionTags(const TMap<int32, AActor*>& OwnerIDMappings);
 	void OnThreadFinished_PlayerLoadDataSync(EPDSaveDataThreadSelector FinishedThread);
+
+	using FInnerEntityData = TArray<const FRTSSavedWorldUnits*>;
+	using FEntityCompoundTuple = TTuple<int32, FInnerEntityData>;
+	static void GatherEntityToSpawn(
+		const UWorld& WorldRef,
+		const FRTSSavedWorldUnits& EntityData,
+		TMap<const FMassEntityTemplateID,
+		FEntityCompoundTuple>& EntityPool,
+		UPDRTSBaseSubsystem* RTSSubsystem,
+		UMassSpawnerSubsystem* SpawnerSystem);
+	static void ARTSOBaseGM::DispatchEntitySpawning(
+		const TTuple<const FMassEntityTemplateID, FEntityCompoundTuple>& EntityTypeCompound,
+		const FMassEntityManager* EntityManager,
+		UMassSpawnerSubsystem* SpawnerSystem);
 	
 public:
 	

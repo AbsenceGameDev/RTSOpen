@@ -26,10 +26,22 @@ void UPDUserMessageSubsystem::Internal_RegisterNetworkManager(APDUserMessageNetw
 void UPDUserMessageSubsystem::SendMessageToUser_Server(FGameplayTag& MessageTag, APlayerController* Target)
 {
 	UPDUserMessageSubsystem::Get()->Internal_SendMessageToUser_Server(MessageTag, Target);
+}
 
+void UPDUserMessageSubsystem::SendMessageToUser_Server(FNativeGameplayTag& MessageTag, APlayerController* Target)
+{
+	UPDUserMessageSubsystem::Get()->Internal_SendMessageToUser_Server(MessageTag, Target);
 }
 
 void UPDUserMessageSubsystem::Internal_SendMessageToUser_Server(FGameplayTag& MessageTag, APlayerController* Target)
+{
+	if (RegisteredNetworkManager == nullptr) { return; }
+
+	// Function impl is empty on clients
+	RegisteredNetworkManager->AppendToMessageFrame(MessageTag, Target);
+}
+
+void UPDUserMessageSubsystem::Internal_SendMessageToUser_Server(FNativeGameplayTag& MessageTag, APlayerController* Target)
 {
 	if (RegisteredNetworkManager == nullptr) { return; }
 

@@ -40,9 +40,12 @@ PDRTSBASE_API UE_DECLARE_GAMEPLAY_TAG_EXTERN(TAG_BUILD_ContextMenu_Builder_Exper
 
 /** Declaring the "BUILD.Actions." gameplay tags. to be defined in an object-file */
 PDRTSBASE_API UE_DECLARE_GAMEPLAY_TAG_EXTERN(TAG_BUILD_Actions_DestroyBuilding);
+PDRTSBASE_API UE_DECLARE_GAMEPLAY_TAG_EXTERN(TAG_MSG_Actions_CannotAffordAction);
 // TAG_AI_Type_ tags are implicitly counted as spawn actions when applied as a 'buildable action tag' in an entry in a 'FPDBuildable'-type of datatable
 
 /** Declaring the "BUILD.ActionContext." gameplay tags. to be defined in an object-file */
+PDRTSBASE_API UE_DECLARE_GAMEPLAY_TAG_EXTERN(TAG_BUILD_ActionContext_Base0);
+PDRTSBASE_API UE_DECLARE_GAMEPLAY_TAG_EXTERN(TAG_BUILD_ActionContext_Base1);
 PDRTSBASE_API UE_DECLARE_GAMEPLAY_TAG_EXTERN(TAG_BUILD_ActionContext_WorkerHut0);
 PDRTSBASE_API UE_DECLARE_GAMEPLAY_TAG_EXTERN(TAG_BUILD_ActionContext_WorkerHut1);
 PDRTSBASE_API UE_DECLARE_GAMEPLAY_TAG_EXTERN(TAG_BUILD_ActionContext_Barracks0);
@@ -346,6 +349,10 @@ struct PDRTSBASE_API FPDBuildAction : public FTableRowBase
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "RTSBase|WorkerUnits")
 	FGameplayTag ActionTag{};	
 
+	/** @brief The cost of this action, defaults to free */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "RTSBase|WorkerUnits")
+	TMap<FGameplayTag, int32> ActionCost{};
+	
 	/** @brief Not needed, but use to display clearer name, with being set to nothing the name will be tha buildables tag converted to a name */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "RTSBase|WorkerUnits")
 	FText ReadableName{};

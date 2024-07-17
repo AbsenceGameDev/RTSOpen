@@ -190,6 +190,12 @@ class RTSOPEN_API ARTSOController
 	virtual void SelectBuildMenuEntry_Implementation(ERTSBuildMenuModules ActionMode, FGameplayTag ActionTag) override;
 	/** @brief Pipes through our persistent ActorID to the build system */
 	virtual int32 GetBuilderID_Implementation() override { return GetActorID(); };
+	
+	/** @brief Retrieve all owned buildings */
+	UFUNCTION()
+	virtual void GetOwnedBuildings_Implementation(TArray<AActor*>& OutArray) override;
+	UFUNCTION()
+	virtual void SetOwnedBuilding_Implementation(AActor* NewBuilding) override;
 	/* PDRTS Builder Interface - End */
 
 	

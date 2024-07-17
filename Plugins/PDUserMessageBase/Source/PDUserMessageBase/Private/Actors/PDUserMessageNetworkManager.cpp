@@ -2,6 +2,7 @@
 
 #include "Actors/PDUserMessageNetworkManager.h"
 
+#include "PDMessageWidgetCommon.h"
 #include "Net/UnrealNetwork.h"
 #include "Net/Core/PushModel/PushModel.h"
 
@@ -50,6 +51,20 @@ void APDUserMessageNetworkManager::AppendToMessageFrame(const FGameplayTag& NewM
 	int32& LatestMessageIndexForPlayer = CurrentIndexPerPlayer.FindOrAdd(TargetController);
 	LatestFrame.Items.Add(FPDUserMessageDatum{LatestMessageIndexForPlayer++, NewMessageTag, TargetController});
 	ForceNetUpdate();
+#else
+	UE_LOG(PDLog_MessageSystem, Warning, TEXT("APDUserMessageNetworkManager::AppendToMessageFrame -- Invalid call. Was called on client"))	
+#endif	
+}
+
+void APDUserMessageNetworkManager::AppendToMessageFrame(const FNativeGameplayTag& NewMessageTag, APlayerController* TargetController)
+{
+#if WITH_SERVER_CODE
+	MARK_PROPERTY_DIRTY_FROM_NAME(APDUserMessageNetworkManager, LatestFrame, this)
+	int32& LatestMessageIndexForPlayer = CurrentIndexPerPlayer.FindOrAdd(TargetController);
+	LatestFrame.Items.Add(FPDUserMessageDatum{LatestMessageIndexForPlayer++, NewMessageTag, TargetController});
+	ForceNetUpdate();
+#else
+	UE_LOG(PDLog_MessageSystem, Warning, TEXT("APDUserMessageNetworkManager::AppendToMessageFrame -- Invalid call. Was called on client"))
 #endif	
 }
 

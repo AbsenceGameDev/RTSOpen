@@ -47,6 +47,62 @@ void ARTSOBaseGM::BeginPlay()
 	GI->bGMReady = true;
 }
 
+void ARTSOBaseGM::Logout(AController* Exiting)
+{
+	Super::Logout(Exiting);
+}
+
+void ARTSOBaseGM::PostLogin(APlayerController* NewPlayer)
+{
+	Super::PostLogin(NewPlayer);
+
+	if (NewPlayer == nullptr || NewPlayer->GetClass()->ImplementsInterface(UPDRTSBuilderInterface::StaticClass()) == false)
+	{
+		return;
+	}
+	
+	TArray<AActor*> Buildings;
+	IPDRTSBuilderInterface::Execute_GetOwnedBuildings(NewPlayer, Buildings);
+	if (Buildings.IsEmpty())
+	{
+		UPDBuilderSubsystem* BuilderSubsystem = UPDBuilderSubsystem::Get();
+		ensure(BuilderSubsystem != nullptr);
+	
+		// Spawn a default base/building
+		const FGameplayTag& DefaultBaseTag = IPDRTSBuilderInterface::Execute_GetDefaultBaseType(NewPlayer);
+		const FPDBuildableData* BaseBuildableData =  BuilderSubsystem->GetBuildableData(DefaultBaseTag);
+
+		if (BaseBuildableData == nullptr)
+		{
+			UE_LOG(
+				PDLog_BuildSystem,
+				Error,
+				TEXT("ARTSOBaseGM::PostLogin -- "
+					"UPDBuilderSubsystem could not resolve GetBuildableData(DefaultBaseTag(%s)) to an actual buildable data entry.	"
+					"Please ensure the relevant data-table has an entry for this tag "), *DefaultBaseTag.GetTagName().ToString());
+
+			return;
+		}
+
+		//@todo For newly created characters randomly we must spawn a base. Transforms must be ensured to not overlap, possibly make use of the world hashgrid
+		FRotator DummyRot_RemoveAndSetupRandomizedTransformsWhichDoNotOverlap = {NewPlayer->GetControlRotation()};
+		FVector  DummyLoc_RemoveAndSetupRandomizedTransformsWhichDoNotOverlap = {NewPlayer->GetFocalLocation()};
+
+		FTransform InitialSpawnTransform{
+			DummyRot_RemoveAndSetupRandomizedTransformsWhichDoNotOverlap,
+			DummyLoc_RemoveAndSetupRandomizedTransformsWhichDoNotOverlap,
+				FVector::OneVector};
+		AActor* SpawnedBuildable = GetWorld()->SpawnActorDeferred<AActor>(BaseBuildableData->ActorToSpawn, InitialSpawnTransform, NewPlayer);
+		IPDRTSBuilderInterface::Execute_SetOwnedBuilding(NewPlayer, SpawnedBuildable);
+	}
+}
+
+APlayerController* ARTSOBaseGM::Login(UPlayer* NewPlayer, ENetRole InRemoteRole, const FString& Portal, const FString& Options,
+	const FUniqueNetIdRepl& UniqueId, FString& ErrorMessage)
+{
+	return Super::Login(NewPlayer, InRemoteRole, Portal, Options, UniqueId, ErrorMessage);
+}
+
 void ARTSOBaseGM::TickActor(float DeltaTime, ELevelTick TickType, FActorTickFunction& ThisTickFunction)
 {
 	Super::TickActor(DeltaTime, TickType, ThisTickFunction);
@@ -1024,6 +1080,91 @@ void ARTSOBaseGM::OnThreadFinished_PlayerLoadDataSync(EPDSaveDataThreadSelector 
 	}
 }
 
+void ARTSOBaseGM::GatherEntityToSpawn(
+	const UWorld& WorldRef,
+	const FRTSSavedWorldUnits& EntityData,
+	TMap<const FMassEntityTemplateID, FEntityCompoundTuple>& EntityPool,
+	UPDRTSBaseSubsystem* RTSSubsystem,
+	UMassSpawnerSubsystem* SpawnerSystem)
+{
+	const FPDBuildWorker* Unit = UPDBuilderSubsystem::GetWorkerDataStatic(EntityData.EntityUnitTag);
+	if (Unit == nullptr)
+	{
+		UE_LOG(PDLog_RTSO, Error, TEXT("ARTSOBaseGM::LoadEntities -- Found no worker data for worker of type :%s"), *EntityData.EntityUnitTag.GetTagName().ToString())
+		return;
+	}
+						
+	const UMassEntityConfigAsset* LoadedConfig = Unit->MassEntityData->EntityConfig.LoadSynchronous();
+	const FMassEntityTemplate& Template = LoadedConfig->GetOrCreateEntityTemplate(WorldRef);
+				
+	// Make sure the subsystem associates the archetypes and configs in-case we
+	// load entities from a save file and not via an ARTSOMassSpawner
+	const FMassArchetypeHandle& Archetype = SpawnerSystem->GetMassEntityTemplate(Template.GetTemplateID())->GetArchetype();
+	RTSSubsystem->AssociateArchetypeWithConfigAsset(Archetype, Unit->MassEntityData->EntityConfig);
+
+	
+	if (EntityPool.Contains(Template.GetTemplateID()) == false)
+	{
+		FInnerEntityData TempDataArray;
+		TempDataArray.Emplace(&EntityData);
+				
+		FEntityCompoundTuple TempData {1, TempDataArray};
+		EntityPool.Emplace(Template.GetTemplateID(), TempData);
+	}
+	else
+	{
+		FEntityCompoundTuple FoundEntityCompound = EntityPool.FindChecked(Template.GetTemplateID());
+		FoundEntityCompound.Key += 1;
+		FoundEntityCompound.Value.Emplace(&EntityData);
+	}
+						
+	// @todo load other fragment data, there are plenty still not being stored	
+}
+
+void ARTSOBaseGM::DispatchEntitySpawning(
+	const TTuple<const FMassEntityTemplateID, FEntityCompoundTuple>& EntityTypeCompound,
+	const FMassEntityManager* EntityManager,
+	UMassSpawnerSubsystem* SpawnerSystem)
+{
+	TArray<FMassEntityHandle> OutHandles;
+	SpawnerSystem->SpawnEntities(*SpawnerSystem->GetMassEntityTemplate(EntityTypeCompound.Key), EntityTypeCompound.Value.Key, OutHandles);
+	
+	int32 Step = 0;
+	for (const FMassEntityHandle& NewEntityHandle : OutHandles)
+	{
+		const FInnerEntityData& EntityDataArray = EntityTypeCompound.Value.Value;
+		const FRTSSavedWorldUnits* WorldEntityData = EntityDataArray[Step];
+			
+		// Load entities owner data
+		FPDMFragment_RTSEntityBase* EntityBaseFragment = EntityManager->GetFragmentDataPtr<FPDMFragment_RTSEntityBase>(NewEntityHandle);
+		if (EntityBaseFragment != nullptr)
+		{
+			EntityBaseFragment->OwnerID = WorldEntityData->OwnerID;
+			EntityBaseFragment->SelectionGroupIndex = WorldEntityData->SelectionIndex;
+		}
+			
+		// Load entities active task/job data and stats
+		FPDMFragment_Action* CurrentAction = EntityManager->GetFragmentDataPtr<FPDMFragment_Action>(NewEntityHandle);
+		if (CurrentAction != nullptr)
+		{
+			*CurrentAction = WorldEntityData->CurrentAction;
+		}
+			
+		// Update entities transform to the loaded position
+		FTransformFragment* EntityTransform = EntityManager->GetFragmentDataPtr<FTransformFragment>(NewEntityHandle);
+		if (EntityTransform != nullptr)
+		{
+			EntityTransform->SetTransform(FTransform{WorldEntityData->Location});
+		}
+			
+		++Step;
+			
+		// // @todo make use of or remove
+		// WorldEntityData.Health;	
+	}
+}
+
+
 void ARTSOBaseGM::OnGeneratedLandscapeReady_Implementation()
 {
 	// Load file data if it exists
@@ -1044,80 +1185,14 @@ void ARTSOBaseGM::LoadEntities_Implementation(const TArray<FRTSSavedWorldUnits>&
 	
 	for (const FRTSSavedWorldUnits& EntityData : OverrideEntityUnits.IsEmpty() ? GameSave->Data.EntityUnits : OverrideEntityUnits)
 	{
-		const FPDBuildWorker* Unit = UPDBuilderSubsystem::GetWorkerDataStatic(EntityData.EntityUnitTag);
-		if (Unit == nullptr)
-		{
-			UE_LOG(PDLog_RTSO, Error, TEXT("ARTSOBaseGM::LoadEntities -- Found no worker data for worker of type :%s"), *EntityData.EntityUnitTag.GetTagName().ToString())
-			continue;
-		}
-		
-		const UMassEntityConfigAsset* LoadedConfig = Unit->MassEntityData->EntityConfig.LoadSynchronous();
-		const FMassEntityTemplate& Template = LoadedConfig->GetOrCreateEntityTemplate(*GetWorld());
-
-		// Make sure the subsystem associates the archetypes and configs in-case we
-		// load entities from a save file and not via an ARTSOMassSpawner
-		const FMassArchetypeHandle& Archetype = SpawnerSystem->GetMassEntityTemplate(Template.GetTemplateID())->GetArchetype();
-		RTSSubsystem->AssociateArchetypeWithConfigAsset(Archetype, Unit->MassEntityData->EntityConfig);
-		
-		if (EntitiesToSpawn.Contains(Template.GetTemplateID()) == false)
-		{
-			FInnerEntityData TempDataArray;
-			TempDataArray.Emplace(&EntityData);
-
-			FEntityCompoundTuple TempData {1, TempDataArray};
-			EntitiesToSpawn.Emplace(Template.GetTemplateID(), TempData);
-		}
-		else
-		{
-			FEntityCompoundTuple FoundEntityCompound = EntitiesToSpawn.FindChecked(Template.GetTemplateID());
-			FoundEntityCompound.Key += 1;
-			FoundEntityCompound.Value.Emplace(&EntityData);
-		}
-		
-		// @todo load other fragment data, there are plenty still not being stored
+		GatherEntityToSpawn(*GetWorld(), EntityData, EntitiesToSpawn, RTSSubsystem, SpawnerSystem);
 	}
 
 	for (const TTuple<const FMassEntityTemplateID, FEntityCompoundTuple>&
 		EntityTypeCompound :  EntitiesToSpawn)
 	{
-		TArray<FMassEntityHandle> OutHandles;
-		SpawnerSystem->SpawnEntities(*SpawnerSystem->GetMassEntityTemplate(EntityTypeCompound.Key), EntityTypeCompound.Value.Key, OutHandles);
-
-		int32 Step = 0;
-		for (const FMassEntityHandle& NewEntityHandle : OutHandles)
-		{
-			const FInnerEntityData& EntityDataArray = EntityTypeCompound.Value.Value;
-			const FRTSSavedWorldUnits* WorldEntityData = EntityDataArray[Step];
-			
-			// Load entities owner data
-			FPDMFragment_RTSEntityBase* EntityBaseFragment = EntityManager->GetFragmentDataPtr<FPDMFragment_RTSEntityBase>(NewEntityHandle);
-			if (EntityBaseFragment != nullptr)
-			{
-				EntityBaseFragment->OwnerID = WorldEntityData->OwnerID;
-				EntityBaseFragment->SelectionGroupIndex = WorldEntityData->SelectionIndex;
-			}
-			
-			// Load entities active task/job data and stats
-			FPDMFragment_Action* CurrentAction = EntityManager->GetFragmentDataPtr<FPDMFragment_Action>(NewEntityHandle);
-			if (CurrentAction != nullptr)
-			{
-				*CurrentAction = WorldEntityData->CurrentAction;
-			}
-			
-			// Update entities transform to the loaded position
-			FTransformFragment* EntityTransform = EntityManager->GetFragmentDataPtr<FTransformFragment>(NewEntityHandle);
-			if (EntityTransform != nullptr)
-			{
-				EntityTransform->SetTransform(FTransform{WorldEntityData->Location});
-			}
-			
-			++Step;
-			
-			// // @todo make use of or remove
-			// WorldEntityData.Health;
-		}
+		DispatchEntitySpawning(EntityTypeCompound, EntityManager, SpawnerSystem);
 	}
-
 }
 
 /**

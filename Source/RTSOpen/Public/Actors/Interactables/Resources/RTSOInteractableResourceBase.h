@@ -2,7 +2,9 @@
 #pragma once
 
 #include "CoreMinimal.h"
+#include "PDInventorySubsystem.h"
 #include "Actors/PDInteractActor.h"
+#include "AI/Mass/RTSOMassFragments.h"
 #include "RTSOInteractableResourceBase.generated.h"
 
 class UMassEntitySubsystem;
@@ -22,6 +24,19 @@ public:
 	/** @brief Ticks usage the cooldown. @todo move into a progression/stat system*/
 	virtual void Tick(float DeltaTime) override;
 
+	void ProcessTradeIfInfiniteInventory(
+		EPDInteractResult& InteractResult,
+		UPDInventoryComponent* InstigatorInvComponent,
+		FRTSOLightInventoryFragment* InstigatorInventoryFragment,
+		UPDInventorySubsystem* InvSubsystem) const;
+
+	void ProcessTradeIfLimitedInventory(
+		EPDInteractResult& InteractResult,
+		UPDInventoryComponent* InstigatorInvComponent,
+		FRTSOLightInventoryFragment* InstigatorInventoryFragment,
+		UPDInventorySubsystem* InvSubsystem,
+		bool& bMustWaitForRegeneration) const;
+	
 	/** @brief Handles interaction with the calling (mass) entity or calling actor.
 	 * @details Gives the callers inventory component or inventory fragment the items listed in 'LinkedItemResources' */
 	virtual void OnInteract_Implementation(const FPDInteractionParamsWithCustomHandling& InteractionParams, EPDInteractResult& InteractResult) const override;
@@ -31,6 +46,9 @@ public:
 
 	/** @brief Base class just returns the harvest-time. could be extended to return modified or different values if needed */	
 	virtual double GetInteractionTime_Implementation() const override { return InteractionTime; };
+	
+	UFUNCTION()
+	bool HasInfiniteInventory() const;
 
 private:
 	/** @brief What job is this resource tied to, default value is set to TAG_AI_Job_GatherResource in this classes ctor */
@@ -47,17 +65,32 @@ private:
 	/** @brief Tick accumulator */
 	double RefreshTickAcc = 0.0;
 
-	/** @brief The items linked with this resource. Base implementation never removes any values from this on interaction.
-	 * This can be interacted with infinite amount of times.
-	 * @todo possibly add a inventory fragment on this actor which allows it to interact with the rest of the inventory system */	
+#if WITH_EDITOR
+	virtual bool CanEditChange(const FProperty* InProperty) const override;
+#endif // WITH_EDITOR
+
+	// @todo Move these override to a datatable
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Meta = (AllowPrivateAccess="true"))
+	ERTSResourceAvailability OverrideAvailability = PD::Interactable::Behaviour::Availability::EUndefined;
+	UPROPERTY(Config, EditAnywhere, Category = "Interactable Resources Developer Settings")
+	ERTSResourceRequirement OverrideRequirements = PD::Interactable::Behaviour::Requirements::EUndefined;
+	
+	/** @brief The items archetype that defines an interaction with this resource. */	
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Meta = (AllowPrivateAccess="true", RowType="/Script/PDInventory.PDItemDefaultDatum"))
-	TMap<FGameplayTag /*resource/item tag*/, int32 /*count*/> LinkedItemResources;
+	TMap<FGameplayTag /*resource/item tag*/, int32 /*count*/> TradeArchetype;
+
+	/** @brief The items contained by this resource.
+	 * Base settings that defines our trading behaviour can be found in 'URTSInteractableResourceSettings' and
+	 * may be overriden via the Override members of this class. */		
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Meta = (AllowPrivateAccess="true"))
+	FRTSOLightInventoryFragment InventoryFragment;
 
 	/** @brief The mass entity subsystem, used to fetch the entity manager*/
 	UPROPERTY()
 	UMassEntitySubsystem* EntitySubsystem = nullptr;
 	/** @brief The mass entity manager, used to read and write to different fragments on requested entities */
 	const FMassEntityManager* EntManager = nullptr;
+	
 };
 
 

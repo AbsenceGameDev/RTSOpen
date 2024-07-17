@@ -5,6 +5,7 @@
 
 #include "CoreMinimal.h"
 #include "GameplayTagContainer.h"
+#include "PDBuildCommon.h"
 #include "UObject/Interface.h"
 #include "PDRTSBuilderInterface.generated.h"
 
@@ -84,6 +85,29 @@ public:
 		return;
 	}	
 
+	/** @brief @todo this is a temporary function signature,
+	 *   @todo cont: Must rewrite other code to manage actor IDs properly
+	 *   @todo cont: then replace this to return TArray<in32> instead of TArray<AActor*>,
+	 *   @todo cont: ActorIDs will be safe to use in save files, the Actor pointers will not be viable for save data*/
+	UFUNCTION(BlueprintNativeEvent, BlueprintCallable, Category = "Action|Interface")
+	void GetOwnedBuildings(TArray<AActor*>& OutArray);
+	virtual void GetOwnedBuildings_Implementation(TArray<AActor*>& OutArray)
+	{
+		static TArray<AActor*> Dummy{};
+		OutArray = Dummy;
+	};
+
+	UFUNCTION(BlueprintNativeEvent, BlueprintCallable, Category = "Action|Interface")
+	void SetOwnedBuilding(AActor* NewBuilding);
+	virtual void SetOwnedBuilding_Implementation(AActor* NewBuilding) { }
+	
+	UFUNCTION(BlueprintNativeEvent, CallInEditor, Category = "Action|Interface")
+	FGameplayTag GetDefaultBaseType();
+	virtual FGameplayTag GetDefaultBaseType_Implementation()
+	{
+		return TAG_BUILD_ActionContext_Base0;
+	}
+	
 	/** @brief If if logic has already been implemented to generate persistent IDs for players, then implement this and pass it as return */
 	UFUNCTION(BlueprintNativeEvent, CallInEditor, Category = "Action|Interface")
 	int32 GetBuilderID();

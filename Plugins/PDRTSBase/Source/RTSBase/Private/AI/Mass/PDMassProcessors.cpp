@@ -561,7 +561,6 @@ void UPDOctreeProcessor::Execute(FMassEntityManager& EntityManager, FMassExecuti
 			const_cast<FPDActorOctreeCell&>(Cell).IdleUnits.Empty();
 		});
 	
-
 	UpdateOctreeElementsQuery.ForEachEntityChunk(EntityManager, Context,
 		[this, BuilderSubsystem](FMassExecutionContext& LambdaContext)
 	{
@@ -572,8 +571,8 @@ void UPDOctreeProcessor::Execute(FMassEntityManager& EntityManager, FMassExecuti
 
 		TConstFragment<FMassVelocityFragment>& Velocities         = CONSTVIEW(LambdaContext, FMassVelocityFragment);
 		TConstFragment<FTransformFragment>& LocationList          = CONSTVIEW(LambdaContext, FTransformFragment);
-		TConstFragment<FPDMFragment_RTSEntityBase>& RTSEntityList = CONSTVIEW(LambdaContext, FPDMFragment_RTSEntityBase);
-		TConstFragment<FPDMFragment_Action>& UnitActionList        = CONSTVIEW(LambdaContext, FPDMFragment_Action);
+		TMutFragment<FPDMFragment_RTSEntityBase>& RTSEntityList   = MUTVIEW(LambdaContext, FPDMFragment_RTSEntityBase);
+		TConstFragment<FPDMFragment_Action>& UnitActionList       = CONSTVIEW(LambdaContext, FPDMFragment_Action);
 			
 		TMutFragment<FPDOctreeFragment>& OctreeFragments          = MUTVIEW(LambdaContext, FPDOctreeFragment);
 			
@@ -592,7 +591,7 @@ void UPDOctreeProcessor::Execute(FMassEntityManager& EntityManager, FMassExecuti
 			const FOctreeElementId2* CellID = OctreeFragment.CellID.Get(); 
 			FPDEntityOctreeCell CopyCurrentOctreeElement = Octree.GetElementById(*CellID);
 
-			const FPDMFragment_RTSEntityBase& RTSEntity = RTSEntityList[EntityListIdx];
+			FPDMFragment_RTSEntityBase& RTSEntity = RTSEntityList[EntityListIdx];
 			const FPDMFragment_Action& UnitAction = UnitActionList[EntityListIdx];
 			
 			
@@ -609,8 +608,19 @@ void UPDOctreeProcessor::Execute(FMassEntityManager& EntityManager, FMassExecuti
 			// @todo - Mark idle entities as available in our pool
 			// Bounds test the current entity with the buildable octree's 'area of influence' bounds
 			BuildableOctree.FindElementsWithBoundsTest(CopyCurrentOctreeElement.Bounds,
-				[RTSEntity, UnitAction, Entity , SelectedUserCountLimit = BuilderSubsystem->UnitPingLimitBuilding](const FPDActorOctreeCell& Cell)
+				[&, UnitAction, Entity , SelectedUserCountLimit = BuilderSubsystem->UnitPingLimitBuilding](const FPDActorOctreeCell& Cell)
 				{
+					// Overwrite entity OwnerID in case all three conditions are met:
+					// 1. If this is at first spawn of the buildable (DONE)
+					// 2. The buildable in question is a Base/Fort type, (TODO, need to design a way to make this dynamic and not hardcoded)
+					// 3. The overlapping entity has no set owner  (DONE
+					if (Cell.bFirstCellAccess
+						&& RTSEntity.OwnerID == INDEX_NONE
+						&& (Cell.BuildingType == TAG_BUILD_ActionContext_Base0|| Cell.BuildingType == TAG_BUILD_ActionContext_Base1))
+					{
+						RTSEntity.OwnerID = Cell.OwnerID; // Update owner if withing bases range of influence
+					}
+					
 					const bool bIsSameOwner = Cell.OwnerID == RTSEntity.OwnerID;
 					if (bIsSameOwner && Cell.IdleUnits.Num() < SelectedUserCountLimit) // If same owner, and still room to ping for more units 
 					{
@@ -642,6 +652,7 @@ void UPDOctreeProcessor::Execute(FMassEntityManager& EntityManager, FMassExecuti
 		}
 	});
 
+	//
 	// Poor mans threading
 	AsyncTask(ENamedThreads::AnyBackgroundHiPriTask,
 		[]()
@@ -665,6 +676,14 @@ void UPDOctreeProcessor::Execute(FMassEntityManager& EntityManager, FMassExecuti
 				const int32 SelectedOwnerID = ActorCompound.OwnerID;
 				for (const AActor* SelectedPlayersBuildable : BuildableActorArray)
 				{
+					const FPDBuildable* Buildable = BuilderSubsystem->GetBuildableWithActionsFromClassStatic(
+						SelectedPlayersBuildable->GetClass());
+					if (Buildable == nullptr)
+					{
+						UE_LOG(PDLog_BuildSystem, Error,TEXT("UPDOctreeProcessor::Execute -- AsyncTask -- Buildable actor is invalid, skipping"))
+						continue;
+					}
+							
 					if (SelectedPlayersBuildable == nullptr || SelectedPlayersBuildable->IsValidLowLevelFast() == false)
 					{
 						// was probably just removed
@@ -679,9 +698,12 @@ void UPDOctreeProcessor::Execute(FMassEntityManager& EntityManager, FMassExecuti
 						FVector Origin{};
 						FVector Extent{};
 						SelectedPlayersBuildable->GetActorBounds(false, Origin, Extent);
+
 					
 						NewOctreeElement.SharedCellID = MakeShared<FOctreeElementId2, ESPMode::ThreadSafe>();
 						NewOctreeElement.OwnerID = SelectedOwnerID;
+						NewOctreeElement.bFirstCellAccess = true;
+						NewOctreeElement.BuildingType = Buildable->BuildableTag;
 						NewOctreeElement.ActorInstanceID = SelectedPlayersBuildable->GetUniqueID();
 						NewOctreeElement.Bounds = FBoxCenterAndExtent(SelectedPlayersBuildable->GetActorLocation(), Extent * 5); // @todo 'Extent * 5' is a Crude area of influence, fix soon
 						BuilderSubsystem->ActorsToCells.FindOrAdd(SelectedPlayersBuildable->GetUniqueID()) = NewOctreeElement.SharedCellID;
@@ -691,14 +713,17 @@ void UPDOctreeProcessor::Execute(FMassEntityManager& EntityManager, FMassExecuti
 					else // Move existing cell
 					{
 						//
-						// @todo If it does not find a cell here, tha actor must have been destroyed, think on how to handle that
+						// @DONE If it does not find a cell here, the actor must have been destroyed,
+						// handled via BuilderSubsystem->RemoveBuildableQueue some further up this functiom
 						
 						const FOctreeElementId2* CellID = CellSharedID->Get(); 
 						FPDActorOctreeCell CopyCurrentOctreeElement = BuildableOctree.GetElementById(*CellID);
 				
 						BuildableOctree.RemoveElement(*CellID);
 				
+						CopyCurrentOctreeElement.bFirstCellAccess = false;
 						CopyCurrentOctreeElement.OwnerID = SelectedOwnerID;
+						CopyCurrentOctreeElement.BuildingType = Buildable->BuildableTag; // only needed in case we have upgraded buildable type for the given actor, which might never happen, assess if we actually need this
 						CopyCurrentOctreeElement.ActorInstanceID = SelectedPlayersBuildable->GetUniqueID();
 						CopyCurrentOctreeElement.Bounds.Center = FVector4(SelectedPlayersBuildable->GetActorLocation(), 0);
 

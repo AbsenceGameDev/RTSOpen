@@ -32,7 +32,114 @@ void ARTSOInteractableResourceBase::Tick(float DeltaTime)
 	RefreshTickAcc += DeltaTime;
 }
 
-void ARTSOInteractableResourceBase::OnInteract_Implementation(const FPDInteractionParamsWithCustomHandling& InteractionParams, EPDInteractResult& InteractResult) const
+void ARTSOInteractableResourceBase::ProcessTradeIfInfiniteInventory(
+	EPDInteractResult& InteractResult,
+	UPDInventoryComponent* InstigatorInvComponent,
+	FRTSOLightInventoryFragment* InstigatorInventoryFragment,
+	UPDInventorySubsystem* InvSubsystem) const
+{
+	for (const TPair<FGameplayTag, int32 /*count*/>& ResourceReward : TradeArchetype)
+	{
+		const FString CtxtString = FString::Printf(TEXT("Entry in LinkedItemResources in interactable(%s) is not pointing to a valid item/resource entry "), *GetName());
+		const FPDItemDefaultDatum* DefaultDatum = InvSubsystem->GetDefaultDatum(ResourceReward.Key);
+		if (DefaultDatum == nullptr) { continue; }
+
+		if (InstigatorInventoryFragment != nullptr)
+		{
+			InstigatorInventoryFragment->Handler.AddItem(DefaultDatum->ItemTag, ResourceReward.Value);
+		}
+		if (InstigatorInvComponent != nullptr)
+		{
+			InstigatorInvComponent->RequestUpdateItem(EPDItemNetOperation::ADDNEW, DefaultDatum->ItemTag, ResourceReward.Value);
+		}
+	}
+	
+	InteractResult = EPDInteractResult::INTERACT_SUCCESS;
+}
+
+void ARTSOInteractableResourceBase::ProcessTradeIfLimitedInventory(
+	EPDInteractResult& InteractResult,
+	UPDInventoryComponent* InstigatorInvComponent,
+	FRTSOLightInventoryFragment* InstigatorInventoryFragment,
+	UPDInventorySubsystem* InvSubsystem,
+	bool& bMustWaitForRegeneration) const
+{
+	ERTSResourceRequirement SelectedRequirement = OverrideRequirements;
+	if (SelectedRequirement == PD::Interactable::Behaviour::Requirements::EUndefined)
+	{
+		SelectedRequirement = GetDefault<URTSInteractableResourceSettings>()->DefaultRequirements; 
+	}
+	
+	FRTSOLightInventoryFragment* MutableInventoryFragment = const_cast<FRTSOLightInventoryFragment*>(&InventoryFragment);
+	for (const TPair<FGameplayTag, int32 /*count*/>& ResourceReward : TradeArchetype)
+	{
+		const int32 ItemsRemaining = MutableInventoryFragment->Handler.GetItemCount(ResourceReward.Key);
+
+		const FString CtxtString = FString::Printf(TEXT("Entry in LinkedItemResources in interactable(%s) is not pointing to a valid item/resource entry according to the inventory subsystem"), *GetName());
+		const FPDItemDefaultDatum* DefaultDatum = InvSubsystem->GetDefaultDatum(ResourceReward.Key);
+		if (DefaultDatum == nullptr || ItemsRemaining < 1)
+		{
+			continue;
+		}
+		
+		switch (SelectedRequirement)
+		{
+		default:
+		case PD::Interactable::Behaviour::Requirements::EUndefined:
+		case PD::Interactable::Behaviour::Requirements::EAlwaysAllowTrade:
+			break;
+		case PD::Interactable::Behaviour::Requirements::EMustHaveMinimumCount:
+			if (ItemsRemaining < ResourceReward.Value)
+			{
+				UE_LOG(PDLog_Inventory, Warning, TEXT("ARTSOInteractableResourceBase::ProcessTradeIfLimitedInventory -- Resource count is below minimum value"));
+				
+				return;
+			}
+			break;
+		}
+		
+		FPDLightItemDatum RemoveDatum = FPDLightItemDatum(ResourceReward.Key, ResourceReward.Value);
+		MutableInventoryFragment->Handler.RemoveItem(RemoveDatum);
+
+		if (DefaultDatum->bRegenerateResourceIfInContainer)
+		{
+			bMustWaitForRegeneration = true;
+
+			FTimerHandle Hndl{};
+			FTimerDelegate RegenDlgt = FTimerDelegate::CreateLambda(
+				[&, ResourceRewardCopy = ResourceReward]()
+				{
+					MutableInventoryFragment->Handler.AddItem(ResourceRewardCopy.Key, ResourceRewardCopy.Value);
+				});
+
+			if (DefaultDatum->SecondsToWaitIfRegenerationIsEnabled > KINDA_SMALL_NUMBER)
+			{
+				GetWorld()->GetTimerManager().SetTimer(Hndl, RegenDlgt, DefaultDatum->SecondsToWaitIfRegenerationIsEnabled, false);
+			}
+			else
+			{
+				RegenDlgt.Execute();
+			}
+		}
+		
+
+		if (InstigatorInventoryFragment != nullptr)
+		{
+			InstigatorInventoryFragment->Handler.AddItem(DefaultDatum->ItemTag, ResourceReward.Value);
+		}
+		if (InstigatorInvComponent != nullptr)
+		{
+			InstigatorInvComponent->RequestUpdateItem(EPDItemNetOperation::ADDNEW, DefaultDatum->ItemTag, ResourceReward.Value);
+		}
+	}
+	
+	InteractResult = EPDInteractResult::INTERACT_SUCCESS;
+	
+}
+
+void ARTSOInteractableResourceBase::OnInteract_Implementation(
+	const FPDInteractionParamsWithCustomHandling& InteractionParams,
+	EPDInteractResult& InteractResult) const
 {
 	Super::OnInteract_Implementation(InteractionParams, InteractResult);
 	switch (InteractResult)
@@ -54,13 +161,14 @@ void ARTSOInteractableResourceBase::OnInteract_Implementation(const FPDInteracti
 	
 	const AActor* InstigatorActor = InteractionParams.InstigatorActor;
 	
-	UPDInventoryComponent* InvComponent = InstigatorActor != nullptr ? Cast<UPDInventoryComponent>(InstigatorActor->GetComponentByClass(InteractionParams.InstigatorComponentClass)) : nullptr;
-	FRTSOLightInventoryFragment* AsInventoryFragment = nullptr;// static_cast<FRTSOLightInventoryFragment*>(InteractionParams.InstigatorEntity);
-	if (InvComponent == nullptr)
+	UPDInventoryComponent* InstigatorInvComponent = InstigatorActor != nullptr ? Cast<UPDInventoryComponent>(InstigatorActor->GetComponentByClass(InteractionParams.InstigatorComponentClass)) : nullptr;
+	FRTSOLightInventoryFragment* InstigatorInventoryFragment = nullptr;// static_cast<FRTSOLightInventoryFragment*>(InteractionParams.InstigatorEntity);
+	if (InstigatorInvComponent == nullptr)
 	{
-		AsInventoryFragment = EntManager->GetFragmentDataPtr<FRTSOLightInventoryFragment>(InteractionParams.InstigatorEntity);
-		if (AsInventoryFragment == nullptr)
+		InstigatorInventoryFragment = EntManager->GetFragmentDataPtr<FRTSOLightInventoryFragment>(InteractionParams.InstigatorEntity);
+		if (InstigatorInventoryFragment == nullptr)
 		{
+			UE_LOG(PDLog_Inventory, Warning, TEXT("ARTSOInteractableResourceBase::OnInteract -- Entity or Actor, that is interacting with the given resource object, does not have any form of inventory, cancelling interaction. "))
 			return;
 		}
 	}
@@ -68,23 +176,20 @@ void ARTSOInteractableResourceBase::OnInteract_Implementation(const FPDInteracti
 	UPDInventorySubsystem* InvSubsystem = UPDInventorySubsystem::Get();
 	check(InvSubsystem != nullptr)
 
-	for (const TPair<FGameplayTag, int32 /*count*/>& ResourceReward : LinkedItemResources)
+	if (HasInfiniteInventory())
 	{
-		const FString CtxtString = FString::Printf(TEXT("Entry in LinkedItemResources in interactable(%s) is not pointing to a valid item/resource entry "), *GetName());
-		const FPDItemDefaultDatum* DefaultDatum = InvSubsystem->GetDefaultDatum(ResourceReward.Key);
-		if (DefaultDatum == nullptr) { continue; }
-
-		if (AsInventoryFragment != nullptr)
+		ProcessTradeIfInfiniteInventory(InteractResult, InstigatorInvComponent, InstigatorInventoryFragment, InvSubsystem);
+	}
+	else
+	{
+		bool bMustWaitForRegen = false;
+		ProcessTradeIfLimitedInventory(InteractResult, InstigatorInvComponent, InstigatorInventoryFragment, InvSubsystem, bMustWaitForRegen);
+		if (InventoryFragment.Handler.IsEmpty() && bMustWaitForRegen == false)
 		{
-			AsInventoryFragment->Handler.AddItem(DefaultDatum->ItemTag, ResourceReward.Value);
-		}
-		if (InvComponent != nullptr)
-		{
-			InvComponent->RequestUpdateItem(EPDItemNetOperation::ADDNEW, DefaultDatum->ItemTag, ResourceReward.Value);
+			ARTSOInteractableResourceBase* MutableThis = const_cast<ARTSOInteractableResourceBase*>(this);
+			MutableThis->Destroy();
 		}
 	}
-	
-	InteractResult = EPDInteractResult::INTERACT_SUCCESS;
 }
 
 FGameplayTagContainer ARTSOInteractableResourceBase::GetGenericTagContainer_Implementation() const
@@ -94,6 +199,56 @@ FGameplayTagContainer ARTSOInteractableResourceBase::GetGenericTagContainer_Impl
 	return GeneratedTags;
 }
 
+bool ARTSOInteractableResourceBase::HasInfiniteInventory() const
+{
+	switch (OverrideAvailability)
+	{
+	case ERTSResourceAvailability::EInfinitelyAvailable:
+		return true;
+	case ERTSResourceAvailability::EInventoryFragment:
+		return false;
+
+	case ERTSResourceAvailability::EUndefined:
+	default:
+		break;
+	}
+
+	// NO OVERRIDE FOUND, REVERT TO DEFAULT SETTINGS
+	switch (GetDefault<URTSInteractableResourceSettings>()->DefaultAvailability)
+	{
+	default:
+	case ERTSResourceAvailability::EUndefined:
+	case ERTSResourceAvailability::EInfinitelyAvailable:
+		return true;
+	case ERTSResourceAvailability::EInventoryFragment:
+		return false;
+	}
+	
+	return true;
+}
+
+#if WITH_EDITOR
+bool ARTSOInteractableResourceBase::CanEditChange(const FProperty* InProperty) const
+{
+	if (Super::CanEditChange(InProperty) == false)
+	{
+		return false;
+	}
+
+	const FName PropertyName = InProperty->GetFName();
+	if (PropertyName == GET_MEMBER_NAME_CHECKED(ARTSOInteractableResourceBase, TradeArchetype))
+	{
+		return HasInfiniteInventory();
+	}
+
+	if (PropertyName == GET_MEMBER_NAME_CHECKED(ARTSOInteractableResourceBase, InventoryFragment))
+	{
+		return HasInfiniteInventory() == false;
+	}
+
+	return Super::CanEditChange(InProperty);
+}
+#endif // WITH_EDITOR
 
 /**
 Business Source License 1.1

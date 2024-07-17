@@ -99,10 +99,9 @@ void SRTSOSaveEditor_InteractableData::OnInteractableUsabilityChanged(int32 Acto
 
 TSharedRef<ITableRow> SRTSOSaveEditor_InteractableData::MakeListViewWidget_InteractableData(TSharedPtr<FRTSSavedInteractable> InItem, const TSharedRef<STableViewBase>& OwnerTable) const
 {
-	SRTSOSaveEditor_InteractableData* MutableThis = const_cast<SRTSOSaveEditor_InteractableData*>(this);
-	check(MutableThis != nullptr)
-	
-	const FRTSSavedInteractable& SavedInteractableDatum = *InItem.Get();
+	FRTSSavedInteractable& SavedInteractableDatum = *InItem.Get();
+	FRTSSavedInteractable* CurrentInteractableInCopiedSaveData = LinkedSaveDataCopy->Interactables.FindByKey(SavedInteractableDatum);
+	SavedInteractableDatum.CopySelectedToSoftClass(CurrentInteractableInCopiedSaveData->_HiddenInstantiatedClass);
 	
 	SNumericV3d::FOnVectorValueCommitted OnPlayerLocationChanged;
 	OnPlayerLocationChanged.BindLambda(
@@ -150,45 +149,35 @@ TSharedRef<ITableRow> SRTSOSaveEditor_InteractableData::MakeListViewWidget_Inter
 	// @todo make version that shows simplified class list, investigate how uclasses are represented in shipped builds and write code that appropriately handles representation in different build types  
 	FOnClicked OnActorClassClicked;
 	OnActorClassClicked.BindLambda(
-		[ImmutableThis = this]() -> FReply
+		[&, ImmutableThis = this]() -> FReply
 		{
 #if WITH_EDITOR
 			const SRTSOSaveEditor_InteractableData* MutableThis = const_cast<SRTSOSaveEditor_InteractableData*>(ImmutableThis);
 			check(MutableThis != nullptr)
 			
 			FClassViewerInitializationOptions InitOptions;
+			
+			InitOptions.bShowBackgroundBorder = false;
+			InitOptions.bShowUnloadedBlueprints = true;
+			InitOptions.bShowNoneOption = true;
+			InitOptions.bAllowViewOptions = true;
+			InitOptions.bShowDefaultClasses = true;
+			InitOptions.bShowObjectRootClass = true;
 			InitOptions.Mode = EClassViewerMode::ClassPicker;
 			InitOptions.DisplayMode = EClassViewerDisplayMode::TreeView;
-
+			
 			const TSharedRef<FRTSSaveEd_InteractableClassFilter> SaveEd_InteractableClassFilter = MakeShared<FRTSSaveEd_InteractableClassFilter>();
 			SaveEd_InteractableClassFilter->InterfaceThatMustBeImplemented = UPDInteractInterface::StaticClass();
+			SaveEd_InteractableClassFilter->ClassPropertyMetaClass = UObject::StaticClass();
+			SaveEd_InteractableClassFilter->bAllowAbstract = true;
+			
 			InitOptions.ClassFilters.Add(SaveEd_InteractableClassFilter);
 
-			UClass* ChosenClass = nullptr;
-			SClassPickerDialog::PickClass(FText(), InitOptions, ChosenClass, nullptr);
 			
-			// @todo get back to this, need to get around SNew(SClassPickerDialog) not being callable outside of SClassPickerDialog
-			// // Create the window to pick the class
-			// const TSharedRef<SWindow> PickerWindow = SNew(SWindow)
-			// 	.Title(FText())
-			// 	.SizingRule( ESizingRule::Autosized )
-			// 	.ClientSize( FVector2D( 0.f, 300.f ))
-			// 	.SupportsMaximize(false)
-			// 	.SupportsMinimize(false);
-			//
-			// const TSharedRef<SClassPickerDialog> ClassPickerDialog = SNew(SClassPickerDialog)
-			// 	.ParentWindow(PickerWindow)
-			// 	.Options(InitOptions)
-			// 	.AssetType(nullptr);
-			// 	
-			//
-			// PickerWindow->SetContent(ClassPickerDialog);
-			//
-			// const TSharedPtr<SWindow> ParentWindow = FSlateApplication::Get().GetActiveTopLevelRegularWindow();
-			// if( ParentWindow.IsValid() )
-			// {
-			// 	FSlateApplication::Get().AddModalWindow(PickerWindow, ParentWindow );
-			// }
+			// @todo fix: Major issue. Critical parts of SClassPickerDialog::PickClass are available in editor and is not available in shipped games 
+			FRTSSavedInteractable* CurrentInteractableInCopiedSaveData = MutableThis->LinkedSaveDataCopy->Interactables.FindByKey(SavedInteractableDatum);
+			SClassPickerDialog::PickClass(FText(), InitOptions, CurrentInteractableInCopiedSaveData->_HiddenInstantiatedClass, AActor::StaticClass());
+
 			
 #endif // WITH_EDITOR
 			return FReply::Handled();
@@ -203,7 +192,9 @@ TSharedRef<ITableRow> SRTSOSaveEditor_InteractableData::MakeListViewWidget_Inter
 	{
 		return CopiedUsability;
 	};
-			
+
+	SRTSOSaveEditor_InteractableData* MutableThis = const_cast<SRTSOSaveEditor_InteractableData*>(this);
+	check(MutableThis != nullptr)	
 	MutableThis->InteractableTable = SNew( STableRow< TSharedPtr<FRTSSavedInteractable>>, OwnerTable )
 		[
 			SNew(SVerticalBox)
@@ -241,7 +232,7 @@ TSharedRef<ITableRow> SRTSOSaveEditor_InteractableData::MakeListViewWidget_Inter
 					+ INSET_HORIZONTAL_SLOT(0)
 					[
 						SNew(SButton)
-							.Text(FText::FromString(SavedInteractableDatum.ActorClass.ToString()))
+							.Text(FText::FromString(SavedInteractableDatum.ActorClass.GetAssetName()))
 							.OnClicked(OnActorClassClicked)
 							.VAlign(VAlign_Fill)
 					]			

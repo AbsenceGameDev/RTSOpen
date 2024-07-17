@@ -384,6 +384,26 @@ struct PDINTERACTION_API FRTSSavedInteractable
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "GameInstance|Widgets")
 	int32 InstanceIndex = INDEX_NONE;
 
+	UPROPERTY()
+	UClass* _HiddenInstantiatedClass = nullptr;
+
+	void CopySelectedToSoftClass(UClass* PotentialOverrideHiddenClass = nullptr)
+	{
+		if (PotentialOverrideHiddenClass != nullptr || _HiddenInstantiatedClass == nullptr)
+		{
+			_HiddenInstantiatedClass = PotentialOverrideHiddenClass;
+		}
+		
+		if (_HiddenInstantiatedClass != nullptr)
+		{
+			if (TSoftClassPtr<AActor>(_HiddenInstantiatedClass) != ActorClass)
+			{
+				ActorClass = TSoftClassPtr<AActor>(_HiddenInstantiatedClass);
+			}
+			_HiddenInstantiatedClass = nullptr; // Clear after attempting to copy to a softclass ptr
+		}		
+	}
+	
 	bool operator==(const FRTSSavedInteractable& Other) const
 	{
 		return 
@@ -396,10 +416,47 @@ struct PDINTERACTION_API FRTSSavedInteractable
 	bool operator!=(const FRTSSavedInteractable& Other) const
 	{
 		return (*this == Other) == false;
-	}		
-	
+	}
 };
 
+
+UENUM()
+enum class ERTSResourceAvailability : uint8
+{
+	EInfinitelyAvailable,
+	EInventoryFragment,
+	EUndefined,
+};
+
+UENUM()
+enum class ERTSResourceRequirement : uint8
+{
+	EMustHaveMinimumCount,
+	EAlwaysAllowTrade,
+	EUndefined,
+};
+
+
+namespace PD::Interactable::Behaviour
+{
+	using Availability = ERTSResourceAvailability;
+	using Requirements = ERTSResourceRequirement;
+
+	
+}
+
+UCLASS(Config = "Game", DefaultConfig)
+class PDINTERACTION_API URTSInteractableResourceSettings : public UDeveloperSettings
+{
+	GENERATED_BODY()
+public:
+	
+	UPROPERTY(Config, EditAnywhere, Category = "Interactable Resources Developer Settings")
+	ERTSResourceAvailability DefaultAvailability = PD::Interactable::Behaviour::Availability::EInfinitelyAvailable;
+
+	UPROPERTY(Config, EditAnywhere, Category = "Interactable Resources Developer Settings")
+	ERTSResourceRequirement DefaultRequirements = PD::Interactable::Behaviour::Requirements::EAlwaysAllowTrade;	
+};
 
 /**
 Business Source License 1.1

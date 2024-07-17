@@ -4,6 +4,7 @@
 #pragma once
 
 #include "CoreMinimal.h"
+#include "PDBuildCommon.h"
 #include "PDRTSCommon.h"
 #include "UObject/Interface.h"
 #include "PDRTSBuildableGhostInterface.generated.h"

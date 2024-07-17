@@ -71,6 +71,7 @@ void FRTSOLightInventoryFragmentHandler::AddItem(const FPDLightItemDatum& Append
 	Inner.FindOrAdd(AppendItem.ItemTag).TotalItemCount += AppendItem.TotalItemCount;
 }
 
+// We never actually remove and item, we may set it to zero and count it as not being here
 void FRTSOLightInventoryFragmentHandler::RemoveItem(const FPDLightItemDatum& RemoveItem)
 {
 	if (Inner.Contains(RemoveItem.ItemTag) == false) { return;; }
@@ -82,6 +83,7 @@ void FRTSOLightInventoryFragmentHandler::RemoveItem(const FPDLightItemDatum& Rem
 void FRTSOLightInventoryFragmentHandler::AddItem(const FGameplayTag& AddTag, const int32 Count)
 {
 	FPDLightItemDatum& Item = Inner.FindOrAdd(AddTag);
+	Item.ItemTag = AddTag;
 	Item.TotalItemCount = FMath::Min(0,Item.TotalItemCount + Count);
 }
 
@@ -90,12 +92,25 @@ void FRTSOLightInventoryFragmentHandler::RemoveItem(const FGameplayTag& RemoveTa
 	if (Inner.Contains(RemoveTag) == false) { return;; }
 		
 	auto& [ItemTag, TotalItemCount] = Inner.FindChecked(RemoveTag); 
-	TotalItemCount -= (Count >= TotalItemCount) ? TotalItemCount : Count; 	
+	TotalItemCount -= (Count >= TotalItemCount) ? TotalItemCount : Count;
 }
 
 int32 FRTSOLightInventoryFragmentHandler::GetItemCount(const FGameplayTag& Key) const
 {
 	return  Inner.FindOrAdd(Key).TotalItemCount;
+}
+
+bool FRTSOLightInventoryFragmentHandler::IsEmpty() const
+{
+	for (const TTuple<FGameplayTag, FPDLightItemDatum>& Item : Inner)
+	{
+		if (Item.Value.TotalItemCount > 0)
+		{
+			return false;
+		}
+	}
+	
+	return true;
 }
 
 

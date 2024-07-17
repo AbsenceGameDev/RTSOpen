@@ -11,7 +11,8 @@ public class PDInteraction : ModuleRules
 		PublicDependencyModuleNames.AddRange(
 			new string[]
 			{
-				"Core",
+				/*Core*/      "Core",
+				/*Settings*/  "DeveloperSettings", 
 			}
 		);
 			

@@ -24,6 +24,7 @@ public:
 
 	UFUNCTION()
 	void AppendToMessageFrame(const FGameplayTag& NewMessageTag, APlayerController* TargetController);
+	void AppendToMessageFrame(const FNativeGameplayTag& NewMessageTag, APlayerController* TargetController);
 	
 	
 	UPROPERTY(Replicated)

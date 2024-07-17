@@ -198,6 +198,27 @@ struct FRTSSavedConversationActorData
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Data|SaveGame|Unit")
 	double Health = 1.0;
 
+	UPROPERTY()
+	UClass* _HiddenInstantiatedClass = nullptr;
+
+	// Copy selected class (_HiddenInstantiatedClass) to softobject if not already copied, clear _HiddenInstantiatedClass no matter if it was copied or not 
+	void CopySelectedToSoftClass(UClass* PotentialOverrideHiddenClass = nullptr)
+	{
+		if (PotentialOverrideHiddenClass != nullptr || _HiddenInstantiatedClass == nullptr)
+		{
+			_HiddenInstantiatedClass = PotentialOverrideHiddenClass;
+		}
+		
+		if (_HiddenInstantiatedClass != nullptr)
+		{
+			if (TSoftClassPtr<ARTSOInteractableConversationActor>(_HiddenInstantiatedClass) != ActorClassType)
+			{
+				ActorClassType = TSoftClassPtr<ARTSOInteractableConversationActor>(_HiddenInstantiatedClass);
+			}
+			_HiddenInstantiatedClass = nullptr;
+		}		
+	}
+	
 	bool operator==(const FRTSSavedConversationActorData& Other) const
 	{
 		TArray<int32> ThisProgressionKeyArray;

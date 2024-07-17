@@ -46,7 +46,10 @@ public:
 	static FText Interactable_BaseData_ActorID_TitleText;
 	static FText Interactable_BaseData_ClassType_TitleText;
 	static FText Interactable_BaseData_Location_TitleText;
-	static FText Interactable_BaseData_Usability_TitleText;	
+	static FText Interactable_BaseData_Usability_TitleText;
+
+	// 
+	UClass* ChosenClass = nullptr;
 };
 
 /**

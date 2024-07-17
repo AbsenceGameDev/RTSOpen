@@ -15,7 +15,31 @@ DECLARE_LOG_CATEGORY_CLASS(PDLog_SaveEditor, Log, All);
 
 USTRUCT() struct FPlayerLocationStruct { GENERATED_BODY()  int32 /*UserID*/ Key;  FVector /*User Location*/ Value; };
 USTRUCT() struct FUserInventoriesStruct { GENERATED_BODY()  int32 /*UserID*/ Key;  FRTSSavedItems /*User Inventory Wrapper*/ Value; };
-USTRUCT() struct FConversationStateStruct  { GENERATED_BODY()  int32 /*ActorID*/ Key;  FRTSSavedConversationActorData Value; };
+USTRUCT() struct FConversationStateStruct
+{
+	GENERATED_BODY()
+
+	int32 /*ActorID*/ Key;
+	FRTSSavedConversationActorData Value;
+	
+	// Copy selected class (_HiddenInstantiatedClass) to softobject if not already copied, clear _HiddenInstantiatedClass no matter if it was copied or not 
+	void CopySelectedToSoftClass(UClass* PotentialOverrideHiddenClass = nullptr)
+	{
+		if (PotentialOverrideHiddenClass != nullptr || Value._HiddenInstantiatedClass == nullptr)
+		{
+			Value._HiddenInstantiatedClass = PotentialOverrideHiddenClass;
+		}
+		
+		if (Value._HiddenInstantiatedClass != nullptr)
+		{
+			if (TSoftClassPtr<ARTSOInteractableConversationActor>(Value._HiddenInstantiatedClass) != Value.ActorClassType)
+			{
+				Value.ActorClassType = TSoftClassPtr<ARTSOInteractableConversationActor>(Value._HiddenInstantiatedClass);
+			}
+			Value._HiddenInstantiatedClass = nullptr;
+		}		
+	}
+};
 USTRUCT() struct FConversationProgressionInnerStruct { GENERATED_BODY()  int32 /*UserID*/ Key;  FRTSOConversationMetaProgressionListWrapper /*ProgressionLevel*/ Value; };
 USTRUCT() struct FUserMissionTagsStruct { GENERATED_BODY()  int32 Key /*PlayerID*/;  FGameplayTagContainer /*AccumulatedMissionTags*/ Value; };
 USTRUCT() struct FStacksStruct { GENERATED_BODY()  int32 Key /*StackIndex*/;  int32 /*ItemCount*/ Value; };

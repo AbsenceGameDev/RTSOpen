@@ -28,9 +28,12 @@ UE_DEFINE_GAMEPLAY_TAG(TAG_BUILD_ContextMenu_Builder_Expert, "BUILD.ContextMenu.
 
 /** Declaring the "BUILD.Actions." gameplay tags. to be defined in an object-file */
 UE_DEFINE_GAMEPLAY_TAG(TAG_BUILD_Actions_DestroyBuilding, "BUILD.Action.Destroy");
+UE_DEFINE_GAMEPLAY_TAG(TAG_MSG_Actions_CannotAffordAction, "MSG.Action.CannotAfford");
 // TAG_AI_Type_ tags are implicitly counted as spawn actions when applied as a 'buildable action tag' in an entry in a 'FPDBuildable'-type of datatable
 
 /** Declaring the "BUILD.ActionContext." gameplay tags. to be defined in an object-file */
+UE_DEFINE_GAMEPLAY_TAG(TAG_BUILD_ActionContext_Base0, "BUILD.ActionContext.Base0");
+UE_DEFINE_GAMEPLAY_TAG(TAG_BUILD_ActionContext_Base1, "BUILD.ActionContext.Base1");
 UE_DEFINE_GAMEPLAY_TAG(TAG_BUILD_ActionContext_WorkerHut0, "BUILD.ActionContext.WorkerHut0");
 UE_DEFINE_GAMEPLAY_TAG(TAG_BUILD_ActionContext_WorkerHut1, "BUILD.ActionContext.WorkerHut1");
 UE_DEFINE_GAMEPLAY_TAG(TAG_BUILD_ActionContext_Barracks0, "BUILD.ActionContext.Barracks0");

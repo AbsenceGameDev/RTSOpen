@@ -83,6 +83,18 @@ public:
 	
 	virtual void SelectActionMenuEntry_Implementation(ERTSBuildableActionMenuModules ActionMode, FGameplayTag ActionTag, const TArray<uint8>& Payload) override;
 	virtual int32 GetBuilderID_Implementation() override;
+
+	UFUNCTION()
+	virtual void GetOwnedBuildings_Implementation(TArray<AActor*>& OutArray) override
+	{
+		OutArray = SpawnedBuildings;
+	}
+	UFUNCTION()
+	virtual void SetOwnedBuilding_Implementation(AActor* NewBuilding) override
+	{
+		SpawnedBuildings.Emplace(NewBuilding);
+	}
+	
 	/* PDRTS Builder Interface - End */
 
 	/** @brief Retrieves the ISM Agent component from UPDRTSBaseSubsystem and sets its entity manager*/
@@ -131,6 +143,7 @@ public:
 	AActor* FindClosestInteractableActor() const;
 	/** @brief Helper to return the value of the given entity's transform fragment, if entity is valid. */
 	const FTransform& GetEntityTransform(const FMassEntityHandle& Handle) const;
+	int32 GetEntityOwnerID(const FMassEntityHandle& Handle) const;
 	/** @brief Calls 'FindClosestMassEntity()' and 'FindClosestInteractableActor()' */
 	void HoverTick(float DeltaTime);
 	

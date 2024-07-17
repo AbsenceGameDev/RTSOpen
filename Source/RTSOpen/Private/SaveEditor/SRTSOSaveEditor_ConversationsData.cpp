@@ -26,6 +26,7 @@
 #include "Chaos/AABB.h"
 #include "Chaos/AABB.h"
 #include "Interfaces/PDInteractInterface.h"
+#include "Interfaces/RTSOConversationInterface.h"
 
 #define LOCTEXT_NAMESPACE "SRTSOSaveEditor_ConversationsData"
 
@@ -107,11 +108,10 @@ void SRTSOSaveEditor_ConversationsData::UpdateChildSlot(void* OpaqueData)
 
 TSharedRef<ITableRow> SRTSOSaveEditor_ConversationsData::MakeListViewWidget_ConversationStateData(TSharedPtr<FConversationStateStruct> InItem, const TSharedRef<STableViewBase>& OwnerTable) const
 {
-	SRTSOSaveEditor_ConversationsData* MutableThis = const_cast<SRTSOSaveEditor_ConversationsData*>(this);
-	check(MutableThis != nullptr)
-
-	FConversationStateStruct& SavedConversationStateDatum = *InItem.Get();	
-
+	FConversationStateStruct& SavedConversationStateDatum = *InItem.Get();
+	FRTSSavedConversationActorData* CurrentConvInCopiedSaveData = LinkedSaveDataCopy->ConversationActorState.Find(SavedConversationStateDatum.Key);
+	SavedConversationStateDatum.CopySelectedToSoftClass(CurrentConvInCopiedSaveData->_HiddenInstantiatedClass);
+	
 	//
 	// Gather shared ptrs
 	TArray<TSharedPtr<FName>> CurrentMissionsAsSharedTupleArray;
@@ -139,40 +139,29 @@ TSharedRef<ITableRow> SRTSOSaveEditor_ConversationsData::MakeListViewWidget_Conv
 #if WITH_EDITOR
 			const SRTSOSaveEditor_ConversationsData* MutableThis = const_cast<SRTSOSaveEditor_ConversationsData*>(ImmutableThis);
 			check(MutableThis != nullptr)
-			
+
 			FClassViewerInitializationOptions InitOptions;
+			
+			InitOptions.bShowBackgroundBorder = false;
+			InitOptions.bShowUnloadedBlueprints = true;
+			InitOptions.bShowNoneOption = true;
+			InitOptions.bAllowViewOptions = true;
+			InitOptions.bShowDefaultClasses = true;
+			InitOptions.bShowObjectRootClass = true;
 			InitOptions.Mode = EClassViewerMode::ClassPicker;
 			InitOptions.DisplayMode = EClassViewerDisplayMode::TreeView;
-
+			
 			const TSharedRef<FRTSSaveEd_InteractableClassFilter> SaveEd_InteractableClassFilter = MakeShared<FRTSSaveEd_InteractableClassFilter>();
-			SaveEd_InteractableClassFilter->InterfaceThatMustBeImplemented = UPDInteractInterface::StaticClass();
+			SaveEd_InteractableClassFilter->InterfaceThatMustBeImplemented = URTSOConversationSpeakerInterface::StaticClass();
+			SaveEd_InteractableClassFilter->ClassPropertyMetaClass = UObject::StaticClass();
+			SaveEd_InteractableClassFilter->bAllowAbstract = true;
+			
 			InitOptions.ClassFilters.Add(SaveEd_InteractableClassFilter);
 
-			UClass* ChosenClass = nullptr;
-			SClassPickerDialog::PickClass(FText(), InitOptions, ChosenClass, nullptr);
+			// @todo fix: Major issue. Critical parts of SClassPickerDialog::PickClass are available in editor and is not available in shipped games
+			FRTSSavedConversationActorData* CurrentConvInCopiedSaveData = MutableThis->LinkedSaveDataCopy->ConversationActorState.Find(ConversationActorID);
+			SClassPickerDialog::PickClass(FText(), InitOptions, CurrentConvInCopiedSaveData->_HiddenInstantiatedClass, AActor::StaticClass());
 
-			// @todo get back to this, need to get around SNew(SClassPickerDialog) not being callable outside of SClassPickerDialog
-			// // Create the window to pick the class
-			// const TSharedRef<SWindow> PickerWindow = SNew(SWindow)
-			// 	.Title(FText())
-			// 	.SizingRule( ESizingRule::Autosized )
-			// 	.ClientSize( FVector2D( 0.f, 300.f ))
-			// 	.SupportsMaximize(false)
-			// 	.SupportsMinimize(false);
-			//
-			// const TSharedRef<SClassPickerDialog> ClassPickerDialog = SNew(SClassPickerDialog)
-			// 	.ParentWindow(PickerWindow)
-			// 	.Options(InitOptions)
-			// 	.AssetType(nullptr);
-			//
-			// PickerWindow->SetContent(ClassPickerDialog);
-			//
-			// const TSharedPtr<SWindow> ParentWindow = FSlateApplication::Get().GetActiveTopLevelRegularWindow();
-			// if( ParentWindow.IsValid() )
-			// {
-			// 	FSlateApplication::Get().AddModalWindow(PickerWindow, ParentWindow );
-			// }
-			//
 #endif // WITH_EDITOR
 			return FReply::Handled();
 		});
@@ -309,6 +298,8 @@ TSharedRef<ITableRow> SRTSOSaveEditor_ConversationsData::MakeListViewWidget_Conv
 	
 	//
 	// Widget layout
+	SRTSOSaveEditor_ConversationsData* MutableThis = const_cast<SRTSOSaveEditor_ConversationsData*>(this);
+	check(MutableThis != nullptr)
 	MutableThis->ConversationStateTable = SNew( STableRow< TSharedPtr<FConversationStateStruct> >, OwnerTable )
 		[
 			SNew(SVerticalBox)
@@ -358,7 +349,7 @@ TSharedRef<ITableRow> SRTSOSaveEditor_ConversationsData::MakeListViewWidget_Conv
 					+ INSET_HORIZONTAL_SLOT(0)
 					[
 						SNew(SButton)
-							.Text(FText::FromString(SavedConversationStateDatum.Value.ActorClassType.ToString()))
+							.Text(FText::FromString(SavedConversationStateDatum.Value.ActorClassType.GetAssetName()))
 							.OnClicked(OnActorClassClicked)
 					]			
 				]

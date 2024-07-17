@@ -49,6 +49,7 @@ struct FRTSOLightInventoryFragmentHandler
 
 	/** @brief Gets item count, via tag */
 	int32 GetItemCount(const FGameplayTag& Key) const;
+	bool IsEmpty() const;
 
 	/** @brief Copies the inventory fragment handler. Assigns others inner to our inner */
 	FRTSOLightInventoryFragmentHandler& operator=(const FRTSOLightInventoryFragmentHandler& Other)
@@ -81,8 +82,8 @@ struct FRTSOLightInventoryFragment : public FMassFragment
 		return *this;
 	}
 
-	/** @brief Inner/Imte list, keyed by item tag, value by actual item datum */
-	UPROPERTY(BlueprintReadWrite)
+	/** @brief Inner/Item list, keyed by item tag, value by actual item datum */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
 	TMap<FGameplayTag, FPDLightItemDatum> Inner{};
 
 	/** @brief Inventory fragment handler.*/

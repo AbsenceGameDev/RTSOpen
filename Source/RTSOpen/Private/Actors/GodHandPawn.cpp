@@ -51,18 +51,22 @@
 
 /* Engine - Kismet */
 #include "EnhancedInputSubsystems.h"
+#include "MassSpawnerSubsystem.h"
 #include "PDBuildCommon.h"
 #include "PDBuilderSubsystem.h"
 #include "PDRTSSharedHashGrid.h"
 #include "PDRTSSharedUI.h"
+#include "Core/RTSOBaseGM.h"
 #include "Interfaces/PDRTSBuildableGhostInterface.h"
 #include "Kismet/GameplayStatics.h"
 #include "Kismet/KismetMathLibrary.h"
 #include "Kismet/KismetSystemLibrary.h"
+#include "Subsystems/PDUserMessageSubsystem.h"
 
 //
 // Godhand functionality
 
+class UMassSpawnerSubsystem;
 // Called every frame
 void AGodHandPawn::Tick(float DeltaTime)
 {
@@ -646,7 +650,7 @@ void AGodHandPawn::ProcessPlaceBuildable(ARTSOController* PC)
 	
 	const bool NonImmediate_SpawnGhost  = CostBehaviour != PD::Build::Behaviour::Cost::EFree && ProgressBehaviour != PD::Build::Behaviour::Progress::EImmediate;
 	const bool Immediate_SpawnGhost     = (CostBehaviour != PD::Build::Behaviour::Cost::EFree && ProgressBehaviour == PD::Build::Behaviour::Progress::EImmediate)
-	                                    || CostBehaviour == PD::Build::Behaviour::Cost::EFree && ProgressBehaviour != PD::Build::Behaviour::Progress::EImmediate;
+	                                    || (CostBehaviour == PD::Build::Behaviour::Cost::EFree && ProgressBehaviour != PD::Build::Behaviour::Progress::EImmediate);
 	
 	const bool Immediate_SpawnBuildable = CostBehaviour == PD::Build::Behaviour::Cost::EFree && ProgressBehaviour == PD::Build::Behaviour::Progress::EImmediate;
 
@@ -979,6 +983,14 @@ const FTransform& AGodHandPawn::GetEntityTransform(const FMassEntityHandle& Hand
 	return EntityManager->IsEntityValid(Handle) ? EntityManager->GetFragmentDataPtr<FTransformFragment>(Handle)->GetTransform() : Collision->GetComponentTransform();
 }
 
+int32 AGodHandPawn::GetEntityOwnerID(const FMassEntityHandle& Handle) const
+{
+	// For our purposes transform fragment should never be nullptr in case the handle itself is valid
+	check(EntityManager->GetFragmentDataPtr<FTransformFragment>(Handle) != nullptr);
+	return EntityManager->IsEntityValid(Handle) ? EntityManager->GetFragmentDataPtr<FPDMFragment_RTSEntityBase>(Handle)->OwnerID : INDEX_NONE;
+}
+
+
 FMassEntityHandle AGodHandPawn::FindClosestMassEntity() const
 {
 	const UPDRTSBaseSubsystem* RTSBaseSubsystem = UPDRTSBaseSubsystem::Get();
@@ -999,6 +1011,13 @@ FMassEntityHandle AGodHandPawn::FindClosestMassEntity() const
 	// Ensure that it is not a hovered entity from a previous frame still lingering in the query buffer
 	const FVector DeltaV = Collision->GetComponentLocation() - EntityCompound.Location;
 	if (DeltaV.IsNearlyZero(50.0) == false)
+	{
+		return FMassEntityHandle{0,0};
+	}
+
+	// Don't allow handling entities we do not own
+	AGodHandPawn* MutableThis = const_cast<AGodHandPawn*>(this);
+	if (GetEntityOwnerID(EntityCompound.EntityHandle) != IPDRTSBuilderInterface::Execute_GetBuilderID(MutableThis))
 	{
 		return FMassEntityHandle{0,0};
 	}
@@ -1221,10 +1240,56 @@ void AGodHandPawn::SelectActionMenuEntry_Implementation(ERTSBuildableActionMenuM
 				// done 0. default to a single spawn if we have no payload instructing us how many we should spawn 
 				uint32 SpawnCount = Payload.IsValidIndex(3) ? RESTORE_BYTE(Payload, 0) | RESTORE_BYTE(Payload, 1) | RESTORE_BYTE(Payload, 2) | RESTORE_BYTE(Payload, 3) : 1;
 
-				// @todo 1. Need to select a entity config and use it to spawn
-				// @todo 2. Will need some mapping between unit-type tags and their entity configs, multiple unit-type tags may share the same configs
-				// @todo 3. Spawn here now that have validated that the worker is valid type
-				// @todo 4. need a spawn queue and unit spawn rules, timings and such
+				// @DONE 0. Ensure we afford the action
+				if (InventoryComponent->CanAfford((*FoundActionData)->ActionCost))
+				{
+					// @DONE 1. Need to select a entity config and use it to spawn
+					// @DONE 2. Will need some mapping between unit-type tags and their entity configs, multiple unit-type tags may share the same configs
+					// @DONE 3. Spawn here now that have validated that the worker is valid type
+					// @todo 4. need a spawn queue and unit spawn rules, timings and such
+					
+
+					// @todo Need to generalize the spawn logic
+					UPDRTSBaseSubsystem* RTSSubsystem = UPDRTSBaseSubsystem::Get();
+					const FMassEntityManager* EntityManager = RTSSubsystem != nullptr ? RTSSubsystem->EntityManager : nullptr;
+					UMassSpawnerSubsystem* SpawnerSystem = UWorld::GetSubsystem<UMassSpawnerSubsystem>(GetWorld());
+					if (EntityManager == nullptr) { return; }
+				
+
+					TMap<const FMassEntityTemplateID, ARTSOBaseGM::FEntityCompoundTuple> EntitiesToSpawn{};
+					// Gather entities to spawn
+					{
+						const ARTSOController* PC = GetController<ARTSOController>();
+						if (PC == nullptr)
+						{
+							//@todo error message here
+							return;
+						}
+						
+						FRTSSavedWorldUnits ConstructedEntityData{};
+						ConstructedEntityData.EntityUnitTag = ActionTag;
+						ConstructedEntityData.OwnerID = IPDRTSBuilderInterface::Execute_GetBuilderID(this);
+						
+						// @todo need to offset the actor location, right now it spawns in the middle of it
+						ConstructedEntityData.Location = PC->GetBuildableActionsWidget()->CurrentWorldActor->GetActorLocation();
+						ARTSOBaseGM::GatherEntityToSpawn(*GetWorld(), ConstructedEntityData, EntitiesToSpawn, RTSSubsystem, SpawnerSystem);
+					}
+
+					// Dispatch spawning of entities
+					for (const TTuple<const FMassEntityTemplateID, ARTSOBaseGM::FEntityCompoundTuple>&
+						EntityTypeCompound : EntitiesToSpawn)
+					{
+						ARTSOBaseGM::DispatchEntitySpawning(EntityTypeCompound, EntityManager, SpawnerSystem);
+					}
+				}
+				else
+				{
+					// @done send error notification via message subsystem?
+					// @todo Assign the given tag to the message datatable so this resolves to something
+					UPDUserMessageSubsystem::Get()->SendMessageToUser_Server(TAG_MSG_Actions_CannotAffordAction, GetController<APlayerController>());
+				}
+				
+
 
 				
 				break;
