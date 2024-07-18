@@ -440,6 +440,8 @@ void ARTSOController::ActionChordedBase_Implementation(const FInputActionValue& 
 {
 	if (GetPawn() == nullptr || GetPawn()->GetClass()->ImplementsInterface(URTSOInputInterface::StaticClass()) == false) { return; }
 	IRTSOInputInterface::Execute_ActionChordedBase(GetPawn(), Value);
+	
+	UE_LOG(PDLog_RTSO, Log, TEXT("ARTSOController::ActionChordedBase -- Executed action"));
 }
 
 void ARTSOController::ActionExitConversation_Implementation(const FInputActionValue& Value)

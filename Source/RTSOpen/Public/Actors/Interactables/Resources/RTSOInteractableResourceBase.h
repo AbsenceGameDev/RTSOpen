@@ -5,14 +5,17 @@
 #include "PDInventorySubsystem.h"
 #include "Actors/PDInteractActor.h"
 #include "AI/Mass/RTSOMassFragments.h"
+#include "Interfaces/RTSOConversationInterface.h"
 #include "RTSOInteractableResourceBase.generated.h"
 
 class UMassEntitySubsystem;
 /**
- * @brief An actor with a job tag tied to it along with rewards, meant to be used for interactable resources
+ * @brief An actor with a job tag tied to it along with rewards and potential mission progress, meant to be used for interactable resources/items
  */
 UCLASS()
-class RTSOPEN_API ARTSOInteractableResourceBase : public APDInteractActor
+class RTSOPEN_API ARTSOInteractableResourceBase
+	: public APDInteractActor
+	, public IRTSOMissionProgressor
 {
 	GENERATED_BODY()
 
@@ -24,13 +27,21 @@ public:
 	/** @brief Ticks usage the cooldown. @todo move into a progression/stat system*/
 	virtual void Tick(float DeltaTime) override;
 
+	/** @brief Overridden but solely calls super. Reserved for later use */
+	virtual void AddTagToCaller_Implementation(AActor* Caller, const FGameplayTag& NewTag) override;
+	/** @brief Overridden but solely calls super. Reserved for later use */
+	virtual FGameplayTagContainer SelectorTagToTagContainer_Implementation(AActor* Caller, const FGameplayTag& SelectorTag) override;
+	void OnInteractionSuccessful(AActor* InstigatorActor) const;
+
 	void ProcessTradeIfInfiniteInventory(
+		const FPDInteractionParamsWithCustomHandling& InteractionParams,
 		EPDInteractResult& InteractResult,
 		UPDInventoryComponent* InstigatorInvComponent,
 		FRTSOLightInventoryFragment* InstigatorInventoryFragment,
 		UPDInventorySubsystem* InvSubsystem) const;
 
 	void ProcessTradeIfLimitedInventory(
+		const FPDInteractionParamsWithCustomHandling& InteractionParams,
 		EPDInteractResult& InteractResult,
 		UPDInventoryComponent* InstigatorInvComponent,
 		FRTSOLightInventoryFragment* InstigatorInventoryFragment,
@@ -56,6 +67,15 @@ public:
 #endif // WITH_EDITOR
 
 private:
+	
+	/** @brief @todo source from datatable!!! */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Meta = (AllowPrivateAccess="true"))
+	TMap<FGameplayTag, FGameplayTagContainer> MissionProgressionTagsGrantedUponSuccessfulInteraction{};
+
+	/** @brief @todo source from datatable!!! */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Meta = (AllowPrivateAccess="true"))
+	TArray<FGameplayTagContainer> MissionProgressionSelectorTags{};
+	
 	/** @brief What job is this resource tied to, default value is set to TAG_AI_Job_GatherResource in this classes ctor */
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Meta = (AllowPrivateAccess="true"))
 	FGameplayTag JobTag{};
@@ -94,6 +114,10 @@ private:
 	UMassEntitySubsystem* EntitySubsystem = nullptr;
 	/** @brief The mass entity manager, used to read and write to different fragments on requested entities */
 	const FMassEntityManager* EntManager = nullptr;
+
+	/** @brief @todo This is not being incremented anywhere, no rules how to handle it. Must resolve this */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Meta = (AllowPrivateAccess="true"))
+	int32 TagOrder = 0;
 	
 };
 

@@ -1,83 +1,51 @@
 ﻿/* @author: Ario Amin @ Permafrost Development. @copyright: Full BSL(1.1) License included at bottom of the file  */
-#include "AI/StateTree/RTSOMassTasks.h"
-#include "AI/Mass/PDMassFragments.h"
+#pragma once
 
-#include "MassEntitySubsystem.h"
-#include "MassSignalSubsystem.h"
-#include "MassStateTreeExecutionContext.h"
-#include "PDRTSBaseSubsystem.h"
-#include "RTSOpenCommon.h"
+#include "CoreMinimal.h"
+#include "Blueprint/UserWidget.h"
+#include "RTSOMissionView.generated.h"
 
-#include "StateTreeExecutionContext.h"
-#include "StateTreeLinker.h"
-#include "AI/Mass/RTSOMassFragments.h"
-#include "Interfaces/PDInteractInterface.h"
-#include "Pawns/PDRTSBaseUnit.h"
-
-
-bool FRTSOTask_Interact::Link(FStateTreeLinker& Linker)
+class UHorizontalBox;
+class UTileView;
+/**
+ * @brief  Loads custom tags that may have been added by a player/user
+*/
+UCLASS(Blueprintable)
+class RTSOPEN_API URTSOMissionView : public UUserWidget
 {
-	Linker.LinkExternalData(EntitySubsystemHandle);
-	Linker.LinkExternalData(InventoryHandle);
-	return true;
-}
+	GENERATED_BODY()
+public:
+	/** @brief Reserved, does nothing */
+	virtual void NativeConstruct() override;
+	/** @brief Reserved, does nothing */
+	virtual void NativeDestruct() override;
+	/** @brief Reserved, does nothing */
+	virtual void NativePreConstruct() override;
+	/** @brief Reserved, does nothing */
+	virtual void NativeTick(const FGeometry& MyGeometry, float InDeltaTime) override;
 
-EStateTreeRunStatus FRTSOTask_Interact::EnterState(FStateTreeExecutionContext& Context, const FStateTreeTransitionResult& Transition) const
-{
-	// const UPDRTSBaseSubsystem& RTSSubsystem = *UPDRTSBaseSubsystem::Get();
+	//
+	// TABS          :      Active        |       Inactive
+	// CONTENT       :  [TABS : Types]    |    [TABS : Types ]  
+	// INNER CONTENT :  [LIST : Missions] |   [LIST : Missions]   
 
-	const FMassStateTreeExecutionContext& MassContext = static_cast<FMassStateTreeExecutionContext&>(Context);
+	UPROPERTY(EditAnywhere, Meta = (BindWidget))
+	UHorizontalBox* ActiveInactiveTabBox = nullptr;
 
-	const FInstanceDataType& InstanceData = Context.GetInstanceData(*this);
-	const FMassEntityHandle& OtherEntityHandle = InstanceData.PotentialEntityHandle;
-	const IPDInteractInterface* OtherInteractable = Cast<IPDInteractInterface>(InstanceData.PotentialInteractableActor);
-	const UMassEntitySubsystem& EntitySubsystem = Context.GetExternalData(EntitySubsystemHandle);
-	UPDRTSBaseSubsystem& RTSSubsystem = *UPDRTSBaseSubsystem::Get();
-	
-	UPDRTSBaseUnit** UnitHandlerDoublePtr = RTSSubsystem.WorldToEntityHandler.Find(EntitySubsystem.GetWorld());
-	if (UnitHandlerDoublePtr == nullptr) { return EStateTreeRunStatus::Failed; }
-	
-	const FMassEntityManager& EntityManager = EntitySubsystem.GetEntityManager();
-	check(EntityManager.IsEntityValid(MassContext.GetEntity()));
+	UPROPERTY(EditAnywhere, Meta = (BindWidget))
+	UTileView* ActiveMissionTypes = nullptr;
 
-	FPDMFragment_RTSEntityBase& EntityBase = EntityManager.GetFragmentDataChecked<FPDMFragment_RTSEntityBase>(MassContext.GetEntity());
-	FPDMFragment_Action& Action = EntityManager.GetFragmentDataChecked<FPDMFragment_Action>(MassContext.GetEntity());
-	
+	UPROPERTY(EditAnywhere, Meta = (BindWidget))
+	UTileView* InactiveMissionTypes = nullptr;	
 
-	UPDRTSBaseUnit* UnitHandler = *UnitHandlerDoublePtr;
-	UnitHandler->OnTaskFinished(MassContext.GetEntity()); // Make sure to use this on other tasks
-	
-	if (OtherInteractable != nullptr)
-	{
-		// call interact function on interactables
-		
-		FPDInteractionParamsWithCustomHandling Params;
-		// Temp.CustomInteractionProcessor.BindDynamic(this, );
-		// Temp.InstigatorComponentClass = UPDRTSBaseUnit::StaticClass();
-		// Temp.OptionalInteractionTags;
-		
-		Params.InstigatorActor =
-			RTSSubsystem.SharedOwnerIDMappings.Contains(EntityBase.OwnerID)
-			? RTSSubsystem.SharedOwnerIDMappings.FindRef(EntityBase.OwnerID)
-			: nullptr;
-		
-		Params.InteractionPercent = 1.01;
-		Params.InstigatorEntity = MassContext.GetEntity();
 
-		EPDInteractResult InteractResult;
-		IPDInteractInterface::Execute_OnInteract(InstanceData.PotentialInteractableActor, Params, InteractResult);
+	UPROPERTY(EditAnywhere, Meta = (BindWidget))
+	UTileView* ActiveMissionsInSelectedType = nullptr;
 
-		return EStateTreeRunStatus::Succeeded;
-		
-	}
+	UPROPERTY(EditAnywhere, Meta = (BindWidget))
+	UTileView* InactiveMissions = nullptr;	
+};
 
-	if (EntitySubsystem.GetEntityManager().IsEntityValid(OtherEntityHandle))
-	{
-		// @todo interact with other entity
-		return EStateTreeRunStatus::Succeeded;
-	}
-	return EStateTreeRunStatus::Failed;
-}
 
 /**
 Business Source License 1.1

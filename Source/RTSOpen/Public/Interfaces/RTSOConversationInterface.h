@@ -10,10 +10,7 @@
 struct FGameplayTag;
 /** @brief BOILERPLATE */
 UINTERFACE()
-class URTSOConversationSpeakerInterface : public UInterface
-{
-	GENERATED_BODY()
-};
+class URTSOConversationSpeakerInterface : public UInterface { GENERATED_BODY() };
 
 /** @brief Conversation Interface, apply to speaker actors (mission giver for example) */
 class RTSOPEN_API IRTSOConversationSpeakerInterface
@@ -31,11 +28,7 @@ public:
 };
 
 /** @brief BOILERPLATE */
-UINTERFACE()
-class URTSOConversationInterface : public UInterface
-{
-	GENERATED_BODY()
-};
+UINTERFACE() class URTSOConversationInterface : public UInterface { GENERATED_BODY() };
 
 /** @brief Conversation Interface, apply to listener actors (player for example) */
 class RTSOPEN_API IRTSOConversationInterface
@@ -50,7 +43,7 @@ public:
 	void AddUniqueProgressionTag(const FGameplayTag& NewTag);
 	virtual void AddUniqueProgressionTag_Implementation(const FGameplayTag& NewTag)
 	{
-		AcquiredConversationProgressionTags.FindOrAdd(NewTag);
+		AcquiredConversationProgressionTags.AddTag(NewTag);
 	} /**< @ingroup ConversationInterface_AddProgressTag */
 
 	/** @defgroup ConversationInterface_RemoveProgressTag
@@ -60,9 +53,9 @@ public:
 	void RemoveProgressionTag(const FGameplayTag& TagToRemove);
 	virtual void RemoveProgressionTag_Implementation(const FGameplayTag& TagToRemove)
 	{
-		if (AcquiredConversationProgressionTags.Contains(TagToRemove))
+		if (AcquiredConversationProgressionTags.HasTag(TagToRemove))
 		{
-			AcquiredConversationProgressionTags.Remove(TagToRemove);
+			AcquiredConversationProgressionTags.RemoveTag(TagToRemove);
 		}
 	} /**< @ingroup ConversationInterface_RemoveProgressTag */
 
@@ -74,7 +67,13 @@ public:
 	void AddUniqueProgressionTagSet(const TSet<FGameplayTag>& NewTags);
 	virtual void AddUniqueProgressionTagSet_Implementation(const TSet<FGameplayTag>& NewTags)
 	{
-		AcquiredConversationProgressionTags.Append(NewTags);
+		FGameplayTagContainer NewContainer{};
+		for(FGameplayTag NewTag : NewTags)
+		{
+			NewContainer.AddTag(NewTag);
+		}
+		
+		AcquiredConversationProgressionTags.AppendTags(NewContainer);
 	}
 
 	/** @defgroup ConversationInterface_RemoveProgressTagSet
@@ -86,12 +85,33 @@ public:
 	{
 		for (const FGameplayTag& Tag : TagsToRemove)
 		{
-			AcquiredConversationProgressionTags.Remove(Tag);
+			AcquiredConversationProgressionTags.RemoveTag(Tag);
 		}
+	}
+
+	/** @defgroup ConversationInterface_AddProgressTagContainer
+	 * @brief Reserved for later use. Adds the given tag set to the list of acquired conversation tags
+	 * @todo source the progression tags from here and make use of these for the savegame data */
+	UFUNCTION(BlueprintNativeEvent, BlueprintCallable)
+	void AddProgressionTagContainer(const FGameplayTagContainer& NewTags);
+	virtual void AddProgressionTagContainer_Implementation(const FGameplayTagContainer& NewTags)
+	{
+		AcquiredConversationProgressionTags.AppendTags(NewTags);
+	}
+
+	
+	/** @defgroup ConversationInterface_RemoveProgressTagSet
+	 * @brief Reserved for later use. Removes the given tag set from the list of acquired conversation tags
+	 * @todo source the progression tags from here and make use of these for the savegame data */
+	UFUNCTION(BlueprintNativeEvent, BlueprintCallable)
+	void RemoveProgressionTagContainer(const FGameplayTagContainer& TagsToRemove);
+	virtual void RemoveProgressionTagContainer_Implementation(const FGameplayTagContainer& TagsToRemove)
+	{
+		AcquiredConversationProgressionTags.RemoveTags(TagsToRemove);
 	}
 	
 	/** @brief Returns the list of acquired conversation progression tags */
-	virtual const TSet<FGameplayTag>& GetProgressionTagSet()
+	virtual const FGameplayTagContainer& GetProgressionTags()
 	{
 		return AcquiredConversationProgressionTags;
 	}
@@ -103,13 +123,83 @@ public:
 	bool HasProgressionTag(const FGameplayTag& CompareTag);
 	virtual bool HasProgressionTag_Implementation(const FGameplayTag& CompareTag)
 	{
-		return AcquiredConversationProgressionTags.Contains(CompareTag);
+		return AcquiredConversationProgressionTags.HasTag(CompareTag);
 	}
 	
 public:
 	/** @brief Data interface, actual data is hidden completely form the engine but accessible in code
 	 * - indirectly accessible in engine via the interface functions base implementation*/
-	TSet<FGameplayTag> AcquiredConversationProgressionTags{};
+	FGameplayTagContainer AcquiredConversationProgressionTags{};
+};
+
+
+/** @brief BOILERPLATE */
+UINTERFACE() class URTSOMissionProgressor : public UInterface { GENERATED_BODY() };
+
+/** @brief Mission Interface, apply to any actor that will create mission progress  */
+class RTSOPEN_API IRTSOMissionProgressor
+{
+	GENERATED_BODY()
+
+public:
+	/** @defgroup MissionProgressorInterface_AddTagToCaller
+	 * @brief Reserved for later use. Adds the given tag to the list of acquired conversation tags
+	 * @todo source the progression tags from here and make use of these for the savegame data */
+	UFUNCTION(BlueprintNativeEvent, BlueprintCallable)
+	void AddTagToCaller(AActor* Caller, const FGameplayTag& NewTag);
+	virtual void AddTagToCaller_Implementation(AActor* Caller, const FGameplayTag& NewTag)
+	{
+		if (Caller == nullptr
+			|| Caller->GetClass()->ImplementsInterface(URTSOConversationInterface::StaticClass()) == false)
+		{
+			return;
+		}
+
+		IRTSOConversationInterface* CallerInterface = Cast<IRTSOConversationInterface>(Caller);
+		CallerInterface->AddUniqueProgressionTag(NewTag);
+	} /**< @ingroup MissionProgressorInterface_AddTagToCaller */
+
+	/** @defgroup MissionProgressorInterface_AddTagToCaller
+	 * @brief Reserved for later use. Adds the given tag to the list of acquired conversation tags
+	 * @todo source the progression tags from here and make use of these for the savegame data */
+	UFUNCTION(BlueprintNativeEvent, BlueprintCallable)
+	void AddTagContainerToCallerFromSelectorTag(AActor* Caller, const FGameplayTag& SelectorTag);
+	virtual void AddTagContainerToCallerFromSelectorTag_Implementation(AActor* Caller, const FGameplayTag& SelectorTag)
+	{
+		if (Caller == nullptr
+			|| Caller->GetClass()->ImplementsInterface(URTSOConversationInterface::StaticClass()) == false)
+		{
+			return;
+		}
+		
+		const FGameplayTagContainer SelectedTags = SelectorTagToTagContainer(Caller, SelectorTag);
+		
+		IRTSOConversationInterface* CallerInterface = Cast<IRTSOConversationInterface>(Caller);		
+		CallerInterface->AddProgressionTagContainer(SelectedTags);
+	} /**< @ingroup MissionProgressorInterface_AddTagToCaller */
+	
+	/** @defgroup MissionProgressorInterface_SelectorTagToTagContainer
+	 * @brief Reserved for later use. Checks if the map of acquired conversation tags contains the 'CompareTag'
+	 * @todo source the progression tags from here and make use of these for the savegame data */
+	UFUNCTION(BlueprintNativeEvent, BlueprintCallable)
+	FGameplayTagContainer SelectorTagToTagContainer(AActor* Caller, const FGameplayTag& SelectorTag);
+	virtual FGameplayTagContainer SelectorTagToTagContainer_Implementation(AActor* Caller, const FGameplayTag& SelectorTag)
+	{
+		if (Caller == nullptr
+			|| Caller->GetClass()->ImplementsInterface(URTSOConversationInterface::StaticClass()) == false)
+		{
+			return FGameplayTagContainer{};
+		}
+
+		IRTSOConversationInterface* CallerInterface = Cast<IRTSOConversationInterface>(Caller);
+		
+		return MissionProgressionTagsToGive.FindOrAdd(SelectorTag);
+	} /**< @ingroup MissionProgressorInterface_SelectorTagToTagContainer */
+	
+public:
+	/** @brief Data interface, actual data is hidden completely form the engine but accessible in code
+	 * - indirectly accessible in engine via the interface functions base implementation*/
+	TMap<FGameplayTag, FGameplayTagContainer> MissionProgressionTagsToGive{};
 };
 
 

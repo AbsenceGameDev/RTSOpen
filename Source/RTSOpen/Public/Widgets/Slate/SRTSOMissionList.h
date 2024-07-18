@@ -1,83 +1,120 @@
 ﻿/* @author: Ario Amin @ Permafrost Development. @copyright: Full BSL(1.1) License included at bottom of the file  */
-#include "AI/StateTree/RTSOMassTasks.h"
-#include "AI/Mass/PDMassFragments.h"
 
-#include "MassEntitySubsystem.h"
-#include "MassSignalSubsystem.h"
-#include "MassStateTreeExecutionContext.h"
-#include "PDRTSBaseSubsystem.h"
+#pragma once
+
+#include "CoreMinimal.h"
+#include "GameplayTagContainer.h"
+#include "Subsystems/EngineSubsystem.h"
+
 #include "RTSOpenCommon.h"
-
-#include "StateTreeExecutionContext.h"
-#include "StateTreeLinker.h"
-#include "AI/Mass/RTSOMassFragments.h"
-#include "Interfaces/PDInteractInterface.h"
-#include "Pawns/PDRTSBaseUnit.h"
+#include "SaveEditor/SRTSOSaveEditor.h"
+#include "SRTSOMissionList.generated.h"
 
 
-bool FRTSOTask_Interact::Link(FStateTreeLinker& Linker)
+/** @brief Conversation Actor State wrapper */
+USTRUCT()
+struct FRTSOMissionProgress
 {
-	Linker.LinkExternalData(EntitySubsystemHandle);
-	Linker.LinkExternalData(InventoryHandle);
-	return true;
-}
+	GENERATED_BODY()
 
-EStateTreeRunStatus FRTSOTask_Interact::EnterState(FStateTreeExecutionContext& Context, const FStateTreeTransitionResult& Transition) const
+	/** @brief Map of a players complete progression data. Datum per mission tag */
+	UPROPERTY(EditAnywhere)
+	TMap<FGameplayTag, FRTSOConversationMetaProgressionDatum> ProgressionDataMap;
+
+};
+
+
+class RTSOPEN_API SRTSOMissionList : public SCompoundWidget
 {
-	// const UPDRTSBaseSubsystem& RTSSubsystem = *UPDRTSBaseSubsystem::Get();
-
-	const FMassStateTreeExecutionContext& MassContext = static_cast<FMassStateTreeExecutionContext&>(Context);
-
-	const FInstanceDataType& InstanceData = Context.GetInstanceData(*this);
-	const FMassEntityHandle& OtherEntityHandle = InstanceData.PotentialEntityHandle;
-	const IPDInteractInterface* OtherInteractable = Cast<IPDInteractInterface>(InstanceData.PotentialInteractableActor);
-	const UMassEntitySubsystem& EntitySubsystem = Context.GetExternalData(EntitySubsystemHandle);
-	UPDRTSBaseSubsystem& RTSSubsystem = *UPDRTSBaseSubsystem::Get();
+public:
 	
-	UPDRTSBaseUnit** UnitHandlerDoublePtr = RTSSubsystem.WorldToEntityHandler.Find(EntitySubsystem.GetWorld());
-	if (UnitHandlerDoublePtr == nullptr) { return EStateTreeRunStatus::Failed; }
-	
-	const FMassEntityManager& EntityManager = EntitySubsystem.GetEntityManager();
-	check(EntityManager.IsEntityValid(MassContext.GetEntity()));
-
-	FPDMFragment_RTSEntityBase& EntityBase = EntityManager.GetFragmentDataChecked<FPDMFragment_RTSEntityBase>(MassContext.GetEntity());
-	FPDMFragment_Action& Action = EntityManager.GetFragmentDataChecked<FPDMFragment_Action>(MassContext.GetEntity());
-	
-
-	UPDRTSBaseUnit* UnitHandler = *UnitHandlerDoublePtr;
-	UnitHandler->OnTaskFinished(MassContext.GetEntity()); // Make sure to use this on other tasks
-	
-	if (OtherInteractable != nullptr)
+	/** @brief Generic call to create picker windows of differing types @todo finish impl. of related Picker classes  */
+	template<typename TPickerClass>
+	TSharedRef<SWindow> CreatePickerDialog(TSharedRef<SWindow>& PickerWindow, UClass* FilterInterfaceClass)
 	{
-		// call interact function on interactables
-		
-		FPDInteractionParamsWithCustomHandling Params;
-		// Temp.CustomInteractionProcessor.BindDynamic(this, );
-		// Temp.InstigatorComponentClass = UPDRTSBaseUnit::StaticClass();
-		// Temp.OptionalInteractionTags;
-		
-		Params.InstigatorActor =
-			RTSSubsystem.SharedOwnerIDMappings.Contains(EntityBase.OwnerID)
-			? RTSSubsystem.SharedOwnerIDMappings.FindRef(EntityBase.OwnerID)
-			: nullptr;
-		
-		Params.InteractionPercent = 1.01;
-		Params.InstigatorEntity = MassContext.GetEntity();
+		FClassViewerInitializationOptions InitOptions;
+		InitOptions.Mode = EClassViewerMode::ClassPicker;
+		InitOptions.DisplayMode = EClassViewerDisplayMode::TreeView;
 
-		EPDInteractResult InteractResult;
-		IPDInteractInterface::Execute_OnInteract(InstanceData.PotentialInteractableActor, Params, InteractResult);
-
-		return EStateTreeRunStatus::Succeeded;
-		
+		const TSharedRef<FRTSSaveEd_InteractableClassFilter> SaveEd_InteractableClassFilter = MakeShared<FRTSSaveEd_InteractableClassFilter>();
+		SaveEd_InteractableClassFilter->InterfaceThatMustBeImplemented = FilterInterfaceClass;
+		InitOptions.ClassFilters.Add(SaveEd_InteractableClassFilter);
+	
+		return SNew(TPickerClass)
+				.ParentWindow(PickerWindow)
+				.Options(InitOptions)
+				.AssetType(nullptr);		
 	}
 
-	if (EntitySubsystem.GetEntityManager().IsEntityValid(OtherEntityHandle))
+	/** @brief Generic call to create picker windows of differing types @todo finish impl. of related Picker classes  */
+	template<typename TPickerClass>
+	TSharedRef<SWindow> CreatePickerWindow()
 	{
-		// @todo interact with other entity
-		return EStateTreeRunStatus::Succeeded;
+		// Create the window to pick the class
+		TSharedRef<SWindow> PickerWindow = SNew(SWindow)
+			.Title(FText())
+			.SizingRule( ESizingRule::Autosized )
+			.ClientSize( FVector2D( 0.f, 300.f ))
+			.SupportsMaximize(false)
+			.SupportsMinimize(false);
+
+		TSharedRef<TPickerClass> PickerDialog = CreatePickerDialog<TPickerClass>(PickerWindow, UPDInteractInterface::StaticClass());
+		PickerWindow->SetContent(PickerDialog);
+
+		const TSharedPtr<SWindow> ParentWindow = FSlateApplication::Get().GetActiveTopLevelRegularWindow();
+		if( ParentWindow.IsValid() )
+		{
+			FSlateApplication::Get().AddModalWindow(PickerWindow, ParentWindow );
+		}
+
+		return PickerWindow;		
 	}
-	return EStateTreeRunStatus::Failed;
-}
+
+	/** @brief Font we want to use for titles in teh save editor */
+	FSlateFontInfo TitleFont;	
+	/** @brief Linked copy of the selected savedata. Any changes will be on this copy until we want to commit them to the actual save-file */
+	FRTSSaveData* LinkedSaveDataCopy = nullptr;	
+
+	DECLARE_DELEGATE_OneParam( FOnConverstionStateDataChosen, const FRTSOMissionProgress&);
+	
+	SLATE_BEGIN_ARGS(SRTSOMissionList) { }
+ 		SLATE_EVENT(FOnUserScrolled, OnUserScrolled)
+ 		SLATE_EVENT(FOnClicked, OnUserClicked)
+	SLATE_END_ARGS()
+	
+	/** @brief Stores a pointer to the copied save data and then Calls UpdateChildSlot, passing ArrayRef as the opaquedata parameter */
+	void Construct(const FArguments& InArgs, int32 InOwnerID, FRTSSaveData* InLinkedData,  TArray<TSharedPtr<FRTSOMissionProgress>>& ArrayRef);
+	/** @brief Base call, ensures we have a title-font loaded, Sets up the child slot, and passes in the data view array to an slistview wrapped in a scrollbox */
+	virtual void UpdateChildSlot(void* OpaqueData);
+	
+	/** @brief Displays the actual list item for each entry in ConversationStatesAsSharedArray, which in this case is the states in 'FRTSOMissionProgress' */
+	TSharedRef<ITableRow> MakeListViewWidget_AllMissionData(TSharedPtr<FRTSOMissionProgress> InItem, const TSharedRef<STableViewBase>& OwnerTable) const;
+	void OnComponentSelected_AllMissionData(TSharedPtr<FRTSOMissionProgress> InItem, ESelectInfo::Type InSelectInfo);
+	
+	/** @brief Array 'View' that is used to display the data related to this editor widget */
+	TArray<TSharedPtr<FRTSOMissionProgress>>* MissionsAsSharedArray;
+
+	// Callbacks
+	FOnConverstionStateDataChosen OnConversationStateDataChosen{};
+
+	UClass* SelectedClass = nullptr;
+
+	// View Tables
+	TSharedPtr<STableRow< TSharedPtr<FRTSOMissionProgress>>> ConversationStateTable;
+
+	int32 OwnerID = INDEX_NONE;
+	
+	// Localized text
+	static FText MissionBase_TitleText;
+	static FText MissionProgress_BaseData_Active_TitleText;
+	static FText MissionProgress_BaseData_Inactive_TitleText;
+	static FText MissionProgress_BaseData_ActorID_TitleText;
+	static FText MissionProgress_BaseData_Type_TitleText;
+	static FText MissionProgress_MissionData_TitleText;
+	static FText MissionProgress_MissionData_MissionList_TitleText;
+	static FText MissionProgress_MissionData_ProgressionPerPlayer_TitleText;
+};
+
 
 /**
 Business Source License 1.1

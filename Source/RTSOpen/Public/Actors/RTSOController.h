@@ -292,9 +292,6 @@ public:
 	/** @brief Selection error for when clicking to select a single entity */
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "RTS|Input")
 	double ClickToSelectErrorMin = 350.0;
-	
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "RTS|Input")
-	FGameplayTagContainer ConversationProgressTags = {};
 
 protected:
 	/** @brief Main menu widget base class, has a widget stack for supplying different stacked widgets */

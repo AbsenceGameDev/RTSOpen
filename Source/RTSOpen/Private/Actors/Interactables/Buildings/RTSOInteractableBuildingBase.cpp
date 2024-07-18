@@ -57,10 +57,39 @@ void ARTSOInteractableBuildingBase::BeginDestroy()
 	Super::BeginDestroy();
 }
 
+void ARTSOInteractableBuildingBase::AddTagToCaller_Implementation(AActor* Caller, const FGameplayTag& NewTag)
+{
+	IRTSOMissionProgressor::AddTagToCaller_Implementation(Caller, NewTag);
+}
+
+FGameplayTagContainer ARTSOInteractableBuildingBase::SelectorTagToTagContainer_Implementation(AActor* Caller, const FGameplayTag& SelectorTag)
+{
+	return MissionProgressionTagsGrantedUponSuccessfulBuild;
+}
+
+void ARTSOInteractableBuildingBase::OnBuildSuccessful(AActor* InstigatorActor) const
+{
+	if (InstigatorActor == nullptr
+		|| InstigatorActor->GetClass()->ImplementsInterface(URTSOConversationInterface::StaticClass()) == false)
+	{
+		return;
+	}
+
+	ARTSOInteractableBuildingBase* MutableThis = const_cast<ARTSOInteractableBuildingBase*>(this);
+	IRTSOMissionProgressor::Execute_AddTagContainerToCallerFromSelectorTag(MutableThis, InstigatorActor, FGameplayTag());
+}
+
 FGameplayTagContainer ARTSOInteractableBuildingBase::GetGenericTagContainer_Implementation() const
 {
 	FGameplayTagContainer GeneratedTags;
 	GeneratedTags.AddTag(JobTag);
+
+	for (const FGameplayTagContainer& GhostStageTags : MissionProgressionTagsGrantedPerGhostStage)
+	{
+		GeneratedTags.AppendTags(GhostStageTags);
+	}
+	
+	GeneratedTags.AppendTags(MissionProgressionTagsGrantedUponSuccessfulBuild);
 	return GeneratedTags;
 }
 
@@ -251,8 +280,12 @@ void ARTSOInteractableBuildingBase::ProcessSpawn()
 	Mesh->SetCollisionEnabled(SelectedSettings.ComponentCollisionEnabledSettings.FindRef(MeshName));
 	Boxcomp->SetCollisionEnabled(SelectedSettings.ComponentCollisionEnabledSettings.FindRef(BoxcompName));
 	SetActorEnableCollision(SelectedSettings.bIsActorCollisionEnabled);
-	
+
 	bIsGhost_noSerialize = TIsGhost;
+	if constexpr (TIsGhost == false)
+	{
+		OnBuildSuccessful(GetOwner());
+	}
 }
 
 bool ARTSOInteractableBuildingBase::WithdrawRecurringCostFromBankOrEntity(UPDInventoryComponent* Bank, FRTSOLightInventoryFragment* EntityInv, const int32& ImmutableStage)
@@ -382,7 +415,7 @@ void ARTSOInteractableBuildingBase::ProcessIfWorkersRequired()
 		{
 			constexpr double PingInterval = 10.0; // @todo make configurable or use passthrough value
 			const FGameplayTagContainer TagContainer = Execute_GetGenericTagContainer(this);
-			const FGameplayTag SelectedTag = TagContainer.IsEmpty() ? JobTag : TagContainer.IsValidIndex(1) ? TagContainer.GetByIndex(1) : TagContainer.GetByIndex(0);
+			const FGameplayTag SelectedTag = TagContainer.IsEmpty() ? JobTag : TagContainer.GetByIndex(0);
 			const FPDEntityPingDatum ConstructedDatum = {this, SelectedTag, INDEX_NONE, PingInterval};
 
 			UPDEntityPinger::EnablePingStatic(ConstructedDatum);
@@ -445,6 +478,7 @@ void ARTSOInteractableBuildingBase::OnSpawnedAsMain_Implementation(const FGamepl
 	IPDRTSBuildableGhostInterface::OnSpawnedAsMain_Implementation(BuildableTag);
 	InstigatorBuildableTag = BuildableTag;
 
+	
 	// Update material
 	if (MainMat == nullptr || MainMat->IsValidLowLevelFast() == false)
 	{

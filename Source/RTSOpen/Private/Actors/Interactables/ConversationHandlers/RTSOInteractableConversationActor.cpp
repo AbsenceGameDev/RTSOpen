@@ -94,7 +94,8 @@ void URTSOConversationInstance::OnChoiceNodePickedByUser(const FConversationCont
 	ARTSOBaseGM* GM = GetWorld() != nullptr ? GetWorld()->GetAuthGameMode<ARTSOBaseGM>() : nullptr;
 	if (GM == nullptr || ListenerAsController == nullptr) { return; }
 	GM->GameSave->Data.PlayersAndConversationTags.FindOrAdd(ListenerAsController->GetActorID()).AppendTags(ChoiceNode->ChoiceTags);
-	ListenerAsController->ConversationProgressTags.AppendTags(ChoiceNode->ChoiceTags);
+	
+	IRTSOConversationInterface::Execute_AddProgressionTagContainer(ListenerAsController->GetPawn(), ChoiceNode->ChoiceTags);
 }
 
 //
@@ -280,16 +281,23 @@ void ARTSOInteractableConversationActor::OnInteract_Implementation(
 	
 	const int32 OwnerID = AsCallingController->GetActorID();
 	TryInitializeOwnerProgression(OwnerID);
-	const int32 CurrentProgression = MetaProgressState.ProgressionPerPlayer.FindRef(OwnerID);
+
+	static int32 Dummy = INDEX_NONE;
+	int32& CurrentProgressionRef = MetaProgressState.ProgressionPerPlayer.Contains(OwnerID) ? *MetaProgressState.ProgressionPerPlayer.Find(OwnerID) : Dummy;
 
 	UE_LOG(PDLog_RTSOInteract, Warning, TEXT("ARTSOInteractableConversationActor::OnInteract"));
 	const ERTSOConversationState ConversationState =
-		ValidateRequiredTags(ResolveTagForProgressionLevel(OwnerID, CurrentProgression), AsCallingPawn);
+		ValidateRequiredTags(ResolveTagForProgressionLevel(OwnerID, CurrentProgressionRef), AsCallingPawn);
 	switch (ConversationState)
 	{
 	case CurrentStateCompleted:
 		// handle based on conversation rules
-		if (CanRepeatConversation(OwnerID, CurrentProgression) == false) { return; }
+		{
+			// @todo need a way to display repeatable Conversations even after incrementing CurrentProgressionRef, as CurrentProgressionRef is used further down the list
+			const int CopyProgression = CurrentProgressionRef;
+			CurrentProgressionRef++;
+			if (CanRepeatConversation(OwnerID, CopyProgression) == false) { return; }
+		}
 		break;
 	case Invalid:
 		UE_LOG(PDLog_RTSOInteract, Warning, TEXT("ARTSOInteractableConversationActor::OnInteract -- Invalid State"));
@@ -306,7 +314,7 @@ void ARTSOInteractableConversationActor::OnInteract_Implementation(
 	MetaProgressState.ActiveConversationInstance =
 		Cast<URTSOConversationInstance>(
 			URTSOConversationBPFL::StartConversation(
-			MetaProgressState.PhaseRequiredTags[CurrentProgression].EntryTag,
+			MetaProgressState.PhaseRequiredTags[CurrentProgressionRef].EntryTag,
 			(ARTSOInteractableConversationActor*)this, 
 			TAG_Conversation_Participant_Speaker, 
 			AsCallingController,
@@ -439,11 +447,7 @@ ERTSOConversationState ARTSOInteractableConversationActor::ValidateRequiredTags(
 	}
 	FRTSOConversationMetaState& MetaProgressState = *InstanceDataPerMissionPtr->Find(CurrentMission);
 	
-
-	
-	const TSet<FGameplayTag>& ActorTagSet = Cast<IRTSOConversationInterface>(AsCallingPawn)->GetProgressionTagSet();
-
-	
+	const FGameplayTagContainer& ActorTagSet = Cast<IRTSOConversationInterface>(AsCallingPawn)->GetProgressionTags();
 	const int32 LastConversationProgressionIndex = MetaProgressState.PhaseRequiredTags.Num();
 	int32 ConversationProgressionLevel = 0;
 
@@ -472,7 +476,7 @@ ERTSOConversationState ARTSOInteractableConversationActor::ValidateRequiredTags(
 			UE_LOG(PDLog_RTSOInteract, Warning, TEXT("ConversationActor(%s)::ValidateRequiredTags -- Already Completed"), *GetName())
 			return ERTSOConversationState::CurrentStateCompleted;
 		}
-
+		
 		// Wish epic had implemented some form of set comparator function, they might have need to look at the TSet implementation
 		// but in-case it would be an mmo with lets say 5-10 thousand players at most we can expect that many conversations to be held as a max limit,
 		// and should be easy for the servers to handle.
@@ -480,7 +484,7 @@ ERTSOConversationState ARTSOInteractableConversationActor::ValidateRequiredTags(
 		bool bFoundAllRequiredTags = true; // Default to true if there are no requirements
 		for (const FGameplayTag& RequiredTag : RequiredRules.RequiredTags)
 		{
-			bFoundAllRequiredTags &= ActorTagSet.Contains(RequiredTag); // Needs them all to exist in the actor tag set
+			bFoundAllRequiredTags &= ActorTagSet.HasTag(RequiredTag); // Needs them all to exist in the actor tag set
 		}
 		ValidatedTagState = bFoundAllRequiredTags ?
 			ERTSOConversationState::Valid : ERTSOConversationState::Invalid;

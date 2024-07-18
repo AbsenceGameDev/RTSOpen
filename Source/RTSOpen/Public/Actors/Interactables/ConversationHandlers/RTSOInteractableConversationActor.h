@@ -56,6 +56,9 @@ public:
 
 	/** @brief Appends tags to the gamesave upon having progressed a choice */
 	virtual void OnChoiceNodePickedByUser(const FConversationContext& Context, const UConversationChoiceNode* ChoiceNode, const TArray<FConversationBranchPoint>& ValidDestinations) override;
+
+	UPROPERTY()
+	FGameplayTag AssociatedMissionTag = FGameplayTag{};
 };
 
 /** @brief This class holds some helper and possibly debug functions we might want to use */
@@ -171,7 +174,7 @@ public:
 	/** @brief GameFeature name to load the conversation data from */
 	UPROPERTY(EditAnywhere)
 	FString GameFeatureName = "ConversationData";
-
+ 
 	/** @brief Persistent IDs for the conversation actor */
 	UPROPERTY(EditAnywhere)
 	FPDPersistentID ConversationActorPersistentID;
@@ -180,7 +183,9 @@ public:
 	UPROPERTY(VisibleInstanceOnly)
 	TMap<int32, FGameplayTag> CurrentMissionPerPlayer{};
 
-	
+	UPROPERTY(VisibleInstanceOnly)
+	int32 LastProgression;
+
 private:
 	/** @brief The JobTag related to this actor.*/
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Meta = (AllowPrivateAccess="true"))

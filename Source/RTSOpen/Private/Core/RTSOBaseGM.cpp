@@ -213,9 +213,10 @@ void ARTSOBaseGM::SaveConversationActorStates_Implementation()
 		{
 			FGameplayTag& MissionTag = ConversationActorState.Key;
 			FRTSOConversationMetaState& MetaProgressState = ConversationActorState.Value;
-			for (TTuple<int32/*PlayerID*/, int32/**/> PlayerInstanceData : MetaProgressState.ProgressionPerPlayer)
+			for (const TTuple<int32/*PlayerID*/, int32/**/>& PlayerInstanceData : MetaProgressState.ProgressionPerPlayer)
 			{
 				FRTSOConversationMetaProgressionDatum& MetaProgressionDatum = State.ProgressionPerPlayer.FindOrAdd(PlayerInstanceData.Key).ProgressionDataMap.FindOrAdd(MissionTag);
+				MetaProgressionDatum.MissionTag = MissionTag; // Self reference
 				MetaProgressionDatum.BaseProgression = PlayerInstanceData.Value;
 
 				bValidInstanceData = true;
@@ -1037,11 +1038,11 @@ void ARTSOBaseGM::FinalizeLoadPlayerMissionTags(const TMap<int32, AActor*>& Owne
 	{
 		const int32 UserID = TagsToAdd.Key;
 
-		AActor* User = OwnerIDMappings.Contains(UserID) ? OwnerIDMappings.FindRef(UserID) : nullptr;
-		ARTSOController* PC = Cast<ARTSOController>(User);
+		const AActor* User = OwnerIDMappings.Contains(UserID) ? OwnerIDMappings.FindRef(UserID) : nullptr;
+		const ARTSOController* PC = Cast<ARTSOController>(User);
 		if (PC == nullptr) { continue; }
-						
-		PC->ConversationProgressTags.AppendTags(TagsToAdd.Value);
+
+		IRTSOConversationInterface::Execute_AddProgressionTagContainer(PC->GetPawn(), TagsToAdd.Value);
 	}
 					
 	// @done iterate and delete all conversation/mission tags from ProcessedData.ToDelete
@@ -1049,11 +1050,11 @@ void ARTSOBaseGM::FinalizeLoadPlayerMissionTags(const TMap<int32, AActor*>& Owne
 	{
 		const int32 UserID = TagsToRemove.Key;
 
-		AActor* User = OwnerIDMappings.Contains(UserID) ? OwnerIDMappings.FindRef(UserID) : nullptr;
-		ARTSOController* PC = Cast<ARTSOController>(User);
+		const AActor* User = OwnerIDMappings.Contains(UserID) ? OwnerIDMappings.FindRef(UserID) : nullptr;
+		const ARTSOController* PC = Cast<ARTSOController>(User);
 		if (PC == nullptr) { continue; }
-						
-		PC->ConversationProgressTags.RemoveTags(TagsToRemove.Value);						
+		
+		IRTSOConversationInterface::Execute_RemoveProgressionTagContainer(PC->GetPawn(), TagsToRemove.Value);
 	}
 }
 

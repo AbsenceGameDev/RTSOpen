@@ -37,6 +37,7 @@ UCLASS()
 class RTSOPEN_API ARTSOInteractableBuildingBase
 	: public APDInteractActor
 	, public IPDRTSBuildableGhostInterface
+	, public IRTSOMissionProgressor
 {
 	GENERATED_BODY()
 
@@ -54,6 +55,13 @@ public:
 	virtual void BeginPlay() override;
 	/** @brief  Calls 'OnBuildingDestroyed' then calls Super::BeginDestroy */
 	virtual void BeginDestroy() override;
+
+	/** @brief Overridden but solely calls super. Reserved for later use */
+	virtual void AddTagToCaller_Implementation(AActor* Caller, const FGameplayTag& NewTag) override;
+	/** @brief Overridden but solely calls super. Reserved for later use */
+	virtual FGameplayTagContainer SelectorTagToTagContainer_Implementation(AActor* Caller, const FGameplayTag& SelectorTag) override;
+	void OnBuildSuccessful(AActor* InstigatorActor) const;
+	
 	
 	/** @brief adds 'JobTag' to a 'FGameplayTagContainer' and returns it */
 	virtual FGameplayTagContainer GetGenericTagContainer_Implementation() const override;
@@ -99,6 +107,15 @@ private:
 	void RefreshStaleSettings_Main();
 
 public:
+	/** @brief @todo source from datatable!!! @note Will mostly not be needed, but some planned missions will need this flexibility */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Meta = (AllowPrivateAccess="true"))
+	TArray<FGameplayTagContainer> MissionProgressionTagsGrantedPerGhostStage{};
+
+	/** @brief @todo source from datatable!!! */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Meta = (AllowPrivateAccess="true"))
+	FGameplayTagContainer MissionProgressionTagsGrantedUponSuccessfulBuild{};
+	
+
 	/** @brief Collision settings for complete buildable */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
 	FPDRTSBuildableCollisionSettings BuildableCollisionSettings{false};

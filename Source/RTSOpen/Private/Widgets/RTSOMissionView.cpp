@@ -1,83 +1,33 @@
 ﻿/* @author: Ario Amin @ Permafrost Development. @copyright: Full BSL(1.1) License included at bottom of the file  */
-#include "AI/StateTree/RTSOMassTasks.h"
-#include "AI/Mass/PDMassFragments.h"
+#include "Widgets/RTSOMissionView.h"
 
-#include "MassEntitySubsystem.h"
-#include "MassSignalSubsystem.h"
-#include "MassStateTreeExecutionContext.h"
-#include "PDRTSBaseSubsystem.h"
-#include "RTSOpenCommon.h"
+#include "Components/HorizontalBox.h"
 
-#include "StateTreeExecutionContext.h"
-#include "StateTreeLinker.h"
-#include "AI/Mass/RTSOMassFragments.h"
-#include "Interfaces/PDInteractInterface.h"
-#include "Pawns/PDRTSBaseUnit.h"
+#define LOCTEXT_NAMESPACE "RTSOMissionView"
 
-
-bool FRTSOTask_Interact::Link(FStateTreeLinker& Linker)
+void URTSOMissionView::NativeConstruct()
 {
-	Linker.LinkExternalData(EntitySubsystemHandle);
-	Linker.LinkExternalData(InventoryHandle);
-	return true;
+	// Super::NativeConstruct();
 }
 
-EStateTreeRunStatus FRTSOTask_Interact::EnterState(FStateTreeExecutionContext& Context, const FStateTreeTransitionResult& Transition) const
+void URTSOMissionView::NativeDestruct()
 {
-	// const UPDRTSBaseSubsystem& RTSSubsystem = *UPDRTSBaseSubsystem::Get();
-
-	const FMassStateTreeExecutionContext& MassContext = static_cast<FMassStateTreeExecutionContext&>(Context);
-
-	const FInstanceDataType& InstanceData = Context.GetInstanceData(*this);
-	const FMassEntityHandle& OtherEntityHandle = InstanceData.PotentialEntityHandle;
-	const IPDInteractInterface* OtherInteractable = Cast<IPDInteractInterface>(InstanceData.PotentialInteractableActor);
-	const UMassEntitySubsystem& EntitySubsystem = Context.GetExternalData(EntitySubsystemHandle);
-	UPDRTSBaseSubsystem& RTSSubsystem = *UPDRTSBaseSubsystem::Get();
-	
-	UPDRTSBaseUnit** UnitHandlerDoublePtr = RTSSubsystem.WorldToEntityHandler.Find(EntitySubsystem.GetWorld());
-	if (UnitHandlerDoublePtr == nullptr) { return EStateTreeRunStatus::Failed; }
-	
-	const FMassEntityManager& EntityManager = EntitySubsystem.GetEntityManager();
-	check(EntityManager.IsEntityValid(MassContext.GetEntity()));
-
-	FPDMFragment_RTSEntityBase& EntityBase = EntityManager.GetFragmentDataChecked<FPDMFragment_RTSEntityBase>(MassContext.GetEntity());
-	FPDMFragment_Action& Action = EntityManager.GetFragmentDataChecked<FPDMFragment_Action>(MassContext.GetEntity());
-	
-
-	UPDRTSBaseUnit* UnitHandler = *UnitHandlerDoublePtr;
-	UnitHandler->OnTaskFinished(MassContext.GetEntity()); // Make sure to use this on other tasks
-	
-	if (OtherInteractable != nullptr)
-	{
-		// call interact function on interactables
-		
-		FPDInteractionParamsWithCustomHandling Params;
-		// Temp.CustomInteractionProcessor.BindDynamic(this, );
-		// Temp.InstigatorComponentClass = UPDRTSBaseUnit::StaticClass();
-		// Temp.OptionalInteractionTags;
-		
-		Params.InstigatorActor =
-			RTSSubsystem.SharedOwnerIDMappings.Contains(EntityBase.OwnerID)
-			? RTSSubsystem.SharedOwnerIDMappings.FindRef(EntityBase.OwnerID)
-			: nullptr;
-		
-		Params.InteractionPercent = 1.01;
-		Params.InstigatorEntity = MassContext.GetEntity();
-
-		EPDInteractResult InteractResult;
-		IPDInteractInterface::Execute_OnInteract(InstanceData.PotentialInteractableActor, Params, InteractResult);
-
-		return EStateTreeRunStatus::Succeeded;
-		
-	}
-
-	if (EntitySubsystem.GetEntityManager().IsEntityValid(OtherEntityHandle))
-	{
-		// @todo interact with other entity
-		return EStateTreeRunStatus::Succeeded;
-	}
-	return EStateTreeRunStatus::Failed;
+	// Super::NativeDestruct();
 }
+
+void URTSOMissionView::NativePreConstruct()
+{
+	// Super::NativePreConstruct();
+}
+
+void URTSOMissionView::NativeTick(const FGeometry& MyGeometry, float InDeltaTime)
+{
+	// Super::NativeTick(MyGeometry, InDeltaTime);
+}
+
+
+#undef LOCTEXT_NAMESPACE
+
 
 /**
 Business Source License 1.1
@@ -189,3 +139,4 @@ other recipients of the licensed work to be provided by Licensor:
 
 4. Not to modify this License in any other way.
  **/
+

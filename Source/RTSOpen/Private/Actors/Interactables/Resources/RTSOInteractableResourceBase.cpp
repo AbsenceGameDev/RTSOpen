@@ -21,6 +21,9 @@ void ARTSOInteractableResourceBase::BeginPlay()
 {
 	Super::BeginPlay();
 
+	// Initial copy so the rest can be offloaded to the interface
+	MissionProgressionTagsToGive = MissionProgressionTagsGrantedUponSuccessfulInteraction;
+
 	EntitySubsystem = GetWorld()->GetSubsystem<UMassEntitySubsystem>();
 	EntManager = &EntitySubsystem->GetEntityManager();
 }
@@ -32,7 +35,31 @@ void ARTSOInteractableResourceBase::Tick(float DeltaTime)
 	RefreshTickAcc += DeltaTime;
 }
 
+void ARTSOInteractableResourceBase::AddTagToCaller_Implementation(AActor* Caller, const FGameplayTag& NewTag)
+{
+	IRTSOMissionProgressor::AddTagToCaller_Implementation(Caller, NewTag);
+}
+
+FGameplayTagContainer ARTSOInteractableResourceBase::SelectorTagToTagContainer_Implementation(AActor* Caller, const FGameplayTag& SelectorTag)
+{
+	return IRTSOMissionProgressor::SelectorTagToTagContainer_Implementation(Caller, SelectorTag);
+}
+
+void ARTSOInteractableResourceBase::OnInteractionSuccessful(AActor* InstigatorActor) const
+{
+	if (InstigatorActor == nullptr
+		|| InstigatorActor->GetClass()->ImplementsInterface(URTSOConversationInterface::StaticClass()) == false)
+	{
+		return;
+	}
+
+	ARTSOInteractableResourceBase* MutableThis = const_cast<ARTSOInteractableResourceBase*>(this);
+	const FGameplayTagContainer SelectorTagsInOrder = IPDInteractInterface::Execute_GetGenericTagContainer(this); //.GetByIndex(0)
+	IRTSOMissionProgressor::Execute_AddTagContainerToCallerFromSelectorTag(MutableThis, InstigatorActor, SelectorTagsInOrder.GetByIndex(TagOrder));
+}
+
 void ARTSOInteractableResourceBase::ProcessTradeIfInfiniteInventory(
+	const FPDInteractionParamsWithCustomHandling& InteractionParams,
 	EPDInteractResult& InteractResult,
 	UPDInventoryComponent* InstigatorInvComponent,
 	FRTSOLightInventoryFragment* InstigatorInventoryFragment,
@@ -55,9 +82,13 @@ void ARTSOInteractableResourceBase::ProcessTradeIfInfiniteInventory(
 	}
 	
 	InteractResult = EPDInteractResult::INTERACT_SUCCESS;
+
+	AActor* InstigatorActor = InteractionParams.InstigatorActor;
+	OnInteractionSuccessful(InstigatorActor);
 }
 
 void ARTSOInteractableResourceBase::ProcessTradeIfLimitedInventory(
+	const FPDInteractionParamsWithCustomHandling& InteractionParams,
 	EPDInteractResult& InteractResult,
 	UPDInventoryComponent* InstigatorInvComponent,
 	FRTSOLightInventoryFragment* InstigatorInventoryFragment,
@@ -135,6 +166,8 @@ void ARTSOInteractableResourceBase::ProcessTradeIfLimitedInventory(
 	
 	InteractResult = EPDInteractResult::INTERACT_SUCCESS;
 	
+	AActor* InstigatorActor = InteractionParams.InstigatorActor;
+	OnInteractionSuccessful(InstigatorActor);
 }
 
 void ARTSOInteractableResourceBase::OnInteract_Implementation(
@@ -178,12 +211,12 @@ void ARTSOInteractableResourceBase::OnInteract_Implementation(
 
 	if (HasInfiniteInventory())
 	{
-		ProcessTradeIfInfiniteInventory(InteractResult, InstigatorInvComponent, InstigatorInventoryFragment, InvSubsystem);
+		ProcessTradeIfInfiniteInventory(InteractionParams, InteractResult, InstigatorInvComponent, InstigatorInventoryFragment, InvSubsystem);
 	}
 	else
 	{
 		bool bMustWaitForRegen = false;
-		ProcessTradeIfLimitedInventory(InteractResult, InstigatorInvComponent, InstigatorInventoryFragment, InvSubsystem, bMustWaitForRegen);
+		ProcessTradeIfLimitedInventory(InteractionParams, InteractResult, InstigatorInvComponent, InstigatorInventoryFragment, InvSubsystem, bMustWaitForRegen);
 		if (InventoryFragment.Handler.IsEmpty() && bMustWaitForRegen == false)
 		{
 			ARTSOInteractableResourceBase* MutableThis = const_cast<ARTSOInteractableResourceBase*>(this);
@@ -196,6 +229,7 @@ FGameplayTagContainer ARTSOInteractableResourceBase::GetGenericTagContainer_Impl
 {
 	FGameplayTagContainer GeneratedTags;
 	GeneratedTags.AddTag(JobTag);
+	GeneratedTags.AppendTags(MissionProgressionSelectorTags.Last());
 	return GeneratedTags;
 }
 
