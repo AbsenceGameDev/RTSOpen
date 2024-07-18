@@ -66,6 +66,8 @@ public:
 	/** @brief adds 'JobTag' to a 'FGameplayTagContainer' and returns it */
 	virtual FGameplayTagContainer GetGenericTagContainer_Implementation() const override;
 
+	virtual FGameplayTag GetInstigatorTag_Implementation() const override;
+	
 	/* APDInteractActor Interface Start */
 	virtual bool GetCanInteract_Implementation() const override;
 	virtual void OnInteract_Implementation(const FPDInteractionParamsWithCustomHandling& InteractionParams, EPDInteractResult& InteractResult) const override;

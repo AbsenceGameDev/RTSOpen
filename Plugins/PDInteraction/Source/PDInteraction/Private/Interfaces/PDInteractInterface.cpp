@@ -33,7 +33,12 @@ double IPDInteractInterface::GetCurrentUsability_Implementation() const
 
 FGameplayTagContainer IPDInteractInterface::GetGenericTagContainer_Implementation() const
 {
-	return FGameplayTagContainer();
+	return FGameplayTagContainer{};
+}
+
+FGameplayTag IPDInteractInterface::GetInstigatorTag_Implementation() const
+{
+	return FGameplayTag{};
 }
 
 void IPDInteractInterface::RegisterWorldInteractable_Implementation(UWorld* SelectedWorld, AActor* SelectedInteractable)

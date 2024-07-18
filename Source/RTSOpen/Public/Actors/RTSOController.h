@@ -12,8 +12,10 @@
 #include "MassEntityTypes.h"
 #include "GameFramework/PlayerController.h"
 #include "Interfaces/PDRTSBuilderInterface.h"
+#include "Interfaces/RTSOActionLogInterface.h"
 #include "RTSOController.generated.h"
 
+class URTSOActionLogUserWidget;
 class URTSOSaveEditorUserWidget;
 // Fwd decl.
 class URTSOConversationWidget;
@@ -42,6 +44,7 @@ class RTSOPEN_API ARTSOController
 	: public APlayerController
 	, public IRTSOInputInterface
 	, public IPDRTSBuilderInterface
+	, public IRTSOActionLogInterface 
 {
 	GENERATED_UCLASS_BODY()
 	/** @brief Runs some setup, such as applying mapping contexts (TAG_CTRL_Ctxt_BaseInput, TAG_CTRL_Ctxt_WorkerUnitMode)
@@ -53,9 +56,13 @@ class RTSOPEN_API ARTSOController
 
 	/** @brief Todo move to interface, refreshes or creates a new player ID */
 	void RefreshOrAddNewID();
+
+	virtual void SendActionEvent_Implementation(const FText& NewActionEvent) override;
 	
 	/** @brief Sets up bindings for enhanced input */
 	virtual void SetupInputComponent() override;
+
+	
 
 	/** @brief Adds/overwrites a mapping context settings entry, keyed by a NativeGameplayTag*/
 	void OverwriteMappingContextSettings(const FNativeGameplayTag& ContextTag, UInputMappingContext* NewContext);
@@ -227,6 +234,7 @@ class RTSOPEN_API ARTSOController
 
 
 	UFUNCTION() UPDBuildingActionsWidgetBase* GetBuildableActionsWidget() const { return BuildableActionsWidget; }
+	UFUNCTION() URTSOActionLogUserWidget* GetActionLogWidget() const { return ActionLogWidget; }
 	
 	/** @brief Dispatches a sync 'ParallelFor' that updates 'FPDMFragment_RTSEntityBase' fragments for all entities in the current selection group 
 	 * @note Called when a new selection group is created or deselected. */
@@ -330,6 +338,13 @@ protected:
 	UPROPERTY(VisibleInstanceOnly, Getter)
 	UPDBuildingActionsWidgetBase* BuildableActionsWidget = nullptr;
 
+	/** @brief Build menu widget base class */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	TSubclassOf<URTSOActionLogUserWidget> ActionLogWidgetClass = nullptr;
+	/** @brief Instantiated conversation widget */
+	UPROPERTY(VisibleInstanceOnly, Getter)
+	URTSOActionLogUserWidget* ActionLogWidget = nullptr;
+	
 	
 	/** @brief Marquee related hit results, start corner */
 	UPROPERTY(VisibleInstanceOnly)

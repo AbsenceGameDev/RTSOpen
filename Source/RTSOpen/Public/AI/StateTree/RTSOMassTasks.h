@@ -6,6 +6,7 @@
 #include "MassStateTreeTypes.h"
 #include "StateTreeTypes.h"
 #include "StateTreeInstanceData.h"
+#include "AI/StateTree/PDMassTasks.h"
 #include "RTSOMassTasks.generated.h"
 
 struct FRTSOLightInventoryFragment;
@@ -59,6 +60,12 @@ struct RTSOPEN_API FRTSOTask_Interact : public FMassStateTreeTaskBase
 	TStateTreeExternalDataHandle<UMassEntitySubsystem> EntitySubsystemHandle; /**<@ingroup ExternalHandles*/
 	TStateTreeExternalDataHandle<UPDInteractSubsystem> InteractSubsystemHandle; /**<@ingroup ExternalHandles*/
 	TStateTreeExternalDataHandle<FRTSOLightInventoryFragment> InventoryHandle; /**<@ingroup ExternalHandles*/
+};
+
+
+struct RTSOPEN_API FRTSOTask_MoveToTarget : public FPDMTask_MoveToTarget
+{
+	virtual void OnPathSelected(FPDMFragment_RTSEntityBase& RTSData, bool bShouldUseSharedNavigation, const FVector& LastPoint) const override;
 };
 
 

@@ -1,100 +1,101 @@
-/* @author: Ario Amin @ Permafrost Development. @copyright: Full BSL(1.1) License included at bottom of the file  */
+﻿/* @author: Ario Amin @ Permafrost Development. @copyright: Full BSL(1.1) License included at bottom of the file  */
 
 #pragma once
 
 #include "CoreMinimal.h"
-#include "UObject/Interface.h"
+#include "GameplayTagContainer.h"
+#include "Subsystems/EngineSubsystem.h"
 
-#include "PDInteractCommon.h"
-#include "PDWorldManagementInterface.h"
+#include "RTSOpenCommon.h"
+#include "SaveEditor/SRTSOSaveEditor.h"
+#include "SRTSOActionLog.generated.h"
 
-#include "PDInteractInterface.generated.h"
 
-
-/** @brief Boilerplate */
-UINTERFACE(MinimalAPI) class UPDInteractInterface : public UInterface { GENERATED_BODY() };
-
-/**
- * @brief This interface will be placed on actors we want to be able to interact with.
- */
-class PDINTERACTION_API IPDInteractInterface
+UCLASS()
+class URTSOActionLogInnerWidget : public UWidget
 {
 	GENERATED_BODY()
 
-public:	
-	/** @brief This function handles acknowledging and handling interactions. @return true|false based on if the interaction failed or succeeded */
-	UFUNCTION(BlueprintNativeEvent, BlueprintCallable, Category = "Interact|Interface", Meta = (ExpandEnumAsExecs="InteractResult"))
-	void OnInteract(const FPDInteractionParamsWithCustomHandling& InteractionParams, EPDInteractResult& InteractResult) const;
-	virtual void OnInteract_Implementation(const FPDInteractionParamsWithCustomHandling& InteractionParams, EPDInteractResult& InteractResult) const;
+public:
 
-	/** @brief This function handles returning a max interaction value. */
-	UFUNCTION(BlueprintNativeEvent, BlueprintCallable, Category = "Interact|Interface")
-	double GetMaxInteractionDistance() const;
-	virtual double GetMaxInteractionDistance_Implementation() const;
-
-	/** @brief This function handles telling us if we are able to interact with the object. */
-	UFUNCTION(BlueprintNativeEvent, BlueprintCallable, Category = "Interact|Interface")
-	bool GetCanInteract() const;
-	virtual bool GetCanInteract_Implementation() const;	
-
-	/** @brief This function handles returning a interaction time/duration value. */
-	UFUNCTION(BlueprintNativeEvent, BlueprintCallable, Category = "Interact|Interface")
-	double GetInteractionTime() const;
-	virtual double GetInteractionTime_Implementation() const;	
 	
-	/** @brief This function handles returning a max interaction value. */
-	UFUNCTION(BlueprintNativeEvent, BlueprintCallable, Category = "Interact|Interface")
-	double GetCurrentUsability() const;
-	virtual double GetCurrentUsability_Implementation() const;
+	/** @brief */
+	virtual TSharedRef<SWidget> RebuildWidget() override;
+	/** @brief */
+	virtual void ReleaseSlateResources(bool bReleaseChildren) override;
 
-	/** @brief usage will be game implementation specific but make sense for many different types of games with interactable to allow a tag to be returned, possibly related to AI jobs as in my case */
-	UFUNCTION(BlueprintNativeEvent, BlueprintCallable, Category = "Interact|Interface")
-	FGameplayTagContainer GetGenericTagContainer() const;
-	virtual FGameplayTagContainer GetGenericTagContainer_Implementation() const;
-
-	/** @brief usage will be game implementation specific but make sense for many different types of games with interactable to allow a tag to be returned, possibly related to AI jobs as in my case */
-	UFUNCTION(BlueprintNativeEvent, BlueprintCallable, Category = "Interact|Interface")
-	FGameplayTag GetInstigatorTag() const;
-	virtual FGameplayTag GetInstigatorTag_Implementation() const;
+	/** @brief  */
+	virtual void UpdateAddNewActionEvent(TSharedPtr<FText>);
 	
-	/** @brief Registers the world interactable via the 'UPDInteractSubsystem' via it's 'IPDWorldManagementInterface' functions */
-	UFUNCTION(BlueprintNativeEvent, BlueprintCallable)
-	void RegisterWorldInteractable(UWorld* SelectedWorld, AActor* SelectedInteractable);
-	virtual void RegisterWorldInteractable_Implementation(UWorld* SelectedWorld, AActor* SelectedInteractable);
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	int32 MaxActionEntryCount = 50;
 
-	/** @brief Base-implementation contains an example interaction message function. */
-	virtual const FPDInteractMessage& GetInteractionMessage(); 
-	// { return GetInteractionMessage_Implementation(); };
-	// virtual const FPDInteractMessage& GetInteractionMessage_Implementation();	
+	/** @brief Wrapbox that wraps our SRTSOSaveEditorBase derived widgets */
+	TSharedPtr<class SWrapBox> InnerSlateWrapbox;
+	/** @brief The currently selected save editor widget */
+	TSharedPtr<class SRTSOActionLog> InnerActionLog;
 	
-	/** @brief  Pure virtual, implement when sub-classing */
-	inline virtual int32 GenerateInstanceID() 
-	{
-		for (; LatestInstanceIDs.Contains(++LatestInstanceID) ; ) {} // Slow the more consectutive instance IDs we have
-		return InstanceID = LatestInstanceID;
-	}; 
-	inline virtual void SetInstanceID(int32 NewID) 
-	{
-		InstanceID = NewID;
-
-		LatestInstanceIDs.Emplace(NewID);;
-	}; 
-	inline virtual int32 GetInstanceID() 
-	{
-		return InstanceID;
-	}; 
-	
-	/** @brief Flag to tell us if we've been registered with the subsystem */
-	bool bHasBeenRegisteredWithCurrentWorld = false;
-
-	/** @brief The cached return message given from 'GetInteractionMessage()' */
-	FPDInteractMessage OutMessage;
-
-	double Usability = 1.0;
-	int32 InstanceID = INDEX_NONE;
-	inline static int32 LatestInstanceID = INDEX_NONE;
-	inline static TSet<int32> LatestInstanceIDs{};
+	TDeque<TSharedPtr<FText>> TextList;
 };
+
+
+UCLASS(Blueprintable)
+class RTSOPEN_API URTSOActionLogUserWidget : public UCommonActivatableWidget
+{
+	GENERATED_BODY()
+
+public:
+	
+	UPROPERTY(EditAnywhere, Meta = (BindWidget))
+	URTSOActionLogInnerWidget* InnerActionLog;
+};
+
+
+class RTSOPEN_API SRTSOActionLog : public SCompoundWidget
+{
+public:
+	SLATE_BEGIN_ARGS(SRTSOActionLog)
+		: _MaxActionEntryCount(DEFAULT_MAX_LIMIT)
+	{ }
+ 		SLATE_EVENT(FOnUserScrolled, OnUserScrolled)
+ 		SLATE_EVENT(FOnClicked, OnUserClicked)
+		SLATE_ARGUMENT(int32, MaxActionEntryCount)
+	SLATE_END_ARGS()
+	
+	/** @brief Stores a pointer to the copied save data and then Calls UpdateChildSlot, passing ArrayRef as the opaquedata parameter */
+	void Construct(const FArguments& InArgs, TDeque<TSharedPtr<FText>>& DequeRef);
+	/** @brief Base call, ensures we have a title-font loaded, Sets up the child slot, and passes in the data view array to an slistview wrapped in a scrollbox */
+	virtual void UpdateChildSlot(void* OpaqueData);
+	void UpdateArray();
+
+	/** @brief  */
+	virtual void UpdateAddNewActionEvent(TSharedPtr<FText>);
+
+	/** @brief Displays the actual list item for each entry in ConversationStatesAsSharedArray, which in this case is the states in 'FText' */
+	TSharedRef<ITableRow> MakeListViewWidget_ActionItem(TSharedPtr<FText> InItem, const TSharedRef<STableViewBase>& OwnerTable) const;
+
+	/** @brief Font we want to use for titles in teh save editor */
+	FSlateFontInfo TitleFont;
+	
+	static constexpr int32 DEFAULT_MAX_LIMIT = 50;
+	/** @brief */
+	int32 MaxActionEntryCount = DEFAULT_MAX_LIMIT;
+	
+	/** @brief Array 'View' that is used to display the data related to this editor widget */
+	TArray<TSharedPtr<FText>> WorldActionsAsSharedArray;
+	TDeque<TSharedPtr<FText>>* WorldActionsAsSharedDeque;
+	
+	UClass* SelectedClass = nullptr;
+
+	// View Tables
+	TSharedPtr<STableRow< TSharedPtr<FText>>> ActionTable;
+
+	TSharedPtr<SListView<TSharedPtr<FText>>> ActualList;
+	
+	// Localized text
+	static FText ActionLog_TitleText;
+};
+
 
 /**
 Business Source License 1.1

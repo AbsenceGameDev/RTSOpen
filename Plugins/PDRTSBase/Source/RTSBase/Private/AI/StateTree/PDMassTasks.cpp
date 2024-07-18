@@ -136,6 +136,11 @@ void FPDMTask_MoveToTarget::ProcessNewSharedPath(const FPDMPathParameters& Param
 	}
 }
 
+void FPDMTask_MoveToTarget::OnPathSelected(FPDMFragment_RTSEntityBase& RTSData, const bool bShouldUseSharedNavigation, const FVector& LastPoint) const
+{
+	// Empty base call, reserved.
+}
+
 //
 // @todo I need a shared fragment for movement navpaths
 EStateTreeRunStatus FPDMTask_MoveToTarget::EnterState(FStateTreeExecutionContext& Context, const FStateTreeTransitionResult& Transition) const
@@ -165,6 +170,7 @@ EStateTreeRunStatus FPDMTask_MoveToTarget::EnterState(FStateTreeExecutionContext
 		&& RTSData.SelectionGroupIndex != INDEX_NONE
 		&& SharedEntity.SharedNavData.Contains(RTSData.OwnerID)
 		&& SharedEntity.SharedNavData.Find(RTSData.OwnerID)->SelectionGroupNavData.Contains(RTSData.SelectionGroupIndex);
+	
 	const UNavigationPath* NavPath =
 		bShouldUseSharedNavigation ? *SharedEntity.SharedNavData.Find(RTSData.OwnerID)->SelectionGroupNavData.Find(RTSData.SelectionGroupIndex) : nullptr;
 
@@ -177,6 +183,11 @@ EStateTreeRunStatus FPDMTask_MoveToTarget::EnterState(FStateTreeExecutionContext
 	NavPath == nullptr ?
 		ProcessNewPriorityPath(PathParams)
 		: ProcessNewSharedPath(PathParams);
+
+	// @todo Batch calls, important as we'll have thousands of entities
+	const FVector& LastPoint = NavPath->PathPoints.Last();
+	OnPathSelected(RTSData, bShouldUseSharedNavigation, LastPoint);
+	
 	
 	if (bShouldOverwriteQueuedPath) { RTSData.QueuedUnitPath = InstanceData.NavPath; }
 	

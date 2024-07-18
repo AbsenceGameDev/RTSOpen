@@ -1169,6 +1169,15 @@ void AGodHandPawn::PerformAction_Destroy(const TArray<uint8>& Payload)
 	const UPDBuildingActionsWidgetBase* BuildableActionsWidget = PC != nullptr ? PC->GetBuildableActionsWidget() : nullptr;
 	if (BuildableActionsWidget == nullptr) { return; }
 
+	if (BuildableActionsWidget->CurrentWorldActor->GetClass()->ImplementsInterface(UPDInteractInterface::StaticClass())
+		&& GetController()->GetClass()->ImplementsInterface(UPDRTSBuilderInterface::StaticClass()))
+	{
+		const FGameplayTag& BuildingType = IPDInteractInterface::Execute_GetInstigatorTag(BuildableActionsWidget->CurrentWorldActor);
+		const int32 InstigatorID = IPDRTSBuilderInterface::Execute_GetBuilderID(GetController());
+		const FText NewActionEvent = FText::FromString(FString::Printf(TEXT("OwnerID(%i) -- Successfully destroying building(TODO{%i}) of type %s "), PC->GetActorID(), INDEX_NONE, *BuildingType.GetTagName().ToString()));
+		URTSActionLogSubsystem::DispatchEvent(InstigatorID, NewActionEvent);		
+	}
+	
 	BuildableActionsWidget->DestroyCurrentWorldActor();	
 }
 
@@ -1221,7 +1230,8 @@ void AGodHandPawn::SelectActionMenuEntry_Implementation(ERTSBuildableActionMenuM
 					break;
 				case EPDRTSDestroyBuildingBehaviour::ImmediateDestruction:
 					{
-						PC->GetBuildableActionsWidget()->CurrentWorldActor->Destroy();							
+						const TArray<uint8> DummyPayload;
+						PerformAction_Destroy(DummyPayload);
 					}
 					break;
 				}
@@ -1275,10 +1285,16 @@ void AGodHandPawn::SelectActionMenuEntry_Implementation(ERTSBuildableActionMenuM
 					}
 
 					// Dispatch spawning of entities
-					for (const TTuple<const FMassEntityTemplateID, ARTSOBaseGM::FEntityCompoundTuple>&
-						EntityTypeCompound : EntitiesToSpawn)
+					for (const TTuple<const FMassEntityTemplateID, ARTSOBaseGM::FEntityCompoundTuple>& EntityTypeCompound : EntitiesToSpawn)
 					{
-						ARTSOBaseGM::DispatchEntitySpawning(EntityTypeCompound, EntityManager, SpawnerSystem);
+						// ARTSOBaseGM::DispatchEntitySpawning(EntityTypeCompound, EntityManager, SpawnerSystem);
+						
+						if (GetController()->GetClass()->ImplementsInterface(UPDRTSBuilderInterface::StaticClass()))
+						{
+							const int32 InstigatorID = IPDRTSBuilderInterface::Execute_GetBuilderID(GetController());
+							const FText NewActionEvent = FText::FromString(FString::Printf(TEXT("OwnerID(%i) -- Successfully Spawning entity of type %s "), IPDRTSBuilderInterface::Execute_GetBuilderID(this), *ActionTag.GetTagName().ToString()));
+							// URTSActionLogSubsystem::DispatchEvent(InstigatorID, NewActionEvent);		
+						}						
 					}
 				}
 				else

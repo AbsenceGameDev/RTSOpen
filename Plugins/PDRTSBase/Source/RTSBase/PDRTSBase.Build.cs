@@ -30,7 +30,7 @@ public class PDRTSBase : ModuleRules
 			{
 				"AIModule", "NavigationSystem", "CoreUObject", "Niagara",
 				"Engine", "Slate", "SlateCore", "GameplayTags", 
-				"MassAIBehavior",  "MassCrowd", "AnimToTexture", "RTSOpen", "CommonUI"
+				"MassAIBehavior",  "MassCrowd", "AnimToTexture", "CommonUI"
 				// ... add private dependencies that you statically link with here ...	
 			}
 			);

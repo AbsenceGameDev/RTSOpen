@@ -27,6 +27,7 @@
 #include "Kismet/KismetMathLibrary.h"
 #include "Misc/CString.h"
 #include "SaveEditor/RTSOSaveEditorWidget.h"
+#include "Widgets/Slate/SRTSOActionLog.h"
 
 ARTSOController::ARTSOController(const FObjectInitializer& ObjectInitializer)
 	: Super(ObjectInitializer), bIsDrawingMarquee(0)
@@ -89,6 +90,14 @@ void ARTSOController::BeginPlay()
 		BuildableActionsWidget = NewObject<UPDBuildingActionsWidgetBase>(this, BuildableActionsWidgetClass);
 		BuildableActionsWidget->SetOwningPlayer(this);
 	}
+
+	if (ActionLogWidgetClass->IsValidLowLevelFast())
+	{
+		ActionLogWidget = NewObject<URTSOActionLogUserWidget>(this, ActionLogWidgetClass);
+		ActionLogWidget->SetOwningPlayer(this);
+	}
+
+	URTSActionLogSubsystem::LinkWidget(GetActorID(), ActionLogWidget);
 }
 
 void ARTSOController::EndPlay(const EEndPlayReason::Type EndPlayReason)
@@ -130,6 +139,12 @@ void ARTSOController::RefreshOrAddNewID()
 		IDToActorMap.FindOrAdd(ActorID.GetID()) = this;
 	}
 }
+
+void ARTSOController::SendActionEvent_Implementation(const FText& NewActionEvent)
+{
+	URTSActionLogSubsystem::DispatchEvent(GetActorID(), NewActionEvent);
+}
+
 
 void ARTSOController::SetupInputComponent()
 {

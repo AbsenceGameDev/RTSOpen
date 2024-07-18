@@ -170,7 +170,8 @@ struct PDRTSBASE_API FPDMTask_MoveToTarget : public FMassStateTreeTaskBase
 	static void ProcessNewPriorityPath(const FPDMPathParameters& Params);
 	/** @brief Resolves the navpath at current path index for shared pathing, @bug Navpath generates invalid points, commented out for the moment, will resolve issue within a couple of commits */
 	static void ProcessNewSharedPath(const FPDMPathParameters& Params);
-	
+	virtual void OnPathSelected(FPDMFragment_RTSEntityBase& RTSData, bool bShouldUseSharedNavigation, const FVector& LastPoint) const;
+
 	/* Links/handles */
 	TStateTreeExternalDataHandle<UMassEntitySubsystem> EntitySubsystemHandle;
 	TStateTreeExternalDataHandle<UMassSignalSubsystem> MassSignalSubsystemHandle;

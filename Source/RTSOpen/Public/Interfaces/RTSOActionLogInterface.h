@@ -1,99 +1,58 @@
-/* @author: Ario Amin @ Permafrost Development. @copyright: Full BSL(1.1) License included at bottom of the file  */
+﻿/* @author: Ario Amin @ Permafrost Development. @copyright: Full BSL(1.1) License included at bottom of the file  */
 
 #pragma once
 
 #include "CoreMinimal.h"
+#include "Containers/Deque.h"
 #include "UObject/Interface.h"
+#include "RTSOActionLogInterface.generated.h"
 
-#include "PDInteractCommon.h"
-#include "PDWorldManagementInterface.h"
-
-#include "PDInteractInterface.generated.h"
-
-
-/** @brief Boilerplate */
-UINTERFACE(MinimalAPI) class UPDInteractInterface : public UInterface { GENERATED_BODY() };
+class URTSOActionLogUserWidget;
+// BOILERPLATE
+UINTERFACE() class URTSOActionLogInterface : public UInterface { GENERATED_BODY() };
 
 /**
- * @brief This interface will be placed on actors we want to be able to interact with.
+ * 
  */
-class PDINTERACTION_API IPDInteractInterface
+class RTSOPEN_API IRTSOActionLogInterface
 {
 	GENERATED_BODY()
 
-public:	
-	/** @brief This function handles acknowledging and handling interactions. @return true|false based on if the interaction failed or succeeded */
-	UFUNCTION(BlueprintNativeEvent, BlueprintCallable, Category = "Interact|Interface", Meta = (ExpandEnumAsExecs="InteractResult"))
-	void OnInteract(const FPDInteractionParamsWithCustomHandling& InteractionParams, EPDInteractResult& InteractResult) const;
-	virtual void OnInteract_Implementation(const FPDInteractionParamsWithCustomHandling& InteractionParams, EPDInteractResult& InteractResult) const;
-
-	/** @brief This function handles returning a max interaction value. */
-	UFUNCTION(BlueprintNativeEvent, BlueprintCallable, Category = "Interact|Interface")
-	double GetMaxInteractionDistance() const;
-	virtual double GetMaxInteractionDistance_Implementation() const;
-
-	/** @brief This function handles telling us if we are able to interact with the object. */
-	UFUNCTION(BlueprintNativeEvent, BlueprintCallable, Category = "Interact|Interface")
-	bool GetCanInteract() const;
-	virtual bool GetCanInteract_Implementation() const;	
-
-	/** @brief This function handles returning a interaction time/duration value. */
-	UFUNCTION(BlueprintNativeEvent, BlueprintCallable, Category = "Interact|Interface")
-	double GetInteractionTime() const;
-	virtual double GetInteractionTime_Implementation() const;	
-	
-	/** @brief This function handles returning a max interaction value. */
-	UFUNCTION(BlueprintNativeEvent, BlueprintCallable, Category = "Interact|Interface")
-	double GetCurrentUsability() const;
-	virtual double GetCurrentUsability_Implementation() const;
-
-	/** @brief usage will be game implementation specific but make sense for many different types of games with interactable to allow a tag to be returned, possibly related to AI jobs as in my case */
-	UFUNCTION(BlueprintNativeEvent, BlueprintCallable, Category = "Interact|Interface")
-	FGameplayTagContainer GetGenericTagContainer() const;
-	virtual FGameplayTagContainer GetGenericTagContainer_Implementation() const;
-
-	/** @brief usage will be game implementation specific but make sense for many different types of games with interactable to allow a tag to be returned, possibly related to AI jobs as in my case */
-	UFUNCTION(BlueprintNativeEvent, BlueprintCallable, Category = "Interact|Interface")
-	FGameplayTag GetInstigatorTag() const;
-	virtual FGameplayTag GetInstigatorTag_Implementation() const;
-	
-	/** @brief Registers the world interactable via the 'UPDInteractSubsystem' via it's 'IPDWorldManagementInterface' functions */
+public:
 	UFUNCTION(BlueprintNativeEvent, BlueprintCallable)
-	void RegisterWorldInteractable(UWorld* SelectedWorld, AActor* SelectedInteractable);
-	virtual void RegisterWorldInteractable_Implementation(UWorld* SelectedWorld, AActor* SelectedInteractable);
+	void SendActionEvent(const FText& NewActionEvent);
+	virtual void SendActionEvent_Implementation(const FText& NewActionEvent);
+};
 
-	/** @brief Base-implementation contains an example interaction message function. */
-	virtual const FPDInteractMessage& GetInteractionMessage(); 
-	// { return GetInteractionMessage_Implementation(); };
-	// virtual const FPDInteractMessage& GetInteractionMessage_Implementation();	
+
+/**
+ * 
+ */
+UCLASS()
+class RTSOPEN_API URTSActionLogSubsystem : public UEngineSubsystem
+{
+	GENERATED_BODY()
+
+public:
+	static URTSActionLogSubsystem* Get();
+
 	
-	/** @brief  Pure virtual, implement when sub-classing */
-	inline virtual int32 GenerateInstanceID() 
-	{
-		for (; LatestInstanceIDs.Contains(++LatestInstanceID) ; ) {} // Slow the more consectutive instance IDs we have
-		return InstanceID = LatestInstanceID;
-	}; 
-	inline virtual void SetInstanceID(int32 NewID) 
-	{
-		InstanceID = NewID;
+	static void LinkWidget(int32 WidgetID, const URTSOActionLogUserWidget* TargetWidget);
+	static void DispatchEvent(int32 WidgetID, FText NewActionEvent);
+	static void DispatchBatchedEvent(int32 WidgetID, int32 BatchID, FText NewActionEvent);
 
-		LatestInstanceIDs.Emplace(NewID);;
-	}; 
-	inline virtual int32 GetInstanceID() 
-	{
-		return InstanceID;
-	}; 
-	
-	/** @brief Flag to tell us if we've been registered with the subsystem */
-	bool bHasBeenRegisteredWithCurrentWorld = false;
+	TDeque<FText> WholeSessionTextBuffer{};
 
-	/** @brief The cached return message given from 'GetInteractionMessage()' */
-	FPDInteractMessage OutMessage;
+	UPROPERTY()
+	TMap<int32, const URTSOActionLogUserWidget*> TargetMap{};
+	TMap<int32, TTuple<int32, double>> BatchIDCounter{};
 
-	double Usability = 1.0;
-	int32 InstanceID = INDEX_NONE;
-	inline static int32 LatestInstanceID = INDEX_NONE;
-	inline static TSet<int32> LatestInstanceIDs{};
+
+	UPROPERTY()
+	double BatchIDTimeThreshold = 10.f;	
+
+private:
+	inline static URTSActionLogSubsystem* Self = nullptr;
 };
 
 /**

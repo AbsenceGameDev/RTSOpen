@@ -69,6 +69,13 @@ FGameplayTagContainer ARTSOInteractableBuildingBase::SelectorTagToTagContainer_I
 
 void ARTSOInteractableBuildingBase::OnBuildSuccessful(AActor* InstigatorActor) const
 {
+	if (InstigatorActor->GetClass()->ImplementsInterface(UPDRTSBuilderInterface::StaticClass()) )
+	{
+		const int32 InstigatorID = IPDRTSBuilderInterface::Execute_GetBuilderID(InstigatorActor);
+		const FText NewActionEvent = FText::FromString(FString::Printf(TEXT("OwnerID(%i) -- Successfully built %s "), InstigatorID, *GetName()));
+		URTSActionLogSubsystem::DispatchEvent(InstigatorID, NewActionEvent);		
+	}
+	
 	if (InstigatorActor == nullptr
 		|| InstigatorActor->GetClass()->ImplementsInterface(URTSOConversationInterface::StaticClass()) == false)
 	{
@@ -91,6 +98,11 @@ FGameplayTagContainer ARTSOInteractableBuildingBase::GetGenericTagContainer_Impl
 	
 	GeneratedTags.AppendTags(MissionProgressionTagsGrantedUponSuccessfulBuild);
 	return GeneratedTags;
+}
+
+FGameplayTag ARTSOInteractableBuildingBase::GetInstigatorTag_Implementation() const
+{
+	return InstigatorBuildableTag;
 }
 
 bool ARTSOInteractableBuildingBase::GetCanInteract_Implementation() const
@@ -158,6 +170,13 @@ void ARTSOInteractableBuildingBase::Internal_ProgressGhostStage(const bool bForc
 					UPDBuilderSubsystem::ProcessGhostStage(this, InstigatorBuildableTag,  CurrentTransitionState, false);
 					CurrentStateFinishedProgressing = true;
 
+					if (GetOwner()->GetClass()->ImplementsInterface(UPDRTSBuilderInterface::StaticClass()))
+					{
+						const int32 InstigatorID = IPDRTSBuilderInterface::Execute_GetBuilderID(GetOwner());
+						const FText NewActionEvent = FText::FromString(FString::Printf(TEXT("OwnerID(%i) -- Successfully Progressed Build to Stage %i,  of actor %s "), InstigatorID, CurrentTransitionState.CurrentStageIdx, *GetName()));
+						URTSActionLogSubsystem::DispatchEvent(InstigatorID, NewActionEvent);		
+					}
+					
 					if (bChainAll && UPDBuilderSubsystem::IsPastFinalIndex(InstigatorBuildableTag,CurrentTransitionState) == false)
 					{
 						Internal_ProgressGhostStage(bForceProgressThroughStage, bChainAll);
@@ -168,7 +187,7 @@ void ARTSOInteractableBuildingBase::Internal_ProgressGhostStage(const bool bForc
 	
 	// start stage, max duration based solution:
 	UPDBuilderSubsystem::ProcessGhostStage(this, InstigatorBuildableTag,  CurrentTransitionState, true);
-
+	
 	// Cache to make comparison,
 	// if something finishes the stage before the timer runs out then use this to avoid calling 'ProcessGhostStage' with 'bStateOfStage == false' twice
 	const double MaxDuration = UPDBuilderSubsystem::GetMaxDurationGhostStage(InstigatorBuildableTag,  CurrentTransitionState);
@@ -477,7 +496,7 @@ void ARTSOInteractableBuildingBase::OnSpawnedAsMain_Implementation(const FGamepl
 {
 	IPDRTSBuildableGhostInterface::OnSpawnedAsMain_Implementation(BuildableTag);
 	InstigatorBuildableTag = BuildableTag;
-
+	ProcessSpawn<false>();
 	
 	// Update material
 	if (MainMat == nullptr || MainMat->IsValidLowLevelFast() == false)
@@ -487,7 +506,6 @@ void ARTSOInteractableBuildingBase::OnSpawnedAsMain_Implementation(const FGamepl
 		
 		return;
 	}
-	ProcessSpawn<false>();
 }
 
 void ARTSOInteractableBuildingBase::Tick(float DeltaTime)

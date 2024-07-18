@@ -172,10 +172,10 @@ public:
 			return;
 		}
 		
-		const FGameplayTagContainer SelectedTags = SelectorTagToTagContainer(Caller, SelectorTag);
+		const FGameplayTagContainer SelectedTags = SelectorTagToTagContainer_Implementation(Caller, SelectorTag);
 		
 		IRTSOConversationInterface* CallerInterface = Cast<IRTSOConversationInterface>(Caller);		
-		CallerInterface->AddProgressionTagContainer(SelectedTags);
+		CallerInterface->AddProgressionTagContainer_Implementation(SelectedTags);
 	} /**< @ingroup MissionProgressorInterface_AddTagToCaller */
 	
 	/** @defgroup MissionProgressorInterface_SelectorTagToTagContainer
