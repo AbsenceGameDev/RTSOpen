@@ -13,6 +13,7 @@
 #include "AI/Mass/RTSOMassFragments.h"
 #include "Components/BoxComponent.h"
 #include "Components/PDInventoryComponent.h"
+#include "Widgets/Slate/SRTSOActionLog.h"
 
 ARTSOInteractableBuildingBase::ARTSOInteractableBuildingBase()
 {
@@ -72,7 +73,8 @@ void ARTSOInteractableBuildingBase::OnBuildSuccessful(AActor* InstigatorActor) c
 	if (InstigatorActor->GetClass()->ImplementsInterface(UPDRTSBuilderInterface::StaticClass()) )
 	{
 		const int32 InstigatorID = IPDRTSBuilderInterface::Execute_GetBuilderID(InstigatorActor);
-		const FText NewActionEvent = FText::FromString(FString::Printf(TEXT("OwnerID(%i) -- Successfully built %s "), InstigatorID, *GetName()));
+		
+		const FRTSOActionLogEvent NewActionEvent{FDateTime::Now(), TAG_ActionLog_Styling_T0, FText::FromString(FString::Printf(TEXT("OwnerID(%i) -- Successfully built %s "), InstigatorID, *GetName()))}; 
 		URTSActionLogSubsystem::DispatchEvent(InstigatorID, NewActionEvent);		
 	}
 	
@@ -173,7 +175,8 @@ void ARTSOInteractableBuildingBase::Internal_ProgressGhostStage(const bool bForc
 					if (GetOwner()->GetClass()->ImplementsInterface(UPDRTSBuilderInterface::StaticClass()))
 					{
 						const int32 InstigatorID = IPDRTSBuilderInterface::Execute_GetBuilderID(GetOwner());
-						const FText NewActionEvent = FText::FromString(FString::Printf(TEXT("OwnerID(%i) -- Successfully Progressed Build to Stage %i,  of actor %s "), InstigatorID, CurrentTransitionState.CurrentStageIdx, *GetName()));
+						
+						const FRTSOActionLogEvent NewActionEvent{FDateTime::Now(), TAG_ActionLog_Styling_T0, FText::FromString(FString::Printf(TEXT("OwnerID(%i) -- Successfully Progressed Build to Stage %i,  of actor %s "), InstigatorID, CurrentTransitionState.CurrentStageIdx, *GetName()))};
 						URTSActionLogSubsystem::DispatchEvent(InstigatorID, NewActionEvent);		
 					}
 					

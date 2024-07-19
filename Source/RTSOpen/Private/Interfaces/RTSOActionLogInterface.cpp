@@ -6,7 +6,7 @@
 #include "Widgets/Slate/SRTSOActionLog.h"
 
 
-void IRTSOActionLogInterface::SendActionEvent_Implementation(const FText& NewActionEvent)
+void IRTSOActionLogInterface::SendActionEvent_Implementation(const FRTSOActionLogEvent& NewActionEvent)
 {
 	UE_LOG(PDLog_MessageSystem, Error, TEXT("IRTSOActionLogInterface::SendActionEvent_Implementation -- MUST IMPLEMENT IN CLASSES WITH THIS INTERFACE"))
 }
@@ -16,39 +16,62 @@ URTSActionLogSubsystem* URTSActionLogSubsystem::Get()
 	if (Self == nullptr || Self->IsValidLowLevelFast() == false)
 	{
 		Self = GEngine->GetEngineSubsystem<URTSActionLogSubsystem>();
+
+		Self->bShowTimestamps = GetDefault<URTSActionLogSettings>()->bShowActionLogTimestamps;
+		for (const TSoftObjectPtr<UDataTable>& StyleTable : GetDefault<URTSActionLogSettings>()->ActionLogStyleTables)
+		{
+			TArray<FRTSActionLogStyleCompound*> LogStyleRows;
+			StyleTable.LoadSynchronous()->GetAllRows(TEXT(""), LogStyleRows);
+
+			for (FRTSActionLogStyleCompound* StyleCompound : LogStyleRows)
+			{
+				Self->StyleDataMap.Emplace(StyleCompound->StyleID,StyleCompound->StyleData);
+			}
+		}
 	}
 	
 	return Self;
 }
 
-void URTSActionLogSubsystem::LinkWidget(int32 WidgetID, const URTSOActionLogUserWidget* TargetWidget)
+void URTSActionLogSubsystem::DispatchEventInner(int32 WidgetID, const FRTSOActionLogEvent& NewActionEvent)
 {
-	URTSActionLogSubsystem::Get()->TargetMap.FindOrAdd(WidgetID, TargetWidget);
-}
-
-void URTSActionLogSubsystem::DispatchEvent(int32 WidgetID, FText NewActionEvent)
-{
-	URTSActionLogSubsystem* ActionLogSubsystem = URTSActionLogSubsystem::Get();
-	ActionLogSubsystem->WholeSessionTextBuffer.EmplaceFirst(NewActionEvent);
-	const TSharedRef<FText> ActionEventRef = MakeShareable<FText>(&ActionLogSubsystem->WholeSessionTextBuffer.First());
+	const TSharedRef<FRTSOActionLogEvent> ActionEventRef = MakeShared<FRTSOActionLogEvent>(NewActionEvent);
+	WholeSessionTextBuffer.EmplaceFirst(ActionEventRef.ToSharedPtr());
 	
-	if (ActionLogSubsystem->TargetMap.Contains(WidgetID) == false || *ActionLogSubsystem->TargetMap.Find(WidgetID) == nullptr)
+	if (TargetMap.Contains(WidgetID) == false || TargetMap.Find(WidgetID) == nullptr)
 	{
 		return;
 	}
-	const URTSOActionLogUserWidget* TargetWidget = *ActionLogSubsystem->TargetMap.Find(WidgetID);
-
-	if (TargetWidget->InnerActionLog == nullptr)
+	const URTSOActionLogUserWidget* TargetWidget = *TargetMap.Find(WidgetID);
+	
+	if (TargetWidget == nullptr || TargetWidget->IsValidLowLevelFast() == false || TargetWidget->InnerActionLog == nullptr || TargetWidget->InnerActionLog->IsValidLowLevelFast() == false)
 	{
 		UE_LOG(PDLog_MessageSystem, Error, TEXT("======== URTSActionLogSubsystem::DispatchFailed =============="))
 		return;
 	}
 	
-	UE_LOG(PDLog_MessageSystem, Warning, TEXT("======== URTSActionLogSubsystem::DispatchEvent ============== %s"), *ActionEventRef->ToString())
-	TargetWidget->InnerActionLog->UpdateAddNewActionEvent(ActionEventRef.ToSharedPtr());
+	UE_LOG(PDLog_MessageSystem, Warning, TEXT("======== URTSActionLogSubsystem::DispatchEvent ============== %s"), *ActionEventRef->EntryText.ToString())
+	TargetWidget->InnerActionLog->UpdateAddNewActionEvent(ActionEventRef.ToSharedPtr());	
 }
 
-void URTSActionLogSubsystem::DispatchBatchedEvent(int32 WidgetID, int32 BatchID, FText NewActionEvent)
+void URTSActionLogSubsystem::LinkWidget(int32 WidgetID, const URTSOActionLogUserWidget* TargetWidget)
+{
+	URTSActionLogSubsystem::Get()->TargetMap.FindOrAdd(WidgetID) = TargetWidget;
+}
+
+void URTSActionLogSubsystem::UnlinkWidget(int32 WidgetID)
+{
+	URTSActionLogSubsystem::Get()->TargetMap.Remove(WidgetID);
+}
+
+void URTSActionLogSubsystem::DispatchEvent(int32 WidgetID, const FRTSOActionLogEvent& NewActionEvent)
+{
+	URTSActionLogSubsystem* ActionLogSubsystem = URTSActionLogSubsystem::Get();
+	check(ActionLogSubsystem != nullptr)
+	ActionLogSubsystem->DispatchEventInner(WidgetID, NewActionEvent);
+}
+
+void URTSActionLogSubsystem::DispatchBatchedEvent(int32 WidgetID, int32 BatchID, const FRTSOActionLogEvent& NewActionEvent)
 {
 	URTSActionLogSubsystem* ActionLogSubsystem = URTSActionLogSubsystem::Get();
 	

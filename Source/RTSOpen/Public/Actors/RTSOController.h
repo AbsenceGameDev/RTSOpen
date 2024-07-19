@@ -15,6 +15,7 @@
 #include "Interfaces/RTSOActionLogInterface.h"
 #include "RTSOController.generated.h"
 
+struct FRTSOActionLogEvent;
 class URTSOActionLogUserWidget;
 class URTSOSaveEditorUserWidget;
 // Fwd decl.
@@ -57,7 +58,7 @@ class RTSOPEN_API ARTSOController
 	/** @brief Todo move to interface, refreshes or creates a new player ID */
 	void RefreshOrAddNewID();
 
-	virtual void SendActionEvent_Implementation(const FText& NewActionEvent) override;
+	virtual void SendActionEvent_Implementation(const FRTSOActionLogEvent& NewActionEvent) override;
 	
 	/** @brief Sets up bindings for enhanced input */
 	virtual void SetupInputComponent() override;

@@ -185,9 +185,8 @@ EStateTreeRunStatus FPDMTask_MoveToTarget::EnterState(FStateTreeExecutionContext
 		: ProcessNewSharedPath(PathParams);
 
 	// @todo Batch calls, important as we'll have thousands of entities
-	const FVector& LastPoint = NavPath->PathPoints.Last();
+	const FVector& LastPoint = PathParams.MoveTarget.Center;
 	OnPathSelected(RTSData, bShouldUseSharedNavigation, LastPoint);
-	
 	
 	if (bShouldOverwriteQueuedPath) { RTSData.QueuedUnitPath = InstanceData.NavPath; }
 	

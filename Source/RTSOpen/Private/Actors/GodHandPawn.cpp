@@ -62,6 +62,7 @@
 #include "Kismet/KismetMathLibrary.h"
 #include "Kismet/KismetSystemLibrary.h"
 #include "Subsystems/PDUserMessageSubsystem.h"
+#include "Widgets/Slate/SRTSOActionLog.h"
 
 //
 // Godhand functionality
@@ -1174,7 +1175,8 @@ void AGodHandPawn::PerformAction_Destroy(const TArray<uint8>& Payload)
 	{
 		const FGameplayTag& BuildingType = IPDInteractInterface::Execute_GetInstigatorTag(BuildableActionsWidget->CurrentWorldActor);
 		const int32 InstigatorID = IPDRTSBuilderInterface::Execute_GetBuilderID(GetController());
-		const FText NewActionEvent = FText::FromString(FString::Printf(TEXT("OwnerID(%i) -- Successfully destroying building(TODO{%i}) of type %s "), PC->GetActorID(), INDEX_NONE, *BuildingType.GetTagName().ToString()));
+
+		const FRTSOActionLogEvent NewActionEvent{FDateTime::Now(),TAG_ActionLog_Styling_T0, FText::FromString(FString::Printf(TEXT("OwnerID(%i) -- Successfully destroying building(TODO{%i}) of type %s "), PC->GetActorID(), INDEX_NONE, *BuildingType.GetTagName().ToString()))}; 
 		URTSActionLogSubsystem::DispatchEvent(InstigatorID, NewActionEvent);		
 	}
 	
@@ -1287,13 +1289,13 @@ void AGodHandPawn::SelectActionMenuEntry_Implementation(ERTSBuildableActionMenuM
 					// Dispatch spawning of entities
 					for (const TTuple<const FMassEntityTemplateID, ARTSOBaseGM::FEntityCompoundTuple>& EntityTypeCompound : EntitiesToSpawn)
 					{
-						// ARTSOBaseGM::DispatchEntitySpawning(EntityTypeCompound, EntityManager, SpawnerSystem);
+						ARTSOBaseGM::DispatchEntitySpawning(EntityTypeCompound, EntityManager, SpawnerSystem);
 						
 						if (GetController()->GetClass()->ImplementsInterface(UPDRTSBuilderInterface::StaticClass()))
 						{
 							const int32 InstigatorID = IPDRTSBuilderInterface::Execute_GetBuilderID(GetController());
-							const FText NewActionEvent = FText::FromString(FString::Printf(TEXT("OwnerID(%i) -- Successfully Spawning entity of type %s "), IPDRTSBuilderInterface::Execute_GetBuilderID(this), *ActionTag.GetTagName().ToString()));
-							// URTSActionLogSubsystem::DispatchEvent(InstigatorID, NewActionEvent);		
+							const FRTSOActionLogEvent NewActionEvent{FDateTime::Now(),TAG_ActionLog_Styling_T0, FText::FromString(FString::Printf(TEXT("OwnerID(%i) -- Successfully Spawning entity of type %s "), IPDRTSBuilderInterface::Execute_GetBuilderID(this), *ActionTag.GetTagName().ToString()))}; 
+							URTSActionLogSubsystem::DispatchEvent(InstigatorID, NewActionEvent);		
 						}						
 					}
 				}

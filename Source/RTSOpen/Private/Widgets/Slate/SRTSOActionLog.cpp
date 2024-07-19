@@ -14,6 +14,7 @@
 #include "Widgets/Images/SImage.h"
 #include "Widgets/Layout/SBorder.h"
 #include "Widgets/Layout/SBox.h"
+#include "Widgets/Layout/SScaleBox.h"
 #include "Widgets/Layout/SSplitter.h"
 #include "Widgets/Views/SListView.h"
 #include "Styling/AppStyle.h"
@@ -31,6 +32,9 @@
 
 #define LOCTEXT_NAMESPACE "SRTSOActionLog"
 
+UE_DEFINE_GAMEPLAY_TAG(TAG_ActionLog_Styling_T0, "ActionLog.Styling.T0");
+
+
 typedef SNumericVectorInputBox<int32, UE::Math::TVector<int32>, 3> SNumericV3i;
 typedef SNumericVectorInputBox<double, FVector, 3> SNumericV3d;
 typedef SNumericEntryBox<int32> SNumericS1i;
@@ -44,45 +48,66 @@ TSharedRef<SWidget> URTSOActionLogInnerWidget::RebuildWidget()
 	{
 		InnerSlateWrapbox = SNew(SWrapBox);
 	}
-	
-	if (InnerActionLog.IsValid() == false)
+
+	bool bFoundSlot = false;
+	FChildren* WrappedChildren = InnerSlateWrapbox->GetChildren();
+	const int32 Limit = WrappedChildren->Num();
+	for (int32 Step = 0; Step < Limit; )
 	{
-		const TSharedRef<SRTSOActionLog> PlayerBaseDataRef =
-			SNew(SRTSOActionLog, TextList)
-			.MaxActionEntryCount(MaxActionEntryCount);
+		TSharedRef<SWidget> CurrentChild = WrappedChildren->GetChildAt(Step);
+		SRTSOActionLog* ExistingActionLog = static_cast<SRTSOActionLog*>(CurrentChild.ToSharedPtr().Get());
 		
-		InnerActionLog	= PlayerBaseDataRef.ToSharedPtr();
-		InnerSlateWrapbox->Slot().AttachWidget(InnerActionLog.ToSharedRef());
-	}
-	else
-	{
-		InnerSlateWrapbox->Slot().AttachWidget(InnerActionLog.ToSharedRef());
-	}
-	
-	if (InnerActionLog != nullptr)
-	{
-		InnerActionLog->UpdateChildSlot(nullptr); 
+		if (ExistingActionLog != nullptr)
+		{
+			InnerActionLog = MakeShareable(ExistingActionLog);
+			InnerSlateWrapbox->Slot().AttachWidget(InnerActionLog.ToSharedRef());
+			continue;
+		}
+		InnerSlateWrapbox->RemoveSlot(CurrentChild); // remove invalid slots
 	}
 
+	InnerActionLog.Reset();
+	if (InnerActionLog.IsValid() == false)
+	{
+		InnerActionLog =
+			SNew(SRTSOActionLog, TextList)
+			.MaxActionEntryCount(MaxActionEntryCount)
+			.Visibility(EVisibility::All);
+
+			TPanelChildren<SWrapBox::FSlot>::FScopedWidgetSlotArguments ScopedArgs = InnerSlateWrapbox->AddSlot();
+			ScopedArgs.AttachWidget(InnerActionLog.ToSharedRef());
+	}
+
+	
+	InnerActionLog->TimestampFont = TimestampFont;
+	InnerActionLog->EntryFont = EntryFont;
+	InnerActionLog->TitleFont = TitleFont;
+	InnerActionLog->UpdateChildSlot(nullptr);
+	
 	return InnerSlateWrapbox.ToSharedRef();
 }
 
 void URTSOActionLogInnerWidget::ReleaseSlateResources(bool bReleaseChildren)
 {
 	InnerSlateWrapbox.Reset();
+	if (InnerActionLog.IsValid())
+	{
+		InnerActionLog->ActualList.Reset();
+		InnerActionLog->ActionTable.Reset();
+	}
 	InnerActionLog.Reset();
 	
 	Super::ReleaseSlateResources(bReleaseChildren);
 }
 
-void URTSOActionLogInnerWidget::UpdateAddNewActionEvent(TSharedPtr<FText> EventText)
+void URTSOActionLogInnerWidget::UpdateAddNewActionEvent(TSharedPtr<FRTSOActionLogEvent> EventText)
 {
 	InnerActionLog->UpdateAddNewActionEvent(EventText);
 }
 
 //
 // SAVE EDITOR MAIN
-void SRTSOActionLog::Construct(const FArguments& InArgs, TDeque<TSharedPtr<FText>>& ArrayRef)
+void SRTSOActionLog::Construct(const FArguments& InArgs, TDeque<TSharedPtr<FRTSOActionLogEvent>>& ArrayRef)
 {
 	MaxActionEntryCount = InArgs._MaxActionEntryCount;
 	
@@ -95,65 +120,54 @@ void SRTSOActionLog::UpdateChildSlot(void* OpaqueData)
 	// CopiedSaveData.ConversationActorState;
 	if (OpaqueData != nullptr)
 	{
-		WorldActionsAsSharedDeque = static_cast<TDeque<TSharedPtr<FText>>*>(OpaqueData);
+		WorldActionsAsSharedDeque = static_cast<TDeque<TSharedPtr<FRTSOActionLogEvent>>*>(OpaqueData);
 	}
 	UpdateArray();
-
-	if (WorldActionsAsSharedArray.IsEmpty())
-	{
-		TSharedRef<SListView<TSharedPtr<FText>>> ListSharedRef = SNew(SListView<TSharedPtr<FText>>);
-		ActualList = ListSharedRef.ToSharedPtr();
-	}
-	else
-	{
-		TSharedRef<SListView<TSharedPtr<FText>>> ListSharedRef = SNew(SListView<TSharedPtr<FText>>)
-			.ListItemsSource(&WorldActionsAsSharedArray)
-			.OnGenerateRow(this, &SRTSOActionLog::MakeListViewWidget_ActionItem)
-			.SelectionMode(ESelectionMode::None);
-		ActualList = ListSharedRef.ToSharedPtr();
-	}
+	
+	TSharedRef<SListView<TSharedPtr<FRTSOActionLogEvent>>> ListSharedRef = SNew(SListView<TSharedPtr<FRTSOActionLogEvent>>)
+		.ListItemsSource(&WorldActionsAsSharedArray)
+		.OnGenerateRow(this, &SRTSOActionLog::MakeListViewWidget_ActionItem)
+		.SelectionMode(ESelectionMode::None);
+	ActualList = ListSharedRef.ToSharedPtr();
 	
 	ChildSlot
 	.HAlign(HAlign_Center)
-	.VAlign(VAlign_Center)
+	.VAlign(VAlign_Fill)
 	[
 		SNew(SHorizontalBox)
-		+ INSET_HORIZONTAL_SLOT(0)
+		+ SHorizontalBox::Slot()
 		[
 			SNew(SVerticalBox)
-			+ INSET_AUTO_VERTICAL_SLOT(0)
+			+ SVerticalBox::Slot()
+				.AutoHeight()
 			[
 				SNew(STextBlock)
 					.Font(TitleFont)
 					.Text(ActionLog_TitleText)
 			]
 			
-			+ INSET_VERTICAL_SLOT(0)
+			+ SVerticalBox::Slot()
+				.FillHeight(10)
+				.AutoHeight()
 			[
 				SNew(SScrollBox)
-				.ScrollBarAlwaysVisible(true)
-				.ScrollBarVisibility(EVisibility::Visible)
-				.ScrollBarThickness(UE::Slate::FDeprecateVector2DParameter(10))
-				.Orientation(EOrientation::Orient_Vertical)
+					.ScrollBarAlwaysVisible(true)
+					.ScrollBarVisibility(EVisibility::Visible)
+					.ScrollBarThickness(UE::Slate::FDeprecateVector2DParameter(10))
+					.Orientation(EOrientation::Orient_Vertical)
 				+SScrollBox::Slot()
+					.FillSize(500)
+					.MaxSize(500)
 				[
 					ActualList.ToSharedRef()
 				]
 			]
-			+ INSET_VERTICAL_SLOT(FMath::Clamp(WorldActionsAsSharedArray.Num() * 4.f, 0.f, 30.f))
 		]
 	];
 }
 
 void SRTSOActionLog::UpdateArray()
 {
-	if (TitleFont.TypefaceFontName.IsNone())
-	{
-		// @todo Set up a custom slate styleset for the saveeditors fonts and icons 
-		TitleFont = FAppStyle::GetFontStyle( TEXT("PropertyWindow.NormalFont"));
-		TitleFont.Size *= 3;
-	}
-
 	if (WorldActionsAsSharedDeque->Num() > MaxActionEntryCount + 10)
 	{
 		for(int Step = 0; Step < 10; Step++)
@@ -167,12 +181,14 @@ void SRTSOActionLog::UpdateArray()
 	const int32 SelectedLimit = FMath::Min(WorldActionsAsSharedDeque->Num(), MaxActionEntryCount);
 	for(int Step = 0; Step < SelectedLimit ; Step++)
 	{
-		TSharedPtr<FText> TextEntry = (*WorldActionsAsSharedDeque)[Step];
+		TSharedPtr<FRTSOActionLogEvent> TextEntry = (*WorldActionsAsSharedDeque)[Step];
+		TextEntry->EntryIdx = Step;
+		
 		WorldActionsAsSharedArray.Emplace(TextEntry);
 	}
 }
 
-void SRTSOActionLog::UpdateAddNewActionEvent(TSharedPtr<FText> InItem)
+void SRTSOActionLog::UpdateAddNewActionEvent(TSharedPtr<FRTSOActionLogEvent> InItem)
 {
 	WorldActionsAsSharedDeque->PushFirst(InItem);
 
@@ -182,8 +198,7 @@ void SRTSOActionLog::UpdateAddNewActionEvent(TSharedPtr<FText> InItem)
 		UpdateChildSlot(nullptr);
 	}
 
-	UpdateArray();	
-
+	UpdateArray();
 	
 	if (ActualList.IsValid())
 	{
@@ -193,37 +208,74 @@ void SRTSOActionLog::UpdateAddNewActionEvent(TSharedPtr<FText> InItem)
 }
 
 
-TSharedRef<ITableRow> SRTSOActionLog::MakeListViewWidget_ActionItem(TSharedPtr<FText> InItem, const TSharedRef<STableViewBase>& OwnerTable) const
+TSharedRef<ITableRow> SRTSOActionLog::MakeListViewWidget_ActionItem(
+	TSharedPtr<FRTSOActionLogEvent> InItem,
+	const TSharedRef<STableViewBase>& OwnerTable) const
 {
-	FText& ActionText = *InItem.Get();
+	FRTSOActionLogEvent& ActionEvent = *InItem.Get();
+
+	// Fade based on distance
+	float ElementOpacity = 1.f - static_cast<float>(ActionEvent.EntryIdx) / static_cast<float>(MaxActionEntryCount * 0.5f);
+
+	URTSActionLogSubsystem* ActionLogSubsystem = URTSActionLogSubsystem::Get();
+
+	FSlateFontInfo SelectedEntryFont = EntryFont;
+	FSlateFontInfo SelectedTimestampFont = TimestampFont;
 	
+	if (ActionLogSubsystem->StyleDataMap.Contains(ActionEvent.StyleTag))
+	{
+		const FRTSActionLogStyleData& Style = ActionLogSubsystem->StyleDataMap.FindRef(ActionEvent.StyleTag);
+		Style.BGColour;
+
+		SelectedEntryFont = Style.EntryFontInfo;
+		SelectedTimestampFont = Style.TimestampFontInfo;
+	}
+
+	//ActionEvent.TimeStamp.ToString(TEXT("%H.%M.%S"));
+
+	const FText ActionText = LOCTEXT("ActionListTextEntryTitleLocKey", " - ACTION");
+	FText TimeText = FText::AsTime(ActionEvent.TimeStamp, EDateTimeStyle::Short);
+	const FText TimestampedActionText = FText::FromString(TimeText.ToString() + ActionText.ToString());
+
 	//
 	// Widget layout
 	SRTSOActionLog* MutableThis = const_cast<SRTSOActionLog*>(this);
 	check(MutableThis != nullptr)
 	
 	MutableThis->ActionTable =
-		SNew( STableRow< TSharedPtr<FText> >, OwnerTable )
+		SNew( STableRow< TSharedPtr<FRTSOActionLogEvent> >, OwnerTable )
+		.RenderOpacity(ElementOpacity)
+		.Clipping(EWidgetClipping::ClipToBoundsWithoutIntersecting)
 		[
-			SNew(SHorizontalBox)
-			+ SHorizontalBox::Slot()
+			SNew(SVerticalBox)
+			+ SVerticalBox::Slot()
+			.AutoHeight()
 			[
-				SNew(STextBlock)
-				.Text(LOCTEXT("ActionListTextEntryTitleLocKey", "ACTION"))
+				SNew(SHorizontalBox)
+				+ SHorizontalBox::Slot()
+				.MaxWidth(50)
+				[
+					SNew(STextBlock)
+					.Text(ActionLogSubsystem->bShowTimestamps ? TimestampedActionText : ActionText)
+					.Font(SelectedTimestampFont)
+					.MinDesiredWidth(50)
+				]
+				+ SHorizontalBox::Slot()
+				.MaxWidth(5)
+				[
+					SNew(SSeparator)
+					.Orientation(Orient_Vertical)
+					.Thickness(5.f)
+				]
+				+ SHorizontalBox::Slot()
+				.AutoWidth()
+				[
+					SNew(STextBlock)
+					.Clipping(EWidgetClipping::ClipToBoundsWithoutIntersecting)
+					.Text(ActionEvent.EntryText)
+					.Font(SelectedEntryFont)
+				]
 			]
-			+ SHorizontalBox::Slot()
-			[
-				SNew(SSeparator)
-				.Orientation(Orient_Horizontal)
-				.Thickness(20.f)
-				
-			]
-			+ SHorizontalBox::Slot()
-			[
-				SNew(STextBlock)
-				.Text(ActionText)
-			]
-
 		];
 
 	// ...

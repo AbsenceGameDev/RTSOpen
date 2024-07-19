@@ -3,27 +3,57 @@
 #pragma once
 
 #include "CoreMinimal.h"
+#include "GameplayTagContainer.h"
 #include "Containers/Deque.h"
+#include "GameFramework/GameUserSettings.h"
 #include "UObject/Interface.h"
 #include "RTSOActionLogInterface.generated.h"
 
+struct FRTSOActionLogEvent;
 class URTSOActionLogUserWidget;
-// BOILERPLATE
-UINTERFACE() class URTSOActionLogInterface : public UInterface { GENERATED_BODY() };
 
-/**
- * 
- */
-class RTSOPEN_API IRTSOActionLogInterface
+
+USTRUCT()
+struct RTSOPEN_API FRTSActionLogStyleData : public FDataTableRowHandle
 {
 	GENERATED_BODY()
 
-public:
-	UFUNCTION(BlueprintNativeEvent, BlueprintCallable)
-	void SendActionEvent(const FText& NewActionEvent);
-	virtual void SendActionEvent_Implementation(const FText& NewActionEvent);
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	FLinearColor BGColour = FLinearColor(0,0,0,0);
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	FSlateFontInfo TimestampFontInfo{};
+	
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	FSlateFontInfo EntryFontInfo{};
 };
 
+USTRUCT()
+struct RTSOPEN_API FRTSActionLogStyleCompound : public FDataTableRowHandle
+{
+	GENERATED_BODY()
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	FGameplayTag StyleID;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	FRTSActionLogStyleData StyleData;
+};
+
+UCLASS(Config = "Game", DefaultConfig)
+class RTSOPEN_API URTSActionLogSettings : public UGameUserSettings
+{
+public:
+	GENERATED_BODY()
+
+	/** @brief Build Contexts (categories) table soft objects */
+	UPROPERTY(Config, EditAnywhere, Category = "Action Log Subsystem", Meta = (RequiredAssetDataTags="RowStructure=/Script/RTSOpen.RTSActionLogStyleCompound"))
+	TArray<TSoftObjectPtr<UDataTable>> ActionLogStyleTables;
+
+	/** @brief Build Contexts (categories) table soft objects */
+	UPROPERTY(Config, EditAnywhere, Category = "Action Log Subsystem")
+	bool bShowActionLogTimestamps = true;	
+};
 
 /**
  * 
@@ -36,12 +66,14 @@ class RTSOPEN_API URTSActionLogSubsystem : public UEngineSubsystem
 public:
 	static URTSActionLogSubsystem* Get();
 
+	void DispatchEventInner(int32 WidgetID, const FRTSOActionLogEvent& NewActionEvent);
 	
 	static void LinkWidget(int32 WidgetID, const URTSOActionLogUserWidget* TargetWidget);
-	static void DispatchEvent(int32 WidgetID, FText NewActionEvent);
-	static void DispatchBatchedEvent(int32 WidgetID, int32 BatchID, FText NewActionEvent);
+	static void UnlinkWidget(int32 WidgetID);
+	static void DispatchEvent(int32 WidgetID, const FRTSOActionLogEvent& NewActionEvent);
+	static void DispatchBatchedEvent(int32 WidgetID, int32 BatchID, const FRTSOActionLogEvent& NewActionEvent);
 
-	TDeque<FText> WholeSessionTextBuffer{};
+	TDeque<TSharedPtr<FRTSOActionLogEvent>> WholeSessionTextBuffer{};
 
 	UPROPERTY()
 	TMap<int32, const URTSOActionLogUserWidget*> TargetMap{};
@@ -49,11 +81,35 @@ public:
 
 
 	UPROPERTY()
-	double BatchIDTimeThreshold = 10.f;	
+	double BatchIDTimeThreshold = 10.f;
+
+	
+	UPROPERTY()
+	bool bShowTimestamps = true;
+	
+	TMap<FGameplayTag /*StyleID*/, FRTSActionLogStyleData> StyleDataMap{};
 
 private:
 	inline static URTSActionLogSubsystem* Self = nullptr;
 };
+
+
+// BOILERPLATE
+UINTERFACE() class URTSOActionLogInterface : public UInterface { GENERATED_BODY() };
+
+/**
+ * 
+ */
+class RTSOPEN_API IRTSOActionLogInterface
+{
+	GENERATED_BODY()
+
+public:
+	UFUNCTION(BlueprintNativeEvent, BlueprintCallable)
+	void SendActionEvent(const FRTSOActionLogEvent& NewActionEvent);
+	virtual void SendActionEvent_Implementation(const FRTSOActionLogEvent& NewActionEvent);
+};
+
 
 /**
 Business Source License 1.1

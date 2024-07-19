@@ -10,14 +10,88 @@
 #include "SaveEditor/SRTSOSaveEditor.h"
 #include "SRTSOActionLog.generated.h"
 
+RTSOPEN_API UE_DECLARE_GAMEPLAY_TAG_EXTERN(TAG_ActionLog_Styling_T0);
 
-UCLASS()
+
+USTRUCT(Blueprintable)
+struct FRTSOActionLogEvent
+{
+	GENERATED_BODY()
+
+	FRTSOActionLogEvent() = default;
+	
+	explicit FRTSOActionLogEvent(
+		const FDateTime& InTimeStamp,
+		FGameplayTag InStyleTag,
+		const FText& InEntryText)
+	: TimeStamp(InTimeStamp), StyleTag(InStyleTag), EntryText(InEntryText) {}
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	int32 EntryIdx = INDEX_NONE;
+	FDateTime TimeStamp;
+	
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	FGameplayTag StyleTag = TAG_ActionLog_Styling_T0;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	FText EntryText = FText{};
+};
+
+class RTSOPEN_API SRTSOActionLog : public SCompoundWidget
+{
+public:
+	SLATE_BEGIN_ARGS(SRTSOActionLog)
+		: _MaxActionEntryCount(DEFAULT_MAX_LIMIT)
+	{
+	}
+ 		SLATE_EVENT(FOnUserScrolled, OnUserScrolled)
+ 		SLATE_EVENT(FOnClicked, OnUserClicked)
+		SLATE_ARGUMENT(int32, MaxActionEntryCount)
+	SLATE_END_ARGS()
+	
+	/** @brief Stores a pointer to the copied save data and then Calls UpdateChildSlot, passing ArrayRef as the opaquedata parameter */
+	void Construct(const FArguments& InArgs, TDeque<TSharedPtr<FRTSOActionLogEvent>>& DequeRef);
+	/** @brief Base call, ensures we have a title-font loaded, Sets up the child slot, and passes in the data view array to an slistview wrapped in a scrollbox */
+	virtual void UpdateChildSlot(void* OpaqueData);
+	void UpdateArray();
+
+	/** @brief  */
+	virtual void UpdateAddNewActionEvent(TSharedPtr<FRTSOActionLogEvent>);
+
+	/** @brief Displays the actual list item for each entry in ConversationStatesAsSharedArray, which in this case is the states in 'FText' */
+	TSharedRef<ITableRow> MakeListViewWidget_ActionItem(TSharedPtr<FRTSOActionLogEvent> InItem, const TSharedRef<STableViewBase>& OwnerTable) const;
+
+	/** @brief Font we want to use for the action log title */
+	FSlateFontInfo TitleFont;
+	/** @brief Font we want to use for action log entries  */
+	FSlateFontInfo EntryFont;
+	/** @brief Font we want to use for action log entries  */
+	FSlateFontInfo TimestampFont;	
+	
+	static constexpr int32 DEFAULT_MAX_LIMIT = 50;
+	/** @brief */
+	int32 MaxActionEntryCount = DEFAULT_MAX_LIMIT;
+	
+	/** @brief Array 'View' that is used to display the data related to this editor widget */
+	TArray<TSharedPtr<FRTSOActionLogEvent>> WorldActionsAsSharedArray;
+	TDeque<TSharedPtr<FRTSOActionLogEvent>>* WorldActionsAsSharedDeque;
+	
+	UClass* SelectedClass = nullptr;
+
+	// View Tables
+	TSharedPtr<STableRow< TSharedPtr<FRTSOActionLogEvent>>> ActionTable;
+	TSharedPtr<SListView<TSharedPtr<FRTSOActionLogEvent>>> ActualList;
+	
+	// Localized text
+	static FText ActionLog_TitleText;
+};
+
+
+UCLASS(Blueprintable)
 class URTSOActionLogInnerWidget : public UWidget
 {
 	GENERATED_BODY()
 
 public:
-
 	
 	/** @brief */
 	virtual TSharedRef<SWidget> RebuildWidget() override;
@@ -25,7 +99,7 @@ public:
 	virtual void ReleaseSlateResources(bool bReleaseChildren) override;
 
 	/** @brief  */
-	virtual void UpdateAddNewActionEvent(TSharedPtr<FText>);
+	virtual void UpdateAddNewActionEvent(TSharedPtr<FRTSOActionLogEvent>);
 	
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
 	int32 MaxActionEntryCount = 50;
@@ -33,9 +107,19 @@ public:
 	/** @brief Wrapbox that wraps our SRTSOSaveEditorBase derived widgets */
 	TSharedPtr<class SWrapBox> InnerSlateWrapbox;
 	/** @brief The currently selected save editor widget */
-	TSharedPtr<class SRTSOActionLog> InnerActionLog;
+	TSharedPtr<SRTSOActionLog> InnerActionLog;
 	
-	TDeque<TSharedPtr<FText>> TextList;
+	TDeque<TSharedPtr<FRTSOActionLogEvent>> TextList;
+
+	/** @brief Font we want to use for the action log title */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	FSlateFontInfo TitleFont;
+	/** @brief Font we want to use for action log entries  */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	FSlateFontInfo EntryFont;
+	/** @brief Font we want to use for action log entries  */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	FSlateFontInfo TimestampFont;	
 };
 
 
@@ -46,54 +130,8 @@ class RTSOPEN_API URTSOActionLogUserWidget : public UCommonActivatableWidget
 
 public:
 	
-	UPROPERTY(EditAnywhere, Meta = (BindWidget))
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Meta = (BindWidget))
 	URTSOActionLogInnerWidget* InnerActionLog;
-};
-
-
-class RTSOPEN_API SRTSOActionLog : public SCompoundWidget
-{
-public:
-	SLATE_BEGIN_ARGS(SRTSOActionLog)
-		: _MaxActionEntryCount(DEFAULT_MAX_LIMIT)
-	{ }
- 		SLATE_EVENT(FOnUserScrolled, OnUserScrolled)
- 		SLATE_EVENT(FOnClicked, OnUserClicked)
-		SLATE_ARGUMENT(int32, MaxActionEntryCount)
-	SLATE_END_ARGS()
-	
-	/** @brief Stores a pointer to the copied save data and then Calls UpdateChildSlot, passing ArrayRef as the opaquedata parameter */
-	void Construct(const FArguments& InArgs, TDeque<TSharedPtr<FText>>& DequeRef);
-	/** @brief Base call, ensures we have a title-font loaded, Sets up the child slot, and passes in the data view array to an slistview wrapped in a scrollbox */
-	virtual void UpdateChildSlot(void* OpaqueData);
-	void UpdateArray();
-
-	/** @brief  */
-	virtual void UpdateAddNewActionEvent(TSharedPtr<FText>);
-
-	/** @brief Displays the actual list item for each entry in ConversationStatesAsSharedArray, which in this case is the states in 'FText' */
-	TSharedRef<ITableRow> MakeListViewWidget_ActionItem(TSharedPtr<FText> InItem, const TSharedRef<STableViewBase>& OwnerTable) const;
-
-	/** @brief Font we want to use for titles in teh save editor */
-	FSlateFontInfo TitleFont;
-	
-	static constexpr int32 DEFAULT_MAX_LIMIT = 50;
-	/** @brief */
-	int32 MaxActionEntryCount = DEFAULT_MAX_LIMIT;
-	
-	/** @brief Array 'View' that is used to display the data related to this editor widget */
-	TArray<TSharedPtr<FText>> WorldActionsAsSharedArray;
-	TDeque<TSharedPtr<FText>>* WorldActionsAsSharedDeque;
-	
-	UClass* SelectedClass = nullptr;
-
-	// View Tables
-	TSharedPtr<STableRow< TSharedPtr<FText>>> ActionTable;
-
-	TSharedPtr<SListView<TSharedPtr<FText>>> ActualList;
-	
-	// Localized text
-	static FText ActionLog_TitleText;
 };
 
 

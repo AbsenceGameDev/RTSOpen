@@ -14,6 +14,7 @@
 #include "Interfaces/PDInteractInterface.h"
 #include "Interfaces/RTSOActionLogInterface.h"
 #include "Pawns/PDRTSBaseUnit.h"
+#include "Widgets/Slate/SRTSOActionLog.h"
 
 
 bool FRTSOTask_Interact::Link(FStateTreeLinker& Linker)
@@ -68,8 +69,8 @@ EStateTreeRunStatus FRTSOTask_Interact::EnterState(FStateTreeExecutionContext& C
 		EPDInteractResult InteractResult;
 		IPDInteractInterface::Execute_OnInteract(InstanceData.PotentialInteractableActor, Params, InteractResult);
 
-		const FText NewActionEvent = FText::FromString(FString::Printf(TEXT("EntityID(%i) -- Interacted sucessfully with %s "), MassContext.GetEntity().Index, *InstanceData.PotentialInteractableActor->GetName()));
-		URTSActionLogSubsystem::DispatchEvent(EntityBase.OwnerID, NewActionEvent);		
+		const FRTSOActionLogEvent NewActionEvent{FDateTime::Now(), TAG_ActionLog_Styling_T0, FText::FromString(FString::Printf(TEXT("EntityID(%i) -- Interacted sucessfully with %s "), MassContext.GetEntity().Index, *InstanceData.PotentialInteractableActor->GetName()))}; 
+		URTSActionLogSubsystem::DispatchEvent(EntityBase.OwnerID, NewActionEvent);
 		
 		return EStateTreeRunStatus::Succeeded;
 		
@@ -82,14 +83,14 @@ EStateTreeRunStatus FRTSOTask_Interact::EnterState(FStateTreeExecutionContext& C
 	}
 
 
-	const FText NewActionEvent = FText::FromString(FString::Printf(TEXT("EntityID(%i) -- Failed interaction with %s "), MassContext.GetEntity().Index, *InstanceData.PotentialInteractableActor->GetName()));
+	const FRTSOActionLogEvent NewActionEvent{FDateTime::Now(),TAG_ActionLog_Styling_T0, FText::FromString(FString::Printf(TEXT("EntityID(%i) -- Failed interaction with %s "), MassContext.GetEntity().Index, *InstanceData.PotentialInteractableActor->GetName()))}; 
 	URTSActionLogSubsystem::DispatchEvent(EntityBase.OwnerID, NewActionEvent); // @todo pass message colouring, drive messages from table 		
 	return EStateTreeRunStatus::Failed;
 }
 
 void FRTSOTask_MoveToTarget::OnPathSelected(FPDMFragment_RTSEntityBase& RTSData, bool bShouldUseSharedNavigation, const FVector& LastPoint) const
 {
-	const FText NewActionEvent = FText::FromString(FString::Printf(TEXT("Entity Group ID(%i) -- Moving To Target [%4.2f ,%4.2f, %4.2f] "), RTSData.SelectionGroupIndex, LastPoint.X, LastPoint.Y, LastPoint.Z ));
+	const FRTSOActionLogEvent NewActionEvent{FDateTime::Now(),TAG_ActionLog_Styling_T0, FText::FromString(FString::Printf(TEXT("Entity Group ID(%i) -- Moving To Target [%4.2f ,%4.2f, %4.2f] "), RTSData.SelectionGroupIndex, LastPoint.X, LastPoint.Y, LastPoint.Z ))}; 
 	if (bShouldUseSharedNavigation)
 	{
 		URTSActionLogSubsystem::DispatchBatchedEvent(RTSData.OwnerID, RTSData.SelectionGroupIndex, NewActionEvent);

@@ -77,7 +77,6 @@ void ARTSOController::BeginPlay()
 		SaveEditorWidget = NewObject<URTSOSaveEditorUserWidget>(this, SaveEditorWidgetClass);
 		SaveEditorWidget->SetOwningPlayer(this);
 	}
-	
 
 	if (BuildMenuWidgetClass->IsValidLowLevelFast())
 	{
@@ -95,9 +94,10 @@ void ARTSOController::BeginPlay()
 	{
 		ActionLogWidget = NewObject<URTSOActionLogUserWidget>(this, ActionLogWidgetClass);
 		ActionLogWidget->SetOwningPlayer(this);
+		ActionLogWidget->AddToViewport();
+		URTSActionLogSubsystem::LinkWidget(GetActorID(), ActionLogWidget);
 	}
 
-	URTSActionLogSubsystem::LinkWidget(GetActorID(), ActionLogWidget);
 }
 
 void ARTSOController::EndPlay(const EEndPlayReason::Type EndPlayReason)
@@ -140,7 +140,7 @@ void ARTSOController::RefreshOrAddNewID()
 	}
 }
 
-void ARTSOController::SendActionEvent_Implementation(const FText& NewActionEvent)
+void ARTSOController::SendActionEvent_Implementation(const FRTSOActionLogEvent& NewActionEvent)
 {
 	URTSActionLogSubsystem::DispatchEvent(GetActorID(), NewActionEvent);
 }
