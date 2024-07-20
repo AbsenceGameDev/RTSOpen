@@ -79,10 +79,8 @@ public:
 	TMap<int32, const URTSOActionLogUserWidget*> TargetMap{};
 	TMap<int32, TTuple<int32, double>> BatchIDCounter{};
 
-
 	UPROPERTY()
 	double BatchIDTimeThreshold = 10.f;
-
 	
 	UPROPERTY()
 	bool bShowTimestamps = true;

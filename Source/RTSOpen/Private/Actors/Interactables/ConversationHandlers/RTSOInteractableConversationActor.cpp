@@ -20,6 +20,7 @@
 
 #include "Core/RTSOBaseGM.h"
 #include "Interfaces/RTSOConversationInterface.h"
+#include "Widgets/Slate/SRTSOActionLog.h"
 
 /** Declaring the "Conversation.Entry" gameplay tags. to be defined in an object-file
  * @todo move to a 'conversation commons' file which I need to create */
@@ -296,6 +297,13 @@ void ARTSOInteractableConversationActor::OnInteract_Implementation(
 			// @todo need a way to display repeatable Conversations even after incrementing CurrentProgressionRef, as CurrentProgressionRef is used further down the list
 			const int CopyProgression = CurrentProgressionRef;
 			CurrentProgressionRef++;
+
+			const FRTSOActionLogEvent NewActionEvent{
+				FString::Printf(TEXT(
+					"OwnerID(%i) -- Successfully Finished Phase{%i} of Mission %s "),
+					OwnerID, CopyProgression, *CurrentMission.GetTagName().ToString())}; 
+			URTSActionLogSubsystem::DispatchEvent(OwnerID, NewActionEvent);
+			
 			if (CanRepeatConversation(OwnerID, CopyProgression) == false) { return; }
 		}
 		break;

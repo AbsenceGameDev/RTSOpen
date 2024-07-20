@@ -4,7 +4,10 @@
 
 #include "CoreMinimal.h"
 #include "GameplayTagContainer.h"
+#include "RTSOActionLogInterface.h"
+#include "Interfaces/PDRTSBuilderInterface.h"
 #include "UObject/Interface.h"
+#include "Widgets/Slate/SRTSOActionLog.h"
 #include "RTSOConversationInterface.generated.h"
 
 struct FGameplayTag;
@@ -141,6 +144,24 @@ class RTSOPEN_API IRTSOMissionProgressor
 {
 	GENERATED_BODY()
 
+	static void SendToActionLog(AActor* Caller, FGameplayTagContainer SelectedTags)
+	{
+		if (Caller->GetClass()->ImplementsInterface(UPDRTSBuilderInterface::StaticClass()))
+		{
+			FString BuildString;
+			for (const FGameplayTag& Tag : SelectedTags)
+			{
+				BuildString += Tag.GetTagName().ToString() + ", "; // Trailing comma, who cares, faster to jsut leave it here 
+			}
+
+			const FRTSOActionLogEvent NewActionEvent{
+				FString::Printf(TEXT(
+					"OwnerID(%s) -- Received Mission Progress Tags: {%s} "),
+					*Caller->GetName(), *BuildString)}; 
+			URTSActionLogSubsystem::DispatchEvent(IPDRTSBuilderInterface::Execute_GetBuilderID(Caller), NewActionEvent);		
+		}		
+	}
+	
 public:
 	/** @defgroup MissionProgressorInterface_AddTagToCaller
 	 * @brief Reserved for later use. Adds the given tag to the list of acquired conversation tags
@@ -154,9 +175,11 @@ public:
 		{
 			return;
 		}
-
+		
 		IRTSOConversationInterface* CallerInterface = Cast<IRTSOConversationInterface>(Caller);
 		CallerInterface->AddUniqueProgressionTag(NewTag);
+
+		SendToActionLog(Caller, FGameplayTagContainer{NewTag});
 	} /**< @ingroup MissionProgressorInterface_AddTagToCaller */
 
 	/** @defgroup MissionProgressorInterface_AddTagToCaller
@@ -171,11 +194,12 @@ public:
 		{
 			return;
 		}
-		
 		const FGameplayTagContainer SelectedTags = SelectorTagToTagContainer_Implementation(Caller, SelectorTag);
 		
 		IRTSOConversationInterface* CallerInterface = Cast<IRTSOConversationInterface>(Caller);		
 		CallerInterface->AddProgressionTagContainer_Implementation(SelectedTags);
+
+		SendToActionLog(Caller, SelectedTags);
 	} /**< @ingroup MissionProgressorInterface_AddTagToCaller */
 	
 	/** @defgroup MissionProgressorInterface_SelectorTagToTagContainer

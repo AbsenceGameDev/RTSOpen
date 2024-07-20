@@ -17,6 +17,33 @@
 #include "Widgets/Slate/SRTSOActionLog.h"
 
 
+bool FRTSOTask_ActionLog::Link(FStateTreeLinker& Linker)
+{
+	Linker.LinkExternalData(EntitySubsystemHandle);
+	return FMassStateTreeTaskBase::Link(Linker);
+}
+
+EStateTreeRunStatus FRTSOTask_ActionLog::EnterState(FStateTreeExecutionContext& Context, const FStateTreeTransitionResult& Transition) const
+{
+	const FMassStateTreeExecutionContext& MassContext = static_cast<FMassStateTreeExecutionContext&>(Context);
+	const FInstanceDataType& InstanceData = Context.GetInstanceData(*this);
+	const UMassEntitySubsystem& EntitySubsystem = Context.GetExternalData(EntitySubsystemHandle);
+	
+	const FMassEntityManager& EntityManager = EntitySubsystem.GetEntityManager();
+	check(EntityManager.IsEntityValid(MassContext.GetEntity()));
+
+	const FPDMFragment_RTSEntityBase& EntityBase = EntityManager.GetFragmentDataChecked<FPDMFragment_RTSEntityBase>(MassContext.GetEntity());
+	const FRTSOActionLogEvent NewActionEvent{
+		FString::Printf(TEXT("EntityID(%i) -- %s "), EntityBase.OwnerID, *InstanceData.ActionMessage.ToString() )};
+
+	if (EntityBase.OwnerID != INDEX_NONE)
+	{
+		URTSActionLogSubsystem::DispatchEvent(EntityBase.OwnerID, NewActionEvent);	
+	}
+	
+	return FMassStateTreeTaskBase::EnterState(Context, Transition);
+}
+
 bool FRTSOTask_Interact::Link(FStateTreeLinker& Linker)
 {
 	Linker.LinkExternalData(EntitySubsystemHandle);
@@ -57,11 +84,12 @@ EStateTreeRunStatus FRTSOTask_Interact::EnterState(FStateTreeExecutionContext& C
 		// Temp.CustomInteractionProcessor.BindDynamic(this, );
 		// Temp.InstigatorComponentClass = UPDRTSBaseUnit::StaticClass();
 		// Temp.OptionalInteractionTags;
-		
-		Params.InstigatorActor =
+
+		AController* InstigatorController = Cast<AController>(
 			RTSSubsystem.SharedOwnerIDMappings.Contains(EntityBase.OwnerID)
-			? RTSSubsystem.SharedOwnerIDMappings.FindRef(EntityBase.OwnerID)
-			: nullptr;
+				? RTSSubsystem.SharedOwnerIDMappings.FindRef(EntityBase.OwnerID)
+				: nullptr);
+		Params.InstigatorActor = InstigatorController != nullptr ? InstigatorController->GetPawn() : nullptr;
 		
 		Params.InteractionPercent = 1.01;
 		Params.InstigatorEntity = MassContext.GetEntity();
@@ -69,7 +97,9 @@ EStateTreeRunStatus FRTSOTask_Interact::EnterState(FStateTreeExecutionContext& C
 		EPDInteractResult InteractResult;
 		IPDInteractInterface::Execute_OnInteract(InstanceData.PotentialInteractableActor, Params, InteractResult);
 
-		const FRTSOActionLogEvent NewActionEvent{FDateTime::Now(), TAG_ActionLog_Styling_T0, FText::FromString(FString::Printf(TEXT("EntityID(%i) -- Interacted sucessfully with %s "), MassContext.GetEntity().Index, *InstanceData.PotentialInteractableActor->GetName()))}; 
+		const FRTSOActionLogEvent NewActionEvent{
+			FString::Printf(TEXT("EntityID(%i) -- Interacted sucessfully with %s "),
+				MassContext.GetEntity().Index, *InstanceData.PotentialInteractableActor->GetName())}; 
 		URTSActionLogSubsystem::DispatchEvent(EntityBase.OwnerID, NewActionEvent);
 		
 		return EStateTreeRunStatus::Succeeded;
@@ -81,16 +111,26 @@ EStateTreeRunStatus FRTSOTask_Interact::EnterState(FStateTreeExecutionContext& C
 		// @todo interact with other entity
 		return EStateTreeRunStatus::Succeeded;
 	}
+	
+	const FString InteractionTargetName =
+		InstanceData.PotentialInteractableActor != nullptr
+		? *InstanceData.PotentialInteractableActor->GetName()
+		: InstanceData.PotentialEntityHandle.Index != INDEX_NONE
+			? "Entity(" + FString::FromInt(InstanceData.PotentialEntityHandle.Index) + ")"
+			: "N/A";
 
-
-	const FRTSOActionLogEvent NewActionEvent{FDateTime::Now(),TAG_ActionLog_Styling_T0, FText::FromString(FString::Printf(TEXT("EntityID(%i) -- Failed interaction with %s "), MassContext.GetEntity().Index, *InstanceData.PotentialInteractableActor->GetName()))}; 
+	const FRTSOActionLogEvent NewActionEvent{
+		FString::Printf(TEXT("EntityID(%i) -- Failed interaction with %s "),
+			MassContext.GetEntity().Index, *InteractionTargetName)}; 
 	URTSActionLogSubsystem::DispatchEvent(EntityBase.OwnerID, NewActionEvent); // @todo pass message colouring, drive messages from table 		
 	return EStateTreeRunStatus::Failed;
 }
 
 void FRTSOTask_MoveToTarget::OnPathSelected(FPDMFragment_RTSEntityBase& RTSData, bool bShouldUseSharedNavigation, const FVector& LastPoint) const
 {
-	const FRTSOActionLogEvent NewActionEvent{FDateTime::Now(),TAG_ActionLog_Styling_T0, FText::FromString(FString::Printf(TEXT("Entity Group ID(%i) -- Moving To Target [%4.2f ,%4.2f, %4.2f] "), RTSData.SelectionGroupIndex, LastPoint.X, LastPoint.Y, LastPoint.Z ))}; 
+	const FRTSOActionLogEvent NewActionEvent{
+		FString::Printf(TEXT("Entity Group ID(%i) -- Moving To Target [%4.2f ,%4.2f, %4.2f] "),
+			RTSData.SelectionGroupIndex, LastPoint.X, LastPoint.Y, LastPoint.Z)}; 
 	if (bShouldUseSharedNavigation)
 	{
 		URTSActionLogSubsystem::DispatchBatchedEvent(RTSData.OwnerID, RTSData.SelectionGroupIndex, NewActionEvent);

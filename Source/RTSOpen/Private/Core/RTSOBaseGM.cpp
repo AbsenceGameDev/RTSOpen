@@ -613,7 +613,7 @@ void ARTSOBaseGM::LoadGame_Implementation(const FString& Slot, const bool bDummy
 	bProcessingLoadData = true;
 	ParallelFor(
 		static_cast<int8>(EPDSaveDataThreadSelector::EEnd),
-		[&](int8 Step)
+		[&, SlotCopy = Slot](int8 Step)
 		{
 			const EPDSaveDataThreadSelector ThreadSelector = static_cast<EPDSaveDataThreadSelector>(Step);
 
@@ -632,7 +632,7 @@ void ARTSOBaseGM::LoadGame_Implementation(const FString& Slot, const bool bDummy
 						ThreadData.SavedInteracts.ToAdd,
 						ThreadData.SavedInteracts.ToModify);
 					
-					OnThreadFinished_PlayerLoadDataSync(EPDSaveDataThreadSelector::EInteractables);
+					OnThreadFinished_PlayerLoadDataSync(EPDSaveDataThreadSelector::EInteractables, SlotCopy);
 				}
 				break;
 			case EPDSaveDataThreadSelector::EEntities:
@@ -646,7 +646,7 @@ void ARTSOBaseGM::LoadGame_Implementation(const FString& Slot, const bool bDummy
 						ThreadData.SavedUnits.ToAdd,
 						ThreadData.SavedUnits.ToModify);
 
-					OnThreadFinished_PlayerLoadDataSync(EPDSaveDataThreadSelector::EEntities);
+					OnThreadFinished_PlayerLoadDataSync(EPDSaveDataThreadSelector::EEntities, SlotCopy);
 				}	
 				break;
 			case EPDSaveDataThreadSelector::EInventories:
@@ -660,7 +660,7 @@ void ARTSOBaseGM::LoadGame_Implementation(const FString& Slot, const bool bDummy
 						ThreadData.SavedItems.ToAdd,
 						ThreadData.SavedItems.ToModify);
 
-					OnThreadFinished_PlayerLoadDataSync(EPDSaveDataThreadSelector::EInventories);
+					OnThreadFinished_PlayerLoadDataSync(EPDSaveDataThreadSelector::EInventories, SlotCopy);
 				}
 				break;
 			case EPDSaveDataThreadSelector::EPlayers:
@@ -674,7 +674,7 @@ void ARTSOBaseGM::LoadGame_Implementation(const FString& Slot, const bool bDummy
 						ThreadData.SavedLocs.ToAdd,
 						ThreadData.SavedLocs.ToModify);
 
-					OnThreadFinished_PlayerLoadDataSync(EPDSaveDataThreadSelector::EPlayers);
+					OnThreadFinished_PlayerLoadDataSync(EPDSaveDataThreadSelector::EPlayers, SlotCopy);
 				}
 				break;
 			case EPDSaveDataThreadSelector::EConversationActors:
@@ -688,7 +688,7 @@ void ARTSOBaseGM::LoadGame_Implementation(const FString& Slot, const bool bDummy
 						ThreadData.SavedConvoActors.ToAdd,
 						ThreadData.SavedConvoActors.ToModify);
 
-					OnThreadFinished_PlayerLoadDataSync(EPDSaveDataThreadSelector::EConversationActors);
+					OnThreadFinished_PlayerLoadDataSync(EPDSaveDataThreadSelector::EConversationActors, SlotCopy);
 				}
 				break;
 			case EPDSaveDataThreadSelector::EPlayerConversationProgress:
@@ -702,7 +702,7 @@ void ARTSOBaseGM::LoadGame_Implementation(const FString& Slot, const bool bDummy
 						ThreadData.SavedConvoTags.ToAdd,
 						ThreadData.SavedConvoTags.ToModify);
 
-					OnThreadFinished_PlayerLoadDataSync(EPDSaveDataThreadSelector::EPlayerConversationProgress);
+					OnThreadFinished_PlayerLoadDataSync(EPDSaveDataThreadSelector::EPlayerConversationProgress, SlotCopy);
 				}
 				break;
 			}
@@ -1058,7 +1058,7 @@ void ARTSOBaseGM::FinalizeLoadPlayerMissionTags(const TMap<int32, AActor*>& Owne
 	}
 }
 
-void ARTSOBaseGM::OnThreadFinished_PlayerLoadDataSync(EPDSaveDataThreadSelector FinishedThread)
+void ARTSOBaseGM::OnThreadFinished_PlayerLoadDataSync(EPDSaveDataThreadSelector FinishedThread, const FString& SlotCopy)
 {
 	const TMap<int32, AActor*>& OwnerIDMappings = GEngine->GetEngineSubsystem<UPDRTSBaseSubsystem>()->SharedOwnerIDMappings;
 	
@@ -1078,6 +1078,14 @@ void ARTSOBaseGM::OnThreadFinished_PlayerLoadDataSync(EPDSaveDataThreadSelector 
 		FinalizeLoadInventoryData(OwnerIDMappings);
 		FinalizeLoadConversationActors();
 		FinalizeLoadPlayerMissionTags(OwnerIDMappings);
+
+		
+		for (const TTuple<int32, AActor*>& OwnerTuple : OwnerIDMappings)
+		{
+			const FRTSOActionLogEvent NewActionEvent{
+				FString::Printf(TEXT("OwnerID(%i) -- Loaded save slot: %s "), OwnerTuple.Key, *SlotCopy)}; 
+			URTSActionLogSubsystem::DispatchEvent(OwnerTuple.Key, NewActionEvent);		
+		}
 	}
 }
 

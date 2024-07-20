@@ -19,12 +19,33 @@ struct FRTSOActionLogEvent
 	GENERATED_BODY()
 
 	FRTSOActionLogEvent() = default;
+
+	explicit FRTSOActionLogEvent(
+		const FText& InEntryText)
+	: FRTSOActionLogEvent(TAG_ActionLog_Styling_T0, InEntryText) {} 	
+	explicit FRTSOActionLogEvent(
+		const FString& InEntryString)
+	: FRTSOActionLogEvent(TAG_ActionLog_Styling_T0, InEntryString) {} 
+	
+	explicit FRTSOActionLogEvent(
+		FGameplayTag InStyleTag,
+		const FText& InEntryText)
+	: FRTSOActionLogEvent(FDateTime::Now(), InStyleTag, InEntryText) {}	
+	explicit FRTSOActionLogEvent(
+		FGameplayTag InStyleTag,
+		const FString& InEntryString)
+	: FRTSOActionLogEvent(FDateTime::Now(),InStyleTag, InEntryString) {}
 	
 	explicit FRTSOActionLogEvent(
 		const FDateTime& InTimeStamp,
 		FGameplayTag InStyleTag,
 		const FText& InEntryText)
 	: TimeStamp(InTimeStamp), StyleTag(InStyleTag), EntryText(InEntryText) {}
+	explicit FRTSOActionLogEvent(
+		const FDateTime& InTimeStamp,
+		FGameplayTag InStyleTag,
+		const FString& InEntryString)
+	: TimeStamp(InTimeStamp), StyleTag(InStyleTag), EntryText(FText::FromString(InEntryString)) {}
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
 	int32 EntryIdx = INDEX_NONE;

@@ -169,7 +169,7 @@ public:
 	void FinalizeLoadInventoryData(const TMap<int32, AActor*>& OwnerIDMappings);
 	void FinalizeLoadConversationActors();
 	void FinalizeLoadPlayerMissionTags(const TMap<int32, AActor*>& OwnerIDMappings);
-	void OnThreadFinished_PlayerLoadDataSync(EPDSaveDataThreadSelector FinishedThread);
+	void OnThreadFinished_PlayerLoadDataSync(EPDSaveDataThreadSelector FinishedThread, const FString& SlotCopy);
 
 	/** @brief Alias for an array view of unit/entity data */
 	using FInnerEntityData = TArray<const FRTSSavedWorldUnits*>;

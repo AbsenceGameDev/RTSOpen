@@ -37,6 +37,44 @@ struct FRTSOTaskData_Interact
 };
 
 /**
+ * @brief Action Log data
+ */
+USTRUCT()
+struct FRTSOTaskData_ActionLog
+{
+	GENERATED_BODY()
+
+	/** @brief Message to send to the action log */
+	UPROPERTY(VisibleAnywhere, Category = Param)
+	FText ActionMessage;
+};
+
+/**
+ * @brief Simple Passthrough task that sends events of player-owned entities to the action log.
+ * @details  
+ */
+USTRUCT()
+struct RTSOPEN_API FRTSOTask_ActionLog : public FMassStateTreeTaskBase
+{
+	GENERATED_BODY()
+
+	using FInstanceDataType = FRTSOTaskData_ActionLog;
+	
+	/** @brief Links external data: EntitySubsystemHandle, InventoryHandle*/
+	virtual bool Link(FStateTreeLinker& Linker) override;
+	/** @brief Returns the static struct of the instance data shorthand */
+	virtual const UStruct* GetInstanceDataType() const override { return FInstanceDataType::StaticStruct(); }
+	/** @brief Triggers OnInteract on the actor, (and/or entity proxy when the function is finished), if it turns out to be a valid interactable
+	 * @todo write actual logic for interaction with other entity. use proxy such as the RTSBaseUnit (ISM subclass)
+	 * @todo @backlog have some notes in there which I've not fully decided on, revise at some point */
+	virtual EStateTreeRunStatus EnterState(FStateTreeExecutionContext& Context, const FStateTreeTransitionResult& Transition) const override;
+
+	/** @defgroup ExternalHandles */
+	TStateTreeExternalDataHandle<UMassEntitySubsystem> EntitySubsystemHandle; /**<@ingroup ExternalHandles*/
+};
+
+
+/**
  * @brief Interaction task.
  * @details Attempts to call Execute_OnInteract if the given target (or proxy object if the target's an entity) has an interface of type IPDInteractInterface 
  */

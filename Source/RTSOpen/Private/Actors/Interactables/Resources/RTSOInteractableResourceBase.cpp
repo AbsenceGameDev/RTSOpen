@@ -21,6 +21,12 @@ void ARTSOInteractableResourceBase::BeginPlay()
 {
 	Super::BeginPlay();
 
+
+	for (const TPair<FGameplayTag, int32 /*count*/>& ResourceReward : TradeArchetype)
+	{
+		InventoryFragment.Handler.AddItem(ResourceReward.Key, ResourceReward.Value);
+	}
+
 	// Initial copy so the rest can be offloaded to the interface
 	MissionProgressionTagsToGive = MissionProgressionTagsGrantedUponSuccessfulInteraction;
 
@@ -84,7 +90,7 @@ void ARTSOInteractableResourceBase::ProcessTradeIfInfiniteInventory(
 	InteractResult = EPDInteractResult::INTERACT_SUCCESS;
 
 	AActor* InstigatorActor = InteractionParams.InstigatorActor;
-	OnInteractionSuccessful(InstigatorActor);
+	OnInteractionSuccessful(InstigatorActor); 
 }
 
 void ARTSOInteractableResourceBase::ProcessTradeIfLimitedInventory(
@@ -167,7 +173,7 @@ void ARTSOInteractableResourceBase::ProcessTradeIfLimitedInventory(
 	InteractResult = EPDInteractResult::INTERACT_SUCCESS;
 	
 	AActor* InstigatorActor = InteractionParams.InstigatorActor;
-	OnInteractionSuccessful(InstigatorActor);
+	OnInteractionSuccessful(InstigatorActor); 
 }
 
 void ARTSOInteractableResourceBase::OnInteract_Implementation(
