@@ -298,7 +298,7 @@ void ARTSOInteractableConversationActor::OnInteract_Implementation(
 			const int CopyProgression = CurrentProgressionRef;
 			CurrentProgressionRef++;
 
-			const FRTSOActionLogEvent NewActionEvent{
+			const FRTSOActionLogEvent NewActionEvent{ TAG_ActionLog_Styling_Entry_T1, TAG_ActionLog_Styling_Timestamp_T1,
 				FString::Printf(TEXT(
 					"OwnerID(%i) -- Successfully Finished Phase{%i} of Mission %s "),
 					OwnerID, CopyProgression, *CurrentMission.GetTagName().ToString())}; 

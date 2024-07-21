@@ -10,8 +10,22 @@
 #include "SaveEditor/SRTSOSaveEditor.h"
 #include "SRTSOActionLog.generated.h"
 
-RTSOPEN_API UE_DECLARE_GAMEPLAY_TAG_EXTERN(TAG_ActionLog_Styling_T0);
+// Generic tags
+RTSOPEN_API UE_DECLARE_GAMEPLAY_TAG_EXTERN(TAG_ActionLog_Styling_Global_Default);
+RTSOPEN_API UE_DECLARE_GAMEPLAY_TAG_EXTERN(TAG_ActionLog_Styling_Global_T0);
+RTSOPEN_API UE_DECLARE_GAMEPLAY_TAG_EXTERN(TAG_ActionLog_Styling_Global_T1);
+RTSOPEN_API UE_DECLARE_GAMEPLAY_TAG_EXTERN(TAG_ActionLog_Styling_Global_T2);
 
+// Specific tags
+RTSOPEN_API UE_DECLARE_GAMEPLAY_TAG_EXTERN(TAG_ActionLog_Styling_Entry_Default);
+RTSOPEN_API UE_DECLARE_GAMEPLAY_TAG_EXTERN(TAG_ActionLog_Styling_Entry_T0);
+RTSOPEN_API UE_DECLARE_GAMEPLAY_TAG_EXTERN(TAG_ActionLog_Styling_Entry_T1);
+RTSOPEN_API UE_DECLARE_GAMEPLAY_TAG_EXTERN(TAG_ActionLog_Styling_Entry_T2);
+
+RTSOPEN_API UE_DECLARE_GAMEPLAY_TAG_EXTERN(TAG_ActionLog_Styling_Timestamp_Default);
+RTSOPEN_API UE_DECLARE_GAMEPLAY_TAG_EXTERN(TAG_ActionLog_Styling_Timestamp_T0);
+RTSOPEN_API UE_DECLARE_GAMEPLAY_TAG_EXTERN(TAG_ActionLog_Styling_Timestamp_T1);
+RTSOPEN_API UE_DECLARE_GAMEPLAY_TAG_EXTERN(TAG_ActionLog_Styling_Timestamp_T2);
 
 USTRUCT(Blueprintable)
 struct FRTSOActionLogEvent
@@ -22,37 +36,56 @@ struct FRTSOActionLogEvent
 
 	explicit FRTSOActionLogEvent(
 		const FText& InEntryText)
-	: FRTSOActionLogEvent(TAG_ActionLog_Styling_T0, InEntryText) {} 	
+	: FRTSOActionLogEvent(TAG_ActionLog_Styling_Entry_Default, TAG_ActionLog_Styling_Timestamp_Default, InEntryText) {} 	
 	explicit FRTSOActionLogEvent(
 		const FString& InEntryString)
-	: FRTSOActionLogEvent(TAG_ActionLog_Styling_T0, InEntryString) {} 
+	: FRTSOActionLogEvent(TAG_ActionLog_Styling_Entry_Default, TAG_ActionLog_Styling_Timestamp_Default, InEntryString) {} 
 	
 	explicit FRTSOActionLogEvent(
-		FGameplayTag InStyleTag,
+		FGameplayTag InEntryStyleTag,
+		FGameplayTag InTimestampStyleTag,
 		const FText& InEntryText)
-	: FRTSOActionLogEvent(FDateTime::Now(), InStyleTag, InEntryText) {}	
+	: FRTSOActionLogEvent(FDateTime::Now(), InEntryStyleTag, InTimestampStyleTag, InEntryText) {}	
 	explicit FRTSOActionLogEvent(
-		FGameplayTag InStyleTag,
+		FGameplayTag InEntryStyleTag,
+		FGameplayTag InTimestampStyleTag,
 		const FString& InEntryString)
-	: FRTSOActionLogEvent(FDateTime::Now(),InStyleTag, InEntryString) {}
+	: FRTSOActionLogEvent(FDateTime::Now(),InEntryStyleTag, InTimestampStyleTag, InEntryString) {}
 	
 	explicit FRTSOActionLogEvent(
 		const FDateTime& InTimeStamp,
-		FGameplayTag InStyleTag,
+		FGameplayTag InEntryStyleTag,
+		FGameplayTag InTimestampStyleTag,
 		const FText& InEntryText)
-	: TimeStamp(InTimeStamp), StyleTag(InStyleTag), EntryText(InEntryText) {}
+	: TimeStamp(InTimeStamp), EntryStyleTag(InEntryStyleTag), TimestampStyleTag(InTimestampStyleTag), EntryText(InEntryText) {}
 	explicit FRTSOActionLogEvent(
 		const FDateTime& InTimeStamp,
-		FGameplayTag InStyleTag,
+		FGameplayTag InEntryStyleTag,
+		FGameplayTag InTimestampStyleTag,
 		const FString& InEntryString)
-	: TimeStamp(InTimeStamp), StyleTag(InStyleTag), EntryText(FText::FromString(InEntryString)) {}
+	: TimeStamp(InTimeStamp), EntryStyleTag(InEntryStyleTag), TimestampStyleTag(InTimestampStyleTag), EntryText(FText::FromString(InEntryString)) {}
 
+	FRTSOActionLogEvent& TimestampStyle(const FGameplayTag& InTimestampStyleTag)
+	{
+		TimestampStyleTag = InTimestampStyleTag;
+		return *this;
+	}
+
+	FRTSOActionLogEvent& EntryStyle(const FGameplayTag& InEntryStyleTag)
+	{
+		EntryStyleTag = InEntryStyleTag;
+		return *this;
+	}	
+	
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
 	int32 EntryIdx = INDEX_NONE;
 	FDateTime TimeStamp;
 	
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
-	FGameplayTag StyleTag = TAG_ActionLog_Styling_T0;
+	FGameplayTag EntryStyleTag = TAG_ActionLog_Styling_Entry_Default;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	FGameplayTag TimestampStyleTag = TAG_ActionLog_Styling_Timestamp_Default;	
+	
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
 	FText EntryText = FText{};
 };
@@ -77,6 +110,7 @@ public:
 
 	/** @brief  */
 	virtual void UpdateAddNewActionEvent(TSharedPtr<FRTSOActionLogEvent>);
+	static FSlateColor GetFontColour(const FGameplayTag& StyleTag);
 
 	/** @brief Displays the actual list item for each entry in ConversationStatesAsSharedArray, which in this case is the states in 'FText' */
 	TSharedRef<ITableRow> MakeListViewWidget_ActionItem(TSharedPtr<FRTSOActionLogEvent> InItem, const TSharedRef<STableViewBase>& OwnerTable) const;

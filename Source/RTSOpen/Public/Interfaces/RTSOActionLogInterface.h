@@ -13,23 +13,23 @@ struct FRTSOActionLogEvent;
 class URTSOActionLogUserWidget;
 
 
-USTRUCT()
-struct RTSOPEN_API FRTSActionLogStyleData : public FDataTableRowHandle
+USTRUCT(Blueprintable)
+struct RTSOPEN_API FRTSActionLogStyleData
 {
 	GENERATED_BODY()
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
 	FLinearColor BGColour = FLinearColor(0,0,0,0);
-
-	UPROPERTY(EditAnywhere, BlueprintReadWrite)
-	FSlateFontInfo TimestampFontInfo{};
 	
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
-	FSlateFontInfo EntryFontInfo{};
+	FLinearColor FontColour = FLinearColor(1,1,1,1);		
+	
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	FSlateFontInfo FontInfo{};
 };
 
-USTRUCT()
-struct RTSOPEN_API FRTSActionLogStyleCompound : public FDataTableRowHandle
+USTRUCT(Blueprintable)
+struct RTSOPEN_API FRTSActionLogStyleCompound : public FTableRowBase
 {
 	GENERATED_BODY()
 
@@ -41,7 +41,25 @@ struct RTSOPEN_API FRTSActionLogStyleCompound : public FDataTableRowHandle
 };
 
 UCLASS(Config = "Game", DefaultConfig)
-class RTSOPEN_API URTSActionLogSettings : public UGameUserSettings
+class RTSOPEN_API URTSActionLogUserSettings : public UGameUserSettings
+{
+public:
+	GENERATED_BODY()
+
+	/** @brief Build Contexts (categories) table soft objects */
+	UPROPERTY(Config, EditAnywhere, Category = "Action Log Subsystem", Meta = (RequiredAssetDataTags="RowStructure=/Script/RTSOpen.RTSActionLogStyleCompound"))
+	TArray<TSoftObjectPtr<UDataTable>> ActionLogStyleTables;
+
+	/** @brief Build Contexts (categories) table soft objects */
+	UPROPERTY(Config, EditAnywhere, Category = "Action Log Subsystem")
+	bool bShowActionLogTimestamps = true;
+
+	/** @brief Build Contexts (categories) table soft objects */
+	bool bHasBeenProcessed = false;		
+};
+
+UCLASS(Config = "Game", DefaultConfig)
+class RTSOPEN_API URTSActionLogDefaultDeveloperSettings : public UDeveloperSettings
 {
 public:
 	GENERATED_BODY()

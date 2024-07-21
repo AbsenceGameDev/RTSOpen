@@ -16,18 +16,45 @@ URTSActionLogSubsystem* URTSActionLogSubsystem::Get()
 	if (Self == nullptr || Self->IsValidLowLevelFast() == false)
 	{
 		Self = GEngine->GetEngineSubsystem<URTSActionLogSubsystem>();
-
-		Self->bShowTimestamps = GetDefault<URTSActionLogSettings>()->bShowActionLogTimestamps;
-		for (const TSoftObjectPtr<UDataTable>& StyleTable : GetDefault<URTSActionLogSettings>()->ActionLogStyleTables)
+		
+		URTSActionLogUserSettings* ActionLogUserSettings = GetMutableDefault<URTSActionLogUserSettings>();
+		if (ActionLogUserSettings->bHasBeenProcessed == false)
+		{
+			const URTSActionLogDefaultDeveloperSettings* ActionLogDeveloperSettings = GetDefault<URTSActionLogDefaultDeveloperSettings>();
+#if WITH_EDITOR			
+			ActionLogUserSettings->bShowActionLogTimestamps = ActionLogDeveloperSettings->bShowActionLogTimestamps;
+#endif
+		
+			if (ActionLogDeveloperSettings->ActionLogStyleTables.IsEmpty() == false)
+			{
+				ActionLogUserSettings->bHasBeenProcessed = true;
+				for (const TSoftObjectPtr<UDataTable>& StyleTableSoftObject : ActionLogDeveloperSettings->ActionLogStyleTables)
+				{
+					ActionLogUserSettings->ActionLogStyleTables.Emplace(StyleTableSoftObject);
+				}
+			}
+		}
+		Self->bShowTimestamps = ActionLogUserSettings->bShowActionLogTimestamps;
+		
+		for (const TSoftObjectPtr<UDataTable>& StyleTable : GetDefault<URTSActionLogUserSettings>()->ActionLogStyleTables)
 		{
 			TArray<FRTSActionLogStyleCompound*> LogStyleRows;
-			StyleTable.LoadSynchronous()->GetAllRows(TEXT(""), LogStyleRows);
+			UDataTable* LoadedTable = StyleTable.LoadSynchronous();
 
+			if (LoadedTable == nullptr)
+			{
+				UE_LOG(PDLog_MessageSystem, Error, TEXT("URTSActionLogSubsystem -- Failed to load LogStyle table from settings! (Null entry encountered)"))
+				continue;
+			}
+			
+			LoadedTable->GetAllRows(TEXT(""), LogStyleRows);
 			for (FRTSActionLogStyleCompound* StyleCompound : LogStyleRows)
 			{
+				if (StyleCompound == nullptr) { continue; }
 				Self->StyleDataMap.Emplace(StyleCompound->StyleID,StyleCompound->StyleData);
 			}
 		}
+		
 	}
 	
 	return Self;

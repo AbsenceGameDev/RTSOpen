@@ -1176,7 +1176,7 @@ void AGodHandPawn::PerformAction_Destroy(const TArray<uint8>& Payload)
 		const FGameplayTag& BuildingType = IPDInteractInterface::Execute_GetInstigatorTag(BuildableActionsWidget->CurrentWorldActor);
 		const int32 InstigatorID = IPDRTSBuilderInterface::Execute_GetBuilderID(GetController());
 
-		const FRTSOActionLogEvent NewActionEvent{
+		const FRTSOActionLogEvent NewActionEvent{TAG_ActionLog_Styling_Entry_T0, TAG_ActionLog_Styling_Timestamp_T0,
 			FString::Printf(TEXT("OwnerID(%i) -- Successfully destroying building(TODO{%i}) of type %s "),
 			PC->GetActorID(), INDEX_NONE, *BuildingType.GetTagName().ToString())}; 
 		URTSActionLogSubsystem::DispatchEvent(InstigatorID, NewActionEvent);		

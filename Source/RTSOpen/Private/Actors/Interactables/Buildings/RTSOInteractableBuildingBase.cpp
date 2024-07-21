@@ -74,7 +74,7 @@ void ARTSOInteractableBuildingBase::OnBuildSuccessful(AActor* InstigatorActor) c
 	{
 		const int32 InstigatorID = IPDRTSBuilderInterface::Execute_GetBuilderID(InstigatorActor);
 		
-		const FRTSOActionLogEvent NewActionEvent{
+		const FRTSOActionLogEvent NewActionEvent{TAG_ActionLog_Styling_Entry_T2, TAG_ActionLog_Styling_Timestamp_T2,
 			FString::Printf(TEXT("OwnerID(%i) -- Successfully built %s "), InstigatorID, *GetName())}; 
 		URTSActionLogSubsystem::DispatchEvent(InstigatorID, NewActionEvent);		
 	}
@@ -177,7 +177,7 @@ void ARTSOInteractableBuildingBase::Internal_ProgressGhostStage(const bool bForc
 					{
 						const int32 InstigatorID = IPDRTSBuilderInterface::Execute_GetBuilderID(GetOwner());
 						
-						const FRTSOActionLogEvent NewActionEvent{
+						const FRTSOActionLogEvent NewActionEvent{ TAG_ActionLog_Styling_Entry_T1, TAG_ActionLog_Styling_Timestamp_T1,
 							FString::Printf(TEXT("OwnerID(%i) -- Successfully Progressed Build to Stage %i,  of actor %s "),
 								InstigatorID, CurrentTransitionState.CurrentStageIdx, *GetName())};
 						URTSActionLogSubsystem::DispatchEvent(InstigatorID, NewActionEvent);		

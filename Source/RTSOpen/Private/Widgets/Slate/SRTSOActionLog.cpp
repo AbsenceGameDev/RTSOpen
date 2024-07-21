@@ -32,8 +32,22 @@
 
 #define LOCTEXT_NAMESPACE "SRTSOActionLog"
 
-UE_DEFINE_GAMEPLAY_TAG(TAG_ActionLog_Styling_T0, "ActionLog.Styling.T0");
+// Generic tags
+UE_DEFINE_GAMEPLAY_TAG(TAG_ActionLog_Styling_Global_Default, "ActionLog.Styling.Global");
+UE_DEFINE_GAMEPLAY_TAG(TAG_ActionLog_Styling_Global_T0, "ActionLog.Styling.Global.T0");
+UE_DEFINE_GAMEPLAY_TAG(TAG_ActionLog_Styling_Global_T1, "ActionLog.Styling.Global.T1");
+UE_DEFINE_GAMEPLAY_TAG(TAG_ActionLog_Styling_Global_T2, "ActionLog.Styling.Global.T2");
 
+// Specific tags
+UE_DEFINE_GAMEPLAY_TAG(TAG_ActionLog_Styling_Entry_Default, "ActionLog.Styling.Entry");
+UE_DEFINE_GAMEPLAY_TAG(TAG_ActionLog_Styling_Entry_T0, "ActionLog.Styling.Entry.T0");
+UE_DEFINE_GAMEPLAY_TAG(TAG_ActionLog_Styling_Entry_T1, "ActionLog.Styling.Entry.T1");
+UE_DEFINE_GAMEPLAY_TAG(TAG_ActionLog_Styling_Entry_T2, "ActionLog.Styling.Entry.T2");
+
+UE_DEFINE_GAMEPLAY_TAG(TAG_ActionLog_Styling_Timestamp_Default, "ActionLog.Styling.Timestamp");
+UE_DEFINE_GAMEPLAY_TAG(TAG_ActionLog_Styling_Timestamp_T0, "ActionLog.Styling.Timestamp.T0");
+UE_DEFINE_GAMEPLAY_TAG(TAG_ActionLog_Styling_Timestamp_T1, "ActionLog.Styling.Timestamp.T1");
+UE_DEFINE_GAMEPLAY_TAG(TAG_ActionLog_Styling_Timestamp_T2, "ActionLog.Styling.Timestamp.T2");
 
 typedef SNumericVectorInputBox<int32, UE::Math::TVector<int32>, 3> SNumericV3i;
 typedef SNumericVectorInputBox<double, FVector, 3> SNumericV3d;
@@ -199,7 +213,6 @@ void SRTSOActionLog::UpdateAddNewActionEvent(TSharedPtr<FRTSOActionLogEvent> InI
 	}
 
 	UpdateArray();
-	
 	if (ActualList.IsValid())
 	{
 		ActualList->SetItemsSource(&WorldActionsAsSharedArray);
@@ -207,6 +220,19 @@ void SRTSOActionLog::UpdateAddNewActionEvent(TSharedPtr<FRTSOActionLogEvent> InI
 	}
 }
 
+FSlateColor SRTSOActionLog::GetFontColour(const FGameplayTag& StyleTag)
+{
+	const URTSActionLogSubsystem* ActionLogSubsystem = URTSActionLogSubsystem::Get();
+	FSlateColor FontColour = FLinearColor{1,1,1,1};	
+	if (ActionLogSubsystem->StyleDataMap.Contains(StyleTag))
+	{
+		const FRTSActionLogStyleData& Style = ActionLogSubsystem->StyleDataMap.FindRef(StyleTag);
+		// SelectedTimestampColourBG = Style.BGColour;
+		FontColour = Style.FontColour;
+	}
+
+	return FontColour;
+}
 
 TSharedRef<ITableRow> SRTSOActionLog::MakeListViewWidget_ActionItem(
 	TSharedPtr<FRTSOActionLogEvent> InItem,
@@ -220,23 +246,29 @@ TSharedRef<ITableRow> SRTSOActionLog::MakeListViewWidget_ActionItem(
 	URTSActionLogSubsystem* ActionLogSubsystem = URTSActionLogSubsystem::Get();
 
 	FSlateFontInfo SelectedEntryFont = EntryFont;
-	FSlateFontInfo SelectedTimestampFont = TimestampFont;
+	FSlateColor SelectedEntryColourBG = FLinearColor{0,0,0,0};
 	
-	if (ActionLogSubsystem->StyleDataMap.Contains(ActionEvent.StyleTag))
+	FSlateFontInfo SelectedTimestampFont = TimestampFont;
+	FSlateColor SelectedTimestampColourBG = FLinearColor{0,0,0,0};	
+	if (ActionLogSubsystem->StyleDataMap.Contains(ActionEvent.EntryStyleTag))
 	{
-		const FRTSActionLogStyleData& Style = ActionLogSubsystem->StyleDataMap.FindRef(ActionEvent.StyleTag);
-		Style.BGColour;
-
-		SelectedEntryFont = Style.EntryFontInfo;
-		SelectedTimestampFont = Style.TimestampFontInfo;
+		const FRTSActionLogStyleData& Style = ActionLogSubsystem->StyleDataMap.FindRef(ActionEvent.EntryStyleTag);
+		SelectedEntryColourBG = Style.BGColour;
+		SelectedEntryFont = Style.FontInfo;
+	}
+	if (ActionLogSubsystem->StyleDataMap.Contains(ActionEvent.TimestampStyleTag))
+	{
+		const FRTSActionLogStyleData& Style = ActionLogSubsystem->StyleDataMap.FindRef(ActionEvent.TimestampStyleTag);
+		SelectedTimestampColourBG = Style.BGColour;
+		SelectedTimestampFont = Style.FontInfo;
 	}
 
-	//ActionEvent.TimeStamp.ToString(TEXT("%H.%M.%S"));
+	const auto GetEntryFontColour = [StyleTag = ActionEvent.EntryStyleTag]() -> FSlateColor { return GetFontColour(StyleTag); };
+	const auto GetTimestampFontColour = [StyleTag = ActionEvent.TimestampStyleTag]() -> FSlateColor { return GetFontColour(StyleTag); };	
 
-	const FText ActionText = LOCTEXT("ActionListTextEntryTitleLocKey", " - ACTION");
-	FText TimeText = FText::AsTime(ActionEvent.TimeStamp, EDateTimeStyle::Short);
-	const FText TimestampedActionText = FText::FromString(TimeText.ToString() + ActionText.ToString());
-
+	const FText ActionText = LOCTEXT("ActionListTextEntryTitleLocKey", " - DEFAULT_TIME");
+	const FText TimestampedActionText =
+		FText::Format(LOCTEXT("ActionListTextEntryTitleTimeFormat", " - TIME {0} -, "), FText::AsTime(ActionEvent.TimeStamp));
 	//
 	// Widget layout
 	SRTSOActionLog* MutableThis = const_cast<SRTSOActionLog*>(this);
@@ -255,10 +287,16 @@ TSharedRef<ITableRow> SRTSOActionLog::MakeListViewWidget_ActionItem(
 				+ SHorizontalBox::Slot()
 				.MaxWidth(50)
 				[
-					SNew(STextBlock)
-					.Text(ActionLogSubsystem->bShowTimestamps ? TimestampedActionText : ActionText)
-					.Font(SelectedTimestampFont)
-					.MinDesiredWidth(50)
+					SNew(SButton)
+					.IsEnabled(false)
+					.ButtonColorAndOpacity(SelectedTimestampColourBG)
+					[
+						SNew(STextBlock)
+						.Text(ActionLogSubsystem->bShowTimestamps ? TimestampedActionText : ActionText)
+						.ColorAndOpacity_Lambda(GetTimestampFontColour)
+						.Font(SelectedTimestampFont)
+						.MinDesiredWidth(50)
+					]
 				]
 				+ SHorizontalBox::Slot()
 				.MaxWidth(5)
@@ -270,10 +308,16 @@ TSharedRef<ITableRow> SRTSOActionLog::MakeListViewWidget_ActionItem(
 				+ SHorizontalBox::Slot()
 				.AutoWidth()
 				[
-					SNew(STextBlock)
-					.Clipping(EWidgetClipping::ClipToBoundsWithoutIntersecting)
-					.Text(ActionEvent.EntryText)
-					.Font(SelectedEntryFont)
+					SNew(SButton)
+					.IsEnabled(false)
+					.ButtonColorAndOpacity(SelectedEntryColourBG)
+					[
+						SNew(STextBlock)
+						.Clipping(EWidgetClipping::ClipToBoundsWithoutIntersecting)
+						.ColorAndOpacity_Lambda(GetEntryFontColour)
+						.Text(ActionEvent.EntryText)
+						.Font(SelectedEntryFont)
+					]					
 				]
 			]
 		];
