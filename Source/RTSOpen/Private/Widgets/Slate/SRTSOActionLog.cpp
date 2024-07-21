@@ -268,7 +268,7 @@ TSharedRef<ITableRow> SRTSOActionLog::MakeListViewWidget_ActionItem(
 
 	const FText ActionText = LOCTEXT("ActionListTextEntryTitleLocKey", " - DEFAULT_TIME");
 	const FText TimestampedActionText =
-		FText::Format(LOCTEXT("ActionListTextEntryTitleTimeFormat", " - TIME {0} -, "), FText::AsTime(ActionEvent.TimeStamp));
+		FText::Format(LOCTEXT("ActionListTextEntryTitleTimeFormat", " {0} - "), FText::AsTime(ActionEvent.TimeStamp));
 	//
 	// Widget layout
 	SRTSOActionLog* MutableThis = const_cast<SRTSOActionLog*>(this);
@@ -285,9 +285,11 @@ TSharedRef<ITableRow> SRTSOActionLog::MakeListViewWidget_ActionItem(
 			[
 				SNew(SHorizontalBox)
 				+ SHorizontalBox::Slot()
-				.MaxWidth(50)
+				.FillWidth(1)
+				.MaxWidth(160)
 				[
 					SNew(SButton)
+					.HAlign(HAlign_Fill)
 					.IsEnabled(false)
 					.ButtonColorAndOpacity(SelectedTimestampColourBG)
 					[
@@ -295,7 +297,7 @@ TSharedRef<ITableRow> SRTSOActionLog::MakeListViewWidget_ActionItem(
 						.Text(ActionLogSubsystem->bShowTimestamps ? TimestampedActionText : ActionText)
 						.ColorAndOpacity_Lambda(GetTimestampFontColour)
 						.Font(SelectedTimestampFont)
-						.MinDesiredWidth(50)
+						.MinDesiredWidth(160)
 					]
 				]
 				+ SHorizontalBox::Slot()

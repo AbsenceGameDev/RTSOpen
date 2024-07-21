@@ -60,6 +60,7 @@ URTSActionLogSubsystem* URTSActionLogSubsystem::Get()
 	return Self;
 }
 
+#define LOCTEXT_NAMESPACE "SRTSOActionLog"
 void URTSActionLogSubsystem::DispatchEventInner(int32 WidgetID, const FRTSOActionLogEvent& NewActionEvent)
 {
 	const TSharedRef<FRTSOActionLogEvent> ActionEventRef = MakeShared<FRTSOActionLogEvent>(NewActionEvent);
@@ -70,16 +71,23 @@ void URTSActionLogSubsystem::DispatchEventInner(int32 WidgetID, const FRTSOActio
 		return;
 	}
 	const URTSOActionLogUserWidget* TargetWidget = *TargetMap.Find(WidgetID);
+
+	
+	// Fade based on distance
+	const FText TimestampedActionText =
+		FText::Format(LOCTEXT("ActionListTextEntryTitleTimeFormat", " - TIME {0} -, "), FText::AsTime(NewActionEvent.TimeStamp));
+	
 	
 	if (TargetWidget == nullptr || TargetWidget->IsValidLowLevelFast() == false || TargetWidget->InnerActionLog == nullptr || TargetWidget->InnerActionLog->IsValidLowLevelFast() == false)
 	{
-		UE_LOG(PDLog_MessageSystem, Error, TEXT("======== URTSActionLogSubsystem::DispatchFailed =============="))
+		UE_LOG(PDLog_MessageSystem, Verbose, TEXT("======== URTSActionLogSubsystem::DispatchFailed - %s =============="), *TimestampedActionText.ToString())
 		return;
 	}
 	
-	UE_LOG(PDLog_MessageSystem, Warning, TEXT("======== URTSActionLogSubsystem::DispatchEvent ============== %s"), *ActionEventRef->EntryText.ToString())
+	UE_LOG(PDLog_MessageSystem, Verbose, TEXT("======== URTSActionLogSubsystem::DispatchEvent - %s ============== %s"), *TimestampedActionText.ToString(), *ActionEventRef->EntryText.ToString())
 	TargetWidget->InnerActionLog->UpdateAddNewActionEvent(ActionEventRef.ToSharedPtr());	
 }
+#undef  LOCTEXT_NAMESPACE // "SRTSOActionLog"
 
 void URTSActionLogSubsystem::LinkWidget(int32 WidgetID, const URTSOActionLogUserWidget* TargetWidget)
 {
