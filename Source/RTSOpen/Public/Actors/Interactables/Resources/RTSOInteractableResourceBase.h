@@ -8,6 +8,19 @@
 #include "Interfaces/RTSOConversationInterface.h"
 #include "RTSOInteractableResourceBase.generated.h"
 
+USTRUCT(Blueprintable)
+struct FRTSOResourceBehaviourSettings : public FTableRowBase
+{
+	GENERATED_BODY()
+
+	/** @brief Availability settings, does it have infinite or limited amounts? */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	ERTSResourceAvailability OverrideAvailability = PD::Interactable::Behaviour::Availability::EUndefined;
+	/** @brief Requirement settings, do we always allow trade or do we need to have the minimum amount available before allowing a trade? */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	ERTSResourceRequirement OverrideRequirements = PD::Interactable::Behaviour::Requirements::EUndefined;	
+};
+
 class UMassEntitySubsystem;
 /**
  * @brief An actor with a job tag tied to it along with rewards and potential mission progress, meant to be used for interactable resources/items
@@ -26,7 +39,7 @@ public:
 	virtual void BeginPlay() override;
 	/** @brief Ticks usage the cooldown. @todo move into a progression/stat system*/
 	virtual void Tick(float DeltaTime) override;
-
+	
 	/** @brief Overridden but solely calls super. Reserved for later use */
 	virtual void AddTagToCaller_Implementation(AActor* Caller, const FGameplayTag& NewTag) override;
 	/** @brief Overridden but solely calls super. Reserved for later use */
@@ -56,7 +69,7 @@ public:
 	virtual FGameplayTagContainer GetGenericTagContainer_Implementation() const override;
 
 	/** @brief Base class just returns the harvest-time. could be extended to return modified or different values if needed */	
-	virtual double GetInteractionTime_Implementation() const override { return InteractionTime; };
+	virtual double GetInteractionTime_Implementation() const override { return GetInteractionSettings().InteractionTimeInSeconds; };
 	
 	/** @brief Checks if we have infinite inventory, via the override settings or falls back to global settings */
 	UFUNCTION()
@@ -66,38 +79,25 @@ public:
 	virtual bool CanEditChange(const FProperty* InProperty) const override;
 #endif // WITH_EDITOR
 
-private:
-	
-	/** @brief @todo source from datatable!!! */
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Meta = (AllowPrivateAccess="true"))
-	TMap<FGameplayTag, FGameplayTagContainer> MissionProgressionTagsGrantedUponSuccessfulInteraction{};
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Meta = (RequiredAssetDataTags="RowStructure=/Script/RTSOpen.RTSOMissionProgressionTagSets"))
+	TMap<FGameplayTag, FDataTableRowHandle> OnSuccessfulInteraction_GrantedProgressionTagSets;
+	TMap<FGameplayTag, FRTSOMissionProgressionTagSets> ProgressionTagSetsToGrant{};
 
-	/** @brief @todo source from datatable!!! */
+private:
+	/** @brief @note Anything above index 0 is reserved and not used as of yet. */
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Meta = (AllowPrivateAccess="true"))
 	TArray<FGameplayTagContainer> MissionProgressionSelectorTags{};
 	
 	/** @brief What job is this resource tied to, default value is set to TAG_AI_Job_GatherResource in this classes ctor */
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Meta = (AllowPrivateAccess="true"))
 	FGameplayTag JobTag{};
-
-	/** @brief How much time does it take to interact with this resource. defaults to instant interaction */	
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Meta = (AllowPrivateAccess="true"))
-	double InteractionTime = 0.0;	
-
-	/** @brief Time (in seconds) the interact cooldown persísts after successfully interacting with the object */		
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Meta = (AllowPrivateAccess="true"))
-	double RefreshInterval = 20.0;
+	
 	/** @brief Tick accumulator */
 	double RefreshTickAcc = 0.0;
-
-	/** @brief Availability settings, does it have infinite or limited amounts?
-	 * @todo Move these overrides to a datatable*/
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Meta = (AllowPrivateAccess="true"))
-	ERTSResourceAvailability OverrideAvailability = PD::Interactable::Behaviour::Availability::EUndefined;
-	/** @brief Requirement settings, do we always allow trade or do we need to have the minimum amount available before allowing a trade?
-	 * @todo Move these overrides to a datatable */
-	UPROPERTY(Config, EditAnywhere, Category = "Interactable Resources Developer Settings")
-	ERTSResourceRequirement OverrideRequirements = PD::Interactable::Behaviour::Requirements::EUndefined;
+	
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Meta = (AllowPrivateAccess="true", RowType="/Script/RTSOpen.RTSOResourceBehaviourSettings"))
+	FDataTableRowHandle ResourceBehaviourSettings;
+	FRTSOResourceBehaviourSettings CachedBehaviourSettings;
 	
 	/** @brief The items archetype that defines an interaction with this resource. */	
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Meta = (AllowPrivateAccess="true", RowType="/Script/PDInventory.PDItemDefaultDatum"))

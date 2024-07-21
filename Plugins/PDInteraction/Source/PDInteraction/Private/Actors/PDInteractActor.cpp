@@ -43,13 +43,15 @@ void APDInteractActor::BeginPlay()
 	ResizeCollisionBounds();
 
 	IPDInteractInterface::Execute_RegisterWorldInteractable(this, GetWorld(), this);
+	IPDInteractInterface::Execute_RefetchInteractionSettings(this, InteractionSettingsHandle);
+	
 	check(bHasBeenRegisteredWithCurrentWorld)
 }
 
 void APDInteractActor::BeginDestroy()
 {
 	Super::BeginDestroy();
-	IPDInteractInterface::Execute_RegisterWorldInteractable(this, GetWorld(), this);
+	IPDInteractInterface::Execute_DeregisterWorldInteractable(this, GetWorld(), this);
 }
 
 void APDInteractActor::Tick(float DeltaTime)
@@ -82,6 +84,11 @@ const FPDInteractMessage& APDInteractActor::GetInteractionMessage()
 	OutMessage.ActorName = ActorMessage.ActorName;
 	OutMessage.GameAction = ActorMessage.GameAction;
 	return OutMessage;
+}
+
+const FPDInteractionSettings& APDInteractActor::GetInteractionSettings() const
+{
+	return IPDInteractInterface::GetInteractionSettings();
 }
 
 

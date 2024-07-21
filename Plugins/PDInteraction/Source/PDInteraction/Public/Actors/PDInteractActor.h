@@ -27,7 +27,9 @@ class UBoxComponent;
  * - Resizes collision bounds
  */
 UCLASS()
-class PDINTERACTION_API APDInteractActor : public AActor, public IPDInteractInterface
+class PDINTERACTION_API APDInteractActor
+	: public AActor
+	, public IPDInteractInterface
 {
 	GENERATED_BODY()
 
@@ -49,7 +51,10 @@ public:
 	UFUNCTION(BlueprintCallable)
 	virtual const FPDInteractMessage& GetInteractionMessage() override;
 
-	virtual double GetInteractionTime_Implementation() const override { return InteractDuration; };
+	UFUNCTION(BlueprintCallable)
+	virtual const FPDInteractionSettings& GetInteractionSettings() const override;
+	
+	virtual double GetInteractionTime_Implementation() const override { return GetInteractionSettings().InteractionTimeInSeconds; };
 protected:
 	/** @brief Function that resizes the collision bounds based on the property 'UniformCollisionPadding' */
 	UFUNCTION() 
@@ -82,10 +87,10 @@ public:
 	/** @brief Value that controls how much we want to control ur padding when sizing the collision bounds  */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Interaction|Actors")
 	double UniformCollisionPadding = UNREALUNITS_PERMETRE * 0.4;
-
-	/** @brief Value that controls how much we want to control ur padding when sizing the collision bounds  */
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Interaction|Actors")
-	double InteractDuration = 0.0;
+	
+	/** @brief Handle to the interaction settings */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Meta = (RowType="/Script/PDInteraction.PDInteractionSettings"))
+	FDataTableRowHandle InteractionSettingsHandle;
 };
 
 /**

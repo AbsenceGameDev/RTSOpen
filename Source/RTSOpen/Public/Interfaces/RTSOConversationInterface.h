@@ -136,6 +136,16 @@ public:
 };
 
 
+USTRUCT(Blueprintable)
+struct FRTSOMissionProgressionTagSets : public FTableRowBase
+{
+	GENERATED_BODY()
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	FGameplayTagContainer ProgressionTagSet;
+	
+};
+
 /** @brief BOILERPLATE */
 UINTERFACE() class URTSOMissionProgressor : public UInterface { GENERATED_BODY() };
 
@@ -216,14 +226,13 @@ public:
 		}
 
 		IRTSOConversationInterface* CallerInterface = Cast<IRTSOConversationInterface>(Caller);
-		
-		return MissionProgressionTagsToGive.FindOrAdd(SelectorTag);
+		return MissionProgressionTagsToGive.FindOrAdd(SelectorTag).ProgressionTagSet;
 	} /**< @ingroup MissionProgressorInterface_SelectorTagToTagContainer */
 	
 public:
 	/** @brief Data interface, actual data is hidden completely form the engine but accessible in code
 	 * - indirectly accessible in engine via the interface functions base implementation*/
-	TMap<FGameplayTag, FGameplayTagContainer> MissionProgressionTagsToGive{};
+	TMap<FGameplayTag, FRTSOMissionProgressionTagSets> MissionProgressionTagsToGive{};
 };
 
 

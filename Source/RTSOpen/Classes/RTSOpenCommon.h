@@ -126,7 +126,7 @@ struct FRTSOConversationMetaProgressionDatum : public FTableRowBase
 };
 
 
-/** @brief Conversation meta progression wrapper, @note this is nasty @todo actually plan deisng for this after having the inital prototypes finished. */
+/** @brief Conversation meta progression wrapper, @note this is nasty @todo actually plan design for this after having the initial prototypes finished. */
 USTRUCT(Blueprintable)
 struct FRTSOConversationMetaProgressionListWrapper
 {
@@ -191,8 +191,7 @@ struct FRTSSavedConversationActorData
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Data|SaveGame|Unit")
 	TSoftClassPtr<ARTSOInteractableConversationActor> ActorClassType{};
 
-	/** @brief Progression map, keyed by user (ID) and valued by progression level for the conversation.
-	 * @todo I have made a mistake here as we need to know exactly which conversation the progression level relates to, not only the progression level and the userID */
+	/** @brief Progression map, keyed by user (ID) and valued by progression level for the conversation.*/
 	UPROPERTY(EditAnywhere, BlueprintReadOnly)
 	TMap<int32/*ActorID*/, FRTSOConversationMetaProgressionListWrapper/*ProgressionLevel*/> ProgressionPerPlayer; 
 
@@ -278,7 +277,7 @@ struct FRTSSavedWorldUnits
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Data|SaveGame|Unit")
 	int32 SelectionIndex = INDEX_NONE;
 
-	/** @brief Tag related to this entity, @todo use to load entity config from table  */
+	/** @brief Tag related to this entity, @done use to load entity config from table  */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Data|SaveGame|Unit")
 	FGameplayTag EntityUnitTag; //
 

@@ -109,14 +109,13 @@ private:
 	void RefreshStaleSettings_Main();
 
 public:
-	/** @brief @todo source from datatable!!! @note Will mostly not be needed, but some planned missions will need this flexibility */
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Meta = (AllowPrivateAccess="true"))
-	TArray<FGameplayTagContainer> MissionProgressionTagsGrantedPerGhostStage{};
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Meta = (RequiredAssetDataTags="RowStructure=/Script/RTSOpen.RTSOMissionProgressionTagSets"))
+	TArray<FDataTableRowHandle> PerGhostStage_ProgressionTagSetsHandle;
+	TArray<FRTSOMissionProgressionTagSets> PerGhostStage_ProgressionTags{};
 
-	/** @brief @todo source from datatable!!! */
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Meta = (AllowPrivateAccess="true"))
-	FGameplayTagContainer MissionProgressionTagsGrantedUponSuccessfulBuild{};
-	
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Meta = (RowType="/Script/RTSOpen.RTSOMissionProgressionTagSets"))
+	FDataTableRowHandle OnSuccessfulBuild_ProgressionTagSetsHandle;
+	FRTSOMissionProgressionTagSets OnSuccessfulBuild_ProgressionTags;
 
 	/** @brief Collision settings for complete buildable */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)

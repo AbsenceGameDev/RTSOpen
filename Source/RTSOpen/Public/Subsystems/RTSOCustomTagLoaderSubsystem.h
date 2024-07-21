@@ -18,7 +18,7 @@ class URTSOTagSettings : public UGameUserSettings
 
 public:
 	/** @brief Any custom tags we want to inject as native tags and be able to use in a modified game or game editing tool (such as a save editor) */
-	UPROPERTY(Config, EditAnywhere, Category = "Inventory Subsystem", Meta = (RequiredAssetDataTags="RowStructure=/Script/PDInventory.PDItemDefaultDatum"))
+	UPROPERTY(Config, EditAnywhere, Category = "User Tags")
 	TArray<FString> UserInjectedTags;
 };
 

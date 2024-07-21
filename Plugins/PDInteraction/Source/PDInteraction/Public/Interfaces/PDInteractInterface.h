@@ -62,15 +62,28 @@ public:
 	void RegisterWorldInteractable(UWorld* SelectedWorld, AActor* SelectedInteractable);
 	virtual void RegisterWorldInteractable_Implementation(UWorld* SelectedWorld, AActor* SelectedInteractable);
 
+	/** @brief Registers the world interactable via the 'UPDInteractSubsystem' via it's 'IPDWorldManagementInterface' functions */
+	UFUNCTION(BlueprintNativeEvent, BlueprintCallable)
+	void DeregisterWorldInteractable(UWorld* SelectedWorld, AActor* SelectedInteractable);
+	virtual void DeregisterWorldInteractable_Implementation(UWorld* SelectedWorld, AActor* SelectedInteractable);
+	
 	/** @brief Base-implementation contains an example interaction message function. */
 	virtual const FPDInteractMessage& GetInteractionMessage(); 
 	// { return GetInteractionMessage_Implementation(); };
-	// virtual const FPDInteractMessage& GetInteractionMessage_Implementation();	
+	// virtual const FPDInteractMessage& GetInteractionMessage_Implementation();
+	
+	/** @brief Re-fetches the interaction settings, then returns the fetched result  */
+	UFUNCTION(BlueprintNativeEvent, BlueprintCallable, Meta = (RowType="/Script/PDInteraction.PDInteractionSettings"))
+	void RefetchInteractionSettings( FDataTableRowHandle InHandle); // UPARAM(Meta = (RowType="/Script/PDInteraction.PDInteractionSettings"))
+	void RefetchInteractionSettings_Implementation(FDataTableRowHandle InHandle);
+
+	/** @brief Re-fetches the interaction settings, then returns the fetched result  */
+	virtual const FPDInteractionSettings& GetInteractionSettings() const;
 	
 	/** @brief  Pure virtual, implement when sub-classing */
 	inline virtual int32 GenerateInstanceID() 
 	{
-		for (; LatestInstanceIDs.Contains(++LatestInstanceID) ; ) {} // Slow the more consectutive instance IDs we have
+		for (; LatestInstanceIDs.Contains(++LatestInstanceID) ; ) {} // Slow the more consecutive instance IDs we have
 		return InstanceID = LatestInstanceID;
 	}; 
 	inline virtual void SetInstanceID(int32 NewID) 
@@ -90,10 +103,12 @@ public:
 	/** @brief The cached return message given from 'GetInteractionMessage()' */
 	FPDInteractMessage OutMessage;
 
+	FPDInteractionSettings* InteractionSettings{};
 	double Usability = 1.0;
 	int32 InstanceID = INDEX_NONE;
 	inline static int32 LatestInstanceID = INDEX_NONE;
 	inline static TSet<int32> LatestInstanceIDs{};
+
 };
 
 /**

@@ -59,6 +59,17 @@ void IPDInteractInterface::RegisterWorldInteractable_Implementation(UWorld* Sele
 	bHasBeenRegisteredWithCurrentWorld = true;
 }
 
+void IPDInteractInterface::DeregisterWorldInteractable_Implementation(UWorld* SelectedWorld, AActor* SelectedInteractable)
+{
+	check(SelectedWorld != nullptr)
+	check(SelectedInteractable != nullptr)
+	check(Cast<IPDInteractInterface>(SelectedInteractable) != nullptr)
+	check(GEngine != nullptr)
+	check(UPDInteractSubsystem::Get() != nullptr)
+	
+	IPDWorldManagementInterface::Execute_DeregisterWorldInteractable(UPDInteractSubsystem::Get(), SelectedWorld, SelectedInteractable);
+}
+
 const FPDInteractMessage& IPDInteractInterface::GetInteractionMessage()
 {
 	// Example, override with table entries possibly?
@@ -68,6 +79,18 @@ const FPDInteractMessage& IPDInteractInterface::GetInteractionMessage()
 
 	return OutMessage;
 }
+
+const FPDInteractionSettings& IPDInteractInterface::GetInteractionSettings() const
+{
+	static FPDInteractionSettings Dummy{}; 
+	return InteractionSettings != nullptr ? *InteractionSettings : Dummy;
+}
+
+void IPDInteractInterface::RefetchInteractionSettings_Implementation(FDataTableRowHandle InHandle)
+{
+	InteractionSettings = InHandle.GetRow<FPDInteractionSettings>("IPDInteractInterface::RefetchInteractionSettings_Implementation");
+}
+
 
 /**
 Business Source License 1.1

@@ -206,17 +206,22 @@ struct FPDInteractionParamsWithCustomHandling : public FPDInteractionParams
  * @brief This structure is meant to be placed in a interactable datatable or in an interactable base-actor
  */
 USTRUCT(Blueprintable, BlueprintType) 
-struct FPDInteractionSettings
+struct FPDInteractionSettings : public FTableRowBase
 {
 	GENERATED_BODY()
 
 	FPDInteractionSettings() = default;
 	explicit FPDInteractionSettings(double _InteractionTimeInSeconds) : InteractionTimeInSeconds(_InteractionTimeInSeconds){}
 	
-	/** @brief Represents the full time, in seconds, it takes to complete the interaction */
+	/** @brief Represents the full interaction time 
+	 * @details How much time does it take to interact with this resource. defaults to instant interaction */	
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Interaction|Settings")
 	double InteractionTimeInSeconds = 0.0;
 
+	/** @brief Time (in seconds) the interact cooldown persísts after successfully interacting with the object */		
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Meta = (AllowPrivateAccess="true"))
+	double RefreshInterval = 20.0;
+	
 	// @todo might need more settings
 };
 
@@ -243,6 +248,7 @@ public:
 	double TickInterval  = 0.0;
 	
 };
+
 
 /**
  * @brief This structure encapsulated some settings related to interaction tracing

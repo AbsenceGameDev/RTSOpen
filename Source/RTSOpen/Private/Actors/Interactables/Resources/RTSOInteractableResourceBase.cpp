@@ -21,14 +21,24 @@ void ARTSOInteractableResourceBase::BeginPlay()
 {
 	Super::BeginPlay();
 
+	FRTSOResourceBehaviourSettings* BehaviourSettings = ResourceBehaviourSettings.GetRow<FRTSOResourceBehaviourSettings>("ARTSOInteractableResourceBase::BeginPlay");
+	CachedBehaviourSettings = BehaviourSettings != nullptr ? *BehaviourSettings : FRTSOResourceBehaviourSettings{};
+	
+	// Initial copy so the rest can be offloaded to the interface
+	ProgressionTagSetsToGrant.Empty();
+	for (const TTuple<FGameplayTag, FDataTableRowHandle>& TagSetHandle : OnSuccessfulInteraction_GrantedProgressionTagSets)
+	{
+		FRTSOMissionProgressionTagSets* ProgressionTags = TagSetHandle.Value.GetRow<FRTSOMissionProgressionTagSets>("ARTSOInteractableResourceBase::BeginPlay");
+		
+		ProgressionTagSetsToGrant.Emplace(TagSetHandle.Key) = ProgressionTags != nullptr ? *ProgressionTags : FRTSOMissionProgressionTagSets{};
+	}
+	MissionProgressionTagsToGive = ProgressionTagSetsToGrant;
 
+	
 	for (const TPair<FGameplayTag, int32 /*count*/>& ResourceReward : TradeArchetype)
 	{
 		InventoryFragment.Handler.AddItem(ResourceReward.Key, ResourceReward.Value);
 	}
-
-	// Initial copy so the rest can be offloaded to the interface
-	MissionProgressionTagsToGive = MissionProgressionTagsGrantedUponSuccessfulInteraction;
 
 	EntitySubsystem = GetWorld()->GetSubsystem<UMassEntitySubsystem>();
 	EntManager = &EntitySubsystem->GetEntityManager();
@@ -101,7 +111,7 @@ void ARTSOInteractableResourceBase::ProcessTradeIfLimitedInventory(
 	UPDInventorySubsystem* InvSubsystem,
 	bool& bMustWaitForRegeneration) const
 {
-	ERTSResourceRequirement SelectedRequirement = OverrideRequirements;
+	ERTSResourceRequirement SelectedRequirement = CachedBehaviourSettings.OverrideRequirements;
 	if (SelectedRequirement == PD::Interactable::Behaviour::Requirements::EUndefined)
 	{
 		SelectedRequirement = GetDefault<URTSInteractableResourceSettings>()->DefaultRequirements; 
@@ -193,7 +203,7 @@ void ARTSOInteractableResourceBase::OnInteract_Implementation(
 	}
 	
 	InteractResult = EPDInteractResult::INTERACT_FAIL;
-	if (RefreshTickAcc < RefreshInterval) { return ; }
+	if (RefreshTickAcc < GetInteractionSettings().RefreshInterval) { return ; }
 	(float&)RefreshTickAcc = 0.0;
 
 	// has instigator inv component?
@@ -241,7 +251,7 @@ FGameplayTagContainer ARTSOInteractableResourceBase::GetGenericTagContainer_Impl
 
 bool ARTSOInteractableResourceBase::HasInfiniteInventory() const
 {
-	switch (OverrideAvailability)
+	switch (CachedBehaviourSettings.OverrideAvailability)
 	{
 	case ERTSResourceAvailability::EInfinitelyAvailable:
 		return true;

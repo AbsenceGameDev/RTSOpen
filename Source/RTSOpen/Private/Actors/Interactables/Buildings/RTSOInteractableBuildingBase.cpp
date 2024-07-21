@@ -48,6 +48,15 @@ void ARTSOInteractableBuildingBase::BeginPlay()
 {
 	Super::BeginPlay();
 	
+	for (const FDataTableRowHandle& GhostProgressionHandle : PerGhostStage_ProgressionTagSetsHandle)
+	{
+		FRTSOMissionProgressionTagSets* TagSet = GhostProgressionHandle.GetRow<FRTSOMissionProgressionTagSets>("ARTSOInteractableBuildingBase::BeginPlay");
+		PerGhostStage_ProgressionTags.Emplace(TagSet != nullptr ? *TagSet : FRTSOMissionProgressionTagSets{});
+	}
+
+	FRTSOMissionProgressionTagSets* TagSet = OnSuccessfulBuild_ProgressionTagSetsHandle.GetRow<FRTSOMissionProgressionTagSets>("ARTSOInteractableBuildingBase::BeginPlay");
+	OnSuccessfulBuild_ProgressionTags = TagSet != nullptr ? *TagSet : FRTSOMissionProgressionTagSets{};	
+	
 	RefreshStaleSettings<true>(); // Refresh ghost
 	RefreshStaleSettings<false>(); // Refresh main
 }
@@ -65,7 +74,7 @@ void ARTSOInteractableBuildingBase::AddTagToCaller_Implementation(AActor* Caller
 
 FGameplayTagContainer ARTSOInteractableBuildingBase::SelectorTagToTagContainer_Implementation(AActor* Caller, const FGameplayTag& SelectorTag)
 {
-	return MissionProgressionTagsGrantedUponSuccessfulBuild;
+	return OnSuccessfulBuild_ProgressionTags.ProgressionTagSet;
 }
 
 void ARTSOInteractableBuildingBase::OnBuildSuccessful(AActor* InstigatorActor) const
@@ -94,12 +103,12 @@ FGameplayTagContainer ARTSOInteractableBuildingBase::GetGenericTagContainer_Impl
 	FGameplayTagContainer GeneratedTags;
 	GeneratedTags.AddTag(JobTag);
 
-	for (const FGameplayTagContainer& GhostStageTags : MissionProgressionTagsGrantedPerGhostStage)
+	for (const FRTSOMissionProgressionTagSets& GhostStageTags : PerGhostStage_ProgressionTags)
 	{
-		GeneratedTags.AppendTags(GhostStageTags);
+		GeneratedTags.AppendTags(GhostStageTags.ProgressionTagSet);
 	}
 	
-	GeneratedTags.AppendTags(MissionProgressionTagsGrantedUponSuccessfulBuild);
+	GeneratedTags.AppendTags(OnSuccessfulBuild_ProgressionTags.ProgressionTagSet);
 	return GeneratedTags;
 }
 
