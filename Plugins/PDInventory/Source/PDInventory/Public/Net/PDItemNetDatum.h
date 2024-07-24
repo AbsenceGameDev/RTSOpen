@@ -94,7 +94,7 @@ struct FPDItemNetDatum : public FFastArraySerializerItem
 	/** @brief Export data in the form of a 'FPDLightItemDatum' */
 	FPDLightItemDatum ExportLight() const { return FPDLightItemDatum{ItemTag, TotalItemCount}; }
 
-	// I'll avoid a full compairson for now, @todo Full comparison
+	// I'll avoid a full comparison for now, @todo Full comparison
 	/** @brief Partial equality comparison */
 	bool operator==(const FPDItemNetDatum& Other) const { return this->ItemTag == Other.ItemTag && this->TotalItemCount == Other.TotalItemCount; }
 	/** @brief Partial inequality comparison */
