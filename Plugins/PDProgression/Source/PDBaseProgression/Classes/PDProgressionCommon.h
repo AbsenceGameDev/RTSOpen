@@ -7,6 +7,9 @@
 
 #include "PDProgressionCommon.generated.h"
 
+DECLARE_LOG_CATEGORY_CLASS(PDLog_Progression, Log, All);
+
+
 /*
  *
 - Stats Overview 
@@ -70,6 +73,105 @@ struct PDBASEPROGRESSION_API FPDStatsValue
 
 /* @brief @todo */
 USTRUCT(Blueprintable)
+struct PDBASEPROGRESSION_API FPDStatsCrossBehaviourRules
+{
+	GENERATED_BODY()
+	
+	/* @brief This is the ruleset for this cross behaviour*/
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	FGameplayTag RuleSetTag;
+
+	/* @brief This is the level curve multiplier for this cross behaviour */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	int32 CrossBehaviourBaseValue = 0;	
+	
+	/* @brief This is the level curve multiplier for this cross behaviour */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	UCurveFloat* RuleSetLevelCurveMultiplier;	
+};
+
+/* @brief @todo */
+USTRUCT(Blueprintable)
+struct FPDSkillTokenBase
+{
+	GENERATED_BODY()
+
+	/* @brief @todo */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	FGameplayTag TokenType{};	
+
+	/* @brief @todo */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	int32 TokenValue = 0;
+
+	bool operator==(const FGameplayTag& OtherTokenType) const
+	{
+		return this->TokenType == OtherTokenType;
+	}
+	bool operator!=(const FGameplayTag& OtherTokenType) const
+	{
+		return (*this == OtherTokenType) == false;
+	}	
+	
+	bool operator==(const FPDSkillTokenBase& Other) const
+	{
+		return this->TokenType == Other.TokenType;
+	}
+	bool operator!=(const FPDSkillTokenBase& Other) const
+	{
+		return (*this == Other) == false;
+	}	
+};
+
+/* @brief @todo */
+USTRUCT(Blueprintable)
+struct FPDSkillTokenRules : public FPDSkillTokenBase
+{
+	GENERATED_BODY()
+	
+	/* @brief @todo */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	int32 MinTokenLevel = 0;	
+};
+
+/* @brief @todo */
+USTRUCT(Blueprintable)
+struct FPDSkillBranch : public FTableRowBase
+{
+	GENERATED_BODY()
+	/* @brief Unlock requirements:
+	 * 1. How many tokens to unlock.
+	 * 2. Of which type (token category).
+	 * 3. What is the minimum token level needed to be able unlock this skill
+	 *     ^ This is in practice spent points in the given token category this belongs to */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	FPDSkillTokenRules TokenRules{};	
+	
+	/* @brief @todo */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Meta=(RowType="/Script/PDBaseProgression.PDStatsRow"))
+	FDataTableRowHandle BranchRootSkill;
+
+	/* @brief @todo */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Meta=(RequiredAssetDataTags="RowStructure=/Script/PDBaseProgression.PDSkillBranch"))
+	TArray<FDataTableRowHandle> BranchPaths;	
+};
+
+USTRUCT(Blueprintable)
+struct FPDSkillTree : public FTableRowBase
+{
+	GENERATED_BODY()
+	
+	/* @brief Tag of the skill tree, used for comparison and hashing purposes */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	FGameplayTag Tag;
+
+	/* @brief Key: Skill_Category, Value: Category_Root_Skill */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	TMap<FGameplayTag, FPDSkillBranch> Skills;
+};
+
+/* @brief @todo */
+USTRUCT(Blueprintable)
 struct PDBASEPROGRESSION_API FPDStatsRow : public FTableRowBase
 {
 	GENERATED_BODY()
@@ -79,7 +181,7 @@ struct PDBASEPROGRESSION_API FPDStatsRow : public FTableRowBase
 	FGameplayTag ProgressionTag;
 	/* @brief @todo */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
-	TMap<FGameplayTag /*StatTag*/, FGameplayTag /*RuleSetTag*/> RulesAffectedBy;
+	TMap<FGameplayTag /*StatTag*/, FPDStatsCrossBehaviourRules> RulesAffectedBy;
 	/* @brief @todo */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
 	EPDProgressionBehaviourType BehaviourType;
@@ -95,15 +197,22 @@ struct PDBASEPROGRESSION_API FPDStatsRow : public FTableRowBase
 	/* @brief @todo */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
 	UCurveFloat* ExperienceCurve;
+	/* @brief @todo */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	TMap<FGameplayTag, UCurveFloat*> TokensToGrantPerLevel;	
 };
 
+/* @brief @todo */
 USTRUCT(Blueprintable)
 struct PDBASEPROGRESSION_API FPDStatMapping
 {
 	GENERATED_BODY()
 	
+	/* @brief @todo */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
 	int32 Index = 0;
+
+	/* @brief @todo */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
 	FGameplayTag Tag;
 	
@@ -113,27 +222,13 @@ struct PDBASEPROGRESSION_API FPDStatMapping
 };
 
 
-/** @brief Hash the ping data, really just pass through the world-actors UID*/
+/** @brief Hash the stat mapping data, really just pass hash the tag, the index is by our design more unreliable and would */
 inline uint32 GetTypeHash(const FPDStatMapping& StatMapping)
 {
 	uint32 Hash = 0;
-	Hash = HashCombine(Hash, GetTypeHash(StatMapping.Index));
 	Hash = HashCombine(Hash, GetTypeHash(StatMapping.Tag));
 	return Hash;
 }
-
-
-USTRUCT(Blueprintable)
-struct FPDProgressionSkillTree : public FTableRowBase
-{
-	GENERATED_BODY()
-	
-	UPROPERTY(EditAnywhere, BlueprintReadWrite)
-	FGameplayTag Tag;
-	// - Skilltrees
-	// 	- Skeleton impl. Reserved. Com back shortly 
-};
-
 
 USTRUCT(Blueprintable)
 struct FPDProgressionClassRow : public FTableRowBase
@@ -161,26 +256,6 @@ struct FPDProgressionClassRow : public FTableRowBase
 	TSet<FGameplayTag> GrantedTrees;
 };
 
-/* @brief @todo */
-UCLASS(Blueprintable)
-class PDBASEPROGRESSION_API UPDStatHandler : public UObject
-{
-	GENERATED_BODY()
-
-public:
-	/* @brief @todo */
-	// UFUNCTION(BlueprintNativeEvent)
-	// void LinkStatList(const FPDStatList& StatListToLinkTo);
-	void LinkStatList_Implementation(const FPDStatList& StatListToLinkTo);
-
-	/* @brief @todo */
-	// UFUNCTION(BlueprintNativeEvent)
-	// void DefaultFillStatList(const FGameplayTag& ClassTag);
-	virtual void DefaultFillStatList_Implementation(const FGameplayTag& ClassTag);
-	
-	/* @brief @todo */
-	const FPDStatList* LinkedStatList = nullptr;
-};
 
 
 /**

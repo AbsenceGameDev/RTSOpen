@@ -2,6 +2,28 @@
 
 #include "Net/PDProgressionNetDatum.h"
 
+void FPDStatNetDatum::PreReplicatedRemove(const FPDStatList& OwningList)
+{
+	check(OwningList.OwningObject != nullptr)
+	// OwningList.OwningObject->OnDatumUpdated(this, EPDStatNetOperation::REMOVE);
+}
+
+void FPDStatNetDatum::PostReplicatedAdd(const FPDStatList& OwningList)
+{
+	check(OwningList.OwningObject != nullptr)
+	// OwningList.OwningObject->OnDatumUpdated(this, EPDStatNetOperation::ADDNEW);
+	// OwningList.ItemToIndexMapping;
+	// ReplicationID;
+}
+
+void FPDStatNetDatum::PostReplicatedChange(const FPDStatList& OwningList)
+{
+	check(OwningList.OwningObject != nullptr)
+	// OwningList.OwningObject->OnDatumUpdated(this, EPDStatNetOperation::CHANGE);
+
+}
+
+
 /* @brief @todo */
 bool FPDStatList::NetSerialize(FNetDeltaSerializeInfo& DeltaParams)
 {
@@ -19,13 +41,6 @@ void FPDStatList::AddStat(const FGameplayTag& StatTag, int32 StatExperience, int
 	
 	FPDStatNetDatum Item = Items.Emplace_GetRef(ConstructedNetDatum);
 	MarkItemDirty(Item);
-
-
-	// Maps the index to the tag
-	FPDStatMapping ConstructedStatMapping;
-	ConstructedStatMapping.Index = Items.Num() - 1;
-	ConstructedStatMapping.Tag = StatTag;
-	StatMappings.Emplace(ConstructedStatMapping);
 }
 
 void FPDStatList::AddActiveEffect(const FGameplayTag& StatTag, int32 StatExperience, int32 StatLevel)

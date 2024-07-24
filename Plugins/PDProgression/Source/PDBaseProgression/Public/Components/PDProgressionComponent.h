@@ -3,6 +3,64 @@
 #pragma once
 
 #include "CoreMinimal.h"
+#include "Net/PDProgressionNetDatum.h"
+#include "PDProgressionComponent.generated.h"
+
+struct FPDStatMapping;
+struct FGameplayTag;
+
+struct FDerivedDataCacheResourceStatKeyFuncs : BaseKeyFuncs<FPDStatMapping, FGameplayTag, false>
+{
+	static const FGameplayTag& GetSetKey(const FPDStatMapping& Element) { return Element.Tag; }
+	static bool Matches(const FGameplayTag& A, const FGameplayTag& B) { return A == B; }
+	static uint32 GetKeyHash(const FGameplayTag& Key) { return GetTypeHash(Key); }
+};
+
+
+/* @brief Progtession system network manager */
+UCLASS(Blueprintable)
+class PDBASEPROGRESSION_API UPDStatHandler : public UActorComponent
+{
+	GENERATED_BODY()
+
+public:
+	UFUNCTION(BlueprintNativeEvent)
+	void IncreaseStatLevel(const FGameplayTag& StatTag, int32 LevelDelta = 1);
+
+	UFUNCTION(BlueprintNativeEvent)
+	void IncreaseStatExperience(const FGameplayTag& StatTag, int32 ExperienceDelta);	
+
+	UFUNCTION(BlueprintNativeEvent)
+	void AttemptUnlockSkill(const FGameplayTag& SkillTag);
+
+	UFUNCTION(BlueprintNativeEvent)
+	void AttemptLockSkill(const FGameplayTag& SkillTag);	
+	
+	/* @brief Used to fill the  */
+	UFUNCTION(BlueprintNativeEvent)
+	void SetClass(const FGameplayTag& ClassTag);
+
+	void ModifySkill(const FGameplayTag& SkillTag, bool bUnlock);
+	bool HasCompleteAuthority() const;
+	void GrantTokens(const FGameplayTag& StatTag, int32 LevelDelta, int32 CurrentLevel);
+	/* @brief Boiler plate for replication setup */
+	virtual void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override;
+	
+	/* @brief @todo */
+	UPROPERTY(Replicated)
+	FPDStatList StatList{};
+
+	UPROPERTY(Replicated)
+	TArray<FPDSkillTokenBase> Tokens; // Will arguably never be above 100 entries in practice, very likely even below 10 in many games
+
+	UPROPERTY(Replicated)
+	TArray<FPDSkillTokenBase> TokensSpentTotal; // Will arguably never be above 100 entries in practice, very likely even below 10 in many games
+	
+	/* @brief @todo */
+	TSet<FPDStatMapping, FDerivedDataCacheResourceStatKeyFuncs> LocalStatMappings;
+};
+
+
 
 
 /**

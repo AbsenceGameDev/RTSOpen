@@ -2,6 +2,318 @@
 
 #include "Components/PDProgressionComponent.h"
 
+#include "Net/PDProgressionNetDatum.h"
+
+#include "Net/Core/PushModel/PushModel.h"
+#include "Net/UnrealNetwork.h"
+#include "Subsystems/PDProgressionSubsystem.h"
+
+
+void UPDStatHandler::ModifySkill(const FGameplayTag& SkillTag, const bool bUnlock)
+{
+	static UPDStatSubsystem* StatSubsystem = UPDStatSubsystem::Get();
+	FPDSkillTree* Tree = StatSubsystem->GetTreeTypeDataPtrFromSkill(SkillTag);
+	if (Tree == nullptr)
+	{
+		UE_LOG(PDLog_Progression, Error,
+			TEXT("UPDStatHandler::ModifySkill "
+				"-- Failed finding a tree that matched with skill(%s) "), *SkillTag.GetTagName().ToString());
+		return;
+	}
+
+	const auto ProcessFoundSkill =
+		[&](const FGameplayTag& InSkillTag)
+		{
+			const FPDSkillBranch& SkillBranch = Tree->Skills.FindRef(InSkillTag);
+			
+			const int32 MinimumTokensSpent = SkillBranch.TokenRules.MinTokenLevel;
+			const int32 SkillCost = SkillBranch.TokenRules.TokenValue;
+
+			const FGameplayTag& TokenCategory = SkillBranch.TokenRules.TokenType;
+			FPDSkillTokenBase* CategoryTokenValues = Tokens.FindByKey(TokenCategory);
+			FPDSkillTokenBase* TotalTokensSpentOnCategory = TokensSpentTotal.FindByKey(TokenCategory);
+		
+			const bool bMetCategoryProgressionRequirements = TotalTokensSpentOnCategory->TokenValue >= MinimumTokensSpent;
+			const bool bCanAffordSkill = CategoryTokenValues->TokenValue >= SkillCost;
+
+			if (bCanAffordSkill && bMetCategoryProgressionRequirements)
+			{
+				// actually unlock skill here, set it's stat level to 1, should have been 0 before
+				StatList.AddStat(InSkillTag, 0, bUnlock);
+
+				CategoryTokenValues->TokenValue -= SkillCost;      // Remove from user
+				TotalTokensSpentOnCategory->TokenValue += SkillCost; // Add to tally
+			}
+		};
+	
+
+	// First check if it is in the top-level
+	if (Tree->Skills.Contains(SkillTag))
+	{
+		MARK_PROPERTY_DIRTY_FROM_NAME(UPDStatHandler, StatList, this);		
+		ProcessFoundSkill(SkillTag);
+		return;
+	}
+	
+	static FPDSkillBranch DummyBranch;
+	
+	TFunction<void(const TArray<FDataTableRowHandle>&)> BranchMapper;
+
+	// TArray<FPDSkillBranch> BranchPaths. Recursively map all skills in a tree back to the tree, for fast access downstream
+	BranchMapper= [&, SkillTag, TreeRowTag = Tree->Tag](const TArray<FDataTableRowHandle>& BranchPaths)
+	{
+		for (const FDataTableRowHandle& SkillBranchHandle : BranchPaths)
+		{
+			FPDSkillBranch& SkillBranch = SkillBranchHandle.IsNull() ? DummyBranch : *SkillBranchHandle.GetRow<FPDSkillBranch>("");
+			
+			const FPDStatsRow* InnerBranchStat = SkillBranch.BranchRootSkill.GetRow<FPDStatsRow>("");
+			if (InnerBranchStat == nullptr) { continue; }
+
+			// found the skill
+			if (SkillTag == InnerBranchStat->ProgressionTag)
+			{
+				MARK_PROPERTY_DIRTY_FROM_NAME(UPDStatHandler, StatList, this);		
+				ProcessFoundSkill(SkillTag);
+				
+				break;
+			}
+			
+			BranchMapper(SkillBranch.BranchPaths);
+		}
+	};
+	
+	// Otherwise, Find the skill inside the tree
+	for (const TTuple<FGameplayTag, FPDSkillBranch>& SkillBranchTuple : Tree->Skills)
+	{
+		// Root
+		BranchMapper(SkillBranchTuple.Value.BranchPaths);
+	}		
+}
+
+void UPDStatHandler::AttemptUnlockSkill_Implementation(const FGameplayTag& SkillTag)
+{
+	ModifySkill(SkillTag, true);
+}
+
+
+void UPDStatHandler::AttemptLockSkill_Implementation(const FGameplayTag& SkillTag)
+{
+	ModifySkill(SkillTag, false);
+}
+
+bool UPDStatHandler::HasCompleteAuthority() const
+{
+	switch (GetOwnerRole())
+	{
+	case ROLE_None:
+	case ROLE_SimulatedProxy:
+	case ROLE_AutonomousProxy:
+	case ROLE_MAX:
+		return false;
+	case ROLE_Authority:
+		break;
+	}
+
+	switch (GetOwner()->GetNetMode())
+	{
+	case NM_MAX:
+	case NM_Client:
+		return false;
+	case NM_Standalone:
+	case NM_DedicatedServer:
+	case NM_ListenServer:
+		break;
+	}
+	return true;
+}
+
+void UPDStatHandler::GrantTokens(const FGameplayTag& StatTag, int32 LevelDelta, const int32 CurrentLevel)
+{
+	static const UPDStatSubsystem* StatSubsystem = UPDStatSubsystem::Get();
+	
+	MARK_PROPERTY_DIRTY_FROM_NAME(UPDStatHandler, Tokens, this)
+	const FPDStatsRow& StatDefaultValue = StatSubsystem->GetStatTypeData(StatTag);
+	for (const TTuple<FGameplayTag, UCurveFloat*>& TokenCategoryCurveTuple
+	     : StatDefaultValue.TokensToGrantPerLevel)
+	{
+		if (TokenCategoryCurveTuple.Value == nullptr)
+		{
+			UE_LOG(PDLog_Progression, Error,
+			       TEXT("UPDStatHandler::GrantTokens "
+				       "-- Iterating the token list, entry(%s) has not valid curve applied ot it"), *TokenCategoryCurveTuple.Key.GetTagName().ToString());
+			continue;
+		}
+
+		int32 AllNewlyGrantedCategoryTokens = 0;
+		int32 LevelDeltaCopy = LevelDelta;
+
+		for (; LevelDeltaCopy > 0; LevelDeltaCopy--)
+		{
+			const float TokensAsFloats = TokenCategoryCurveTuple.Value->GetFloatValue(CurrentLevel - LevelDeltaCopy);
+			AllNewlyGrantedCategoryTokens += TokensAsFloats + 0.5f;
+		}
+
+		FPDSkillTokenBase* CategoryTokenValues = Tokens.FindByKey(TokenCategoryCurveTuple.Key);
+		if (CategoryTokenValues == nullptr)
+		{
+			FPDSkillTokenBase TokenBase = {TokenCategoryCurveTuple.Key, AllNewlyGrantedCategoryTokens};
+			Tokens.Add(TokenBase);
+			continue;
+		}
+
+		CategoryTokenValues->TokenValue += AllNewlyGrantedCategoryTokens;
+	}
+}
+
+void UPDStatHandler::IncreaseStatLevel_Implementation(const FGameplayTag& StatTag, int32 LevelDelta)
+{
+	if (LocalStatMappings.Contains(StatTag) == false)
+	{
+		// @todo Set up developer settings to allow this to fail (as happens now) or to just add the missing stat upon this call
+		UE_LOG(PDLog_Progression, Warning,
+			TEXT("UPDStatHandler::IncreaseStatLevel_Implementation "
+			"-- Owners statlist did not contain the requested stat(%s)"
+			" @todo Set up developer settings to allow this to fail (as happens now) or to just add the missing stat upon this call "), *StatTag.GetTagName().ToString())
+		return;
+	}
+	if (HasCompleteAuthority() == false) { return; }
+
+
+	// @DONE Map all cross-behaviours in the subsystems latent initialization
+	// @DONE cont.  And make use of it to resolve crossbehaviours
+
+	const UPDStatSubsystem* StatSubsystem = UPDStatSubsystem::Get();
+	const int32 StatIndex = LocalStatMappings.Find(StatTag)->Index;
+	FPDStatNetDatum& StatNetDatum = StatList.Items[StatIndex];
+
+	MARK_PROPERTY_DIRTY_FROM_NAME(UPDStatHandler, StatList, this)
+	const int32 CurrentLevel = (StatNetDatum.CurrentLevel += LevelDelta);
+
+	// Granting Tokens
+	GrantTokens(StatTag, LevelDelta, CurrentLevel);
+	
+	const TMap<FGameplayTag, TArray<FGameplayTag>>& StatCrossBehaviourMap = StatSubsystem->StatCrossBehaviourMap;
+	if (StatCrossBehaviourMap.Contains(StatTag) == false) { return; }
+
+	// The stat we just leveled up is now calling all stat it is an effector to,
+	// and updates their effect on said stat
+	TArray<FGameplayTag> UpdateTargets = StatCrossBehaviourMap.FindRef(StatTag);
+	for (const FGameplayTag& Target : UpdateTargets)
+	{
+		const FPDStatsRow& TargetStat = StatSubsystem->GetStatTypeData(Target);
+
+		// @note The calling stat will always exist in the target stats 'RulesAffectedBy',
+		// as this is what has decided the cross behaviour was mapped in the first place
+		const FPDStatsCrossBehaviourRules& CrossBehaviourRules = TargetStat.RulesAffectedBy.FindRef(StatTag);
+		if (CrossBehaviourRules.RuleSetLevelCurveMultiplier == nullptr)
+		{
+			continue;
+		}
+
+		const float OldCrossBehaviourMultiplier =
+			CrossBehaviourRules.RuleSetLevelCurveMultiplier->GetFloatValue(CurrentLevel - LevelDelta);
+		const float CrossBehaviourMultiplier =
+			CrossBehaviourRules.RuleSetLevelCurveMultiplier->GetFloatValue(CurrentLevel);
+
+		const float OldCrossBehaviourResult = CrossBehaviourRules.CrossBehaviourBaseValue * OldCrossBehaviourMultiplier;
+		const float CrossBehaviourResult = CrossBehaviourRules.CrossBehaviourBaseValue * CrossBehaviourMultiplier;
+
+		// Remove old result
+		StatNetDatum.CrossBehaviourValue -= OldCrossBehaviourResult; 
+		// Add New result
+		StatNetDatum.CrossBehaviourValue += CrossBehaviourResult; 
+	}
+}
+
+void UPDStatHandler::IncreaseStatExperience_Implementation(const FGameplayTag& StatTag, int32 ExperienceDelta)
+{
+	if (LocalStatMappings.Contains(StatTag) == false)
+	{
+		// @todo Set up developer settings to allow this to fail (as happens now) or to just add the missing stat upon this call
+		UE_LOG(PDLog_Progression, Warning,
+			TEXT("UPDStatHandler::IncreaseStatExperience_Implementation "
+			"-- Owners statlist did not contain the requested stat(%s)"
+			" @todo Set up developer settings to allow this to fail (as happens now) or to just add the missing stat upon this call "), *StatTag.GetTagName().ToString())
+		return;
+	}
+	if (HasCompleteAuthority() == false) { return; }
+
+	static UPDStatSubsystem* StatSubsystem = UPDStatSubsystem::Get();
+	const FPDStatsRow& StatDefaults = StatSubsystem->GetStatTypeData(StatTag);
+
+	if (StatDefaults.ExperienceCurve == nullptr)
+	{
+		// @todo Set up developer settings to allow this to apply some basic scaling operation if we hit this case, curves are math in the end
+		UE_LOG(PDLog_Progression, Error,
+			TEXT("UPDStatHandler::IncreaseStatExperience_Implementation "
+			"-- Ensure your stat((%s)) has an experience curve applied to it"
+			" @todo Set up developer settings to allow this to apply some basic scaling operation if we hit this case, curves are math in the end"), *StatTag.GetTagName().ToString())
+		return;
+	}
+	
+	MARK_PROPERTY_DIRTY_FROM_NAME(UPDStatHandler, StatList, this)
+	const int32 StatIndex = LocalStatMappings.Find(StatTag)->Index;
+	FPDStatNetDatum& StatNetDatum = StatList.Items[StatIndex];
+
+	// Check if we may level up
+	const int32 ExpLimitForCurrentLevel =
+		StatDefaults.ExperienceCurve->GetFloatValue(StatNetDatum.CurrentLevel);
+	StatNetDatum.CurrentExperience += ExperienceDelta;	
+	if (StatNetDatum.CurrentExperience >= ExpLimitForCurrentLevel)
+	{
+		IncreaseStatLevel(StatTag);
+	}
+}
+
+void UPDStatHandler::SetClass_Implementation(const FGameplayTag& ClassTag)
+{
+	MARK_PROPERTY_DIRTY_FROM_NAME(UPDStatHandler, StatList, this)
+	FPDProgressionClassRow* ClassRow = UPDStatSubsystem::Get()->GetClassTypeDataPtr(ClassTag);
+				
+	FPDStatMapping ConstructedStatMapping;
+	for (const FGameplayTag& StatTag : ClassRow->DefaultStats)
+	{
+		StatList.AddStat(StatTag, 0, 0);
+
+		// Maps the index to the tag
+		ConstructedStatMapping.Index = StatList.Items.Num() - 1;
+		ConstructedStatMapping.Tag = StatTag;		
+		LocalStatMappings.Emplace(ConstructedStatMapping);
+	}
+
+	for (const FGameplayTag& ActiveEffectTag : ClassRow->DefaultActiveEffects)
+	{
+		StatList.AddActiveEffect(ActiveEffectTag, 0, 0);
+
+		// Maps the index to the tag
+		ConstructedStatMapping.Index = StatList.Items.Num() - 1;
+		ConstructedStatMapping.Tag = ActiveEffectTag;		
+		LocalStatMappings.Emplace(ConstructedStatMapping);		
+	}
+
+	for (const FGameplayTag& PassiveEffectTag : ClassRow->DefaultPassiveEffects)
+	{
+		StatList.AddPassiveEffect(PassiveEffectTag, 0, 0);
+
+		// Maps the index to the tag
+		ConstructedStatMapping.Index = StatList.Items.Num() - 1;
+		ConstructedStatMapping.Tag = PassiveEffectTag;		
+		LocalStatMappings.Emplace(ConstructedStatMapping);			
+	}	
+}
+
+void UPDStatHandler::GetLifetimeReplicatedProps(
+	TArray<class FLifetimeProperty>& OutLifetimeProps) const
+{
+	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
+	FDoRepLifetimeParams Parameters{};
+	Parameters.bIsPushBased = true;
+
+	DOREPLIFETIME_WITH_PARAMS_FAST(UPDStatHandler, StatList, Parameters);	
+	DOREPLIFETIME_WITH_PARAMS_FAST(UPDStatHandler, Tokens, Parameters);	
+	DOREPLIFETIME_WITH_PARAMS_FAST(UPDStatHandler, TokensSpentTotal, Parameters);	
+}
+
 
 /**
 Business Source License 1.1

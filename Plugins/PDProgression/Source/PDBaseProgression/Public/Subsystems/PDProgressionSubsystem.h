@@ -25,7 +25,7 @@ public:
 	TArray<TSoftObjectPtr<UDataTable>> ProgressionClassTables;
 
 	/* @brief @todo */
-	UPROPERTY(Config, EditAnywhere, Category = "ProgressionTables", Meta = (RequiredAssetDataTags="RowStructure=/Script/PDBaseProgression.PDProgressionSkillTree"))
+	UPROPERTY(Config, EditAnywhere, Category = "ProgressionTables", Meta = (RequiredAssetDataTags="RowStructure=/Script/PDBaseProgression.PDSkillTree"))
 	TArray<TSoftObjectPtr<UDataTable>> ProgressionTreeTables;	
 };
 
@@ -40,12 +40,17 @@ public:
 
 	/* @brief @todo */
 	void LatentInitialization();
+	
+	/* @brief @todo */
+	UFUNCTION(BlueprintCallable)
+	FPDSkillTree& GetTreeTypeData(const FGameplayTag& RequestedTree) const;
+	FPDSkillTree* GetTreeTypeDataPtr(const FGameplayTag& RequestedTree) const;
 
 	/* @brief @todo */
 	UFUNCTION(BlueprintCallable)
-	FPDProgressionSkillTree& GetTreeTypeData(const FGameplayTag& RequestedTree) const;
-	FPDProgressionSkillTree* GetTreeTypeDataPtr(const FGameplayTag& RequestedTree) const;
-
+	FPDSkillTree& GetTreeTypeDataFromSkill(const FGameplayTag& RequestedSkill) const;
+	FPDSkillTree* GetTreeTypeDataPtrFromSkill(const FGameplayTag& RequestedSkill) const;
+	
 	/* @brief @todo */
 	UFUNCTION(BlueprintCallable)
 	FPDProgressionClassRow& GetClassTypeData(const FGameplayTag& RequestedClass) const;
@@ -57,12 +62,19 @@ public:
 	FPDStatsRow* GetStatTypeDataPtr(const FGameplayTag& RequestedStat) const;
 	
 	/* @brief @todo */
-	TMap<FGameplayTag, FPDProgressionSkillTree*> TreeTypes;
+	TMap<FGameplayTag, FPDSkillTree*> TreeTypes;
+
+	/* @brief @todo */
+	TMap<FGameplayTag, FGameplayTag> SkillToTreeMapping;
+	
 	/* @brief @todo */
 	TMap<FGameplayTag, FPDProgressionClassRow*> ClassTypes;
 	/* @brief @todo */
 	TMap<FGameplayTag, FPDStatsRow*> DefaultStats;
 
+	/* @brief @todo */
+	TMap<FGameplayTag, TArray<FGameplayTag>> StatCrossBehaviourMap;
+	
 	
 };
 		

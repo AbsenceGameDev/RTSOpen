@@ -45,6 +45,13 @@ void UPDStatSubsystem::LatentInitialization()
 		{
 			if (StatRow == nullptr) { continue; }
 			DefaultStats.Emplace(StatRow->ProgressionTag, StatRow);
+
+			for (const TTuple<FGameplayTag, FPDStatsCrossBehaviourRules>& Rule
+				: StatRow->RulesAffectedBy)
+			{
+				StatCrossBehaviourMap.FindOrAdd(Rule.Key).AddUnique(StatRow->ProgressionTag);
+			}
+			
 		}		
 	}
 	for (const TSoftObjectPtr<UDataTable>&  Elem
@@ -53,29 +60,81 @@ void UPDStatSubsystem::LatentInitialization()
 		const UDataTable* Table = Elem.LoadSynchronous();
 		if (Table == nullptr) { continue; }
 		
-		TArray<FPDProgressionSkillTree*> TreeRows;
+		TArray<FPDSkillTree*> TreeRows;
 		Table->GetAllRows("", TreeRows);
-		for (FPDProgressionSkillTree* TreeRow : TreeRows)
+		for (FPDSkillTree* TreeRow : TreeRows)
 		{
 			if (TreeRow == nullptr) { continue; }
 			TreeTypes.Emplace(TreeRow->Tag, TreeRow);
+
+			for (const TTuple<FGameplayTag, FPDSkillBranch>& SkillBranchTuple
+				: TreeRow->Skills)
+			{
+				// Root
+				SkillToTreeMapping.Emplace(SkillBranchTuple.Key, TreeRow->Tag);
+				
+
+				const FPDStatsRow* BranchStat = SkillBranchTuple.Value.BranchRootSkill.GetRow<FPDStatsRow>("");
+				if (BranchStat == nullptr) { continue; }
+				SkillToTreeMapping.Emplace(BranchStat->ProgressionTag, TreeRow->Tag);
+
+				static const FPDSkillBranch DummySkillBranch;
+
+				
+				// TArray<FPDSkillBranch> BranchPaths. Recursively map all skills in a tree back to the tree, for fast access downstream
+				TFunction<void(const TArray<FDataTableRowHandle>&)> BranchMapper;
+				BranchMapper = [&, TreeRowTag = TreeRow->Tag](const TArray<FDataTableRowHandle>& BranchPaths)
+				{
+					for (const FDataTableRowHandle& SkillBranchHandle : BranchPaths)
+					{
+						const FPDSkillBranch& SkillBranch = SkillBranchHandle.IsNull() ? DummySkillBranch : *SkillBranchHandle.GetRow<FPDSkillBranch>("");
+						const FPDStatsRow* InnerBranchStat = SkillBranch.BranchRootSkill.GetRow<FPDStatsRow>("");
+						if (InnerBranchStat == nullptr) { continue; }
+						SkillToTreeMapping.Emplace(InnerBranchStat->ProgressionTag, TreeRowTag);
+
+						BranchMapper(SkillBranch.BranchPaths);
+					}
+				};
+
+				BranchMapper(SkillBranchTuple.Value.BranchPaths);
+				
+			}
+
 		}		
 	}
 }
 
-FPDProgressionSkillTree& UPDStatSubsystem::GetTreeTypeData(const FGameplayTag& RequestedTree) const
+FPDSkillTree& UPDStatSubsystem::GetTreeTypeData(const FGameplayTag& RequestedTree) const
 {
-	static FPDProgressionSkillTree Dummy;
+	static FPDSkillTree Dummy;
 	return TreeTypes.Contains(RequestedTree)
 		? **TreeTypes.Find(RequestedTree)
 		: Dummy;
 }
 
-FPDProgressionSkillTree* UPDStatSubsystem::GetTreeTypeDataPtr(const FGameplayTag& RequestedTree) const
+FPDSkillTree* UPDStatSubsystem::GetTreeTypeDataPtr(const FGameplayTag& RequestedTree) const
 {
 	return TreeTypes.Contains(RequestedTree)
 		? *TreeTypes.Find(RequestedTree)
 		: nullptr;
+}
+
+FPDSkillTree& UPDStatSubsystem::GetTreeTypeDataFromSkill(const FGameplayTag& RequestedSkill) const
+{
+	static FPDSkillTree Dummy; 
+	const FGameplayTag* SkillTreeTagPtr = SkillToTreeMapping.Find(RequestedSkill);
+	FPDSkillTree* const* SkillTree = SkillTreeTagPtr != nullptr ? TreeTypes.Find(*SkillTreeTagPtr) : nullptr;
+	
+	return SkillTree == nullptr ? Dummy : **SkillTree;
+}
+
+FPDSkillTree* UPDStatSubsystem::GetTreeTypeDataPtrFromSkill(const FGameplayTag& RequestedSkill) const
+{
+	static FPDSkillTree Dummy; 
+	const FGameplayTag* SkillTreeTagPtr = SkillToTreeMapping.Find(RequestedSkill);
+	FPDSkillTree* const* SkillTree = SkillTreeTagPtr != nullptr ? TreeTypes.Find(*SkillTreeTagPtr) : nullptr;
+	
+	return SkillTree == nullptr ? nullptr : *SkillTree;
 }
 
 FPDProgressionClassRow& UPDStatSubsystem::GetClassTypeData(const FGameplayTag& RequestedClass) const

@@ -17,12 +17,30 @@ struct PDBASEPROGRESSION_API FPDStatNetDatum : public FFastArraySerializerItem
 	/* @brief @todo */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
 	FGameplayTag ProgressionTag;
+
+	/* @brief @todo */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	int32 CrossBehaviourValue = 0;	
+	
 	/* @brief @todo */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
 	int32 CurrentLevel = 0;
 	/* @brief @todo */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
 	int32 CurrentExperience;
+	
+	/** @brief This is called on the client when they receive a replicated update.
+	 * Calls into the owner 'OnDatumUpdate(this, EPDStatNetOperation::REMOVE)'
+	 * @note checks with an assertion if OwningList.OwningObject is valid */
+	void PreReplicatedRemove(const FPDStatList& OwningList);
+	/** @brief This is called on the client when they receive a replicated update.
+	 * Calls into the owner 'OnDatumUpdate(this, EPDStatNetOperation::ADDNEW)'
+	 * @note checks with an assertion if OwningList.OwningObject is valid */
+	void PostReplicatedAdd(const FPDStatList& OwningList);
+	/** @brief This is called on the client when they receive a replicated update.
+	 * Calls into the owner 'OnDatumUpdate(this, EPDStatNetOperation::CHANGE)'
+	 * @note checks with an assertion if OwningList.OwningObject is valid */
+	void PostReplicatedChange(const FPDStatList& OwningList);
 };
 
 /* @brief @todo */
@@ -43,8 +61,6 @@ struct PDBASEPROGRESSION_API FPDStatList : public FFastArraySerializer
 	/* @brief @todo */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
 	TArray<FPDStatNetDatum> Items;
-
-	TSet<FPDStatMapping> StatMappings;
 };
 
 template<>

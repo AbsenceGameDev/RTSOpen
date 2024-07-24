@@ -2,38 +2,6 @@
 
 #include "PDProgressionCommon.h"
 
-#include "Net/PDProgressionNetDatum.h"
-#include "Subsystems/PDProgressionSubsystem.h"
-
-
-void UPDStatHandler::LinkStatList_Implementation(const FPDStatList& StatListToLinkTo)
-{
-	LinkedStatList = &StatListToLinkTo;
-}
-
-void UPDStatHandler::DefaultFillStatList_Implementation(const FGameplayTag& ClassTag)
-{
-	FPDProgressionClassRow* ClassRow = UPDStatSubsystem::Get()->GetClassTypeDataPtr(ClassTag);
-	FPDStatList* MutableStatList = const_cast<FPDStatList*>(LinkedStatList); 
-	if (ClassRow == nullptr || MutableStatList == nullptr) { return; }
-
-				
-	for (const FGameplayTag& StatTag : ClassRow->DefaultStats)
-	{
-		MutableStatList->AddStat(StatTag, 0, 0);
-	}
-
-	for (const FGameplayTag& ActiveEffectTag : ClassRow->DefaultActiveEffects)
-	{
-		MutableStatList->AddActiveEffect(ActiveEffectTag, 0, 0);				
-	}
-
-	for (const FGameplayTag& PassiveEffectTag : ClassRow->DefaultPassiveEffects)
-	{
-		MutableStatList->AddPassiveEffect(PassiveEffectTag, 0, 0);								
-	}	
-}
-
 
 /**
 Business Source License 1.1
