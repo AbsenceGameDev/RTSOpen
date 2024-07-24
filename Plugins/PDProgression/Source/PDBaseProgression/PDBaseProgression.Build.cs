@@ -12,7 +12,9 @@ public class PDBaseProgression : ModuleRules
 			new string[]
 			{
 				"Core",
-				"DeveloperSettings",
+				"DeveloperSettings", 
+				"NetCore", 
+				"GameplayTags"
 			}
 		);
 			

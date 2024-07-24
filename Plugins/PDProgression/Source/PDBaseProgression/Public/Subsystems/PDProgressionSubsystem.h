@@ -3,7 +3,70 @@
 #pragma once
 
 #include "CoreMinimal.h"
+#include "GameplayTagContainer.h"
+#include "PDProgressionCommon.h"
+#include "PDProgressionSubsystem.generated.h"
 
+struct FPDProgressionClassRow;
+
+/* @brief @todo */
+UCLASS(Config = "Game", DefaultConfig)
+class PDBASEPROGRESSION_API UPDProgressionSubsystemSettings : public UDeveloperSettings
+{
+	GENERATED_BODY()
+
+public:
+	/* @brief @todo */
+	UPROPERTY(Config, EditAnywhere, Category = "ProgressionTables", Meta = (RequiredAssetDataTags="RowStructure=/Script/PDBaseProgression.PDStatsRow"))
+	TArray<TSoftObjectPtr<UDataTable>> ProgressionStatTables;
+
+	/* @brief @todo */
+	UPROPERTY(Config, EditAnywhere, Category = "ProgressionTables", Meta = (RequiredAssetDataTags="RowStructure=/Script/PDBaseProgression.PDProgressionClassRow"))
+	TArray<TSoftObjectPtr<UDataTable>> ProgressionClassTables;
+
+	/* @brief @todo */
+	UPROPERTY(Config, EditAnywhere, Category = "ProgressionTables", Meta = (RequiredAssetDataTags="RowStructure=/Script/PDBaseProgression.PDProgressionSkillTree"))
+	TArray<TSoftObjectPtr<UDataTable>> ProgressionTreeTables;	
+};
+
+/* @brief @todo */
+UCLASS(Blueprintable)
+class PDBASEPROGRESSION_API UPDStatSubsystem : public UEngineSubsystem
+{
+	GENERATED_BODY()
+public:
+	/* @brief @todo */
+	static UPDStatSubsystem* Get();
+
+	/* @brief @todo */
+	void LatentInitialization();
+
+	/* @brief @todo */
+	UFUNCTION(BlueprintCallable)
+	FPDProgressionSkillTree& GetTreeTypeData(const FGameplayTag& RequestedTree) const;
+	FPDProgressionSkillTree* GetTreeTypeDataPtr(const FGameplayTag& RequestedTree) const;
+
+	/* @brief @todo */
+	UFUNCTION(BlueprintCallable)
+	FPDProgressionClassRow& GetClassTypeData(const FGameplayTag& RequestedClass) const;
+	FPDProgressionClassRow* GetClassTypeDataPtr(const FGameplayTag& RequestedClass) const;
+
+	/* @brief @todo */
+	UFUNCTION(BlueprintCallable)
+	FPDStatsRow& GetStatTypeData(const FGameplayTag& RequestedStat) const;
+	FPDStatsRow* GetStatTypeDataPtr(const FGameplayTag& RequestedStat) const;
+	
+	/* @brief @todo */
+	TMap<FGameplayTag, FPDProgressionSkillTree*> TreeTypes;
+	/* @brief @todo */
+	TMap<FGameplayTag, FPDProgressionClassRow*> ClassTypes;
+	/* @brief @todo */
+	TMap<FGameplayTag, FPDStatsRow*> DefaultStats;
+
+	
+};
+		
+	
 
 /**
 Business Source License 1.1

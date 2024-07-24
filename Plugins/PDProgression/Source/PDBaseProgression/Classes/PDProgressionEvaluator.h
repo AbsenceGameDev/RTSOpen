@@ -3,7 +3,231 @@
 #pragma once
 
 #include "CoreMinimal.h"
+#include "GameplayTagContainer.h"
+#include "PDProgressionEvaluator.generated.h"
 
+/* @brief @todo */
+UENUM()
+enum class EPDRulesetOpType : uint8
+{
+	EAddition,
+	ESubtraction,
+	EMultiplication,
+	EDivision,
+	EPower
+};
+
+/* @brief @todo */
+UENUM()
+enum class EPDRulesetOpTarget : uint8
+{
+	ESelf,
+	EOther,
+	EStatic
+};
+
+
+/* @brief @todo */
+USTRUCT(Blueprintable)
+struct PDBASEPROGRESSION_API FPDRulesetOperatorStruct : public FTableRowBase
+{
+	GENERATED_BODY()
+	
+	/** @brief The (arithmetic) operation type of this particular FPDRulesetOperatorStruct
+	 *  @note Example: 'EAddition', 'ESubtraction', 'EMultiplication', 'EDivision', 'EPower */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	EPDRulesetOpType OpType;
+	
+	/** @brief The target, or x, of the operations on this particular FPDRulesetOperatorStruct
+	 * @note  Example: EThis, EOther, EStatic */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	EPDRulesetOpTarget OpTarget;
+
+	/** @brief If EPDRulesetOpTarget == EThis or EOther, then this will be ignored,
+	 * @note If EStatic this will be the value used  */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	int32 OpFallbackValue;
+
+	/**
+	 * @brief Recursive rule to apply to the upper
+	 * @details Using this will make teh evaluator implicitly treat the upper FPDRulesetOperatorStruct and this (and itself recursively)
+	 * as if within a parenthesis */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Meta = (RowType="/Script/PDBaseProgression.PDRulesetOperatorStruct"))
+	FDataTableRowHandle InnerRulesetHandle;
+};
+
+/* @brief @todo */
+template<typename TValueType>
+struct FPDRulesetEvaluator
+{
+	/* @brief @todo */
+	TValueType Eval(
+		const TArray<FPDRulesetOperatorStruct>& Ruleset, 
+		const TValueType& PotentialSelfValue,
+		const TValueType& PotentialOtherValue,
+		const TValueType& PotentialStaticValue)
+		{
+			TValueType OperationResult{};
+		
+			const int32 RuleLimits = Ruleset.Num();
+			TMap<int32, TArray<int32> /**/> IndexOrderOfOperations;
+			
+			// Tally Top-level operations
+			for (int32 RuleIdx = 0;  RuleIdx < RuleLimits; RuleIdx++)
+			{
+				int32 SelectedPrecedence = 0;
+				const FPDRulesetOperatorStruct& Rule = Ruleset[RuleIdx];
+				switch (Rule.OpType)
+				{
+					case EPDRulesetOpType::EAddition: case EPDRulesetOpType::ESubtraction: 
+						SelectedPrecedence = 0;
+						break;
+					case EPDRulesetOpType::EMultiplication: case EPDRulesetOpType::EDivision: 
+						SelectedPrecedence = 1;
+						break;
+					case EPDRulesetOpType::EPower:
+						SelectedPrecedence = 2;
+						break;
+				}
+				
+
+				TArray<int32>& InnerToplevelOperations = 
+					IndexOrderOfOperations.Contains(SelectedPrecedence) 
+					? *IndexOrderOfOperations.Find(SelectedPrecedence)
+					: IndexOrderOfOperations.Emplace(SelectedPrecedence);
+				InnerToplevelOperations.Emplace(RuleIdx);
+			}
+
+			// Process operations
+			constexpr int32 MaxPrecedence = 2;
+
+			TArray<int32> OpValues;
+			OpValues.SetNum(RuleLimits);
+			
+
+			for (int32 PrecedenceLevel = MaxPrecedence; PrecedenceLevel >= 0; PrecedenceLevel--)
+			{
+				if (IndexOrderOfOperations.Contains(PrecedenceLevel) == false)
+				{
+					continue;
+				}
+
+				TArray<int32>& InnerToplevelOperations = *IndexOrderOfOperations.Find(PrecedenceLevel);
+
+				// Tally all operation values
+				for (const int32 RuleIndex : InnerToplevelOperations)
+				{
+					const FPDRulesetOperatorStruct& Rule = Ruleset[RuleIndex];
+
+					
+					switch(Rule.OpTarget)
+					{
+						case EPDRulesetOpTarget::ESelf:   OpValues[RuleIndex] = PotentialSelfValue; break;
+						case EPDRulesetOpTarget::EOther:  OpValues[RuleIndex] = PotentialOtherValue; break;
+						case EPDRulesetOpTarget::EStatic: OpValues[RuleIndex] = PotentialStaticValue; break;
+					}
+				}
+
+
+				for (const int32 RuleIndex : InnerToplevelOperations)
+				{
+					// First index can't apply their operator to a previous rule. so it is ignored from this point
+					if (RuleIndex == 0) 
+					{
+						continue;
+					}
+					const FPDRulesetOperatorStruct& PreviousRule = Ruleset[RuleIndex - 1];
+					const FPDRulesetOperatorStruct& CurrentRule = Ruleset[RuleIndex];	
+
+					TValueType PreviousOpBaseValue = OpValues[RuleIndex - 1];
+					TValueType CurrentOpBaseValue = OpValues[RuleIndex];
+
+					// Expand value of PreviousRule before handling the operator from the CurrentOpBaseValue
+					TValueType ExpandedPreviousIndexValue = 0;
+					if (PreviousRule.InnerRulesetHandle.IsNull())
+					{
+						TArray<FPDRulesetOperatorStruct> InnerRulesetRecursion;
+						FPDRulesetOperatorStruct* PrevInnerRulesetPtr = PreviousRule.InnerRulesetHandle.GetRow<FPDRulesetOperatorStruct>("");
+						if (PrevInnerRulesetPtr != nullptr) 
+						{ 
+							InnerRulesetRecursion.Emplace(*PrevInnerRulesetPtr);
+							ExpandedPreviousIndexValue = FPDRulesetEvaluator::Eval(InnerRulesetRecursion, PotentialSelfValue, PotentialOtherValue, PotentialStaticValue);
+						}
+					}
+
+
+					// Expand value of CurrentRule before handling the operator from the CurrentOpBaseValue
+					TValueType ExpandedCurrentIndexValue = 0;
+					if (CurrentRule.InnerRulesetHandle.IsNull())
+					{
+						TArray<FPDRulesetOperatorStruct> InnerRulesetRecursion;
+						FPDRulesetOperatorStruct* CurrentInnerRulesetPtr = CurrentRule.InnerRulesetHandle.GetRow<FPDRulesetOperatorStruct>("");
+						if (CurrentInnerRulesetPtr != nullptr) 
+						{ 
+							InnerRulesetRecursion.Emplace(*CurrentInnerRulesetPtr);
+							ExpandedCurrentIndexValue = FPDRulesetEvaluator::Eval(InnerRulesetRecursion, PotentialSelfValue, PotentialOtherValue, PotentialStaticValue);
+						}
+												
+					}
+					
+					const FPDRulesetOperatorStruct& Rule = Ruleset[RuleIndex];
+					switch (Rule.OpType)
+					{
+						case EPDRulesetOpType::EAddition:
+							OperationResult = ExpandedPreviousIndexValue + ExpandedCurrentIndexValue;
+							break;
+						case EPDRulesetOpType::ESubtraction: 
+							OperationResult = ExpandedPreviousIndexValue - ExpandedCurrentIndexValue;
+							break;
+						case EPDRulesetOpType::EMultiplication:
+							OperationResult = ExpandedPreviousIndexValue * ExpandedCurrentIndexValue;
+							break;
+						case EPDRulesetOpType::EDivision: 
+							OperationResult = ExpandedPreviousIndexValue / ExpandedCurrentIndexValue;
+							break;
+						case EPDRulesetOpType::EPower: 
+							OperationResult = FMath::Pow(ExpandedPreviousIndexValue, CurrentOpBaseValue);
+							break;
+					}
+				}
+
+			}
+			return OperationResult;
+		};	
+};
+
+/**
+ * @brief
+ * @note For example: A Rule-Set TagID may be something like 'Progression.RuleSet.DnD'
+ * @note For example: A Rule-Set TagID may be something like 'Progression.RuleSet.ObsidianPoE'
+ * @note For example: A Rule-Set TagID may be something like 'Progression.RuleSet.Custom0'
+ * @note For example: A Rule-Set TagID may be something like 'Progression.RuleSet.Custom1' */
+USTRUCT(Blueprintable)
+struct PDBASEPROGRESSION_API FPDRulesetRow : public FTableRowBase
+{
+	GENERATED_BODY()
+
+	/* @brief @todo */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	FGameplayTag RuleSetTagID;
+
+	/* @brief @todo */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	TArray<FPDRulesetOperatorStruct> RuleSetOperation;
+};
+
+/** @brief For example: A Stacking Context TagID may be something like 'Progression.StackingContext.Gear' */
+USTRUCT(Blueprintable)
+struct PDBASEPROGRESSION_API FPDAllowedStackingContexts
+
+{
+	GENERATED_BODY()
+
+	/** @brief Key: StackingContextTagID,  Value: FPDRuleSetTableRow  */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Meta = (RequiredAssetDataTags="RowStructure=/Script/PDBaseProgression.FPDRuleSetRow"))
+	TMap<FGameplayTag, FDataTableRowHandle> ContextList; 
+	
+};
 
 /**
 Business Source License 1.1

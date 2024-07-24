@@ -3,7 +3,60 @@
 #pragma once
 
 #include "CoreMinimal.h"
+#include "GameplayTags.h"
+#include "PDProgressionCommon.h"
+#include "Net/Serialization/FastArraySerializer.h"
+#include "PDProgressionNetDatum.generated.h"
 
+/* @brief @todo */
+USTRUCT(Blueprintable)
+struct PDBASEPROGRESSION_API FPDStatNetDatum : public FFastArraySerializerItem
+{
+	GENERATED_BODY()
+	
+	/* @brief @todo */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	FGameplayTag ProgressionTag;
+	/* @brief @todo */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	int32 CurrentLevel = 0;
+	/* @brief @todo */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	int32 CurrentExperience;
+};
+
+/* @brief @todo */
+USTRUCT(Blueprintable)
+struct PDBASEPROGRESSION_API FPDStatList : public FFastArraySerializer
+{
+	GENERATED_BODY()
+	
+	bool NetSerialize(FNetDeltaSerializeInfo& DeltaParams);
+
+	/** @note Adds any given stat to the itemlist */
+	void AddStat(const FGameplayTag& StatTag, int32 StatExperience, int32 StatLevel);
+	/** @note Just calls AddStat, is a placeholder impl. reserved for later use */
+	void AddActiveEffect(const FGameplayTag& StatTag, int32 StatExperience, int32 StatLevel);
+	/** @note Just calls AddStat, is a placeholder impl. reserved for later use */
+	void AddPassiveEffect(const FGameplayTag& StatTag, int32 StatExperience, int32 StatLevel);
+
+	/* @brief @todo */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	TArray<FPDStatNetDatum> Items;
+
+	TSet<FPDStatMapping> StatMappings;
+};
+
+template<>
+struct TStructOpsTypeTraits<FPDStatList> : TStructOpsTypeTraitsBase2<FPDStatList>
+{
+	enum
+	{
+		WithNetDeltaSerialize = true,
+		
+	};
+
+};
 
 /**
 Business Source License 1.1

@@ -3,6 +3,184 @@
 #pragma once
 
 #include "CoreMinimal.h"
+#include "GameplayTagContainer.h"
+
+#include "PDProgressionCommon.generated.h"
+
+/*
+ *
+- Stats Overview 
+	- (DONE) Enum  EPDProgressionBehaviourType { EClassic, EActionBased }
+	- (DONE) Enum  EPDProgressionType { EActiveEffect, EPassiveEffect, EStat}
+	- (TODO) If Actionbased, 
+		- Action Event Delegate signature: bool (void* OpaqueActionDataPacket){}
+		- run an automated test-level before packaging to ensure an action event has been tied to the stat to increase it. 
+
+	- (DONE) FPDStatsValue
+		- TArray<int32> BaseValueRepresentations;
+		- int32 BaseDivisor = 1;
+
+	- (DONE) FPDStatsRow
+		- FGameplayTag ProgressionTag;
+		- TMap<FGameplayTag ///StatTag///, FGameplayTag ///RuleSetTag///> RulesAffectedBy;
+		- EPDProgressionBehaviourType BehaviourType;
+		- EPDProgressionType ProgressionType;
+		- FPDStatsValue ProgressionValueRepresentation;
+		- int32 MaxLevel = 1;
+		- UCurveFloat ExperienceCurve;
+
+	- (DONE) FPDStatMapping
+		- int32 Index = 0;
+	- FGameplayTag Tag;
+	- bool operator ==(const int32 OtherIndex) { return this->Index == OtherIndex; }
+	- bool operator ==(const FGameplayTag& OtherTag) { return this->Tag == OtherTag; }
+
+ */
+
+struct FPDStatList;
+
+/* @brief @todo */
+UENUM()
+enum class EPDProgressionBehaviourType : uint8
+{
+	EClassic,
+	EActionBased
+};
+
+/* @brief @todo */
+UENUM()
+enum class EPDProgressionType : uint8
+{
+	EActiveEffect,
+	EPassiveEffect,
+	EStat
+};
+
+/* @brief @todo */
+USTRUCT(Blueprintable)
+struct PDBASEPROGRESSION_API FPDStatsValue
+{
+	GENERATED_BODY()
+	
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	TArray<int32> BaseValueRepresentations{};
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	int32 BaseDivisor = 1;
+};
+
+/* @brief @todo */
+USTRUCT(Blueprintable)
+struct PDBASEPROGRESSION_API FPDStatsRow : public FTableRowBase
+{
+	GENERATED_BODY()
+	
+	/* @brief @todo */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	FGameplayTag ProgressionTag;
+	/* @brief @todo */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	TMap<FGameplayTag /*StatTag*/, FGameplayTag /*RuleSetTag*/> RulesAffectedBy;
+	/* @brief @todo */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	EPDProgressionBehaviourType BehaviourType;
+	/* @brief @todo */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	EPDProgressionType ProgressionType;
+	/* @brief @todo */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	FPDStatsValue ProgressionValueRepresentation;
+	/* @brief @todo */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	int32 MaxLevel = 1;
+	/* @brief @todo */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	UCurveFloat* ExperienceCurve;
+};
+
+USTRUCT(Blueprintable)
+struct PDBASEPROGRESSION_API FPDStatMapping
+{
+	GENERATED_BODY()
+	
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	int32 Index = 0;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	FGameplayTag Tag;
+	
+	bool operator ==(const FPDStatMapping& Other) const { return this->Index == Other.Index || this->Tag == Other.Tag; }
+	bool operator ==(const int32 OtherIndex) const { return this->Index == OtherIndex; }
+	bool operator ==(const FGameplayTag& OtherTag) const { return this->Tag == OtherTag; } 
+};
+
+
+/** @brief Hash the ping data, really just pass through the world-actors UID*/
+inline uint32 GetTypeHash(const FPDStatMapping& StatMapping)
+{
+	uint32 Hash = 0;
+	Hash = HashCombine(Hash, GetTypeHash(StatMapping.Index));
+	Hash = HashCombine(Hash, GetTypeHash(StatMapping.Tag));
+	return Hash;
+}
+
+
+USTRUCT(Blueprintable)
+struct FPDProgressionSkillTree : public FTableRowBase
+{
+	GENERATED_BODY()
+	
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	FGameplayTag Tag;
+	// - Skilltrees
+	// 	- Skeleton impl. Reserved. Com back shortly 
+};
+
+
+USTRUCT(Blueprintable)
+struct FPDProgressionClassRow : public FTableRowBase
+{
+	GENERATED_BODY()
+	
+	/* @brief @todo */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite) 
+	FGameplayTag Tag;
+
+	/* @brief @todo */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite) 
+	TSet<FGameplayTag> DefaultStats;
+
+	/* @brief @todo */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite) 
+	TSet<FGameplayTag> DefaultActiveEffects;
+
+	/* @brief @todo */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite) 
+	TSet<FGameplayTag> DefaultPassiveEffects;
+
+	/* @brief @todo */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite) 
+	TSet<FGameplayTag> GrantedTrees;
+};
+
+/* @brief @todo */
+UCLASS(Blueprintable)
+class PDBASEPROGRESSION_API UPDStatHandler : public UObject
+{
+	GENERATED_BODY()
+
+public:
+	/* @brief @todo */
+	// UFUNCTION(BlueprintNativeEvent)
+	// void LinkStatList(const FPDStatList& StatListToLinkTo);
+	void LinkStatList_Implementation(const FPDStatList& StatListToLinkTo);
+
+	/* @brief @todo */
+	// UFUNCTION(BlueprintNativeEvent)
+	// void DefaultFillStatList(const FGameplayTag& ClassTag);
+	virtual void DefaultFillStatList_Implementation(const FGameplayTag& ClassTag);
+	
+	/* @brief @todo */
+	const FPDStatList* LinkedStatList = nullptr;
+};
 
 
 /**

@@ -2,6 +2,112 @@
 
 #include "Subsystems/PDProgressionSubsystem.h"
 
+UPDStatSubsystem* UPDStatSubsystem::Get()
+{
+	static UPDStatSubsystem* Self = nullptr;
+	if (Self == nullptr)
+	{
+		Self = GEngine->GetEngineSubsystem<UPDStatSubsystem>();
+		Self->LatentInitialization();
+	}
+	
+	return Self;
+}
+
+void UPDStatSubsystem::LatentInitialization()
+{
+	const UPDProgressionSubsystemSettings* DefaultSubsystemSettings =
+		GetDefault<UPDProgressionSubsystemSettings>();
+
+	for (const TSoftObjectPtr<UDataTable>& Elem
+	     : DefaultSubsystemSettings->ProgressionClassTables)
+	{
+		const UDataTable* Table = Elem.LoadSynchronous();
+		if (Table == nullptr) { continue; }
+		
+		TArray<FPDProgressionClassRow*> ClassRows;
+		Table->GetAllRows("", ClassRows);
+		for (FPDProgressionClassRow* ClassRow : ClassRows)
+		{
+			if (ClassRow == nullptr) { continue; }
+			ClassTypes.Emplace(ClassRow->Tag, ClassRow);
+		}
+	}
+	for (const TSoftObjectPtr<UDataTable>&  Elem
+		: DefaultSubsystemSettings->ProgressionStatTables)
+	{
+		const UDataTable* Table = Elem.LoadSynchronous();
+		if (Table == nullptr) { continue; }
+		
+		TArray<FPDStatsRow*> StatRows;
+		Table->GetAllRows("", StatRows);
+		for (FPDStatsRow* StatRow : StatRows)
+		{
+			if (StatRow == nullptr) { continue; }
+			DefaultStats.Emplace(StatRow->ProgressionTag, StatRow);
+		}		
+	}
+	for (const TSoftObjectPtr<UDataTable>&  Elem
+		: DefaultSubsystemSettings->ProgressionTreeTables)
+	{
+		const UDataTable* Table = Elem.LoadSynchronous();
+		if (Table == nullptr) { continue; }
+		
+		TArray<FPDProgressionSkillTree*> TreeRows;
+		Table->GetAllRows("", TreeRows);
+		for (FPDProgressionSkillTree* TreeRow : TreeRows)
+		{
+			if (TreeRow == nullptr) { continue; }
+			TreeTypes.Emplace(TreeRow->Tag, TreeRow);
+		}		
+	}
+}
+
+FPDProgressionSkillTree& UPDStatSubsystem::GetTreeTypeData(const FGameplayTag& RequestedTree) const
+{
+	static FPDProgressionSkillTree Dummy;
+	return TreeTypes.Contains(RequestedTree)
+		? **TreeTypes.Find(RequestedTree)
+		: Dummy;
+}
+
+FPDProgressionSkillTree* UPDStatSubsystem::GetTreeTypeDataPtr(const FGameplayTag& RequestedTree) const
+{
+	return TreeTypes.Contains(RequestedTree)
+		? *TreeTypes.Find(RequestedTree)
+		: nullptr;
+}
+
+FPDProgressionClassRow& UPDStatSubsystem::GetClassTypeData(const FGameplayTag& RequestedClass) const
+{
+	static FPDProgressionClassRow Dummy; 
+	return ClassTypes.Contains(RequestedClass)
+		? **ClassTypes.Find(RequestedClass)
+		: Dummy;
+}
+
+FPDProgressionClassRow* UPDStatSubsystem::GetClassTypeDataPtr(const FGameplayTag& RequestedClass) const
+{
+	return ClassTypes.Contains(RequestedClass)
+		? *ClassTypes.Find(RequestedClass)
+		: nullptr;
+}
+
+FPDStatsRow& UPDStatSubsystem::GetStatTypeData(const FGameplayTag& RequestedStat) const
+{
+	static FPDStatsRow Dummy; 
+	return DefaultStats.Contains(RequestedStat)
+		? **DefaultStats.Find(RequestedStat)
+		: Dummy;
+}
+
+FPDStatsRow* UPDStatSubsystem::GetStatTypeDataPtr(const FGameplayTag& RequestedStat) const
+{
+	return DefaultStats.Contains(RequestedStat)
+		? *DefaultStats.Find(RequestedStat)
+		: nullptr;
+}
+
 
 /**
 Business Source License 1.1

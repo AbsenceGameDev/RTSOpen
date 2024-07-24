@@ -2,6 +2,41 @@
 
 #include "Net/PDProgressionNetDatum.h"
 
+/* @brief @todo */
+bool FPDStatList::NetSerialize(FNetDeltaSerializeInfo& DeltaParams)
+{
+	return
+	FFastArraySerializer::FastArrayDeltaSerialize
+		<FPDStatNetDatum, FPDStatList>(Items, DeltaParams, *this);
+}
+
+void FPDStatList::AddStat(const FGameplayTag& StatTag, int32 StatExperience, int32 StatLevel)
+{
+	FPDStatNetDatum ConstructedNetDatum;
+	ConstructedNetDatum.ProgressionTag = StatTag;
+	ConstructedNetDatum.CurrentExperience = StatExperience;
+	ConstructedNetDatum.CurrentLevel = StatLevel;
+	
+	FPDStatNetDatum Item = Items.Emplace_GetRef(ConstructedNetDatum);
+	MarkItemDirty(Item);
+
+
+	// Maps the index to the tag
+	FPDStatMapping ConstructedStatMapping;
+	ConstructedStatMapping.Index = Items.Num() - 1;
+	ConstructedStatMapping.Tag = StatTag;
+	StatMappings.Emplace(ConstructedStatMapping);
+}
+
+void FPDStatList::AddActiveEffect(const FGameplayTag& StatTag, int32 StatExperience, int32 StatLevel)
+{
+	AddStat(StatTag, StatExperience, StatLevel); // placeholder, reserved for later use
+}
+
+void FPDStatList::AddPassiveEffect(const FGameplayTag& StatTag, int32 StatExperience, int32 StatLevel)
+{
+	AddStat(StatTag, StatExperience, StatLevel); // placeholder, reserved for later use
+}
 
 /**
 Business Source License 1.1
