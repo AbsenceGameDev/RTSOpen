@@ -24,6 +24,8 @@ Additional Use Grant: You may make free use of the Licensed Work in a commercial
                       1. Must give attributions to the original author of the Licensed Work, in 'Credits' if that is applicable.
                       2. The Licensed Work must be Compiled before being redistributed.
                       3. The Licensed Work Source may be linked but may not be packaged into the product or service being sold
+                      4. Must not be resold or repackaged or redistributed as another product, is only allowed to be used within a commercial or non-commercial game project.
+                      5. Teams with yearly budgets larger than 100000 USD must contact the owner for a custom license or buy the framework from a marketplace it has been made available on.
 
                       "Credits" indicate a scrolling screen with attributions. This is usually in a products end-state
 
