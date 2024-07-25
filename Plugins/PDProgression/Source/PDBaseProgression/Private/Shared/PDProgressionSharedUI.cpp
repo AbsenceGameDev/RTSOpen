@@ -2,6 +2,253 @@
 
 #include "PDProgressionSharedUI.h"
 
+#include "Textures/SlateIcon.h"
+#include "Framework/Commands/UIAction.h"
+
+#include "Widgets/SBoxPanel.h"
+#include "Widgets/Input/SButton.h"
+#include "Widgets/Input/SComboButton.h"
+#include "Widgets/Text/STextBlock.h"
+#include "Widgets/Images/SImage.h"
+#include "Widgets/Layout/SBorder.h"
+#include "Widgets/Layout/SBox.h"
+#include "Widgets/Layout/SSplitter.h"
+#include "Widgets/Views/SListView.h"
+#include "Styling/AppStyle.h"
+
+// Class picker 
+#include "GameplayTags.h"
+#include "Components/PDProgressionComponent.h"
+#include "Subsystems/PDProgressionSubsystem.h"
+
+#define LOCTEXT_NAMESPACE "SPDStatList"
+
+
+FText SPDStatList::StatBase_TitleText = LOCTEXT("HeaderRow_Field", "STATS");
+FText SPDStatList::StatProgress_Header_Name = LOCTEXT("Stat_HeaderRow_Field_Level", "NAME");
+FText SPDStatList::StatProgress_Header_Level = LOCTEXT("Stat_HeaderRow_Field_Level", "LEVEL");
+FText SPDStatList::StatProgress_Header_Experience = LOCTEXT("Stat_HeaderRow_Field_Experience", "EXPERIENCE");
+FText SPDStatList::StatProgress_Header_ModifiedOffset = LOCTEXT("Stat_HeaderRow_Field_ModifiedOffset", "OFFSET");
+
+//
+// SAVE EDITOR MAIN
+void SPDStatList::Construct(const FArguments& InArgs, int32 InOwnerID, TArray<TSharedPtr<FPDStatNetDatum>>& ArrayRef)
+{
+	UPDStatHandler* SelectedStatHandler = UPDStatSubsystem::Get()->StatHandlers.FindRef(InOwnerID);
+	if (SelectedStatHandler != nullptr)
+	{
+		for (const FPDStatNetDatum& Item : SelectedStatHandler->StatList.Items)
+		{
+			TSharedRef<FPDStatNetDatum> SharedNetDatum = MakeShared<FPDStatNetDatum>(Item);
+			StatsAsSharedArray->Emplace(SharedNetDatum);
+		}
+	}
+	
+	UpdateChildSlot(&ArrayRef);
+}
+
+void SPDStatList::UpdateChildSlot(void* OpaqueData)
+{
+	if (TitleFont.TypefaceFontName.IsNone())
+	{
+		// @todo Set up a custom slate styleset for the saveeditors fonts and icons 
+		TitleFont = FAppStyle::GetFontStyle( TEXT("PropertyWindow.NormalFont"));
+		TitleFont.Size *= 8;
+	}
+
+	
+	// Covers representing below fields
+	// CopiedSaveData.ConversationActorState;
+
+	if (OpaqueData != nullptr)
+	{
+		StatsAsSharedArray = static_cast<TArray<TSharedPtr<FPDStatNetDatum>>*>(OpaqueData);
+	}
+
+	const TSharedRef<SHeaderRow> Header = SNew(SHeaderRow);
+	SHeaderRow::FColumn::FArguments ColumnArgs;
+	
+	ColumnArgs
+		.DefaultLabel(StatProgress_Header_Name)
+		.FixedWidth(50)
+		.ColumnId(FName("0")) ;
+	Header.Get().AddColumn(ColumnArgs);
+
+	ColumnArgs
+		.DefaultLabel(FText::FromString("|"))
+		.FixedWidth(15)
+		.ColumnId(FName("1")) ;
+	Header.Get().AddColumn(ColumnArgs);
+
+	ColumnArgs
+		.DefaultLabel(StatProgress_Header_Level)
+		.FixedWidth(50)
+		.ColumnId(FName("2")) ;
+	Header.Get().AddColumn(ColumnArgs);
+
+	ColumnArgs
+		.DefaultLabel(FText::FromString("|"))
+		.FixedWidth(15)
+		.ColumnId(FName("3")) ;
+	Header.Get().AddColumn(ColumnArgs);	
+
+	ColumnArgs
+		.DefaultLabel(StatProgress_Header_Experience)
+		.FixedWidth(50)
+		.ColumnId(FName("4")) ;
+	Header.Get().AddColumn(ColumnArgs);
+
+	ColumnArgs
+		.DefaultLabel(FText::FromString("|"))
+		.FixedWidth(15)
+		.ColumnId(FName("5")) ;
+	Header.Get().AddColumn(ColumnArgs);	
+	
+	ColumnArgs
+		.DefaultLabel(StatProgress_Header_ModifiedOffset)
+		.FixedWidth(50)
+		.ColumnId(FName("4")) ;
+	Header.Get().AddColumn(ColumnArgs);
+
+	ColumnArgs
+		.DefaultLabel(FText::FromString("|"))
+		.FixedWidth(15)
+		.ColumnId(FName("5")) ;
+	Header.Get().AddColumn(ColumnArgs);		
+	
+	ChildSlot
+	.HAlign(HAlign_Center)
+	.VAlign(VAlign_Center)
+	[
+		SNew(SHorizontalBox)
+		+ SHorizontalBox::Slot()
+		.FillWidth(10)
+		[
+			SNew(SVerticalBox)
+			+ SVerticalBox::Slot() 
+				.Padding(FMargin{0, 0})
+				.AutoHeight()
+			[
+				SNew(STextBlock)
+					.Font(TitleFont)
+					.Text(StatBase_TitleText)
+			]
+			
+			+ SVerticalBox::Slot() 
+				.Padding(FMargin{0, 0})
+				.FillHeight(10)
+			[
+				SNew(SScrollBox)
+				.ScrollBarAlwaysVisible(true)
+				.ScrollBarVisibility(EVisibility::Visible)
+				.ScrollBarThickness(UE::Slate::FDeprecateVector2DParameter(10))
+				.Orientation(EOrientation::Orient_Vertical)
+				+SScrollBox::Slot()
+				[
+					SNew(SListView<TSharedPtr<FPDStatNetDatum>>)
+						.HeaderRow(Header.ToSharedPtr())
+						.ListItemsSource(StatsAsSharedArray)
+						.OnGenerateRow( this, &SPDStatList::MakeListViewWidget_AllStatData )
+						.OnSelectionChanged( this, &SPDStatList::OnComponentSelected_AllStatData )
+				]
+
+			]
+			+ SVerticalBox::Slot() 
+				.Padding(FMargin{0, FMath::Clamp(StatsAsSharedArray->Num() * 4.f, 0.f, 30.f)})
+				.FillHeight(10)
+		]
+	];	
+}
+
+
+TSharedRef<ITableRow> SPDStatList::MakeListViewWidget_AllStatData(TSharedPtr<FPDStatNetDatum> InItem, const TSharedRef<STableViewBase>& OwnerTable) const
+{
+	const FPDStatNetDatum& CurrentStatNetDatum = *InItem.Get();
+	const FText StatNameAsText   = FText::FromName(CurrentStatNetDatum.ProgressionTag.GetTagName());
+	const FText LevelAsText      = FText::FromString(FString::FromInt(CurrentStatNetDatum.CurrentLevel));
+	const FText ExperienceAsText = FText::FromString(FString::FromInt(CurrentStatNetDatum.CurrentExperience));
+	const FText ModifiersAsText  = FText::FromString(FString::FromInt(CurrentStatNetDatum.CrossBehaviourValue));
+	
+	//
+	// Widget layout
+	SPDStatList* MutableThis = const_cast<SPDStatList*>(this);
+	check(MutableThis != nullptr)
+	
+	MutableThis->StatTable =
+		SNew( STableRow< TSharedPtr<FPDStatNetDatum> >, OwnerTable )
+	[
+		SNew(SHorizontalBox)
+		+ SHorizontalBox::Slot()
+		[
+			SNew(STextBlock)
+			.Text(StatNameAsText)
+		]
+		+ SHorizontalBox::Slot()
+		[
+			SNew(SSeparator)
+			.Orientation(Orient_Vertical)
+			.Thickness(10)
+		]
+		+ SHorizontalBox::Slot()
+		[
+			SNew(STextBlock)
+			.Text(LevelAsText)
+		]
+		+ SHorizontalBox::Slot()
+		[
+			SNew(SSeparator)
+			.Orientation(Orient_Vertical)
+			.Thickness(10)
+		]
+		+ SHorizontalBox::Slot()
+		[
+			SNew(STextBlock)
+			.Text(ExperienceAsText)
+		]
+		+ SHorizontalBox::Slot()
+		[
+			SNew(SSeparator)
+			.Orientation(Orient_Vertical)
+			.Thickness(10)
+		]
+		+ SHorizontalBox::Slot()
+		[
+			SNew(STextBlock)
+			.Text(ModifiersAsText)
+		]			
+	]
+	;
+
+	// ...
+	// ...
+	
+	return MutableThis->StatTable.ToSharedRef();	
+}
+
+void SPDStatList::OnComponentSelected_AllStatData(TSharedPtr<FPDStatNetDatum> InItem, ESelectInfo::Type InSelectInfo)
+{
+	FSlateApplication::Get().DismissAllMenus();
+
+	switch (InSelectInfo)
+	{
+	case ESelectInfo::OnKeyPress:
+		break;
+	case ESelectInfo::OnNavigation:
+		break;
+	case ESelectInfo::OnMouseClick:
+		break;
+	case ESelectInfo::Direct:
+		break;
+	}
+	
+	if(OnStatDataChosen.IsBound())
+	{
+		OnStatDataChosen.Execute(*InItem.Get());
+	}			
+}
+
+
+#undef LOCTEXT_NAMESPACE
 
 /**
 Business Source License 1.1
@@ -115,3 +362,4 @@ other recipients of the licensed work to be provided by Licensor:
 
 4. Not to modify this License in any other way.
  **/
+

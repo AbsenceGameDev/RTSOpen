@@ -7,6 +7,7 @@
 #include "PDProgressionCommon.h"
 #include "PDProgressionSubsystem.generated.h"
 
+class UPDStatHandler;
 struct FPDProgressionClassRow;
 
 /* @brief @todo */
@@ -74,6 +75,10 @@ public:
 
 	/* @brief @todo */
 	TMap<FGameplayTag, TArray<FGameplayTag>> StatCrossBehaviourMap;
+
+
+	UPROPERTY()
+	TMap<int32, UPDStatHandler*> StatHandlers;
 	
 	
 };

@@ -24,6 +24,9 @@ class PDBASEPROGRESSION_API UPDStatHandler : public UActorComponent
 	GENERATED_BODY()
 
 public:
+
+	virtual void BeginPlay() override;
+	
 	UFUNCTION(BlueprintNativeEvent)
 	void IncreaseStatLevel(const FGameplayTag& StatTag, int32 LevelDelta = 1);
 
@@ -55,6 +58,10 @@ public:
 
 	UPROPERTY(Replicated)
 	TArray<FPDSkillTokenBase> TokensSpentTotal; // Will arguably never be above 100 entries in practice, very likely even below 10 in many games
+
+	UPROPERTY()
+	int32 OwnerID; // Will arguably never be above 100 entries in practice, very likely even below 10 in many games
+	
 	
 	/* @brief @todo */
 	TSet<FPDStatMapping, FDerivedDataCacheResourceStatKeyFuncs> LocalStatMappings;

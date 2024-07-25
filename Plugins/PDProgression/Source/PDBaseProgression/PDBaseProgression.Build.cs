@@ -14,6 +14,7 @@ public class PDBaseProgression : ModuleRules
 				"Core",
 				"DeveloperSettings", 
 				"NetCore", 
+				"InputCore",
 				"GameplayTags"
 			}
 		);

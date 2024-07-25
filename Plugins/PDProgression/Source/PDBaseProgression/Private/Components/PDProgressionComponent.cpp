@@ -9,6 +9,14 @@
 #include "Subsystems/PDProgressionSubsystem.h"
 
 
+void UPDStatHandler::BeginPlay()
+{
+	Super::BeginPlay();
+
+	
+	UPDStatSubsystem::Get()->StatHandlers.Emplace(OwnerID, this);
+}
+
 void UPDStatHandler::ModifySkill(const FGameplayTag& SkillTag, const bool bUnlock)
 {
 	static UPDStatSubsystem* StatSubsystem = UPDStatSubsystem::Get();

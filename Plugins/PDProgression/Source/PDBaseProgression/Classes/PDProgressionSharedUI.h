@@ -3,6 +3,56 @@
 #pragma once
 
 #include "CoreMinimal.h"
+#include "GameplayTags.h"
+#include "Net/PDProgressionNetDatum.h"
+#include "Subsystems/EngineSubsystem.h"
+
+// #include "PDProgressionSharedUI.generated.h"
+
+
+class PDBASEPROGRESSION_API SPDStatList : public SCompoundWidget
+{
+public:
+
+	/** @brief Font we want to use for titles in teh save editor */
+	FSlateFontInfo TitleFont;	
+
+	DECLARE_DELEGATE_OneParam( FOnStatDataChosen, const FPDStatNetDatum&);
+	
+	SLATE_BEGIN_ARGS(SPDStatList) { }
+ 		SLATE_EVENT(FOnUserScrolled, OnUserScrolled)
+ 		SLATE_EVENT(FOnClicked, OnUserClicked)
+	SLATE_END_ARGS()
+	
+	/** @brief Stores a pointer to the copied save data and then Calls UpdateChildSlot, passing ArrayRef as the opaquedata parameter */
+	void Construct(const FArguments& InArgs, int32 InOwnerID, TArray<TSharedPtr<FPDStatNetDatum>>& ArrayRef);
+	/** @brief Base call, ensures we have a title-font loaded, Sets up the child slot, and passes in the data view array to an slistview wrapped in a scrollbox */
+	virtual void UpdateChildSlot(void* OpaqueData);
+	
+	/** @brief Displays the actual list item for each entry in ConversationStatesAsSharedArray, which in this case is the states in 'FPDStatNetDatum' */
+	TSharedRef<ITableRow> MakeListViewWidget_AllStatData(TSharedPtr<FPDStatNetDatum> InItem, const TSharedRef<STableViewBase>& OwnerTable) const;
+	void OnComponentSelected_AllStatData(TSharedPtr<FPDStatNetDatum> InItem, ESelectInfo::Type InSelectInfo);
+	
+	/** @brief Array 'View' that is used to display the data related to this editor widget */
+	TArray<TSharedPtr<FPDStatNetDatum>>* StatsAsSharedArray;
+
+	// Callbacks
+	FOnStatDataChosen OnStatDataChosen{};
+
+	UClass* SelectedClass = nullptr;
+
+	// View Tables
+	TSharedPtr<STableRow< TSharedPtr<FPDStatNetDatum>>> StatTable;
+
+	int32 OwnerID = INDEX_NONE;
+	
+	// Localized text
+	static FText StatBase_TitleText;
+	static FText StatProgress_Header_Name;
+	static FText StatProgress_Header_Level;
+	static FText StatProgress_Header_Experience;
+	static FText StatProgress_Header_ModifiedOffset;
+};
 
 
 /**
