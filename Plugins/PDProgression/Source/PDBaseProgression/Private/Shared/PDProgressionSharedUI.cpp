@@ -20,6 +20,7 @@
 #include "GameplayTags.h"
 #include "Components/PDProgressionComponent.h"
 #include "Subsystems/PDProgressionSubsystem.h"
+#include "Widgets/Layout/SWrapBox.h"
 
 #define LOCTEXT_NAMESPACE "SPDStatList"
 
@@ -32,9 +33,35 @@ FText SPDStatList::StatProgress_Header_ModifiedOffset = LOCTEXT("Stat_HeaderRow_
 
 //
 // SAVE EDITOR MAIN
-void SPDStatList::Construct(const FArguments& InArgs, int32 InOwnerID, TArray<TSharedPtr<FPDStatNetDatum>>& ArrayRef)
+void SPDStatList::Construct(const FArguments& InArgs, int32 InOwnerID, TArray<TSharedPtr<FPDStatNetDatum>>& DataViewRef, int32 InSectionWidth)
 {
-	UPDStatHandler* SelectedStatHandler = UPDStatSubsystem::Get()->StatHandlers.FindRef(InOwnerID);
+	SectionWidth = InSectionWidth;
+	Refresh(InOwnerID, DataViewRef, SectionWidth);
+}
+
+void SPDStatList::Refresh(int32 InOwnerID, TArray<TSharedPtr<FPDStatNetDatum>>& DataViewRef, int32 NewSectionWidth)
+{
+	OwnerID = InOwnerID;
+	StatsAsSharedArray = &DataViewRef;
+
+	// Potentially lazy construction
+	if (ActualList.IsValid() == false || SectionWidth != NewSectionWidth)
+	{
+		UpdateChildSlot();
+	}
+	else
+	{
+		PrepareData();
+		ActualList->SetItemsSource(StatsAsSharedArray);
+		ActualList->RebuildList();
+	}
+}
+
+void SPDStatList::PrepareData()
+{
+	SectionSeparatorWidth = SectionWidth / 5;
+	
+	UPDStatHandler* SelectedStatHandler = UPDStatSubsystem::Get()->StatHandlers.FindRef(OwnerID);
 	if (SelectedStatHandler != nullptr)
 	{
 		for (const FPDStatNetDatum& Item : SelectedStatHandler->StatList.Items)
@@ -44,77 +71,72 @@ void SPDStatList::Construct(const FArguments& InArgs, int32 InOwnerID, TArray<TS
 		}
 	}
 	
-	UpdateChildSlot(&ArrayRef);
-}
-
-void SPDStatList::UpdateChildSlot(void* OpaqueData)
-{
 	if (TitleFont.TypefaceFontName.IsNone())
 	{
 		// @todo Set up a custom slate styleset for the saveeditors fonts and icons 
 		TitleFont = FAppStyle::GetFontStyle( TEXT("PropertyWindow.NormalFont"));
 		TitleFont.Size *= 8;
 	}
+}
 
-	
-	// Covers representing below fields
-	// CopiedSaveData.ConversationActorState;
-
-	if (OpaqueData != nullptr)
+void SPDStatList::UpdateChildSlot()
+{
+	PrepareData();
+	if (Header.IsValid() == false)
 	{
-		StatsAsSharedArray = static_cast<TArray<TSharedPtr<FPDStatNetDatum>>*>(OpaqueData);
+		Header = SNew(SHeaderRow);
 	}
-
-	const TSharedRef<SHeaderRow> Header = SNew(SHeaderRow);
-	SHeaderRow::FColumn::FArguments ColumnArgs;
+	Header->ClearColumns();
 	
+	SHeaderRow::FColumn::FArguments ColumnArgs;
 	ColumnArgs
 		.DefaultLabel(StatProgress_Header_Name)
-		.FixedWidth(50)
+		.FixedWidth(SectionWidth)
 		.ColumnId(FName("0")) ;
-	Header.Get().AddColumn(ColumnArgs);
+	Header->AddColumn(ColumnArgs);
 
 	ColumnArgs
 		.DefaultLabel(FText::FromString("|"))
-		.FixedWidth(15)
+		.FixedWidth(SectionSeparatorWidth)
 		.ColumnId(FName("1")) ;
-	Header.Get().AddColumn(ColumnArgs);
+	Header->AddColumn(ColumnArgs);
 
 	ColumnArgs
 		.DefaultLabel(StatProgress_Header_Level)
-		.FixedWidth(50)
+		.FixedWidth(SectionWidth)
 		.ColumnId(FName("2")) ;
-	Header.Get().AddColumn(ColumnArgs);
+	Header->AddColumn(ColumnArgs);
 
 	ColumnArgs
 		.DefaultLabel(FText::FromString("|"))
-		.FixedWidth(15)
+		.FixedWidth(SectionSeparatorWidth)
 		.ColumnId(FName("3")) ;
-	Header.Get().AddColumn(ColumnArgs);	
+	Header->AddColumn(ColumnArgs);	
 
 	ColumnArgs
 		.DefaultLabel(StatProgress_Header_Experience)
-		.FixedWidth(50)
+		.FixedWidth(SectionWidth)
 		.ColumnId(FName("4")) ;
-	Header.Get().AddColumn(ColumnArgs);
+	Header->AddColumn(ColumnArgs);
 
 	ColumnArgs
 		.DefaultLabel(FText::FromString("|"))
-		.FixedWidth(15)
+		.FixedWidth(SectionSeparatorWidth)
 		.ColumnId(FName("5")) ;
-	Header.Get().AddColumn(ColumnArgs);	
+	Header->AddColumn(ColumnArgs);	
 	
 	ColumnArgs
 		.DefaultLabel(StatProgress_Header_ModifiedOffset)
-		.FixedWidth(50)
+		.FixedWidth(SectionWidth)
 		.ColumnId(FName("4")) ;
-	Header.Get().AddColumn(ColumnArgs);
+	Header->AddColumn(ColumnArgs);
+	
 
-	ColumnArgs
-		.DefaultLabel(FText::FromString("|"))
-		.FixedWidth(15)
-		.ColumnId(FName("5")) ;
-	Header.Get().AddColumn(ColumnArgs);		
+	ActualList = SNew(SListView<TSharedPtr<FPDStatNetDatum>>)
+		.HeaderRow(Header)
+		.ListItemsSource(StatsAsSharedArray)
+		.OnGenerateRow( this, &SPDStatList::MakeListViewWidget_AllStatData )
+		.OnSelectionChanged( this, &SPDStatList::OnComponentSelected_AllStatData );	
 	
 	ChildSlot
 	.HAlign(HAlign_Center)
@@ -145,13 +167,8 @@ void SPDStatList::UpdateChildSlot(void* OpaqueData)
 				.Orientation(EOrientation::Orient_Vertical)
 				+SScrollBox::Slot()
 				[
-					SNew(SListView<TSharedPtr<FPDStatNetDatum>>)
-						.HeaderRow(Header.ToSharedPtr())
-						.ListItemsSource(StatsAsSharedArray)
-						.OnGenerateRow( this, &SPDStatList::MakeListViewWidget_AllStatData )
-						.OnSelectionChanged( this, &SPDStatList::OnComponentSelected_AllStatData )
+					ActualList.ToSharedRef()
 				]
-
 			]
 			+ SVerticalBox::Slot() 
 				.Padding(FMargin{0, FMath::Clamp(StatsAsSharedArray->Num() * 4.f, 0.f, 30.f)})
@@ -179,45 +196,52 @@ TSharedRef<ITableRow> SPDStatList::MakeListViewWidget_AllStatData(TSharedPtr<FPD
 	[
 		SNew(SHorizontalBox)
 		+ SHorizontalBox::Slot()
+		.MaxWidth(SectionWidth)
 		[
 			SNew(STextBlock)
 			.Text(StatNameAsText)
+			.MinDesiredWidth(SectionWidth)
 		]
 		+ SHorizontalBox::Slot()
+		.MaxWidth(SectionSeparatorWidth)
 		[
-			SNew(SSeparator)
-			.Orientation(Orient_Vertical)
-			.Thickness(10)
+			SNew(STextBlock)
+			.MinDesiredWidth(SectionSeparatorWidth)
 		]
 		+ SHorizontalBox::Slot()
+		.MaxWidth(SectionWidth)
 		[
 			SNew(STextBlock)
 			.Text(LevelAsText)
+			.MinDesiredWidth(SectionWidth)
 		]
 		+ SHorizontalBox::Slot()
+		.MaxWidth(SectionSeparatorWidth)
 		[
-			SNew(SSeparator)
-			.Orientation(Orient_Vertical)
-			.Thickness(10)
+			SNew(STextBlock)
+			.MinDesiredWidth(SectionSeparatorWidth)
 		]
 		+ SHorizontalBox::Slot()
+		.MaxWidth(SectionWidth)
 		[
 			SNew(STextBlock)
 			.Text(ExperienceAsText)
+			.MinDesiredWidth(SectionWidth)
 		]
 		+ SHorizontalBox::Slot()
+		.MaxWidth(SectionSeparatorWidth)
 		[
-			SNew(SSeparator)
-			.Orientation(Orient_Vertical)
-			.Thickness(10)
+			SNew(STextBlock)
+			.MinDesiredWidth(SectionSeparatorWidth)
 		]
 		+ SHorizontalBox::Slot()
+		.MaxWidth(SectionWidth)
 		[
 			SNew(STextBlock)
 			.Text(ModifiersAsText)
+			.MinDesiredWidth(SectionWidth)
 		]			
-	]
-	;
+	];
 
 	// ...
 	// ...
@@ -241,10 +265,131 @@ void SPDStatList::OnComponentSelected_AllStatData(TSharedPtr<FPDStatNetDatum> In
 		break;
 	}
 	
-	if(OnStatDataChosen.IsBound())
+	if (OnStatDataChosen.IsBound())
 	{
 		OnStatDataChosen.Execute(*InItem.Get());
 	}			
+}
+
+void UPDStatListInnerWidget::OnBindingChanged(const FName& Property)
+{
+	Super::OnBindingChanged(Property);
+}
+
+void UPDStatListInnerWidget::RefreshStatListOnChangedProperty(FPropertyChangedEvent& PropertyChangedEvent)
+{
+	const FProperty* Property = PropertyChangedEvent.Property;
+	if (Property == nullptr) { return; }
+
+	const FName PropertyName = Property->GetFName();
+	const bool bDoesPropertyHaveCorrectName =
+		PropertyName.IsEqual(GET_MEMBER_NAME_CHECKED(UPDStatListInnerWidget, EditorTestEntries))
+		|| PropertyName.IsEqual(GET_MEMBER_NAME_CHECKED(UPDStatListInnerWidget, SectionWidth));
+	if (bDoesPropertyHaveCorrectName == false) { return; }
+	
+	RefreshInnerStatList();
+}
+
+void UPDStatListInnerWidget::PostEditChangeProperty(FPropertyChangedEvent& PropertyChangedEvent)
+{
+	RefreshStatListOnChangedProperty(PropertyChangedEvent);
+	Super::PostEditChangeProperty(PropertyChangedEvent);
+}
+
+void UPDStatListInnerWidget::PostEditChangeChainProperty(FPropertyChangedChainEvent& PropertyChangedEvent)
+{
+	RefreshStatListOnChangedProperty(PropertyChangedEvent);
+	Super::PostEditChangeChainProperty(PropertyChangedEvent);
+}
+
+void UPDStatListInnerWidget::SynchronizeProperties()
+{
+	Super::SynchronizeProperties();
+}
+
+void UPDStatListInnerWidget::RefreshInnerStatList()
+{
+	DataView.Empty();
+	if (InnerStatList.IsValid())
+	{
+#if WITH_EDITOR
+		if (IsDesignTime())
+		{
+			for (const FPDStatNetDatum& EditorEntry :  EditorTestEntries)
+			{
+				TSharedRef<FPDStatNetDatum> SharedNetDatum = MakeShared<FPDStatNetDatum>(EditorEntry);
+				DataView.Emplace(SharedNetDatum);			
+			}
+		}
+#endif // WITH_EDITOR
+		
+		InnerStatList->Refresh(INDEX_NONE, DataView, SectionWidth);
+	}
+}
+
+TSharedRef<SWidget> UPDStatListInnerWidget::RebuildWidget()
+{
+	if (InnerSlateWrapbox.IsValid() == false)
+	{
+		InnerSlateWrapbox = SNew(SWrapBox);
+	}
+	if (InnerStatList.IsValid() == false)
+	{
+#if WITH_EDITOR
+		if (IsDesignTime())
+		{
+			for (const FPDStatNetDatum& EditorEntry :  EditorTestEntries)
+			{
+				TSharedRef<FPDStatNetDatum> SharedNetDatum = MakeShared<FPDStatNetDatum>(EditorEntry);
+				DataView.Emplace(SharedNetDatum);			
+			}
+		}
+#endif // WITH_EDITOR
+		
+		InnerStatList =
+			SNew(SPDStatList, OwnerID, DataView, SectionWidth);
+	}
+
+	InnerSlateWrapbox->ClearChildren();
+	SWrapBox::FScopedWidgetSlotArguments WrapboxSlot = InnerSlateWrapbox->AddSlot();
+	WrapboxSlot.AttachWidget(InnerStatList.ToSharedRef());
+	
+	return InnerSlateWrapbox.ToSharedRef();
+}
+
+void UPDStatListInnerWidget::ReleaseSlateResources(bool bReleaseChildren)
+{
+	InnerSlateWrapbox.Reset();
+	InnerStatList.Reset();
+	
+	Super::ReleaseSlateResources(bReleaseChildren);
+}
+
+void UPDStatListInnerWidget::UpdateOwner(int32 NewOwner)
+{
+	OwnerID = NewOwner;
+}
+
+void UPDStatListUserWidget::NativePreConstruct()
+{
+	if (InnerStatList != nullptr)
+	{
+		InnerStatList->UpdateOwner(GetOwnerID());
+	}
+	
+	Super::NativePreConstruct();
+}
+
+int32 UPDStatListUserWidget::GetOwnerID()
+{
+	if (OwnerIDDelegate.IsBound() == false)
+	{
+		UE_LOG(PDLog_Progression, Warning, TEXT("UPDStatListUserWidget(%s)::GetOwnerID -- Failed -- OwnerIDDelegate is not bound!"), *GetName())
+
+		return 0;
+	}
+	
+	return OwnerIDDelegate.Execute();
 }
 
 

@@ -4,11 +4,12 @@
 
 #include "CoreMinimal.h"
 #include "GameplayTags.h"
+#include "Blueprint/UserWidget.h"
+#include "Components/Widget.h"
 #include "Net/PDProgressionNetDatum.h"
 #include "Subsystems/EngineSubsystem.h"
 
-// #include "PDProgressionSharedUI.generated.h"
-
+#include "PDProgressionSharedUI.generated.h"
 
 class PDBASEPROGRESSION_API SPDStatList : public SCompoundWidget
 {
@@ -25,9 +26,11 @@ public:
 	SLATE_END_ARGS()
 	
 	/** @brief Stores a pointer to the copied save data and then Calls UpdateChildSlot, passing ArrayRef as the opaquedata parameter */
-	void Construct(const FArguments& InArgs, int32 InOwnerID, TArray<TSharedPtr<FPDStatNetDatum>>& ArrayRef);
+	void Construct(const FArguments& InArgs, int32 InOwnerID, TArray<TSharedPtr<FPDStatNetDatum>>& DataViewRef, int32 InSectionWidth = 50);
+	void Refresh(int32 InOwnerID, TArray<TSharedPtr<FPDStatNetDatum>>& DataViewRef, int32 NewSectionWidth);
+	void PrepareData();
 	/** @brief Base call, ensures we have a title-font loaded, Sets up the child slot, and passes in the data view array to an slistview wrapped in a scrollbox */
-	virtual void UpdateChildSlot(void* OpaqueData);
+	virtual void UpdateChildSlot();
 	
 	/** @brief Displays the actual list item for each entry in ConversationStatesAsSharedArray, which in this case is the states in 'FPDStatNetDatum' */
 	TSharedRef<ITableRow> MakeListViewWidget_AllStatData(TSharedPtr<FPDStatNetDatum> InItem, const TSharedRef<STableViewBase>& OwnerTable) const;
@@ -42,9 +45,14 @@ public:
 	UClass* SelectedClass = nullptr;
 
 	// View Tables
-	TSharedPtr<STableRow< TSharedPtr<FPDStatNetDatum>>> StatTable;
+	TSharedPtr<STableRow< TSharedPtr<FPDStatNetDatum>>> StatTable = nullptr;
+	TSharedPtr<SListView<TSharedPtr<FPDStatNetDatum>>> ActualList = nullptr;
+	TSharedPtr<SHeaderRow> Header = nullptr;
 
+	
 	int32 OwnerID = INDEX_NONE;
+	int32 SectionWidth = 50;
+	int32 SectionSeparatorWidth = 10;
 	
 	// Localized text
 	static FText StatBase_TitleText;
@@ -52,6 +60,76 @@ public:
 	static FText StatProgress_Header_Level;
 	static FText StatProgress_Header_Experience;
 	static FText StatProgress_Header_ModifiedOffset;
+};
+
+DECLARE_DYNAMIC_DELEGATE_RetVal(int, FOwnerIDDelegate);
+
+
+
+UCLASS(Blueprintable)
+class PDBASEPROGRESSION_API UPDStatListInnerWidget : public UWidget
+{
+	GENERATED_BODY()
+public:
+	
+	virtual TSharedRef<SWidget> RebuildWidget() override;
+	virtual void ReleaseSlateResources(bool bReleaseChildren) override;
+
+	virtual void SynchronizeProperties() override;
+	virtual void OnBindingChanged(const FName& Property) override;
+	void RefreshStatListOnChangedProperty(FPropertyChangedEvent& PropertyChangedEvent);
+
+	virtual void PostEditChangeProperty(FPropertyChangedEvent& PropertyChangedEvent) override;
+	virtual void PostEditChangeChainProperty(FPropertyChangedChainEvent& PropertyChangedEvent) override;
+	
+	void RefreshInnerStatList();
+	
+	UFUNCTION(BlueprintCallable)
+	virtual void UpdateOwner(int32 NewOwner);
+	
+	/** @brief Wrapbox that wraps our SPDStatList derived widgets */
+	TSharedPtr<class SWrapBox> InnerSlateWrapbox;
+	
+	/** @brief Base ptr to a SPDStatList widget */
+	TSharedPtr<SPDStatList> InnerStatList;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	int32 OwnerID = 0;
+
+	UPROPERTY()
+	FOwnerIDDelegate OwnerIDDelegate;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	TArray<FPDStatNetDatum> EditorTestEntries{};
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	int32 SectionWidth = 50;		
+
+	TArray<TSharedPtr<FPDStatNetDatum>> DataView{};	
+	
+	PROPERTY_BINDING_IMPLEMENTATION(int32, OwnerID);
+};
+
+UCLASS(Blueprintable)
+class PDBASEPROGRESSION_API UPDStatListUserWidget : public UUserWidget
+{
+	GENERATED_BODY()
+
+public:
+	DECLARE_DELEGATE_RetVal(int, FOwnerIDDelegate)
+	
+
+	UFUNCTION()
+	virtual void NativePreConstruct() override;
+
+	// @todo must set up
+	UFUNCTION()
+	virtual int32 GetOwnerID();
+
+	FOwnerIDDelegate OwnerIDDelegate;
+	
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Meta = (BindWidget))
+	UPDStatListInnerWidget* InnerStatList;
 };
 
 

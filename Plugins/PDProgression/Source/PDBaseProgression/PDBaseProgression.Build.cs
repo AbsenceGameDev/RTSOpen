@@ -29,6 +29,7 @@ public class PDBaseProgression : ModuleRules
 				"SlateCore",
 				"NetCore",
 				"GameplayTags",
+				"UMG",
 			}
 		);
 	}
