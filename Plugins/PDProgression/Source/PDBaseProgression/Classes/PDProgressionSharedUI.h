@@ -11,6 +11,20 @@
 
 #include "PDProgressionSharedUI.generated.h"
 
+
+namespace EPDStatListSections
+{
+	enum
+	{
+		EName = 0,
+		ECategory,
+		ELevel,
+		EExperience,
+		EValue,
+		EValueOffset
+	};
+}
+
 class PDBASEPROGRESSION_API SPDStatList : public SCompoundWidget
 {
 public:
@@ -26,8 +40,8 @@ public:
 	SLATE_END_ARGS()
 	
 	/** @brief Stores a pointer to the copied save data and then Calls UpdateChildSlot, passing ArrayRef as the opaquedata parameter */
-	void Construct(const FArguments& InArgs, int32 InOwnerID, TArray<TSharedPtr<FPDStatNetDatum>>& DataViewRef, int32 InSectionWidth = 50);
-	void Refresh(int32 InOwnerID, TArray<TSharedPtr<FPDStatNetDatum>>& DataViewRef, int32 NewSectionWidth);
+	void Construct(const FArguments& InArgs, int32 InOwnerID, TArray<TSharedPtr<FPDStatNetDatum>>& DataViewRef, const int32 InSectionWidth);
+	void Refresh(int32 InOwnerID, TArray<TSharedPtr<FPDStatNetDatum>>& DataViewRef, const int32 NewSectionWidth);
 	void PrepareData();
 	/** @brief Base call, ensures we have a title-font loaded, Sets up the child slot, and passes in the data view array to an slistview wrapped in a scrollbox */
 	virtual void UpdateChildSlot();
@@ -51,12 +65,15 @@ public:
 
 	
 	int32 OwnerID = INDEX_NONE;
-	int32 SectionWidth = 50;
-	int32 SectionSeparatorWidth = 10;
+	// TArray<int32> SectionWidths = {50, 50, 50, 50, 50, 50};
+	int32 SectionWidth = 50;		
+
 	
 	// Localized text
 	static FText StatBase_TitleText;
 	static FText StatProgress_Header_Name;
+	static FText StatProgress_Header_Category;
+	static FText StatProgress_Header_CurrentValue;
 	static FText StatProgress_Header_Level;
 	static FText StatProgress_Header_Experience;
 	static FText StatProgress_Header_ModifiedOffset;
@@ -104,6 +121,7 @@ public:
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
 	int32 SectionWidth = 50;		
+	// TArray<int32> SectionWidths = {50, 50, 50, 50, 50};		
 
 	TArray<TSharedPtr<FPDStatNetDatum>> DataView{};	
 	

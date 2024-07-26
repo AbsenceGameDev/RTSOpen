@@ -25,21 +25,24 @@
 #define LOCTEXT_NAMESPACE "SPDStatList"
 
 
-FText SPDStatList::StatBase_TitleText = LOCTEXT("HeaderRow_Field", "STATS");
-FText SPDStatList::StatProgress_Header_Name = LOCTEXT("Stat_HeaderRow_Field_Level", "NAME");
-FText SPDStatList::StatProgress_Header_Level = LOCTEXT("Stat_HeaderRow_Field_Level", "LEVEL");
-FText SPDStatList::StatProgress_Header_Experience = LOCTEXT("Stat_HeaderRow_Field_Experience", "EXPERIENCE");
+FText SPDStatList::StatBase_TitleText                 = LOCTEXT("HeaderRow_Field", "STATS");
+FText SPDStatList::StatProgress_Header_Name           = LOCTEXT("Stat_HeaderRow_Field_Name", "NAME");
+FText SPDStatList::StatProgress_Header_Category       = LOCTEXT("Stat_HeaderRow_Field_Category", "CATEGORY");
+FText SPDStatList::StatProgress_Header_CurrentValue   = LOCTEXT("Stat_HeaderRow_Field_Value", "CURR. VALUE");
+FText SPDStatList::StatProgress_Header_Level          = LOCTEXT("Stat_HeaderRow_Field_Level", "LEVEL");
+FText SPDStatList::StatProgress_Header_Experience     = LOCTEXT("Stat_HeaderRow_Field_Experience", "EXPERIENCE");
 FText SPDStatList::StatProgress_Header_ModifiedOffset = LOCTEXT("Stat_HeaderRow_Field_ModifiedOffset", "OFFSET");
 
 //
 // SAVE EDITOR MAIN
-void SPDStatList::Construct(const FArguments& InArgs, int32 InOwnerID, TArray<TSharedPtr<FPDStatNetDatum>>& DataViewRef, int32 InSectionWidth)
+void SPDStatList::Construct(const FArguments& InArgs, int32 InOwnerID, TArray<TSharedPtr<FPDStatNetDatum>>& DataViewRef, const int32 InSectionWidth)
 {
 	SectionWidth = InSectionWidth;
 	Refresh(InOwnerID, DataViewRef, SectionWidth);
 }
 
-void SPDStatList::Refresh(int32 InOwnerID, TArray<TSharedPtr<FPDStatNetDatum>>& DataViewRef, int32 NewSectionWidth)
+// void SPDStatList::Refresh(int32 InOwnerID, TArray<TSharedPtr<FPDStatNetDatum>>& DataViewRef, const TArray<int32>& NewSectionWidths)
+void SPDStatList::Refresh(int32 InOwnerID, TArray<TSharedPtr<FPDStatNetDatum>>& DataViewRef, const int32 NewSectionWidth)
 {
 	OwnerID = InOwnerID;
 	StatsAsSharedArray = &DataViewRef;
@@ -59,7 +62,39 @@ void SPDStatList::Refresh(int32 InOwnerID, TArray<TSharedPtr<FPDStatNetDatum>>& 
 
 void SPDStatList::PrepareData()
 {
-	SectionSeparatorWidth = SectionWidth / 5;
+	// // @todo investigate why it acts like the horizontal boxex width only are correct when they are uniform,
+	// // @todo then resolve below and uncomment code
+	// constexpr int32 NewSize = EPDStatListSections::EValueOffset + 1;
+	//
+	// // Ensure that SectionWidths contains 4 entries, resolve and send warning in case it is not!
+	// if (SectionWidths.IsValidIndex(EPDStatListSections::EValueOffset))
+	// {
+	// 	if (SectionWidths.IsValidIndex(NewSize))
+	// 	{
+	// 		UE_LOG(PDLog_Progression, Warning, TEXT("SPDStatList::PrepareData -- 'SectionWidths' has too many entries, set to 4 total entries."))
+	// 		SectionWidths.SetNum(NewSize);
+	// 	}
+	// }
+	// else // Fallback, set our own size
+	// {
+	// 	UE_LOG(PDLog_Progression, Warning, TEXT("SPDStatList::PrepareData -- 'SectionWidths' has too few entries, increasing to 4 total entries."))
+	//
+	// 	
+	// 	int32 IndexToStartEdit = SectionWidths.Num();
+	// 	SectionWidths.SetNum(NewSize);
+	// 	for (; IndexToStartEdit < NewSize; IndexToStartEdit++)
+	// 	{
+	// 		if (IndexToStartEdit == 0)
+	// 		{
+	// 			SectionWidths[IndexToStartEdit] = 50;
+	// 		}
+	// 		else
+	// 		{
+	// 			SectionWidths[IndexToStartEdit] = 20;
+	// 		}
+	// 	}
+	// }
+	
 	
 	UPDStatHandler* SelectedStatHandler = UPDStatSubsystem::Get()->StatHandlers.FindRef(OwnerID);
 	if (SelectedStatHandler != nullptr)
@@ -91,47 +126,48 @@ void SPDStatList::UpdateChildSlot()
 	SHeaderRow::FColumn::FArguments ColumnArgs;
 	ColumnArgs
 		.DefaultLabel(StatProgress_Header_Name)
+		// .FixedWidth(SectionWidths[EPDStatListSections::EName])
 		.FixedWidth(SectionWidth)
 		.ColumnId(FName("0")) ;
 	Header->AddColumn(ColumnArgs);
 
 	ColumnArgs
-		.DefaultLabel(FText::FromString("|"))
-		.FixedWidth(SectionSeparatorWidth)
+		.DefaultLabel(StatProgress_Header_Category)
+		// .FixedWidth(SectionWidths[EPDStatListSections::ECategory])
+		.FixedWidth(SectionWidth)
 		.ColumnId(FName("1")) ;
 	Header->AddColumn(ColumnArgs);
-
+	
+	
 	ColumnArgs
 		.DefaultLabel(StatProgress_Header_Level)
+		// .FixedWidth(SectionWidths[EPDStatListSections::ELevel])
 		.FixedWidth(SectionWidth)
 		.ColumnId(FName("2")) ;
 	Header->AddColumn(ColumnArgs);
 
 	ColumnArgs
-		.DefaultLabel(FText::FromString("|"))
-		.FixedWidth(SectionSeparatorWidth)
-		.ColumnId(FName("3")) ;
-	Header->AddColumn(ColumnArgs);	
-
-	ColumnArgs
 		.DefaultLabel(StatProgress_Header_Experience)
+		// .FixedWidth(SectionWidths[EPDStatListSections::EExperience])
+		.FixedWidth(SectionWidth)
+		.ColumnId(FName("3")) ;
+	Header->AddColumn(ColumnArgs);
+	
+	ColumnArgs
+		.DefaultLabel(StatProgress_Header_CurrentValue)
+		// .FixedWidth(SectionWidths[EPDStatListSections::EValue])
 		.FixedWidth(SectionWidth)
 		.ColumnId(FName("4")) ;
 	Header->AddColumn(ColumnArgs);
 
-	ColumnArgs
-		.DefaultLabel(FText::FromString("|"))
-		.FixedWidth(SectionSeparatorWidth)
-		.ColumnId(FName("5")) ;
-	Header->AddColumn(ColumnArgs);	
-	
 	ColumnArgs
 		.DefaultLabel(StatProgress_Header_ModifiedOffset)
+		// .FixedWidth(SectionWidths[EPDStatListSections::EValueOffset])
 		.FixedWidth(SectionWidth)
-		.ColumnId(FName("4")) ;
-	Header->AddColumn(ColumnArgs);
-	
+		.ColumnId(FName("5")) ;
+	Header->AddColumn(ColumnArgs);		
 
+	
 	ActualList = SNew(SListView<TSharedPtr<FPDStatNetDatum>>)
 		.HeaderRow(Header)
 		.ListItemsSource(StatsAsSharedArray)
@@ -166,6 +202,8 @@ void SPDStatList::UpdateChildSlot()
 				.ScrollBarThickness(UE::Slate::FDeprecateVector2DParameter(10))
 				.Orientation(EOrientation::Orient_Vertical)
 				+SScrollBox::Slot()
+					.AutoSize()
+					.MaxSize(800)
 				[
 					ActualList.ToSharedRef()
 				]
@@ -181,66 +219,101 @@ void SPDStatList::UpdateChildSlot()
 TSharedRef<ITableRow> SPDStatList::MakeListViewWidget_AllStatData(TSharedPtr<FPDStatNetDatum> InItem, const TSharedRef<STableViewBase>& OwnerTable) const
 {
 	const FPDStatNetDatum& CurrentStatNetDatum = *InItem.Get();
-	const FText StatNameAsText   = FText::FromName(CurrentStatNetDatum.ProgressionTag.GetTagName());
-	const FText LevelAsText      = FText::FromString(FString::FromInt(CurrentStatNetDatum.CurrentLevel));
-	const FText ExperienceAsText = FText::FromString(FString::FromInt(CurrentStatNetDatum.CurrentExperience));
-	const FText ModifiersAsText  = FText::FromString(FString::FromInt(CurrentStatNetDatum.CrossBehaviourValue));
+
+	const FGameplayTag& StatTag = CurrentStatNetDatum.ProgressionTag;
+
+	const FString& ParentTagString = StatTag.RequestDirectParent().GetTagName().ToString();
+	const int32 ParentCutoffIndex = 1 + ParentTagString.Find(".", ESearchCase::IgnoreCase, ESearchDir::FromEnd);
+	const FString TagCategoryString = ParentTagString.RightChop(ParentCutoffIndex);
+
+	const FString& TagString = StatTag.GetTagName().ToString();
+	const int32 CutoffIndex = 1 + TagString.Find(".", ESearchCase::IgnoreCase, ESearchDir::FromEnd);
+	const FString TagStatString = TagString.RightChop(CutoffIndex);
+
+	const FText StatNameAsText     = FText::FromString(TagStatString);
+	const FText StatCategoryAsText = FText::FromString(TagCategoryString);
+	const FText LevelAsText        = FText::FromString(FString::FromInt(CurrentStatNetDatum.CurrentLevel));
+	const FText ExperienceAsText   = FText::FromString(FString::FromInt(CurrentStatNetDatum.CurrentExperience));
+
+	const FText AppliedValueAsText = FText::FromString(FString::Printf(TEXT("%lf"), CurrentStatNetDatum.GetAppliedValue()));
+	const FText ModifiersAsText    = FText::FromString(FString::Printf(TEXT("%lf"), CurrentStatNetDatum.GetProcessedCrossBehaviour()));
+
 	
 	//
 	// Widget layout
 	SPDStatList* MutableThis = const_cast<SPDStatList*>(this);
 	check(MutableThis != nullptr)
+
+	// There is still some discrepancy between the content scale and our absolute scale,
+	// offsetting by a tiny amount as a workaround for now
+	constexpr double WidthDiscrepancy = (1.015);
+
+	 const float TrueSectionWidth = SectionWidth * WidthDiscrepancy;
+	// const float TrueSectionWidthName         = SectionWidths[EPDStatListSections::EName] * WidthDiscrepancy;
+	// const float TrueSectionWidthCategory     = SectionWidths[EPDStatListSections::ECategory] * WidthDiscrepancy;
+	// const float TrueSectionWidthLevel        = SectionWidths[EPDStatListSections::ELevel] * WidthDiscrepancy;
+	// const float TrueSectionWidthExperience   = SectionWidths[EPDStatListSections::EExperience] * WidthDiscrepancy;
+	// const float TrueSectionWidthValueRep     = SectionWidths[EPDStatListSections::EValue] * WidthDiscrepancy;
+	// const float TrueSectionWidthValueOffsets = SectionWidths[EPDStatListSections::EValueOffset] * WidthDiscrepancy;
 	
 	MutableThis->StatTable =
 		SNew( STableRow< TSharedPtr<FPDStatNetDatum> >, OwnerTable )
 	[
 		SNew(SHorizontalBox)
 		+ SHorizontalBox::Slot()
-		.MaxWidth(SectionWidth)
+		// .MaxWidth(TrueSectionWidthName)
+		.MaxWidth(TrueSectionWidth)
 		[
 			SNew(STextBlock)
 			.Text(StatNameAsText)
-			.MinDesiredWidth(SectionWidth)
+			// .MinDesiredWidth(TrueSectionWidthName)
+			.MinDesiredWidth(TrueSectionWidth)
 		]
 		+ SHorizontalBox::Slot()
-		.MaxWidth(SectionSeparatorWidth)
+		// .MaxWidth(TrueSectionWidthCategory)
+		.MaxWidth(TrueSectionWidth)
 		[
 			SNew(STextBlock)
-			.MinDesiredWidth(SectionSeparatorWidth)
-		]
+			.Text(StatCategoryAsText)
+			// .MinDesiredWidth(TrueSectionWidthCategory)
+			.MinDesiredWidth(TrueSectionWidth)
+		]		
 		+ SHorizontalBox::Slot()
-		.MaxWidth(SectionWidth)
+		// .MaxWidth(TrueSectionWidthLevel)
+		.MaxWidth(TrueSectionWidth)
 		[
 			SNew(STextBlock)
 			.Text(LevelAsText)
-			.MinDesiredWidth(SectionWidth)
+			// .MinDesiredWidth(TrueSectionWidthLevel)
+			.MinDesiredWidth(TrueSectionWidth)
 		]
 		+ SHorizontalBox::Slot()
-		.MaxWidth(SectionSeparatorWidth)
-		[
-			SNew(STextBlock)
-			.MinDesiredWidth(SectionSeparatorWidth)
-		]
-		+ SHorizontalBox::Slot()
-		.MaxWidth(SectionWidth)
+		// .MaxWidth(TrueSectionWidthExperience)
+		.MaxWidth(TrueSectionWidth)
 		[
 			SNew(STextBlock)
 			.Text(ExperienceAsText)
-			.MinDesiredWidth(SectionWidth)
+			// .MinDesiredWidth(TrueSectionWidthExperience)
+			.MinDesiredWidth(TrueSectionWidth)
 		]
 		+ SHorizontalBox::Slot()
-		.MaxWidth(SectionSeparatorWidth)
+		// .MaxWidth(TrueSectionWidthValueRep)
+		.MaxWidth(TrueSectionWidth)
 		[
 			SNew(STextBlock)
-			.MinDesiredWidth(SectionSeparatorWidth)
+			.Text(AppliedValueAsText)
+			// .MinDesiredWidth(TrueSectionWidthValueRep)
+			.MinDesiredWidth(TrueSectionWidth)
 		]
 		+ SHorizontalBox::Slot()
-		.MaxWidth(SectionWidth)
+		// .MaxWidth(TrueSectionWidthValueOffsets)
+		.MaxWidth(TrueSectionWidth)
 		[
 			SNew(STextBlock)
 			.Text(ModifiersAsText)
-			.MinDesiredWidth(SectionWidth)
-		]			
+			// .MinDesiredWidth(TrueSectionWidthValueOffsets)
+			.MinDesiredWidth(TrueSectionWidth)
+		]				
 	];
 
 	// ...

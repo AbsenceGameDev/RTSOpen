@@ -17,6 +17,16 @@ void UPDStatHandler::BeginPlay()
 	UPDStatSubsystem::Get()->StatHandlers.Emplace(OwnerID, this);
 }
 
+double UPDStatHandler::GetStatValue(const FGameplayTag& StatTag)
+{
+	if (LocalStatMappings.Contains(StatTag) == false) { return 0.0; }
+
+	const FPDStatMapping* StatMapping = LocalStatMappings.Find(StatTag);
+	check(StatMapping)
+	
+	return StatList.Items[StatMapping->Index].GetAppliedValue();
+}
+
 void UPDStatHandler::ModifySkill(const FGameplayTag& SkillTag, const bool bUnlock)
 {
 	static UPDStatSubsystem* StatSubsystem = UPDStatSubsystem::Get();
@@ -196,6 +206,10 @@ void UPDStatHandler::IncreaseStatLevel_Implementation(const FGameplayTag& StatTa
 
 	MARK_PROPERTY_DIRTY_FROM_NAME(UPDStatHandler, StatList, this)
 	const int32 CurrentLevel = (StatNetDatum.CurrentLevel += LevelDelta);
+
+	StatNetDatum.CurrentStatValue =
+	UPDStatSubsystem::Get()->
+		GetStatTypeData(StatTag).Representation.ResolveValue(CurrentLevel);
 
 	// Granting Tokens
 	GrantTokens(StatTag, LevelDelta, CurrentLevel);

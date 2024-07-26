@@ -26,25 +26,29 @@ class PDBASEPROGRESSION_API UPDStatHandler : public UActorComponent
 public:
 
 	virtual void BeginPlay() override;
+
+	UFUNCTION(BlueprintCallable)
+	double GetStatValue(const FGameplayTag& StatTag);
 	
-	UFUNCTION(BlueprintNativeEvent)
+	UFUNCTION(BlueprintNativeEvent, BlueprintCallable)
 	void IncreaseStatLevel(const FGameplayTag& StatTag, int32 LevelDelta = 1);
 
-	UFUNCTION(BlueprintNativeEvent)
+	UFUNCTION(BlueprintNativeEvent, BlueprintCallable)
 	void IncreaseStatExperience(const FGameplayTag& StatTag, int32 ExperienceDelta);	
 
-	UFUNCTION(BlueprintNativeEvent)
+	UFUNCTION(BlueprintNativeEvent, BlueprintCallable)
 	void AttemptUnlockSkill(const FGameplayTag& SkillTag);
 
-	UFUNCTION(BlueprintNativeEvent)
+	UFUNCTION(BlueprintNativeEvent, BlueprintCallable)
 	void AttemptLockSkill(const FGameplayTag& SkillTag);	
 	
 	/* @brief Used to fill the  */
-	UFUNCTION(BlueprintNativeEvent)
+	UFUNCTION(BlueprintNativeEvent, BlueprintCallable)
 	void SetClass(const FGameplayTag& ClassTag);
 
 	void ModifySkill(const FGameplayTag& SkillTag, bool bUnlock);
 	bool HasCompleteAuthority() const;
+	UFUNCTION(BlueprintCallable)
 	void GrantTokens(const FGameplayTag& StatTag, int32 LevelDelta, int32 CurrentLevel);
 	/* @brief Boiler plate for replication setup */
 	virtual void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override;

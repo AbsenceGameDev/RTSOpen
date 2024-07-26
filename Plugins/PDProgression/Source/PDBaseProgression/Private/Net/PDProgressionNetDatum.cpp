@@ -2,6 +2,19 @@
 
 #include "Net/PDProgressionNetDatum.h"
 
+#include "Subsystems/PDProgressionSubsystem.h"
+
+double FPDStatNetDatum::GetAppliedValue() const
+{
+	return CurrentStatValue + GetProcessedCrossBehaviour();
+}
+
+double FPDStatNetDatum::GetProcessedCrossBehaviour() const
+{
+	const double CrossBehaviourBaseDivisor = UPDStatSubsystem::Get()->GetStatTypeData(ProgressionTag).Representation.BaseDivisor;
+	return static_cast<double>(CrossBehaviourValue) / CrossBehaviourBaseDivisor;
+}
+
 void FPDStatNetDatum::PreReplicatedRemove(const FPDStatList& OwningList)
 {
 	check(OwningList.OwningObject != nullptr)
@@ -38,6 +51,10 @@ void FPDStatList::AddStat(const FGameplayTag& StatTag, int32 StatExperience, int
 	ConstructedNetDatum.ProgressionTag = StatTag;
 	ConstructedNetDatum.CurrentExperience = StatExperience;
 	ConstructedNetDatum.CurrentLevel = StatLevel;
+
+	ConstructedNetDatum.CurrentStatValue =
+		UPDStatSubsystem::Get()->
+			GetStatTypeData(StatTag).Representation.ResolveValue(StatLevel);
 	
 	FPDStatNetDatum Item = Items.Emplace_GetRef(ConstructedNetDatum);
 	MarkItemDirty(Item);

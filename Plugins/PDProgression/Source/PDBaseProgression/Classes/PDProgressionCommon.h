@@ -61,15 +61,56 @@ enum class EPDProgressionType : uint8
 
 /* @brief @todo */
 USTRUCT(Blueprintable)
+struct FPDValueProgressionCompound
+{
+	GENERATED_BODY()
+
+	/* @brief @todo */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	int32 BaseValue;
+
+	/* @brief @todo */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	UCurveFloat* ValueProgression = nullptr;
+	
+};
+
+/* @brief @todo */
+USTRUCT(Blueprintable)
 struct PDBASEPROGRESSION_API FPDStatsValue
 {
 	GENERATED_BODY()
+
+	// Not thread safe! Lock accesses to BaseValueRepresentations, BaseDivisor 
+	/* @brief @todo */
+	double ResolveValue(int32 Level) const;
 	
+	/* @brief @todo */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
-	TArray<int32> BaseValueRepresentations{};
+	int32 BaseValue;
+
+	/* @brief @todo */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	UCurveFloat* ValueProgression = nullptr;	
+
+	/* @brief
+	 * @todo Needs a slider with minimum value of 1,
+	 * @todo And needs a setter function that clamps any requested new value to minimum 1 */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
 	int32 BaseDivisor = 1;
 };
+
+/* @brief @todo */
+USTRUCT(Blueprintable)
+struct PDBASEPROGRESSION_API FPDStatGameValue
+{
+	GENERATED_BODY()
+	
+	/* @brief @todo */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	double BaseValue = 0.0;
+};
+
 
 /* @brief @todo */
 USTRUCT(Blueprintable)
@@ -190,7 +231,7 @@ struct PDBASEPROGRESSION_API FPDStatsRow : public FTableRowBase
 	EPDProgressionType ProgressionType;
 	/* @brief @todo */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
-	FPDStatsValue ProgressionValueRepresentation;
+	FPDStatsValue Representation;
 	/* @brief @todo */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
 	int32 MaxLevel = 1;

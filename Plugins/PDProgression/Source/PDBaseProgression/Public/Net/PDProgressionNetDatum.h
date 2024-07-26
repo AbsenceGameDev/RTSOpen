@@ -27,7 +27,17 @@ struct PDBASEPROGRESSION_API FPDStatNetDatum : public FFastArraySerializerItem
 	int32 CurrentLevel = 0;
 	/* @brief @todo */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
-	int32 CurrentExperience;
+	int32 CurrentExperience = 0;
+
+	/* @brief @todo */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	double CurrentStatValue;
+
+	/* @brief @todo */
+	double GetAppliedValue() const;
+
+	/* @brief @todo */
+	double GetProcessedCrossBehaviour() const;	
 	
 	/** @brief This is called on the client when they receive a replicated update.
 	 * Calls into the owner 'OnDatumUpdate(this, EPDStatNetOperation::REMOVE)'

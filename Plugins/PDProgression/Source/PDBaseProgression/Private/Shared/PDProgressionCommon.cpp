@@ -2,6 +2,21 @@
 
 #include "PDProgressionCommon.h"
 
+double FPDStatsValue::ResolveValue(int32 Level) const
+{
+	double ProgressionModifier = 1.0;
+	if (ValueProgression != nullptr)
+	{
+		ProgressionModifier = ValueProgression->GetFloatValue(Level);
+	}
+	else
+	{
+		constexpr double FallbackLinearProgressionModifier = 0.25;
+		ProgressionModifier += Level * FallbackLinearProgressionModifier;
+	}
+		
+	return (BaseValue * ProgressionModifier) / static_cast<double>(BaseDivisor);
+}
 
 /**
 Business Source License 1.1
