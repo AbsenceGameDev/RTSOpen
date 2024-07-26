@@ -63,9 +63,7 @@ struct FPDRulesetEvaluator
 	/* @brief @todo */
 	TValueType Eval(
 		const TArray<FPDRulesetOperatorStruct>& Ruleset, 
-		const TValueType& PotentialSelfValue,
-		const TValueType& PotentialOtherValue,
-		const TValueType& PotentialStaticValue)
+		const TValueType& SelectedValue)
 		{
 			TValueType OperationResult{};
 		
@@ -118,14 +116,7 @@ struct FPDRulesetEvaluator
 				for (const int32 RuleIndex : InnerToplevelOperations)
 				{
 					const FPDRulesetOperatorStruct& Rule = Ruleset[RuleIndex];
-
-					
-					switch(Rule.OpTarget)
-					{
-						case EPDRulesetOpTarget::ESelf:   OpValues[RuleIndex] = PotentialSelfValue; break;
-						case EPDRulesetOpTarget::EOther:  OpValues[RuleIndex] = PotentialOtherValue; break;
-						case EPDRulesetOpTarget::EStatic: OpValues[RuleIndex] = PotentialStaticValue; break;
-					}
+					OpValues[RuleIndex] = SelectedValue;
 				}
 
 
@@ -151,7 +142,7 @@ struct FPDRulesetEvaluator
 						if (PrevInnerRulesetPtr != nullptr) 
 						{ 
 							InnerRulesetRecursion.Emplace(*PrevInnerRulesetPtr);
-							ExpandedPreviousIndexValue = FPDRulesetEvaluator::Eval(InnerRulesetRecursion, PotentialSelfValue, PotentialOtherValue, PotentialStaticValue);
+							ExpandedPreviousIndexValue = FPDRulesetEvaluator::Eval(InnerRulesetRecursion, PreviousOpBaseValue);
 						}
 					}
 
@@ -165,7 +156,7 @@ struct FPDRulesetEvaluator
 						if (CurrentInnerRulesetPtr != nullptr) 
 						{ 
 							InnerRulesetRecursion.Emplace(*CurrentInnerRulesetPtr);
-							ExpandedCurrentIndexValue = FPDRulesetEvaluator::Eval(InnerRulesetRecursion, PotentialSelfValue, PotentialOtherValue, PotentialStaticValue);
+							ExpandedCurrentIndexValue = FPDRulesetEvaluator::Eval(InnerRulesetRecursion, CurrentOpBaseValue);
 						}
 												
 					}
@@ -185,8 +176,8 @@ struct FPDRulesetEvaluator
 						case EPDRulesetOpType::EDivision: 
 							OperationResult = ExpandedPreviousIndexValue / ExpandedCurrentIndexValue;
 							break;
-						case EPDRulesetOpType::EPower: 
-							OperationResult = FMath::Pow(ExpandedPreviousIndexValue, CurrentOpBaseValue);
+						case EPDRulesetOpType::EPower: // @todo resolve mistyping here and also make sure 'CurrentOpBaseValue' is used as intended 
+							OperationResult = FMath::Pow(ExpandedPreviousIndexValue, ExpandedCurrentIndexValue);
 							break;
 					}
 				}
