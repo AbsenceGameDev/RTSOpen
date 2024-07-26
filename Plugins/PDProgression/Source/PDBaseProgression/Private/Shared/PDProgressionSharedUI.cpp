@@ -35,14 +35,385 @@ FText SPDStatList::StatProgress_Header_Experience     = LOCTEXT("Stat_HeaderRow_
 FText SPDStatList::StatProgress_Header_ModifiedOffset = LOCTEXT("Stat_HeaderRow_Field_ModifiedOffset", "OFFSET");
 
 
-FText SPDSelectedStat::StatSources_Header_Title = LOCTEXT("StatSource_HeaderRow_Name", "STAT SOURCE LIST");
-FText SPDSelectedStat::StatSources_Header_Name = LOCTEXT("StatSource_HeaderRow_Name", "NAME");
-FText SPDSelectedStat::StatSources_Header_Category = LOCTEXT("StatSource_HeaderRow_Name", "CATEGORY");
-FText SPDSelectedStat::StatSources_Header_AppliedOffset = LOCTEXT("StatSource_HeaderRow_Name", "VALUE OFFSET");
-FText SPDSelectedStat::StatSources_Header_Curves = LOCTEXT("StatSource_HeaderRow_Name", "CURVE");
+FText SPDSelectedStat_LevelData::SelectedStatLevelLabel = LOCTEXT("Stat_LevelData_Title", "LEVEL DATA");;
+FText SPDSelectedStat_LevelData::Token_ColumnLabel = LOCTEXT("Stat_LevelData_TokensToGrant", "TOKENS");;
+FText SPDSelectedStat_LevelData::TokenName_ColumnLabel = LOCTEXT("Stat_LevelData_TokensToGrant", "NAME");;
+FText SPDSelectedStat_LevelData::TokenCount_ColumnLabel = LOCTEXT("Stat_LevelData_TokensToGrant", "COUNT");;
+FText SPDSelectedStat_LevelData::OtherStats_ColumnLabel = LOCTEXT("Stat_LevelData_OtherAffected", "OTHER STATS");;
+FText SPDSelectedStat_LevelData::OtherStatsAffectedName_ColumnLabel = LOCTEXT("Stat_LevelData_OtherAffected", "NAME");;
+FText SPDSelectedStat_LevelData::OtherStatsAffectedValue_ColumnLabel = LOCTEXT("Stat_LevelData_OtherAffected", "VALUE");;
+
+FText SPDSelectedStat_LevelData::TokenEntryLabel = LOCTEXT("Stat_LevelData_TokensToGrant_Entry", "Token: ");;
+FText SPDSelectedStat_LevelData::OtherStatsAffectedEntryLabel = LOCTEXT("Stat_LevelData_OtherAffected_Entry", "Affected Stats:");;
+FText SPDSelectedStat_LevelData::ExperienceBar_Title = LOCTEXT("Stat_LevelData_ExperienceBar_Title", "EXPERIENCE");;
 
 
-void SPDSelectedStat::Construct(const FArguments& InArgs, int32 InOwnerID, const FGameplayTag& InSelectedStatTag, TArray<TSharedPtr<FPDStatViewModifySource>>& ArrayRef)
+FText SPDSelectedStat_OffsetData::StatSources_Header_Title = LOCTEXT("StatSource_HeaderRow_Name", "STAT SOURCE LIST");
+FText SPDSelectedStat_OffsetData::StatSources_Header_Name = LOCTEXT("StatSource_HeaderRow_Name", "NAME");
+FText SPDSelectedStat_OffsetData::StatSources_Header_Category = LOCTEXT("StatSource_HeaderRow_Name", "CATEGORY");
+FText SPDSelectedStat_OffsetData::StatSources_Header_AppliedOffset = LOCTEXT("StatSource_HeaderRow_Name", "VALUE OFFSET");
+FText SPDSelectedStat_OffsetData::StatSources_Header_Curves = LOCTEXT("StatSource_HeaderRow_Name", "CURVE");
+
+
+//
+// Selected stat - Level data
+
+void SPDSelectedStat_LevelData::Construct(
+	const FArguments& InArgs,
+	int32 InOwnerID,
+	const FGameplayTag& InSelectedStatTag,
+	TArray<TSharedPtr<FPDStatViewTokenToGrant>>& TokenArrayRef,
+	TArray<TSharedPtr<FPDStatViewAffectedStat>>& AffectedStatsRef)
+{
+	OwnerID = InOwnerID;
+	SelectedStatTag = InSelectedStatTag;
+	TokenArrayPtr = &TokenArrayRef;
+	AffectedStatsPtr = &AffectedStatsRef;
+		
+	UpdateChildSlot();
+}
+
+void SPDSelectedStat_LevelData::UpdateChildSlot()
+{
+	if (TitleFont.TypefaceFontName.IsNone())
+	{
+		// @todo Set up a custom slate styleset for the saveeditors fonts and icons 
+		TitleFont = FAppStyle::GetFontStyle( TEXT("PropertyWindow.NormalFont"));
+		TitleFont.Size *= 8;
+		HalfSizedTitleFont = TitleFont;
+		HalfSizedTitleFont.Size /= 2;
+	}
+	
+	if (TokenHeader.IsValid() == false)
+	{
+		TokenHeader = SNew(SHeaderRow);
+	}
+	TokenHeader->ClearColumns();
+	
+	SHeaderRow::FColumn::FArguments ColumnArguments =
+		SHeaderRow::FColumn::FArguments{}
+		.DefaultLabel(TokenName_ColumnLabel)
+		.FixedWidth(SectionWidth)
+		.ColumnId("0");
+	TokenHeader->AddColumn(ColumnArguments);
+	
+	ColumnArguments =
+		SHeaderRow::FColumn::FArguments{}
+	.DefaultLabel(TokenCount_ColumnLabel)
+	.FixedWidth(SectionWidth)
+	.ColumnId("1");
+	TokenHeader->AddColumn(ColumnArguments);	
+
+	if (AffectedHeader.IsValid() == false)
+	{
+		AffectedHeader = SNew(SHeaderRow);
+	}
+	AffectedHeader->ClearColumns();
+
+	ColumnArguments =
+		SHeaderRow::FColumn::FArguments{}
+	.DefaultLabel(OtherStatsAffectedName_ColumnLabel)
+	.FixedWidth(SectionWidth)
+	.ColumnId("0");
+	AffectedHeader->AddColumn(ColumnArguments);
+	
+	ColumnArguments =
+		SHeaderRow::FColumn::FArguments{}
+	.DefaultLabel(OtherStatsAffectedValue_ColumnLabel)
+	.FixedWidth(SectionWidth)
+	.ColumnId("1");
+	AffectedHeader->AddColumn(ColumnArguments);
+	
+	
+
+	TokenArrayListView =
+		SNew(SListView<TSharedPtr<FPDStatViewTokenToGrant>>)
+		.HeaderRow(TokenHeader)
+		.ListItemsSource(TokenArrayPtr)
+		.OnGenerateRow( this, &SPDSelectedStat_LevelData::MakeListViewWidget_LinkedStat_TokensToGrant)
+		.OnSelectionChanged( this, &SPDSelectedStat_LevelData::OnComponentSelected_LinkedStat_TokensToGrant );
+	
+	
+	AffectedStatsListView =
+		SNew(SListView<TSharedPtr<FPDStatViewAffectedStat>>)
+		.HeaderRow(AffectedHeader)
+		.ListItemsSource(AffectedStatsPtr)
+		.OnGenerateRow( this, &SPDSelectedStat_LevelData::MakeListViewWidget_LinkedStat_AffectedStats)
+		.OnSelectionChanged( this, &SPDSelectedStat_LevelData::OnComponentSelected_LinkedStat_AffectedStats );
+	
+	
+	ChildSlot
+	.VAlign(VAlign_Center)
+	.HAlign(HAlign_Center)
+	[
+	SNew(SHorizontalBox)
+	+ SHorizontalBox::Slot()
+	.FillWidth(10)
+	[
+		SNew(SVerticalBox)
+		+ SVerticalBox::Slot() 
+			.Padding(FMargin{0, 0})
+			.AutoHeight()
+		[
+			SNew(STextBlock)
+				.Font(TitleFont)
+				.Justification(ETextJustify::Center)
+				.Text(SelectedStatLevelLabel)
+		]
+
+		+ SVerticalBox::Slot() 
+			.Padding(FMargin{0, 0})
+			.AutoHeight()
+		[
+			SNew(STextBlock)
+				.Font(HalfSizedTitleFont)
+				.Justification(ETextJustify::Center)
+				.Text(Token_ColumnLabel)
+		]		
+			
+		+ SVerticalBox::Slot() 
+			.Padding(FMargin{0, 0})
+			.FillHeight(10)
+		[
+			SNew(SScrollBox)
+			.ScrollBarAlwaysVisible(true)
+			.ScrollBarVisibility(EVisibility::Visible)
+			.ScrollBarThickness(UE::Slate::FDeprecateVector2DParameter(10))
+			.Orientation(EOrientation::Orient_Vertical)
+			+SScrollBox::Slot()
+				.AutoSize()
+				.MaxSize(800)
+			[
+				TokenArrayListView.ToSharedRef()
+			]
+		]
+
+		+ SVerticalBox::Slot() 
+			.Padding(FMargin{0, 0})
+			.AutoHeight()
+		[
+			SNew(STextBlock)
+				.Font(HalfSizedTitleFont)
+				.Justification(ETextJustify::Center)
+				.Text(OtherStats_ColumnLabel)
+		]		
+		+ SVerticalBox::Slot() 
+			.Padding(FMargin{0, 0})
+			.FillHeight(10)
+		[
+			SNew(SScrollBox)
+			.ScrollBarAlwaysVisible(true)
+			.ScrollBarVisibility(EVisibility::Visible)
+			.ScrollBarThickness(UE::Slate::FDeprecateVector2DParameter(10))
+			.Orientation(EOrientation::Orient_Vertical)
+			+SScrollBox::Slot()
+				.AutoSize()
+				.MaxSize(800)
+			[
+				AffectedStatsListView.ToSharedRef()
+			]
+		]
+
+		+ SVerticalBox::Slot() 
+			.Padding(FMargin{0, 0})
+			.AutoHeight()
+		[
+			SNew(STextBlock)
+				.Font(HalfSizedTitleFont)
+				.Justification(ETextJustify::Center)
+				.Text(ExperienceBar_Title)
+		]			
+		+ SVerticalBox::Slot() 
+			.Padding(FMargin{0, 0})
+			.FillHeight(10)
+		[
+			SNew(STextBlock) // @todo replace with bar representing experience
+		]		
+	]
+	];
+}
+
+void SPDSelectedStat_LevelData::PrepareData()
+{
+	if (TokenArrayPtr == nullptr || TokenArrayListView.IsValid() == false)
+	{
+		return;
+	}
+	
+	if (AffectedStatsPtr == nullptr || AffectedStatsListView.IsValid() == false)
+	{
+		return;
+	}
+	
+	static UPDStatSubsystem* StatSubsystem = UPDStatSubsystem::Get();
+	const FPDStatsRow& SelectedStat = StatSubsystem->GetStatTypeData(SelectedStatTag);
+	const TArray<FGameplayTag>& StatsThatWeAffect = StatSubsystem->StatCrossBehaviourMap.FindRef(SelectedStatTag);
+
+	UPDStatHandler** OwnersStatHandler = StatSubsystem->StatHandlers.Find(OwnerID);
+	if (OwnersStatHandler == nullptr || *OwnersStatHandler == nullptr)
+	{
+		return;
+	}
+
+	const FPDStatMapping* StatMapping = (*OwnersStatHandler)->LocalStatMappings.Find(SelectedStatTag);
+	int32 SelectedStatCurrentLevel = 1 + (StatMapping == nullptr
+		? 0
+		: SelectedStatCurrentLevel = (*OwnersStatHandler)->StatList.Items[StatMapping->Index].CurrentLevel);
+
+	
+	for (const FGameplayTag& StatTargetTag : StatsThatWeAffect)
+	{
+		const FPDStatsRow* StatTargetDefaultDataPtr = StatSubsystem->GetStatTypeDataPtr(StatTargetTag);
+		
+		if (StatTargetDefaultDataPtr == nullptr) { continue; }
+
+		// Find out our (SelectedStatTag) effect on target stat (Stats that are affected by us)
+		float CrossBehaviourMultiplier = 1.0;
+		float NextCrossBehaviourMultiplier = 1.0;
+		const FPDStatsCrossBehaviourRules& CrossBehaviourRules = StatTargetDefaultDataPtr->RulesAffectedBy.FindRef(SelectedStatTag);
+		if (CrossBehaviourRules.RuleSetLevelCurveMultiplier != nullptr)
+		{
+			CrossBehaviourMultiplier = 
+				CrossBehaviourRules.RuleSetLevelCurveMultiplier->GetFloatValue(SelectedStatCurrentLevel);
+			NextCrossBehaviourMultiplier = 
+				CrossBehaviourRules.RuleSetLevelCurveMultiplier->GetFloatValue(SelectedStatCurrentLevel + 1);
+		}
+
+		const int32 StatTargetBaseDivisor = StatTargetDefaultDataPtr->Representation.BaseDivisor;
+		const int32 CurrentCrossBehaviourOffset_NotNormalized = CrossBehaviourRules.CrossBehaviourBaseValue * CrossBehaviourMultiplier;
+		const double CurrentCrossBehaviourOffset_Normalized =
+			static_cast<double>(CurrentCrossBehaviourOffset_NotNormalized) / static_cast<double>(StatTargetBaseDivisor);
+		const int32 NextCrossBehaviourOffset_NotNormalized = CrossBehaviourRules.CrossBehaviourBaseValue * NextCrossBehaviourMultiplier;
+		const double NextCrossBehaviourOffset_Normalized =
+			static_cast<double>(NextCrossBehaviourOffset_NotNormalized) / static_cast<double>(StatTargetBaseDivisor);
+		
+		const double DeltaNewLevelOffset = NextCrossBehaviourOffset_Normalized - CurrentCrossBehaviourOffset_Normalized; 
+
+		
+		TSharedPtr<FPDStatViewAffectedStat> ConstructedAffectedStatView = MakeShared<FPDStatViewAffectedStat>();
+		ConstructedAffectedStatView->AffectedStat = StatTargetTag;
+		ConstructedAffectedStatView->TotalAffectedDelta = DeltaNewLevelOffset;
+
+		AffectedStatsPtr->Emplace(ConstructedAffectedStatView);
+	}
+
+	// Comment out for the commit, will be finished by next commit
+	// for ()
+	// {
+	// 	TSharedPtr<FPDStatViewTokenToGrant> ConstructedTokenView = MakeShared<FPDStatViewTokenToGrant>();
+	// 	ConstructedTokenView->TokenTag = TokenTag;
+	// 	ConstructedTokenView->TokensToGrantForNextLevel = CaculatedTokenCount;
+	//
+	//
+	// 	TokenArrayPtr->Emplace(ConstructedTokenView);
+	// }
+}
+
+TSharedRef<ITableRow> SPDSelectedStat_LevelData::MakeListViewWidget_LinkedStat_TokensToGrant(
+	TSharedPtr<FPDStatViewTokenToGrant> StatViewTokensToGrant,
+	const TSharedRef<STableViewBase>& OwnerTable) const
+{
+	TSharedPtr<STableRow< TSharedPtr<FPDStatViewTokenToGrant>>> StatTable = nullptr;
+
+	// (DONE) 1. StatViewModifySource->StatTag
+	const FGameplayTag& TokenTag = StatViewTokensToGrant->TokenTag;
+	const FString& ParentTagString = TokenTag.RequestDirectParent().GetTagName().ToString();
+	const int32 ParentCutoffIndex = 1 + ParentTagString.Find(".", ESearchCase::IgnoreCase, ESearchDir::FromEnd);
+	const FString TagCategoryString = ParentTagString.RightChop(ParentCutoffIndex);
+
+	const FString& TagString = TokenTag.GetTagName().ToString();
+	const int32 CutoffIndex = 1 + TagString.Find(".", ESearchCase::IgnoreCase, ESearchDir::FromEnd);
+	const FString TagStatString = TagString.RightChop(CutoffIndex);
+
+	const FText TokenAndCategoryText = FText::FromString(TagCategoryString + "." + TagStatString );
+	
+	constexpr double WidthDiscrepancy = (1.015);
+	const float TrueSectionWidth = SectionWidth * WidthDiscrepancy;
+	StatTable = SNew( STableRow< TSharedPtr<FPDStatViewTokenToGrant> >, OwnerTable )
+	[
+		SNew(SHorizontalBox)
+		+ SHorizontalBox::Slot()
+		.MaxWidth(TrueSectionWidth)
+		[
+			SNew(STextBlock)
+			.Text(TokenAndCategoryText)
+			.MinDesiredWidth(TrueSectionWidth)
+		]
+		+ SHorizontalBox::Slot()
+		.MaxWidth(TrueSectionWidth)
+		[
+			SNew(STextBlock)
+			.Text(FText::FromString(FString::FromInt(StatViewTokensToGrant->TokensToGrantForNextLevel)))
+			.MinDesiredWidth(TrueSectionWidth)
+		]
+	];
+
+	
+	return StatTable.ToSharedRef();
+}
+void SPDSelectedStat_LevelData::OnComponentSelected_LinkedStat_TokensToGrant(
+	TSharedPtr<FPDStatViewTokenToGrant> StatViewTokensToGrant,
+	ESelectInfo::Type Arg) const
+{
+}
+
+TSharedRef<ITableRow> SPDSelectedStat_LevelData::MakeListViewWidget_LinkedStat_AffectedStats(
+	TSharedPtr<FPDStatViewAffectedStat> CurrentAffectedStat,
+	const TSharedRef<STableViewBase>& OwnerTable) const
+{
+	TSharedPtr<STableRow< TSharedPtr<FPDStatViewAffectedStat>>> StatTable = nullptr;
+
+	// (DONE) 1. StatViewModifySource->StatTag
+	const FGameplayTag& AffectedStatTag = CurrentAffectedStat->AffectedStat;
+	const FString& ParentTagString = AffectedStatTag.RequestDirectParent().GetTagName().ToString();
+	const int32 ParentCutoffIndex = 1 + ParentTagString.Find(".", ESearchCase::IgnoreCase, ESearchDir::FromEnd);
+	const FString TagCategoryString = ParentTagString.RightChop(ParentCutoffIndex);
+
+	const FString& TagString = AffectedStatTag.GetTagName().ToString();
+	const int32 CutoffIndex = 1 + TagString.Find(".", ESearchCase::IgnoreCase, ESearchDir::FromEnd);
+	const FString TagStatString = TagString.RightChop(CutoffIndex);
+
+	const FText AffectedStatAndCategoryText = FText::FromString(TagCategoryString + "." + TagStatString );
+
+	double AbsoluteTotalAffectedDeltaPercentage = FMath::Abs(CurrentAffectedStat->TotalAffectedDelta);
+	FString Sign = CurrentAffectedStat->TotalAffectedDelta > 0.0 ? "+" : "-";
+	
+	constexpr double WidthDiscrepancy = (1.015);
+	const float TrueSectionWidth = SectionWidth * WidthDiscrepancy;
+	StatTable = SNew( STableRow< TSharedPtr<FPDStatViewAffectedStat> >, OwnerTable )
+	[
+		SNew(SHorizontalBox)
+		+ SHorizontalBox::Slot()
+		.MaxWidth(TrueSectionWidth)
+		[
+			SNew(STextBlock)
+			.Text(AffectedStatAndCategoryText)
+			.MinDesiredWidth(TrueSectionWidth)
+		]
+		+ SHorizontalBox::Slot()
+		.MaxWidth(TrueSectionWidth)
+		[
+			SNew(STextBlock)
+			.Text(FText::FromString(Sign + FString::FromInt(AbsoluteTotalAffectedDeltaPercentage)))
+			.MinDesiredWidth(TrueSectionWidth)
+		]
+	];
+
+	return StatTable.ToSharedRef();
+	
+}
+void SPDSelectedStat_LevelData::OnComponentSelected_LinkedStat_AffectedStats(
+	TSharedPtr<FPDStatViewAffectedStat> StatViewAffectedStats,
+	ESelectInfo::Type Arg) const
+{
+	// @todo
+}
+
+
+
+//
+// Selected Stat - Offset modify sources view
+void SPDSelectedStat_OffsetData::Construct(const FArguments& InArgs, int32 InOwnerID, const FGameplayTag& InSelectedStatTag, TArray<TSharedPtr<FPDStatViewModifySource>>& ArrayRef)
 {
 	OwnerID = InOwnerID;
 	
@@ -51,7 +422,7 @@ void SPDSelectedStat::Construct(const FArguments& InArgs, int32 InOwnerID, const
 	UpdateChildSlot();
 }
 
-void SPDSelectedStat::PrepareData()
+void SPDSelectedStat_OffsetData::PrepareData()
 {
 	if (SelectedStatModifierSources == nullptr || ModifySourceListView.IsValid() == false)
 	{
@@ -88,7 +459,8 @@ void SPDSelectedStat::PrepareData()
 
 		const int32 StatSourceBaseDivisor = StatSourceDefaultDataPtr->Representation.BaseDivisor;
 		const int32 CrossBehaviourOffset_NotNormalized = CrossBehaviourRules.CrossBehaviourBaseValue * CrossBehaviourMultiplier;
-		const int32 CrossBehaviourOffset_Normalized = CrossBehaviourOffset_NotNormalized / StatSourceBaseDivisor;
+		const double CrossBehaviourOffset_Normalized =
+			static_cast<double>(CrossBehaviourOffset_NotNormalized) / static_cast<double>(StatSourceBaseDivisor);
 
 		
 		TSharedPtr<FPDStatViewModifySource> ConstructedModifySourceView = MakeShared<FPDStatViewModifySource>();
@@ -103,7 +475,7 @@ void SPDSelectedStat::PrepareData()
 	
 }
 
-void SPDSelectedStat::Refresh()
+void SPDSelectedStat_OffsetData::Refresh()
 {
 	if (ModifySourceListView.IsValid() == false) { return; }
 
@@ -111,7 +483,7 @@ void SPDSelectedStat::Refresh()
 	ModifySourceListView->RebuildList();
 }
 
-void SPDSelectedStat::UpdateChildSlot()
+void SPDSelectedStat_OffsetData::UpdateChildSlot()
 {
 	if (Header.IsValid() == false)
 	{
@@ -148,8 +520,8 @@ void SPDSelectedStat::UpdateChildSlot()
 	ModifySourceListView = SNew(SListView<TSharedPtr<FPDStatViewModifySource>>)
 		.HeaderRow(Header)
 		.ListItemsSource(SelectedStatModifierSources)
-		.OnSelectionChanged( this, &SPDSelectedStat::OnComponentSelected_LinkedStat )	
-		.OnGenerateRow( this, &SPDSelectedStat::MakeListViewWidget_LinkedStat);
+		.OnSelectionChanged( this, &SPDSelectedStat_OffsetData::OnComponentSelected_LinkedStat )	
+		.OnGenerateRow( this, &SPDSelectedStat_OffsetData::MakeListViewWidget_LinkedStat);
 	
 	ChildSlot
 	.HAlign(HAlign_Center)
@@ -190,13 +562,13 @@ void SPDSelectedStat::UpdateChildSlot()
 	
 }
 
-TSharedRef<ITableRow> SPDSelectedStat::MakeListViewWidget_LinkedStat(
+TSharedRef<ITableRow> SPDSelectedStat_OffsetData::MakeListViewWidget_LinkedStat(
 	TSharedPtr<FPDStatViewModifySource> StatViewModifySource,
 	const TSharedRef<STableViewBase>& OwnerTable) const
 {
 	TSharedPtr<STableRow< TSharedPtr<FPDStatViewModifySource>>> StatTable = nullptr;
 
-	// (DONE) 1. StatViewModifySource->StatTag
+	// @done 1. StatViewModifySource->StatTag
 	const FGameplayTag& SourceStatTag = StatViewModifySource->StatTag;
 	const FString& ParentTagString = SourceStatTag.RequestDirectParent().GetTagName().ToString();
 	const int32 ParentCutoffIndex = 1 + ParentTagString.Find(".", ESearchCase::IgnoreCase, ESearchDir::FromEnd);
@@ -208,24 +580,61 @@ TSharedRef<ITableRow> SPDSelectedStat::MakeListViewWidget_LinkedStat(
 
 	const FText StatNameAsText     = FText::FromString(TagStatString);
 	const FText StatCategoryAsText = FText::FromString(TagCategoryString);
-	
-	// (TODO) 2. StatViewModifySource->AppliedStatOffset;
-	// (TODO) 3. StatViewModifySource->StatOffsetCurveSource;
-	// 
-	//
+	const FText ModifySourceTagAndCategoryText = FText::FromString(TagCategoryString + "." + TagStatString );
 
+	
+	// @done 2. StatViewModifySource->AppliedStatOffset;
+	double AppliedStatOffset = StatViewModifySource->AppliedStatOffset;
+	double AbsoluteAppliedStatOffset = FMath::Abs(AppliedStatOffset);
+	FString Sign = AppliedStatOffset > 0.0 ? "+" : "-";
+
+	
+	// @todo 3. StatViewModifySource->StatOffsetCurveSource;
+	FString PlaceholderCurveString = "TODO - IMPLEMENT CURVE DISPLAY/VIEW";
+	
+	
+	constexpr double WidthDiscrepancy = (1.015);
+	const float TrueSectionWidth = SectionWidth * WidthDiscrepancy;
 	StatTable =
 		SNew( STableRow< TSharedPtr<FPDStatViewModifySource> >, OwnerTable )
 		[
-			// TODO: Finish when above todos are complete
-			SNew(STextBlock)
+			SNew(SHorizontalBox)
+
+			// Name Field			
+			+ SHorizontalBox::Slot()
+			.MaxWidth(TrueSectionWidth)
+			[
+				SNew(STextBlock)
+				.Text(ModifySourceTagAndCategoryText)
+				.MinDesiredWidth(TrueSectionWidth)
+			]
+
+			// Applied Stat Offset Field			
+			+ SHorizontalBox::Slot()
+			.MaxWidth(TrueSectionWidth)
+			[
+				SNew(STextBlock)
+				.Text(FText::FromString(Sign + FString::FromInt(AbsoluteAppliedStatOffset)))
+				.MinDesiredWidth(TrueSectionWidth)
+			]
+
+
+			// @todo 3. StatViewModifySource->StatOffsetCurveSource;
+			// Curve display, Showing the Applied offset			
+			+ SHorizontalBox::Slot()
+			.MaxWidth(TrueSectionWidth)
+			[
+				SNew(STextBlock)
+				.Text(FText::FromString(PlaceholderCurveString))
+				.MinDesiredWidth(TrueSectionWidth)
+			]
 		];
 
 
 	return StatTable.ToSharedRef();
 }
 
-void SPDSelectedStat::OnComponentSelected_LinkedStat(TSharedPtr<FPDStatViewModifySource> FpdStatViewModifySource,
+void SPDSelectedStat_OffsetData::OnComponentSelected_LinkedStat(TSharedPtr<FPDStatViewModifySource> FpdStatViewModifySource,
 	ESelectInfo::Type Arg) const
 {
 }
@@ -445,7 +854,7 @@ TSharedRef<ITableRow> SPDStatList::MakeListViewWidget_AllStatData(TSharedPtr<FPD
 	// offsetting by a tiny amount as a workaround for now
 	constexpr double WidthDiscrepancy = (1.015);
 
-	 const float TrueSectionWidth = SectionWidth * WidthDiscrepancy;
+	const float TrueSectionWidth = SectionWidth * WidthDiscrepancy;
 	// const float TrueSectionWidthName         = SectionWidths[EPDStatListSections::EName] * WidthDiscrepancy;
 	// const float TrueSectionWidthCategory     = SectionWidths[EPDStatListSections::ECategory] * WidthDiscrepancy;
 	// const float TrueSectionWidthLevel        = SectionWidths[EPDStatListSections::ELevel] * WidthDiscrepancy;

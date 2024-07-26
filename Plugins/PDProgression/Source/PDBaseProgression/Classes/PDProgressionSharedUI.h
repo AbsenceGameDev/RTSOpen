@@ -49,23 +49,111 @@ struct FPDStatViewModifySource
 	/** @brief Offset applied from source stat */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
 	UCurveFloat* StatOffsetCurveSource = nullptr;		
+};
+
+USTRUCT(Blueprintable)
+struct FPDStatViewTokenToGrant
+{
+	GENERATED_BODY()
+
+	/** @brief Tag of source stat */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	FGameplayTag TokenTag;
+
+	/** @brief @todo  */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	int32 TokensToGrantForNextLevel;
 	
 };
 
-// @todo Need a widget for selecting the Level : Show amount of tokens that will be earned upon gaining next level, and any relevant stat changed
-// @todo Need a widget for selecting the Experience : Have a xpbar and also display numbers on it
-// @todo Need a widget for selecting the Category : Create a view that shows other, unlocked, stats in the same category
-// @todo Need a widget for a button to upgrade a stat and a developer setting to tell if the button should be visible or not, this is be able to cater to different players // Todo also make the inventory system
+USTRUCT(Blueprintable)
+struct FPDStatViewAffectedStat
+{
+	GENERATED_BODY()
 
+	/** @brief Tag of source stat */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	FGameplayTag AffectedStat;
+
+	/** @brief @todo  */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	double TotalAffectedDelta;
+	
+};
+
+// @todo (PRIO 1) Need a widget for a button to upgrade a stat and a developer setting to tell if the button should be visible or not, this is be able to cater to different players // Todo also make the inventory system
+// @todo Cont. This would need to allow selection of type of token to be used, in case a upgrade allows for different types of tokens
+
+// @todo (PRIO 3/BACKLOG) Need a widget for selecting the Category : Create a view that shows other, unlocked, stats in the same category
+
+
+
+/** @brief @todo/in-progress Widget for data regarding the selected stats level and experience
+ * @todo Need to have an experience-bar which also may display numbers
+ * @details Show amount of tokens, and their types that will be earned upon gaining next level, and any relevant stat changes that will occur */
+class PDBASEPROGRESSION_API SPDSelectedStat_LevelData : public  SCompoundWidget
+{
+public:
+	FSlateFontInfo TitleFont;
+	FSlateFontInfo HalfSizedTitleFont;
+
+	SLATE_BEGIN_ARGS(SPDSelectedStat_LevelData){}
+	SLATE_END_ARGS()
+
+	void Construct(
+		const FArguments& InArgs,
+		int32 InOwnerID,
+		const FGameplayTag& InSelectedStatTag,
+		TArray<TSharedPtr<FPDStatViewTokenToGrant>>& TokenArrayRef,
+		TArray<TSharedPtr<FPDStatViewAffectedStat>>& AffectedStatsRef);
+
+	TSharedRef<ITableRow> MakeListViewWidget_LinkedStat_TokensToGrant(TSharedPtr<FPDStatViewTokenToGrant> FpdStatViewTokensToGrant, const TSharedRef<STableViewBase>& TableViewBase) const;
+	void OnComponentSelected_LinkedStat_TokensToGrant(TSharedPtr<FPDStatViewTokenToGrant> StatViewTokensToGrant, ESelectInfo::Type Arg) const;
+	TSharedRef<ITableRow> MakeListViewWidget_LinkedStat_AffectedStats(TSharedPtr<FPDStatViewAffectedStat> StatViewAffectedStats, const TSharedRef<STableViewBase>& TableViewBase) const;
+	void OnComponentSelected_LinkedStat_AffectedStats(TSharedPtr<FPDStatViewAffectedStat> FpdStatViewAffectedStats, ESelectInfo::Type Arg) const;
+	void UpdateChildSlot();
+
+	void PrepareData();
+
+
+	int32 OwnerID;
+	FGameplayTag SelectedStatTag;
+	int32 SectionWidth = 50;
+
+	TSharedPtr<SListView<TSharedPtr<FPDStatViewTokenToGrant>>> TokenArrayListView = nullptr;
+	TArray<TSharedPtr<FPDStatViewTokenToGrant>>* TokenArrayPtr;
+
+	TSharedPtr<SListView<TSharedPtr<FPDStatViewAffectedStat>>> AffectedStatsListView = nullptr;
+	TArray<TSharedPtr<FPDStatViewAffectedStat>>* AffectedStatsPtr;
+
+	TSharedPtr<SHeaderRow> TokenHeader = nullptr;
+	TSharedPtr<SHeaderRow> AffectedHeader = nullptr;
+
+	static FText SelectedStatLevelLabel;
+	static FText Token_ColumnLabel;
+	static FText TokenName_ColumnLabel;
+	static FText TokenCount_ColumnLabel;
+	
+	static FText OtherStats_ColumnLabel;
+	static FText OtherStatsAffectedName_ColumnLabel;
+	static FText OtherStatsAffectedValue_ColumnLabel;
+	
+	static FText TokenEntryLabel;
+	static FText OtherStatsAffectedEntryLabel;
+
+	static FText ExperienceBar_Title;
+
+	
+};
 
 // @todo A SPDSelectedStat is meant to be displayed when selecting the stats offset value, consider renaming it to be more clear
-class PDBASEPROGRESSION_API SPDSelectedStat: public SCompoundWidget
+class PDBASEPROGRESSION_API SPDSelectedStat_OffsetData : public SCompoundWidget
 {
 public:
 
 	FSlateFontInfo TitleFont;
 
-	SLATE_BEGIN_ARGS(SPDSelectedStat){}
+	SLATE_BEGIN_ARGS(SPDSelectedStat_OffsetData){}
 	SLATE_END_ARGS()
 
 	void Construct(const FArguments& InArgs, int32 InOwnerID, const FGameplayTag& InSelectedStatTag, TArray<TSharedPtr<FPDStatViewModifySource>>& ArrayRef);
@@ -74,7 +162,7 @@ public:
 	void Refresh();
 
 	TSharedRef<ITableRow> MakeListViewWidget_LinkedStat(TSharedPtr<FPDStatViewModifySource> StatViewModifySource, const TSharedRef<STableViewBase>& OwnerTable) const;
-	void OnComponentSelected_LinkedStat(TSharedPtr<FPDStatViewModifySource> FpdStatViewModifySource, ESelectInfo::Type Arg) const;
+	void OnComponentSelected_LinkedStat(TSharedPtr<FPDStatViewModifySource> StatViewModifySource, ESelectInfo::Type Arg) const;
 	virtual void UpdateChildSlot();
 
 
@@ -85,7 +173,7 @@ public:
 	TSharedPtr<SHeaderRow> Header = nullptr;
 	TSharedPtr<SListView<TSharedPtr<FPDStatViewModifySource>>> ModifySourceListView = nullptr;
 	TArray<TSharedPtr<FPDStatViewModifySource>>* SelectedStatModifierSources;
-
+	
 	// Labels
 	static FText StatSources_Header_Title;
 	
@@ -191,6 +279,12 @@ public:
 	/** @brief Base ptr to a SPDStatList widget */
 	TSharedPtr<SPDStatList> InnerStatList;
 
+	/* @brief @todo Write Supporting code to actually open this as an interactable window */
+	TSharedPtr<SPDSelectedStat_LevelData> SelectedStatLevelData_PopUp;
+
+	/* @brief @todo Write Supporting code to actually open this as an interactable window */
+	TSharedPtr<SPDSelectedStat_OffsetData> SelectedStatOffsetData_PopUp;	
+
 	/* @brief @todo */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
 	int32 OwnerID = 0;
@@ -209,10 +303,16 @@ public:
 	// TArray<int32> SectionWidths = {50, 50, 50, 50, 50};		
 
 	/* @brief @todo */
-	TArray<TSharedPtr<FPDStatNetDatum>> DataView{};	
+	PROPERTY_BINDING_IMPLEMENTATION(int32, OwnerID);
+	
+	//
+	// Dataviews
 	
 	/* @brief @todo */
-	PROPERTY_BINDING_IMPLEMENTATION(int32, OwnerID);
+	TArray<TSharedPtr<FPDStatNetDatum>> DataView{};
+
+	/* @brief @todo */
+	TArray<TSharedPtr<FPDStatViewTokenToGrant>> TokenDataView;
 };
 
 /* @brief @todo */
