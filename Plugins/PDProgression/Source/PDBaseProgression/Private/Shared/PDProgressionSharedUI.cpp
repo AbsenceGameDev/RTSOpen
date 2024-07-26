@@ -16,11 +16,13 @@
 #include "Widgets/Views/SListView.h"
 #include "Styling/AppStyle.h"
 #include "Fonts/FontMeasure.h"
+#include "Widgets/Notifications/SProgressBar.h"
 
 // Class picker 
 #include "GameplayTags.h"
 #include "Components/PDProgressionComponent.h"
 #include "Subsystems/PDProgressionSubsystem.h"
+#include "Widgets/Layout/SScaleBox.h"
 #include "Widgets/Layout/SWrapBox.h"
 
 #define LOCTEXT_NAMESPACE "SPDStatList"
@@ -62,14 +64,15 @@ void SPDSelectedStat_LevelData::Construct(
 	const FArguments& InArgs,
 	int32 InOwnerID,
 	const FGameplayTag& InSelectedStatTag,
-	TArray<TSharedPtr<FPDStatViewTokenToGrant>>& TokenArrayRef,
+	TArray<TSharedPtr<FPDSkillTokenBase>>& TokenArrayRef,
 	TArray<TSharedPtr<FPDStatViewAffectedStat>>& AffectedStatsRef)
 {
 	OwnerID = InOwnerID;
 	SelectedStatTag = InSelectedStatTag;
 	TokenArrayPtr = &TokenArrayRef;
 	AffectedStatsPtr = &AffectedStatsRef;
-		
+
+	PrepareData();
 	UpdateChildSlot();
 }
 
@@ -127,7 +130,7 @@ void SPDSelectedStat_LevelData::UpdateChildSlot()
 	
 
 	TokenArrayListView =
-		SNew(SListView<TSharedPtr<FPDStatViewTokenToGrant>>)
+		SNew(SListView<TSharedPtr<FPDSkillTokenBase>>)
 		.HeaderRow(TokenHeader)
 		.ListItemsSource(TokenArrayPtr)
 		.OnGenerateRow( this, &SPDSelectedStat_LevelData::MakeListViewWidget_LinkedStat_TokensToGrant)
@@ -140,7 +143,14 @@ void SPDSelectedStat_LevelData::UpdateChildSlot()
 		.ListItemsSource(AffectedStatsPtr)
 		.OnGenerateRow( this, &SPDSelectedStat_LevelData::MakeListViewWidget_LinkedStat_AffectedStats)
 		.OnSelectionChanged( this, &SPDSelectedStat_LevelData::OnComponentSelected_LinkedStat_AffectedStats );
-	
+
+	static FSlateBrush ProgressBarBrush;
+	ProgressBarBrush.ImageType = ESlateBrushImageType::NoImage;
+	ProgressBarBrush.TintColor = FSlateColor(FLinearColor::Transparent);
+	ProgressBarBrush.ImageSize.X = 200.0f;
+	ProgressBarBrush.ImageSize.Y = 20.0f;
+	static FProgressBarStyle ProgressBarStyle;
+	ProgressBarStyle.BackgroundImage = ProgressBarBrush;
 	
 	ChildSlot
 	.VAlign(VAlign_Center)
@@ -227,7 +237,32 @@ void SPDSelectedStat_LevelData::UpdateChildSlot()
 			.Padding(FMargin{0, 0})
 			.FillHeight(10)
 		[
-			SNew(STextBlock) // @todo replace with bar representing experience
+			SNew(SOverlay)
+			+ SOverlay::Slot()
+			.ZOrder(9)
+			.HAlign(HAlign_Fill)
+			.VAlign(VAlign_Fill)
+			[
+				// @inprogress replace with bar representing experience
+
+				SNew(SHorizontalBox)
+				+ SHorizontalBox::Slot()
+				.MaxWidth(200)
+				[
+					SNew(SProgressBar)
+					.Percent(0.5)
+					.Style(&ProgressBarStyle)
+				]
+			]
+			+ SOverlay::Slot()
+			.ZOrder(10)
+			.HAlign(HAlign_Fill)
+			.VAlign(VAlign_Fill)			
+			[
+				// @inprogress replace with bar representing experience
+				SNew(STextBlock)
+				.Text(ExperienceBar_Title)
+			]			
 		]		
 	]
 	];
@@ -256,9 +291,9 @@ void SPDSelectedStat_LevelData::PrepareData()
 	}
 
 	const FPDStatMapping* StatMapping = (*OwnersStatHandler)->LocalStatMappings.Find(SelectedStatTag);
-	int32 SelectedStatCurrentLevel = 1 + (StatMapping == nullptr
+	int32 SelectedStatNextLevel = 1 + (StatMapping == nullptr
 		? 0
-		: SelectedStatCurrentLevel = (*OwnersStatHandler)->StatList.Items[StatMapping->Index].CurrentLevel);
+		: SelectedStatNextLevel = (*OwnersStatHandler)->StatList.Items[StatMapping->Index].CurrentLevel);
 
 	
 	for (const FGameplayTag& StatTargetTag : StatsThatWeAffect)
@@ -274,9 +309,9 @@ void SPDSelectedStat_LevelData::PrepareData()
 		if (CrossBehaviourRules.RuleSetLevelCurveMultiplier != nullptr)
 		{
 			CrossBehaviourMultiplier = 
-				CrossBehaviourRules.RuleSetLevelCurveMultiplier->GetFloatValue(SelectedStatCurrentLevel);
+				CrossBehaviourRules.RuleSetLevelCurveMultiplier->GetFloatValue(SelectedStatNextLevel - 1);
 			NextCrossBehaviourMultiplier = 
-				CrossBehaviourRules.RuleSetLevelCurveMultiplier->GetFloatValue(SelectedStatCurrentLevel + 1);
+				CrossBehaviourRules.RuleSetLevelCurveMultiplier->GetFloatValue(SelectedStatNextLevel);
 		}
 
 		const int32 StatTargetBaseDivisor = StatTargetDefaultDataPtr->Representation.BaseDivisor;
@@ -296,27 +331,34 @@ void SPDSelectedStat_LevelData::PrepareData()
 
 		AffectedStatsPtr->Emplace(ConstructedAffectedStatView);
 	}
+	
+	for (const TTuple<FGameplayTag, UCurveFloat*>& TokenCategoryCompound : SelectedStat.TokensToGrantPerLevel)
+	{
+		const UCurveFloat* TokenProgressCurve = TokenCategoryCompound.Value;
+		if (TokenProgressCurve == nullptr)
+		{
+			UE_LOG(PDLog_Progression, Error,
+				   TEXT("UPDStatHandler::GrantTokens "
+					   "-- Iterating the token list, entry(%s) has not valid curve applied ot it"), *TokenCategoryCompound.Key.GetTagName().ToString());
+			continue;
+		}
 
-	// Comment out for the commit, will be finished by next commit
-	// for ()
-	// {
-	// 	TSharedPtr<FPDStatViewTokenToGrant> ConstructedTokenView = MakeShared<FPDStatViewTokenToGrant>();
-	// 	ConstructedTokenView->TokenTag = TokenTag;
-	// 	ConstructedTokenView->TokensToGrantForNextLevel = CaculatedTokenCount;
-	//
-	//
-	// 	TokenArrayPtr->Emplace(ConstructedTokenView);
-	// }
+		TSharedPtr<FPDSkillTokenBase> ConstructedTokenView = MakeShared<FPDSkillTokenBase>();
+		ConstructedTokenView->TokenType = TokenCategoryCompound.Key;
+		ConstructedTokenView->TokenValue += (TokenProgressCurve->GetFloatValue(SelectedStatNextLevel) + 0.5f);
+		
+		TokenArrayPtr->Emplace(ConstructedTokenView);
+	}
 }
 
 TSharedRef<ITableRow> SPDSelectedStat_LevelData::MakeListViewWidget_LinkedStat_TokensToGrant(
-	TSharedPtr<FPDStatViewTokenToGrant> StatViewTokensToGrant,
+	TSharedPtr<FPDSkillTokenBase> StatViewTokensToGrant,
 	const TSharedRef<STableViewBase>& OwnerTable) const
 {
-	TSharedPtr<STableRow< TSharedPtr<FPDStatViewTokenToGrant>>> StatTable = nullptr;
+	TSharedPtr<STableRow< TSharedPtr<FPDSkillTokenBase>>> StatTable = nullptr;
 
 	// (DONE) 1. StatViewModifySource->StatTag
-	const FGameplayTag& TokenTag = StatViewTokensToGrant->TokenTag;
+	const FGameplayTag& TokenTag = StatViewTokensToGrant->TokenType;
 	const FString& ParentTagString = TokenTag.RequestDirectParent().GetTagName().ToString();
 	const int32 ParentCutoffIndex = 1 + ParentTagString.Find(".", ESearchCase::IgnoreCase, ESearchDir::FromEnd);
 	const FString TagCategoryString = ParentTagString.RightChop(ParentCutoffIndex);
@@ -329,7 +371,7 @@ TSharedRef<ITableRow> SPDSelectedStat_LevelData::MakeListViewWidget_LinkedStat_T
 	
 	constexpr double WidthDiscrepancy = (1.015);
 	const float TrueSectionWidth = SectionWidth * WidthDiscrepancy;
-	StatTable = SNew( STableRow< TSharedPtr<FPDStatViewTokenToGrant> >, OwnerTable )
+	StatTable = SNew( STableRow< TSharedPtr<FPDSkillTokenBase> >, OwnerTable )
 	[
 		SNew(SHorizontalBox)
 		+ SHorizontalBox::Slot()
@@ -343,7 +385,7 @@ TSharedRef<ITableRow> SPDSelectedStat_LevelData::MakeListViewWidget_LinkedStat_T
 		.MaxWidth(TrueSectionWidth)
 		[
 			SNew(STextBlock)
-			.Text(FText::FromString(FString::FromInt(StatViewTokensToGrant->TokensToGrantForNextLevel)))
+			.Text(FText::FromString(FString::FromInt(StatViewTokensToGrant->TokenValue)))
 			.MinDesiredWidth(TrueSectionWidth)
 		]
 	];
@@ -351,8 +393,35 @@ TSharedRef<ITableRow> SPDSelectedStat_LevelData::MakeListViewWidget_LinkedStat_T
 	
 	return StatTable.ToSharedRef();
 }
+
+void SPDSelectedStat_LevelData::Refresh(
+	int32 InOwnerID,
+	TArray<TSharedPtr<FPDSkillTokenBase>>& TokenArrayRef,
+	TArray<TSharedPtr<FPDStatViewAffectedStat>>& AffectedStatsRef,
+	int32 InSectionWidth)
+{
+	OwnerID = InOwnerID;
+	SectionWidth = InSectionWidth; 
+
+	TokenArrayPtr = &TokenArrayRef;
+	AffectedStatsPtr = &AffectedStatsRef;
+	
+	PrepareData();
+	if (TokenArrayListView.IsValid())
+	{
+		TokenArrayListView->SetItemsSource(TokenArrayPtr);
+		TokenArrayListView->RebuildList();
+	}
+	if (AffectedStatsListView.IsValid())
+	{
+		AffectedStatsListView->SetItemsSource(AffectedStatsPtr);
+		AffectedStatsListView->RebuildList();
+	}
+
+}
+
 void SPDSelectedStat_LevelData::OnComponentSelected_LinkedStat_TokensToGrant(
-	TSharedPtr<FPDStatViewTokenToGrant> StatViewTokensToGrant,
+	TSharedPtr<FPDSkillTokenBase> StatViewTokensToGrant,
 	ESelectInfo::Type Arg) const
 {
 }
@@ -419,6 +488,8 @@ void SPDSelectedStat_OffsetData::Construct(const FArguments& InArgs, int32 InOwn
 	
 	SelectedStatTag = InSelectedStatTag;
 	SelectedStatModifierSources = &ArrayRef;
+
+	PrepareData();
 	UpdateChildSlot();
 }
 
@@ -475,8 +546,15 @@ void SPDSelectedStat_OffsetData::PrepareData()
 	
 }
 
-void SPDSelectedStat_OffsetData::Refresh()
+void SPDSelectedStat_OffsetData::Refresh(
+	int32 InOwnerID,
+	TArray<TSharedPtr<FPDStatViewModifySource>>& DataViewRef,
+	const int32 NewSectionWidth)
 {
+	OwnerID = InOwnerID;
+	SelectedStatModifierSources = &DataViewRef;
+	SectionWidth = NewSectionWidth;
+	
 	if (ModifySourceListView.IsValid() == false) { return; }
 
 	PrepareData();
@@ -962,7 +1040,7 @@ void UPDStatListInnerWidget::RefreshStatListOnChangedProperty(FPropertyChangedEv
 
 	const FName PropertyName = Property->GetFName();
 	const bool bDoesPropertyHaveCorrectName =
-		PropertyName.IsEqual(GET_MEMBER_NAME_CHECKED(UPDStatListInnerWidget, EditorTestEntries))
+		PropertyName.IsEqual(GET_MEMBER_NAME_CHECKED(UPDStatListInnerWidget, EditorTestEntries_BaseList))
 		|| PropertyName.IsEqual(GET_MEMBER_NAME_CHECKED(UPDStatListInnerWidget, SectionWidth));
 	if (bDoesPropertyHaveCorrectName == false) { return; }
 	
@@ -988,21 +1066,68 @@ void UPDStatListInnerWidget::SynchronizeProperties()
 
 void UPDStatListInnerWidget::RefreshInnerStatList()
 {
-	DataView.Empty();
+	NetDataView.Empty();
 	if (InnerStatList.IsValid())
 	{
 #if WITH_EDITOR
 		if (IsDesignTime())
 		{
-			for (const FPDStatNetDatum& EditorEntry :  EditorTestEntries)
+			for (const FPDStatNetDatum& EditorEntry :  EditorTestEntries_BaseList)
 			{
 				TSharedRef<FPDStatNetDatum> SharedNetDatum = MakeShared<FPDStatNetDatum>(EditorEntry);
-				DataView.Emplace(SharedNetDatum);			
+				NetDataView.Emplace(SharedNetDatum);			
 			}
 		}
 #endif // WITH_EDITOR
 		
-		InnerStatList->Refresh(INDEX_NONE, DataView, SectionWidth);
+		InnerStatList->Refresh(INDEX_NONE, NetDataView, SectionWidth);
+	}
+}
+
+void UPDStatListInnerWidget::RefreshStatLevel_Popup()
+{
+	TokenDataView.Empty();
+	AffectedStatsDataView.Empty();
+	if (SelectedStatLevelData_PopUp.IsValid())
+	{
+#if WITH_EDITOR
+		if (IsDesignTime())
+		{
+			for (const FPDSkillTokenBase& EditorEntry :  EditorTestEntries_LevelPopup_TokenData)
+			{
+				TSharedRef<FPDSkillTokenBase> SharedDatum = MakeShared<FPDSkillTokenBase>(EditorEntry);
+				TokenDataView.Emplace(SharedDatum);			
+			}
+
+			for (const FPDStatViewAffectedStat& EditorEntry :  EditorTestEntries_LevelPopup_AffectedStatsData)
+			{
+				TSharedRef<FPDStatViewAffectedStat> SharedDatum = MakeShared<FPDStatViewAffectedStat>(EditorEntry);
+				AffectedStatsDataView.Emplace(SharedDatum);			
+			}			
+		}
+#endif // WITH_EDITOR
+		
+		SelectedStatLevelData_PopUp->Refresh(INDEX_NONE, TokenDataView, AffectedStatsDataView, SectionWidth);
+	}
+}
+
+void UPDStatListInnerWidget::RefreshStatOffset_Popup()
+{
+	ModifyingSourcesDataView.Empty();
+	if (SelectedStatOffsetData_PopUp.IsValid())
+	{
+#if WITH_EDITOR
+		if (IsDesignTime())
+		{
+			for (const FPDStatViewModifySource& EditorEntry :  EditorTestEntries_OffsetPopup_ModifySources)
+			{
+				TSharedRef<FPDStatViewModifySource> SharedDatum = MakeShared<FPDStatViewModifySource>(EditorEntry);
+				ModifyingSourcesDataView.Emplace(SharedDatum);			
+			}
+		}
+#endif // WITH_EDITOR
+		
+		SelectedStatOffsetData_PopUp->Refresh(INDEX_NONE, ModifyingSourcesDataView, SectionWidth);
 	}
 }
 
@@ -1017,16 +1142,16 @@ TSharedRef<SWidget> UPDStatListInnerWidget::RebuildWidget()
 #if WITH_EDITOR
 		if (IsDesignTime())
 		{
-			for (const FPDStatNetDatum& EditorEntry :  EditorTestEntries)
+			for (const FPDStatNetDatum& EditorEntry :  EditorTestEntries_BaseList)
 			{
 				TSharedRef<FPDStatNetDatum> SharedNetDatum = MakeShared<FPDStatNetDatum>(EditorEntry);
-				DataView.Emplace(SharedNetDatum);			
+				NetDataView.Emplace(SharedNetDatum);			
 			}
 		}
 #endif // WITH_EDITOR
 		
 		InnerStatList =
-			SNew(SPDStatList, OwnerID, DataView, SectionWidth);
+			SNew(SPDStatList, OwnerID, NetDataView, SectionWidth);
 	}
 
 	InnerSlateWrapbox->ClearChildren();

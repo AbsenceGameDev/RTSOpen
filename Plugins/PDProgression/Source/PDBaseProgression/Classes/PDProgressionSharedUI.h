@@ -52,21 +52,6 @@ struct FPDStatViewModifySource
 };
 
 USTRUCT(Blueprintable)
-struct FPDStatViewTokenToGrant
-{
-	GENERATED_BODY()
-
-	/** @brief Tag of source stat */
-	UPROPERTY(EditAnywhere, BlueprintReadWrite)
-	FGameplayTag TokenTag;
-
-	/** @brief @todo  */
-	UPROPERTY(EditAnywhere, BlueprintReadWrite)
-	int32 TokensToGrantForNextLevel;
-	
-};
-
-USTRUCT(Blueprintable)
 struct FPDStatViewAffectedStat
 {
 	GENERATED_BODY()
@@ -104,11 +89,14 @@ public:
 		const FArguments& InArgs,
 		int32 InOwnerID,
 		const FGameplayTag& InSelectedStatTag,
-		TArray<TSharedPtr<FPDStatViewTokenToGrant>>& TokenArrayRef,
+		TArray<TSharedPtr<FPDSkillTokenBase>>& TokenArrayRef,
 		TArray<TSharedPtr<FPDStatViewAffectedStat>>& AffectedStatsRef);
 
-	TSharedRef<ITableRow> MakeListViewWidget_LinkedStat_TokensToGrant(TSharedPtr<FPDStatViewTokenToGrant> FpdStatViewTokensToGrant, const TSharedRef<STableViewBase>& TableViewBase) const;
-	void OnComponentSelected_LinkedStat_TokensToGrant(TSharedPtr<FPDStatViewTokenToGrant> StatViewTokensToGrant, ESelectInfo::Type Arg) const;
+	TSharedRef<ITableRow> MakeListViewWidget_LinkedStat_TokensToGrant(TSharedPtr<FPDSkillTokenBase> FpdStatViewTokensToGrant, const TSharedRef<STableViewBase>& TableViewBase) const;
+
+	void Refresh(int32 InOwnerID, TArray<TSharedPtr<FPDSkillTokenBase>>& TokenArrayRef, TArray<TSharedPtr<FPDStatViewAffectedStat>>& AffectedStatsRef, int32 InSectionWidth);
+
+	void OnComponentSelected_LinkedStat_TokensToGrant(TSharedPtr<FPDSkillTokenBase> StatViewTokensToGrant, ESelectInfo::Type Arg) const;
 	TSharedRef<ITableRow> MakeListViewWidget_LinkedStat_AffectedStats(TSharedPtr<FPDStatViewAffectedStat> StatViewAffectedStats, const TSharedRef<STableViewBase>& TableViewBase) const;
 	void OnComponentSelected_LinkedStat_AffectedStats(TSharedPtr<FPDStatViewAffectedStat> FpdStatViewAffectedStats, ESelectInfo::Type Arg) const;
 	void UpdateChildSlot();
@@ -120,8 +108,8 @@ public:
 	FGameplayTag SelectedStatTag;
 	int32 SectionWidth = 50;
 
-	TSharedPtr<SListView<TSharedPtr<FPDStatViewTokenToGrant>>> TokenArrayListView = nullptr;
-	TArray<TSharedPtr<FPDStatViewTokenToGrant>>* TokenArrayPtr;
+	TSharedPtr<SListView<TSharedPtr<FPDSkillTokenBase>>> TokenArrayListView = nullptr;
+	TArray<TSharedPtr<FPDSkillTokenBase>>* TokenArrayPtr;
 
 	TSharedPtr<SListView<TSharedPtr<FPDStatViewAffectedStat>>> AffectedStatsListView = nullptr;
 	TArray<TSharedPtr<FPDStatViewAffectedStat>>* AffectedStatsPtr;
@@ -159,7 +147,7 @@ public:
 	void Construct(const FArguments& InArgs, int32 InOwnerID, const FGameplayTag& InSelectedStatTag, TArray<TSharedPtr<FPDStatViewModifySource>>& ArrayRef);
 
 	void PrepareData();
-	void Refresh();
+	void Refresh(int32 InOwnerID, TArray<TSharedPtr<FPDStatViewModifySource>>& DataViewRef, const int32 NewSectionWidth);
 
 	TSharedRef<ITableRow> MakeListViewWidget_LinkedStat(TSharedPtr<FPDStatViewModifySource> StatViewModifySource, const TSharedRef<STableViewBase>& OwnerTable) const;
 	void OnComponentSelected_LinkedStat(TSharedPtr<FPDStatViewModifySource> StatViewModifySource, ESelectInfo::Type Arg) const;
@@ -246,7 +234,7 @@ class PDBASEPROGRESSION_API UPDStatListInnerWidget : public UWidget
 {
 	GENERATED_BODY()
 public:
-	
+	void RefreshStatOffset_Popup();
 	/* @brief @todo */
 	virtual TSharedRef<SWidget> RebuildWidget() override;
 	/* @brief @todo */
@@ -266,7 +254,8 @@ public:
 	
 	/* @brief @todo */
 	void RefreshInnerStatList();
-	
+	void RefreshStatLevel_Popup();
+
 	/* @brief @todo */
 	UFUNCTION(BlueprintCallable)
 	virtual void UpdateOwner(int32 NewOwner);
@@ -295,8 +284,20 @@ public:
 
 	/* @brief @todo */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
-	TArray<FPDStatNetDatum> EditorTestEntries{};
-
+	TArray<FPDStatNetDatum> EditorTestEntries_BaseList{};
+	
+	/* @brief @todo */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	TArray<FPDStatViewModifySource> EditorTestEntries_OffsetPopup_ModifySources{};
+	
+	/* @brief @todo */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	TArray<FPDSkillTokenBase> EditorTestEntries_LevelPopup_TokenData{};
+	/* @brief @todo */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	TArray<FPDStatViewAffectedStat> EditorTestEntries_LevelPopup_AffectedStatsData{};
+	
+	
 	/* @brief @todo */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
 	int32 SectionWidth = 50;		
@@ -309,10 +310,17 @@ public:
 	// Dataviews
 	
 	/* @brief @todo */
-	TArray<TSharedPtr<FPDStatNetDatum>> DataView{};
+	TArray<TSharedPtr<FPDStatNetDatum>> NetDataView{};
 
 	/* @brief @todo */
-	TArray<TSharedPtr<FPDStatViewTokenToGrant>> TokenDataView;
+	TArray<TSharedPtr<FPDStatViewModifySource>> ModifyingSourcesDataView{};
+	
+	/* @brief @todo */
+	TArray<TSharedPtr<FPDSkillTokenBase>> TokenDataView;
+	
+	/* @brief @todo */
+	TArray<TSharedPtr<FPDStatViewAffectedStat>> AffectedStatsDataView;
+	
 };
 
 /* @brief @todo */
