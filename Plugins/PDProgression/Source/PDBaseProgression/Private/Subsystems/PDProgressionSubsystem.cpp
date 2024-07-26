@@ -50,6 +50,7 @@ void UPDStatSubsystem::LatentInitialization()
 				: StatRow->RulesAffectedBy)
 			{
 				StatCrossBehaviourMap.FindOrAdd(Rule.Key).AddUnique(StatRow->ProgressionTag);
+				StatCrossBehaviourBackMapped.FindOrAdd(StatRow->ProgressionTag).AddUnique(Rule.Key);
 			}
 			
 		}		

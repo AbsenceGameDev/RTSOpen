@@ -4,13 +4,21 @@
 
 #include "CoreMinimal.h"
 #include "GameplayTags.h"
-#include "Blueprint/UserWidget.h"
-#include "Components/Widget.h"
 #include "Net/PDProgressionNetDatum.h"
 #include "Subsystems/EngineSubsystem.h"
 
+#include "Blueprint/UserWidget.h"
+#include "Components/Widget.h"
+#include "Layout/Geometry.h"
+#include "Input/Reply.h"
+#include "Widgets/DeclarativeSyntaxSupport.h"
+#include "Widgets/SCompoundWidget.h"
+
 #include "PDProgressionSharedUI.generated.h"
 
+class FPaintArgs;
+class FSlateWindowElementList;
+struct FSlateBrush;
 
 namespace EPDStatListSections
 {
@@ -24,6 +32,68 @@ namespace EPDStatListSections
 		EValueOffset
 	};
 }
+
+USTRUCT(Blueprintable)
+struct FPDStatViewModifySource
+{
+	GENERATED_BODY()
+
+	/** @brief Tag of source stat */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	FGameplayTag StatTag{};
+	
+	/** @brief Offset applied from source stat */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	double AppliedStatOffset = 0.0;
+
+	/** @brief Offset applied from source stat */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	UCurveFloat* StatOffsetCurveSource = nullptr;		
+	
+};
+
+// @todo Need a widget for selecting the Level : Show amount of tokens that will be earned upon gaining next level, and any relevant stat changed
+// @todo Need a widget for selecting the Experience : Have a xpbar and also display numbers on it
+// @todo Need a widget for selecting the Category : Create a view that shows other, unlocked, stats in the same category
+// @todo Need a widget for a button to upgrade a stat and a developer setting to tell if the button should be visible or not, this is be able to cater to different players // Todo also make the inventory system
+
+
+// @todo A SPDSelectedStat is meant to be displayed when selecting the stats offset value, consider renaming it to be more clear
+class PDBASEPROGRESSION_API SPDSelectedStat: public SCompoundWidget
+{
+public:
+
+	FSlateFontInfo TitleFont;
+
+	SLATE_BEGIN_ARGS(SPDSelectedStat){}
+	SLATE_END_ARGS()
+
+	void Construct(const FArguments& InArgs, int32 InOwnerID, const FGameplayTag& InSelectedStatTag, TArray<TSharedPtr<FPDStatViewModifySource>>& ArrayRef);
+
+	void PrepareData();
+	void Refresh();
+
+	TSharedRef<ITableRow> MakeListViewWidget_LinkedStat(TSharedPtr<FPDStatViewModifySource> StatViewModifySource, const TSharedRef<STableViewBase>& OwnerTable) const;
+	void OnComponentSelected_LinkedStat(TSharedPtr<FPDStatViewModifySource> FpdStatViewModifySource, ESelectInfo::Type Arg) const;
+	virtual void UpdateChildSlot();
+
+
+	int32 SectionWidth = 50;
+
+	int32 OwnerID = 0;	
+	FGameplayTag SelectedStatTag{};
+	TSharedPtr<SHeaderRow> Header = nullptr;
+	TSharedPtr<SListView<TSharedPtr<FPDStatViewModifySource>>> ModifySourceListView = nullptr;
+	TArray<TSharedPtr<FPDStatViewModifySource>>* SelectedStatModifierSources;
+
+	// Labels
+	static FText StatSources_Header_Title;
+	
+	static FText StatSources_Header_Name;
+	static FText StatSources_Header_Category;
+	static FText StatSources_Header_AppliedOffset;
+	static FText StatSources_Header_Curves;
+};
 
 class PDBASEPROGRESSION_API SPDStatList : public SCompoundWidget
 {
@@ -89,45 +159,63 @@ class PDBASEPROGRESSION_API UPDStatListInnerWidget : public UWidget
 	GENERATED_BODY()
 public:
 	
+	/* @brief @todo */
 	virtual TSharedRef<SWidget> RebuildWidget() override;
+	/* @brief @todo */
 	virtual void ReleaseSlateResources(bool bReleaseChildren) override;
 
+	/* @brief @todo */
 	virtual void SynchronizeProperties() override;
+	/* @brief @todo */
 	virtual void OnBindingChanged(const FName& Property) override;
+	/* @brief @todo */
 	void RefreshStatListOnChangedProperty(FPropertyChangedEvent& PropertyChangedEvent);
 
+	/* @brief @todo */
 	virtual void PostEditChangeProperty(FPropertyChangedEvent& PropertyChangedEvent) override;
+	/* @brief @todo */
 	virtual void PostEditChangeChainProperty(FPropertyChangedChainEvent& PropertyChangedEvent) override;
 	
+	/* @brief @todo */
 	void RefreshInnerStatList();
 	
+	/* @brief @todo */
 	UFUNCTION(BlueprintCallable)
 	virtual void UpdateOwner(int32 NewOwner);
 	
 	/** @brief Wrapbox that wraps our SPDStatList derived widgets */
+	/* @brief @todo */
 	TSharedPtr<class SWrapBox> InnerSlateWrapbox;
 	
+	/* @brief @todo */
 	/** @brief Base ptr to a SPDStatList widget */
 	TSharedPtr<SPDStatList> InnerStatList;
 
+	/* @brief @todo */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
 	int32 OwnerID = 0;
 
+	/* @brief @todo */
 	UPROPERTY()
 	FOwnerIDDelegate OwnerIDDelegate;
 
+	/* @brief @todo */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
 	TArray<FPDStatNetDatum> EditorTestEntries{};
 
+	/* @brief @todo */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
 	int32 SectionWidth = 50;		
 	// TArray<int32> SectionWidths = {50, 50, 50, 50, 50};		
 
+	/* @brief @todo */
 	TArray<TSharedPtr<FPDStatNetDatum>> DataView{};	
 	
+	/* @brief @todo */
 	PROPERTY_BINDING_IMPLEMENTATION(int32, OwnerID);
 };
 
+/* @brief @todo */
 UCLASS(Blueprintable)
 class PDBASEPROGRESSION_API UPDStatListUserWidget : public UUserWidget
 {
@@ -136,18 +224,111 @@ class PDBASEPROGRESSION_API UPDStatListUserWidget : public UUserWidget
 public:
 	DECLARE_DELEGATE_RetVal(int, FOwnerIDDelegate)
 	
-
+	/* @brief @todo */
 	UFUNCTION()
 	virtual void NativePreConstruct() override;
 
 	// @todo must set up
+	/* @brief @todo */
 	UFUNCTION()
 	virtual int32 GetOwnerID();
 
+	/* @brief @todo */
 	FOwnerIDDelegate OwnerIDDelegate;
 	
+	/* @brief @todo */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Meta = (BindWidget))
 	UPDStatListInnerWidget* InnerStatList;
+};
+
+/** A timeline widget.*/
+class PDBASEPROGRESSION_API SStatCurve : public SCompoundWidget
+{
+
+public:
+	SLATE_BEGIN_ARGS( SStatCurve )
+		: _MinValue( 0.0f )
+		, _MaxValue( 1.0f )
+		, _FixedLabelSpacing(1.0)
+		{}
+
+		/** Min. value on the curve */
+		SLATE_ARGUMENT( float, MinValue )
+
+		/** Max. value on the curve */
+		SLATE_ARGUMENT( float, MaxValue )
+
+		/** fixed pixel spacing between centers of labels */
+		SLATE_ARGUMENT( float, FixedLabelSpacing )
+
+	SLATE_END_ARGS()
+
+	/* @brief @todo */
+	void Construct( const FArguments& InArgs );
+
+	// SWidget interface
+	virtual int32 OnPaint( const FPaintArgs& Args,  const FGeometry& AllottedGeometry, const FSlateRect& MyCullingRect, FSlateWindowElementList& OutDrawElements, int32 LayerId, const FWidgetStyle& InWidgetStyle, bool bParentEnabled ) const override;
+	virtual void Tick( const FGeometry& AllottedGeometry, const double InCurrentTime, const float InDeltaTime ) override;
+	virtual FReply OnMouseButtonDown( const FGeometry& MyGeometry, const FPointerEvent& MouseEvent ) override;
+	virtual FReply OnMouseMove( const FGeometry& MyGeometry, const FPointerEvent& MouseEvent ) override;
+	FVector2D ComputeDesiredSize(float) const override;
+	// End of SWidget interface
+
+	/* @brief @todo */
+	void SetZoom(float InZoom) { Zoom = FMath::Max(InZoom, 1.0f); }
+
+	/* @brief @todo */
+	float GetZoom() const { return Zoom; }
+	
+	/* @brief @todo */
+	void SetOffset(float InOffset) { Offset = InOffset; } 
+
+	/* @brief @todo */
+	float GetOffset() const { return Offset; }
+
+	/* @brief @todo */
+	void SetMinMaxValues(float InMin, float InMax)
+	{
+		MinValue = InMin;
+		MaxValue = InMax;
+	}
+
+	/* @brief @todo */
+	void GetMinMaxValues(float &InMin, float &InMax)
+	{
+		InMin = MinValue;
+		InMax = MaxValue;
+	}
+
+	/* @brief @todo */
+	void SetDrawingGeometry(const FGeometry& Geometry) { DrawingGeometry = Geometry; }
+
+	/* @brief @todo */
+	FGeometry GetDrawingGeometry() const { return DrawingGeometry; }
+
+private:
+
+	/** Background image to use for the graph bar */
+	const FSlateBrush* BackgroundImage = nullptr;
+
+	/** Minimum value on the timeline */
+	float MinValue = 0;
+
+	/** Maximum value on the timeline */
+	float MaxValue = 1;
+
+	/** fixed pixel spacing between centers of labels */
+	float FixedLabelSpacing = 1;
+
+	/** Current zoom of the graph */
+	float Zoom = 1;
+
+	/** Current offset of the graph */
+	float Offset = 0;
+
+	float DrawingOffsetX = 0;
+
+	FGeometry DrawingGeometry;
 };
 
 

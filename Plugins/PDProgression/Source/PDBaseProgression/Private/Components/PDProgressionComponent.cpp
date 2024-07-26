@@ -217,7 +217,7 @@ void UPDStatHandler::IncreaseStatLevel_Implementation(const FGameplayTag& StatTa
 	const TMap<FGameplayTag, TArray<FGameplayTag>>& StatCrossBehaviourMap = StatSubsystem->StatCrossBehaviourMap;
 	if (StatCrossBehaviourMap.Contains(StatTag) == false) { return; }
 
-	// The stat we just leveled up is now calling all stat it is an effector to,
+	// The stat we just leveled up is now calling all stat that the levelled up stat is an effector to,
 	// and updates their effect on said stat
 	TArray<FGameplayTag> UpdateTargets = StatCrossBehaviourMap.FindRef(StatTag);
 	for (const FGameplayTag& Target : UpdateTargets)

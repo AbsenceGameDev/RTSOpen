@@ -73,8 +73,10 @@ public:
 	/* @brief @todo */
 	TMap<FGameplayTag, FPDStatsRow*> DefaultStats;
 
-	/* @brief @todo */
+	/* @brief Key is a 'Tag' that affect value of the 'List of Tags' */
 	TMap<FGameplayTag, TArray<FGameplayTag>> StatCrossBehaviourMap;
+	/* @brief Key is a 'Tag' that is affected by value of the 'List of Tags' */
+	TMap<FGameplayTag, TArray<FGameplayTag>> StatCrossBehaviourBackMapped;
 
 
 	UPROPERTY()
