@@ -3,115 +3,150 @@
 #pragma once
 
 #include "CoreMinimal.h"
-#include "GameplayTagContainer.h"
-#include "PDProgressionCommon.h"
-#include "PDProgressionSubsystem.generated.h"
+#include "Net/PDProgressionNetDatum.h"
+#include "Subsystems/EngineSubsystem.h"
 
-class UPDStatHandler;
-struct FPDProgressionClassRow;
+#include "Blueprint/UserWidget.h"
+#include "Components/Widget.h"
+#include "Layout/Geometry.h"
+#include "Input/Reply.h"
+#include "Widgets/DeclarativeSyntaxSupport.h"
+#include "Widgets/SCompoundWidget.h"
 
-/* @brief @todo */
-UCLASS(Config = "Game", DefaultConfig)
-class PDBASEPROGRESSION_API UPDProgressionSubsystemSettings : public UDeveloperSettings
+#include "PDProgressionWidgets.generated.h"
+
+struct FPDStatViewAffectedStat;
+struct FPDStatViewModifySource;
+class SPDSelectedStat_OffsetData;
+class SPDSelectedStat_LevelData;
+class SPDStatList;
+class FPaintArgs;
+class FSlateWindowElementList;
+struct FSlateBrush;
+
+
+DECLARE_DYNAMIC_DELEGATE_RetVal(int, FOwnerIDDelegate);
+
+/** @brief @todo  */
+UCLASS(Blueprintable)
+class PDBASEPROGRESSION_API UPDStatListInnerWidget : public UWidget
 {
 	GENERATED_BODY()
-
 public:
+	void RefreshStatOffset_Popup();
 	/* @brief @todo */
-	UPROPERTY(Config, EditAnywhere, Category = "ProgressionTables", Meta = (RequiredAssetDataTags="RowStructure=/Script/PDBaseProgression.PDStatsRow"))
-	TArray<TSoftObjectPtr<UDataTable>> ProgressionStatTables;
+	virtual TSharedRef<SWidget> RebuildWidget() override;
+	/* @brief @todo */
+	virtual void ReleaseSlateResources(bool bReleaseChildren) override;
 
 	/* @brief @todo */
-	UPROPERTY(Config, EditAnywhere, Category = "ProgressionTables", Meta = (RequiredAssetDataTags="RowStructure=/Script/PDBaseProgression.PDProgressionClassRow"))
-	TArray<TSoftObjectPtr<UDataTable>> ProgressionClassTables;
+	virtual void SynchronizeProperties() override;
+	/* @brief @todo */
+	virtual void OnBindingChanged(const FName& Property) override;
+	/* @brief @todo */
+	void RefreshStatListOnChangedProperty(FPropertyChangedEvent& PropertyChangedEvent);
 
 	/* @brief @todo */
-	UPROPERTY(Config, EditAnywhere, Category = "ProgressionTables", Meta = (RequiredAssetDataTags="RowStructure=/Script/PDBaseProgression.PDSkillTree"))
-	TArray<TSoftObjectPtr<UDataTable>> ProgressionTreeTables;	
+	virtual void PostEditChangeProperty(FPropertyChangedEvent& PropertyChangedEvent) override;
+	/* @brief @todo */
+	virtual void PostEditChangeChainProperty(FPropertyChangedChainEvent& PropertyChangedEvent) override;
+	
+	/* @brief @todo */
+	void RefreshInnerStatList();
+	void RefreshStatLevel_Popup();
+
+	/* @brief @todo */
+	UFUNCTION(BlueprintCallable)
+	virtual void UpdateOwner(int32 NewOwner);
+	
+	/** @brief Wrapbox that wraps our SPDStatList derived widgets */
+	/* @brief @todo */
+	TSharedPtr<class SWrapBox> InnerSlateWrapbox;
+	
+	/* @brief @todo */
+	/** @brief Base ptr to a SPDStatList widget */
+	TSharedPtr<SPDStatList> InnerStatList;
+
+	/* @brief @todo Write Supporting code to actually open this as an interactable window */
+	TSharedPtr<SPDSelectedStat_LevelData> SelectedStatLevelData_PopUp;
+
+	/* @brief @todo Write Supporting code to actually open this as an interactable window */
+	TSharedPtr<SPDSelectedStat_OffsetData> SelectedStatOffsetData_PopUp;	
+
+	/* @brief @todo */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	int32 OwnerID = 0;
+
+	/* @brief @todo */
+	UPROPERTY()
+	FOwnerIDDelegate OwnerIDDelegate;
+
+	/* @brief @todo */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	TArray<FPDStatNetDatum> EditorTestEntries_BaseList{};
+	
+	/* @brief @todo */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	TArray<FPDStatViewModifySource> EditorTestEntries_OffsetPopup_ModifySources{};
+	
+	/* @brief @todo */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	TArray<FPDSkillTokenBase> EditorTestEntries_LevelPopup_TokenData{};
+	/* @brief @todo */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	TArray<FPDStatViewAffectedStat> EditorTestEntries_LevelPopup_AffectedStatsData{};
+	
+	/* @brief @todo */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	int32 SectionWidth = 50;		
+	// TArray<int32> SectionWidths = {50, 50, 50, 50, 50};		
+
+	/* @brief @todo */
+	PROPERTY_BINDING_IMPLEMENTATION(int32, OwnerID);
+	
+	//
+	// Dataviews
+	
+	/* @brief @todo */
+	TArray<TSharedPtr<FPDStatNetDatum>> NetDataView{};
+
+	/* @brief @todo */
+	TArray<TSharedPtr<FPDStatViewModifySource>> ModifyingSourcesDataView{};
+	
+	/* @brief @todo */
+	TArray<TSharedPtr<FPDSkillTokenBase>> TokenDataView;
+	
+	/* @brief @todo */
+	TArray<TSharedPtr<FPDStatViewAffectedStat>> AffectedStatsDataView;
+	
 };
 
 /* @brief @todo */
 UCLASS(Blueprintable)
-class PDBASEPROGRESSION_API UPDStatSubsystem : public UEngineSubsystem
+class PDBASEPROGRESSION_API UPDStatListUserWidget : public UUserWidget
 {
 	GENERATED_BODY()
+
 public:
-	/* @brief @todo */
-	static UPDStatSubsystem* Get();
-
-	/* @brief @todo */
-	void LatentInitialization();
-
-	/** @brief @todo  */
-	void ResolveCrossBehaviours(
-		UPDStatHandler* OwnersStatHandler,
-		const FPDStatsRow& SelectedStat,
-		const FGameplayTag& StatSourceTag,
-		FPDStatsCrossBehaviourRules& CrossBehaviourRules,
-		double& CrossBehaviourOffset_Normalized) const;
-	/** @brief @todo  */
-	void ResolveCrossBehaviourDelta(
-		int32 OldLevel,
-		int32 LevelDelta,
-		const FPDStatsRow& SelectedStat,
-		const FGameplayTag& StatSourceTag,
-		double& CrossBehaviourOffset_Normalized) const;
-
-	/* @brief @todo */
-	UFUNCTION(BlueprintCallable)
-	FPDSkillTree& GetTreeTypeData(const FGameplayTag& RequestedTree) const;
-	FPDSkillTree* GetTreeTypeDataPtr(const FGameplayTag& RequestedTree) const;
-
-	/* @brief @todo */
-	UFUNCTION(BlueprintCallable)
-	FPDSkillTree& GetTreeTypeDataFromSkill(const FGameplayTag& RequestedSkill) const;
-	FPDSkillTree* GetTreeTypeDataPtrFromSkill(const FGameplayTag& RequestedSkill) const;
+	DECLARE_DELEGATE_RetVal(int, FOwnerIDDelegate)
 	
 	/* @brief @todo */
-	UFUNCTION(BlueprintCallable)
-	FPDProgressionClassRow& GetClassTypeData(const FGameplayTag& RequestedClass) const;
-	FPDProgressionClassRow* GetClassTypeDataPtr(const FGameplayTag& RequestedClass) const;
+	UFUNCTION()
+	virtual void NativePreConstruct() override;
+
+	// @todo must set up
+	/* @brief @todo */
+	UFUNCTION()
+	virtual int32 GetOwnerID();
 
 	/* @brief @todo */
-	UFUNCTION(BlueprintCallable)
-	FPDStatsRow& GetStatTypeData(const FGameplayTag& RequestedStat) const;
-	FPDStatsRow* GetStatTypeDataPtr(const FGameplayTag& RequestedStat) const;
-
-	/** @brief @todo */
-	UFUNCTION(BlueprintCallable)
-	static FString GetTagNameLeaf(const FGameplayTag& Tag);
-
-	/** @brief @todo */
-	UFUNCTION(BlueprintCallable)
-	static FString GetTagCategory(const FGameplayTag& Tag);	
-	
-	/** @brief @todo */
-	UFUNCTION(BlueprintCallable)
-	static FString GetTagNameLeafAndParent(const FGameplayTag& Tag);	
+	FOwnerIDDelegate OwnerIDDelegate;
 	
 	/* @brief @todo */
-	TMap<FGameplayTag, FPDSkillTree*> TreeTypes;
-
-	/* @brief @todo */
-	TMap<FGameplayTag, FGameplayTag> SkillToTreeMapping;
-	
-	/* @brief @todo */
-	TMap<FGameplayTag, FPDProgressionClassRow*> ClassTypes;
-	/* @brief @todo */
-	TMap<FGameplayTag, FPDStatsRow*> DefaultStats;
-
-	/* @brief Key is a 'Tag' that affect value of the 'List of Tags' */
-	TMap<FGameplayTag, TArray<FGameplayTag>> StatCrossBehaviourMap;
-	/* @brief Key is a 'Tag' that is affected by value of the 'List of Tags' */
-	TMap<FGameplayTag, TArray<FGameplayTag>> StatCrossBehaviourBackMapped;
-
-
-	/** @brief @todo  */
-	UPROPERTY()
-	TMap<int32, UPDStatHandler*> StatHandlers;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Meta = (BindWidget))
+	UPDStatListInnerWidget* InnerStatList;
 };
-		
-	
+
 
 /**
 Business Source License 1.1

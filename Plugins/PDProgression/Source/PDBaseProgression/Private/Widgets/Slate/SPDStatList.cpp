@@ -1,6 +1,6 @@
 /* @author: Ario Amin @ Permafrost Development. @copyright: Full BSL(1.1) License included at bottom of the file  */
 
-#include "PDProgressionSharedUI.h"
+#include "Widgets/Slate/SPDStatList.h"
 
 #include "Textures/SlateIcon.h"
 #include "Framework/Commands/UIAction.h"
@@ -15,232 +15,150 @@
 #include "Widgets/Layout/SSplitter.h"
 #include "Widgets/Views/SListView.h"
 #include "Styling/AppStyle.h"
-#include "Fonts/FontMeasure.h"
 
+#include "Components/PDProgressionComponent.h"
 #include "Subsystems/PDProgressionSubsystem.h"
 
 #define LOCTEXT_NAMESPACE "SPDStatList"
 
-// @note Limited to 10 fields
-TSharedRef<SHeaderRow> FPDStatStatics::CreateHeaderRow(
-	TSharedPtr<SHeaderRow>& ExistingHeader,
-	double SectionWidth,
-	double SectionCount,
-	...)
-{
-	if (ExistingHeader.IsValid() == false)
-	{
-		ExistingHeader = SNew(SHeaderRow);
-	}
-	ExistingHeader->ClearColumns();
 
-	//
-	// Gather variadic arguments, expected 2 const char* per argument, one for the id, the other for the label 
-	va_list Args;
-	va_start(Args, SectionCount);
-
-	TArray<TArray<FString>> Arguments;
-	Arguments.SetNum(SectionCount);
-	
-	int32 FieldIdx = 0;
-	// int32 EntryIdx = 0;
-	for (; Args != nullptr && FieldIdx < SectionCount; )
-	{
-		TArray<FString>& InnerFields = Arguments[FieldIdx];
-		InnerFields = TArray<FString>
-		{
-			va_arg(Args, TCHAR*),
-			va_arg(Args, TCHAR*)
-		};
-		
-		FieldIdx++;
-	}
-	--FieldIdx;
-	va_end(Args);
-
-	if (FieldIdx == INDEX_NONE) { return ExistingHeader.ToSharedRef(); }
-	
-	// Apply the gathered data and create a header column
-
-	// @todo resolve bug, it only displays the first character of each string! 
-	FieldIdx = 0;
-	for (; FieldIdx < SectionCount ; FieldIdx++)
-	{
-		const FString& ColID = Arguments[FieldIdx][0];
-		const FString& Label = Arguments[FieldIdx][1];
-		
-		SHeaderRow::FColumn::FArguments ColumnArguments =
-			SHeaderRow::FColumn::FArguments{}
-			.DefaultLabel(FText::FromString(Label))
-			.FixedWidth(SectionWidth)
-			.ColumnId(FName(*ColID));
-		ExistingHeader->AddColumn(ColumnArguments);
-	}
-	
-	return ExistingHeader.ToSharedRef();
-}
-
-
-FPDStatWidgetHeaderSlotParams FPDStatStatics::CreateHeaderSlotParam(
-	FGameplayTag StatTag,
-	double InTotalValue,
-	const bool IncludeParent)
-{
-	const FString AffectedStatAndCategoryText =
-		IncludeParent
-		? UPDStatSubsystem::GetTagNameLeafAndParent(StatTag)
-		: UPDStatSubsystem::GetTagNameLeaf(StatTag);
-
-	const double TotalValue = InTotalValue;
-	const double AbsTotalValue = FMath::Abs(TotalValue);
-	const FString Sign = AbsTotalValue > 0.0 ? "+" : "-";
-
-	return 
-	FPDStatWidgetHeaderSlotParams{
-		FText::FromString(AffectedStatAndCategoryText),
-		FText::FromString(Sign + FString::FromInt(AbsTotalValue))};
-}
-
-
+FText SPDStatList::StatBase_TitleText                 = LOCTEXT("HeaderRow_Field", "STATS");
+FText SPDStatList::StatProgress_Header_Name           = LOCTEXT("Stat_HeaderRow_Field_Name", "NAME");
+FText SPDStatList::StatProgress_Header_Category       = LOCTEXT("Stat_HeaderRow_Field_Category", "CATEGORY");
+FText SPDStatList::StatProgress_Header_CurrentValue   = LOCTEXT("Stat_HeaderRow_Field_Value", "CURR. VALUE");
+FText SPDStatList::StatProgress_Header_Level          = LOCTEXT("Stat_HeaderRow_Field_Level", "LEVEL");
+FText SPDStatList::StatProgress_Header_Experience     = LOCTEXT("Stat_HeaderRow_Field_Experience", "EXPERIENCE");
+FText SPDStatList::StatProgress_Header_ModifiedOffset = LOCTEXT("Stat_HeaderRow_Field_ModifiedOffset", "OFFSET");
 
 //
-// Stat curve
-void SStatCurve::Construct( const FArguments& InArgs )
+// STAT-LIST MAIN
+void SPDStatList::Construct(const FArguments& InArgs, int32 InOwnerID, TArray<TSharedPtr<FPDStatNetDatum>>& DataViewRef, const int32 InSectionWidth)
 {
-	MinValue = InArgs._MinValue;
-	MaxValue = InArgs._MaxValue;
-	FixedLabelSpacing = InArgs._FixedLabelSpacing;
-
-	// FAppStyle::GetBrush( TEXT("PropertyWindow.Background"));
-	BackgroundImage = FAppStyle::GetBrush( TEXT("ProfileVisualizer.Background"));
-
-	Zoom = 1.0f;
-	Offset = 0.0f;
+	SectionWidth = InSectionWidth;
+	Refresh(InOwnerID, DataViewRef, SectionWidth);
 }
 
-
-#define DrawCurveLine(LinePoints) \
-FSlateDrawElement::MakeLines( \
-	OutDrawElements, \
-	RetLayerId++, \
-	AllottedGeometry.ToPaintGeometry(), \
-	LinePoints, \
-	ESlateDrawEffect::None, \
-	FLinearColor::White \
-	)
-
-int32 SStatCurve::OnPaint( const FPaintArgs& Args, const FGeometry& AllottedGeometry, const FSlateRect& MyCullingRect, FSlateWindowElementList& OutDrawElements, int32 LayerId, const FWidgetStyle& InWidgetStyle, bool bParentEnabled ) const
+void SPDStatList::Refresh(int32 InOwnerID, TArray<TSharedPtr<FPDStatNetDatum>>& DataViewRef, const int32 NewSectionWidth)
 {
-	FSlateFontInfo MyFont = FCoreStyle::GetDefaultFontStyle("Regular", 10);
-	
-	// Used to track the layer ID we will return.
-	int32 RetLayerId = LayerId;
-	const TSharedRef< FSlateFontMeasure > FontMeasureService = FSlateApplication::Get().GetRenderer()->GetFontMeasureService();
-	
-	// Paint inside the border only. 
-	const FVector2D BorderPadding = FAppStyle::GetVector( TEXT("ProfileVisualizer.ProgressBar.BorderPadding"));
+	OwnerID = InOwnerID;
+	StatsAsSharedArray = &DataViewRef;
 
-	const float OffsetX = DrawingOffsetX; // BorderPadding.X
-	const float Width = DrawingGeometry.Size.X; // AllottedGeometry.Size.X - - 2.0f * BorderPadding.X
-
-
-	// Create line points
-	const float ValueScale = MaxValue - MinValue;
-	const int32 NumValues = FMath::FloorToInt( AllottedGeometry.Size.X * Zoom / FixedLabelSpacing );
-
-	TArray< FVector2D > LinePoints;
-	LinePoints.AddUninitialized( 2 );
-
-	// Scoped
+	// Potentially lazy construction
+	const TSharedPtr<SListView<TSharedPtr<FPDStatNetDatum>>> ActualList = HeaderDataViews.Value.ListView;
+	if (ActualList.IsValid() == false || SectionWidth != NewSectionWidth)
 	{
-		LinePoints[0] = FVector2D( OffsetX, BorderPadding.Y + 1.0f );
-		LinePoints[1] = FVector2D( OffsetX + Width, BorderPadding.Y + 1.0f );
-
-		// Draw lines
-		DrawCurveLine(LinePoints);
+		UpdateChildSlot();
 	}
-
-	const FVector2D TextDrawSize = FontMeasureService->Measure(TEXT("0.00"), MyFont);
-	const float LineHeight = AllottedGeometry.Size.Y - BorderPadding.Y - TextDrawSize.Y - 2.0f;
-	
-	for( int32 LineIndex = 0; LineIndex <= NumValues; LineIndex++ )
+	else
 	{
-		const float NormalizedX = static_cast<float>(LineIndex) / NumValues;
-		const float LineX = Offset + NormalizedX * Zoom;
-		if( LineX < 0.0f || LineX > 1.0f ) { continue; }
+		PrepareData();
+		ActualList->SetItemsSource(StatsAsSharedArray);
+		ActualList->RebuildList();
+	}
+}
 
-		const float LineXPos =  OffsetX + Width * LineX;
-		LinePoints[0] = FVector2D( LineXPos, BorderPadding.Y );
-		LinePoints[1] = FVector2D( LineXPos, LineHeight );
-
-		// Draw lines
-		DrawCurveLine(LinePoints);
-		
-		FString ValueText( FString::Printf( TEXT("%.2f"), MinValue + NormalizedX * ValueScale ) );
-		FVector2D DrawSize = FontMeasureService->Measure(ValueText, MyFont);
-		FVector2D TextPos( LineXPos - DrawSize.X * 0.5f, LineHeight );
-
-		if( TextPos.X < 0.0f )
+void SPDStatList::PrepareData()
+{
+	UPDStatHandler* SelectedStatHandler = UPDStatSubsystem::Get()->StatHandlers.FindRef(OwnerID);
+	if (SelectedStatHandler != nullptr)
+	{
+		for (const FPDStatNetDatum& Item : SelectedStatHandler->StatList.Items)
 		{
-			TextPos.X = 0.0f;
+			TSharedRef<FPDStatNetDatum> SharedNetDatum = MakeShared<FPDStatNetDatum>(Item);
+			StatsAsSharedArray->Emplace(SharedNetDatum);
 		}
-		else if( (TextPos.X + DrawSize.X) > AllottedGeometry.Size.X )
-		{
-			TextPos.X = OffsetX + Width - DrawSize.X;
-		}
-
-		FSlateDrawElement::MakeText( 
-			OutDrawElements,
-			RetLayerId,
-			AllottedGeometry.ToOffsetPaintGeometry( TextPos ),
-			ValueText,
-			MyFont,
-			ESlateDrawEffect::None,
-			FLinearColor::White
-			);
 	}
 
-	// Always draw lines at the start and at the end of the timeline
+	InitializeFonts();
+}
+
+void SPDStatList::UpdateChildSlot()
+{
+	PrepareData();
+	TSharedPtr<SHeaderRow>& Header = HeaderDataViews.Value.Header;
+	FPDStatStatics::CreateHeaderRow(Header, SectionWidth, 6,
+		"0", *StatProgress_Header_Name.ToString(),
+		"1", *StatProgress_Header_Category.ToString(),
+		"2", *StatProgress_Header_Level.ToString(),
+		"3", *StatProgress_Header_Experience.ToString(),
+		"4", *StatProgress_Header_CurrentValue.ToString(),
+		"5", *StatProgress_Header_ModifiedOffset.ToString());
+
+	HeaderDataViews.Value.ListView = SNew(SListView<TSharedPtr<FPDStatNetDatum>>)
+		.HeaderRow(Header)
+		.ListItemsSource(StatsAsSharedArray)
+		.OnGenerateRow( this, &SPDStatList::MakeListViewWidget_AllStatData )
+		.OnSelectionChanged( this, &SPDStatList::OnComponentSelected_AllStatData );	
+	
+	ChildSlot
+	.HAlign(HAlign_Center)
+	.VAlign(VAlign_Center)
+	[
+		SNew(SHorizontalBox)
+		+ SHorizontalBox::Slot()
+		.FillWidth(10)
+		[
+			SetWidgetTitle(SVerticalBox, StatBase_TitleText, TitleFont)
+			+ SetListViewSlot(SVerticalBox, 800, HeaderDataViews.Value.ListView.ToSharedRef())
+		]
+	];	
+}
+
+
+TSharedRef<ITableRow> SPDStatList::MakeListViewWidget_AllStatData(TSharedPtr<FPDStatNetDatum> InItem, const TSharedRef<STableViewBase>& OwnerTable) const
+{
+	const FPDStatNetDatum& CurrentStatNetDatum = *InItem.Get();
+
+	const FGameplayTag& StatTag = CurrentStatNetDatum.ProgressionTag;
+
+	const FText StatNameAsText     = FText::FromString(UPDStatSubsystem::GetTagNameLeaf(StatTag));
+	const FText StatCategoryAsText = FText::FromString(UPDStatSubsystem::GetTagCategory(StatTag));
+	
+	const FText LevelAsText        = FText::FromString(FString::FromInt(CurrentStatNetDatum.CurrentLevel));
+	const FText ExperienceAsText   = FText::FromString(FString::FromInt(CurrentStatNetDatum.CurrentExperience));
+
+	const FText AppliedValueAsText = FText::FromString(FString::Printf(TEXT("%lf"), CurrentStatNetDatum.GetAppliedValue()));
+	const FText ModifiersAsText    = FText::FromString(FString::Printf(TEXT("%lf"), CurrentStatNetDatum.GetProcessedCrossBehaviour()));
+
+	
+	//
+	// Widget layout
+	SPDStatList* MutableThis = const_cast<SPDStatList*>(this);
+	check(MutableThis != nullptr)
+
+	// There is still some discrepancy between the content scale and our absolute scale,
+	// offsetting by a tiny amount as a workaround for now
+	constexpr double WidthDiscrepancy = (1.015);
+
+	const float TrueSectionWidth = SectionWidth * WidthDiscrepancy;
+	
+	MutableThis->HeaderDataViews.Value.LatestTableRow =
+		SNew( STableRow< TSharedPtr<FPDStatNetDatum> >, OwnerTable )
+	[
+		SNew(SHorizontalBox)
+		+ SetListHeaderSlot(SHorizontalBox, StatNameAsText, TrueSectionWidth )
+		+ SetListHeaderSlot(SHorizontalBox, StatCategoryAsText, TrueSectionWidth )
+		+ SetListHeaderSlot(SHorizontalBox, LevelAsText, TrueSectionWidth )
+		+ SetListHeaderSlot(SHorizontalBox, ExperienceAsText, TrueSectionWidth )
+		+ SetListHeaderSlot(SHorizontalBox, AppliedValueAsText, TrueSectionWidth )
+		+ SetListHeaderSlot(SHorizontalBox, ModifiersAsText, TrueSectionWidth )
+	];
+
+	// ...
+	// ...
+	
+	return HeaderDataViews.Value.LatestTableRow.ToSharedRef();	
+}
+
+void SPDStatList::OnComponentSelected_AllStatData(TSharedPtr<FPDStatNetDatum> InItem, ESelectInfo::Type InSelectInfo)
+{
+	FSlateApplication::Get().DismissAllMenus();
+	
+	if (OnStatDataChosen.IsBound())
 	{
-		LinePoints[0] = FVector2D( OffsetX, BorderPadding.Y );
-		LinePoints[1] = FVector2D( OffsetX, LineHeight );
-
-		// Draw lines
-		DrawCurveLine(LinePoints);
-
-	}
-
-	{
-		LinePoints[0] = FVector2D( OffsetX + Width, BorderPadding.Y );
-		LinePoints[1] = FVector2D( OffsetX + Width, LineHeight );
-
-		// Draw lines
-		DrawCurveLine(LinePoints);
-	}
-
-	return RetLayerId - 1;
+		OnStatDataChosen.Execute(*InItem.Get());
+	}			
 }
-
-void SStatCurve::Tick( const FGeometry& AllottedGeometry, const double InCurrentTime, const float InDeltaTime )
-{
-	DrawingOffsetX = DrawingGeometry.AbsolutePosition.X - AllottedGeometry.AbsolutePosition.X;
-}
-
-FReply SStatCurve::OnMouseButtonDown( const FGeometry& MyGeometry, const FPointerEvent& MouseEvent )
-{
-	return SCompoundWidget::OnMouseButtonDown( MyGeometry, MouseEvent );
-}
-
-FReply SStatCurve::OnMouseMove( const FGeometry& MyGeometry, const FPointerEvent& MouseEvent )
-{
-	return SCompoundWidget::OnMouseMove( MyGeometry, MouseEvent );
-}
-
-FVector2D SStatCurve::ComputeDesiredSize( float ) const
-{
-	return FVector2D( 8.0f, 8.0f );
-}
-
 
 #undef LOCTEXT_NAMESPACE
 

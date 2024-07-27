@@ -59,6 +59,7 @@ struct PDBASEPROGRESSION_API FPDStatList : public FFastArraySerializer
 {
 	GENERATED_BODY()
 	
+	/** @brief @todo  */
 	bool NetSerialize(FNetDeltaSerializeInfo& DeltaParams);
 
 	/** @note Adds any given stat to the itemlist */
@@ -73,6 +74,7 @@ struct PDBASEPROGRESSION_API FPDStatList : public FFastArraySerializer
 	TArray<FPDStatNetDatum> Items;
 };
 
+/** @brief @todo  */
 template<>
 struct TStructOpsTypeTraits<FPDStatList> : TStructOpsTypeTraitsBase2<FPDStatList>
 {

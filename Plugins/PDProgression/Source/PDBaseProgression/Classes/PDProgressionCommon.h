@@ -202,11 +202,11 @@ struct FPDSkillTree : public FTableRowBase
 {
 	GENERATED_BODY()
 	
-	/* @brief Tag of the skill tree, used for comparison and hashing purposes */
+	/** @brief Tag of the skill tree, used for comparison and hashing purposes */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
 	FGameplayTag Tag;
 
-	/* @brief Key: Skill_Category, Value: Category_Root_Skill */
+	/** @brief Key: Skill_Category, Value: Category_Root_Skill */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
 	TMap<FGameplayTag, FPDSkillBranch> Skills;
 };
@@ -271,6 +271,7 @@ inline uint32 GetTypeHash(const FPDStatMapping& StatMapping)
 	return Hash;
 }
 
+/** @brief @todo  */
 USTRUCT(Blueprintable)
 struct FPDProgressionClassRow : public FTableRowBase
 {

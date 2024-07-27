@@ -3,115 +3,73 @@
 #pragma once
 
 #include "CoreMinimal.h"
-#include "GameplayTagContainer.h"
-#include "PDProgressionCommon.h"
-#include "PDProgressionSubsystem.generated.h"
+#include "PDProgressionSharedUI.h"
+#include "Net/PDProgressionNetDatum.h"
+#include "Subsystems/EngineSubsystem.h"
 
-class UPDStatHandler;
-struct FPDProgressionClassRow;
+#include "Layout/Geometry.h"
+#include "Input/Reply.h"
+#include "Widgets/DeclarativeSyntaxSupport.h"
+#include "Widgets/SCompoundWidget.h"
 
-/* @brief @todo */
-UCLASS(Config = "Game", DefaultConfig)
-class PDBASEPROGRESSION_API UPDProgressionSubsystemSettings : public UDeveloperSettings
+class FPaintArgs;
+class FSlateWindowElementList;
+struct FSlateBrush;
+
+
+// @todo (PRIO 1) Need a widget for a button to upgrade a stat and a developer setting to tell if the button should be visible or not, this is be able to cater to different players // Todo also make the inventory system
+// @todo Cont. This would need to allow selection of type of token to be used, in case a upgrade allows for different types of tokens
+
+// @todo (PRIO 3/BACKLOG) Need a widget for selecting the Category : Create a view that shows other, unlocked, stats in the same category
+
+/** @brief @todo  */
+class PDBASEPROGRESSION_API SPDStatList
+	: public SCompoundWidget
+	, public FPDStatWidgetBase<FPDStatNetDatum>
 {
-	GENERATED_BODY()
-
 public:
-	/* @brief @todo */
-	UPROPERTY(Config, EditAnywhere, Category = "ProgressionTables", Meta = (RequiredAssetDataTags="RowStructure=/Script/PDBaseProgression.PDStatsRow"))
-	TArray<TSoftObjectPtr<UDataTable>> ProgressionStatTables;
 
-	/* @brief @todo */
-	UPROPERTY(Config, EditAnywhere, Category = "ProgressionTables", Meta = (RequiredAssetDataTags="RowStructure=/Script/PDBaseProgression.PDProgressionClassRow"))
-	TArray<TSoftObjectPtr<UDataTable>> ProgressionClassTables;
+	DECLARE_DELEGATE_OneParam( FOnStatDataChosen, const FPDStatNetDatum&);
+	
+	SLATE_BEGIN_ARGS(SPDStatList) { }
+ 		SLATE_EVENT(FOnUserScrolled, OnUserScrolled)
+ 		SLATE_EVENT(FOnClicked, OnUserClicked)
+	SLATE_END_ARGS()
+	
+	/** @brief Stores a pointer to the copied save data and then Calls UpdateChildSlot, passing ArrayRef as the opaquedata parameter */
+	void Construct(const FArguments& InArgs, int32 InOwnerID, TArray<TSharedPtr<FPDStatNetDatum>>& DataViewRef, const int32 InSectionWidth);
+	/** @brief @todo  */
+	void Refresh(int32 InOwnerID, TArray<TSharedPtr<FPDStatNetDatum>>& DataViewRef, const int32 NewSectionWidth);
+	/** @brief @todo  */
+	void PrepareData();
+	/** @brief Base call, ensures we have a title-font loaded, Sets up the child slot, and passes in the data view array to an slistview wrapped in a scrollbox */
+	virtual void UpdateChildSlot();
+	
+	/** @brief Displays the actual list item for each entry in ConversationStatesAsSharedArray, which in this case is the states in 'FPDStatNetDatum' */
+	TSharedRef<ITableRow> MakeListViewWidget_AllStatData(TSharedPtr<FPDStatNetDatum> InItem, const TSharedRef<STableViewBase>& OwnerTable) const;
+	void OnComponentSelected_AllStatData(TSharedPtr<FPDStatNetDatum> InItem, ESelectInfo::Type InSelectInfo);
+	
+	/** @brief Array 'View' that is used to display the data related to this editor widget */
+	TArray<TSharedPtr<FPDStatNetDatum>>* StatsAsSharedArray;
 
-	/* @brief @todo */
-	UPROPERTY(Config, EditAnywhere, Category = "ProgressionTables", Meta = (RequiredAssetDataTags="RowStructure=/Script/PDBaseProgression.PDSkillTree"))
-	TArray<TSoftObjectPtr<UDataTable>> ProgressionTreeTables;	
+	// Callbacks
+	/** @brief @todo  */
+	FOnStatDataChosen OnStatDataChosen{};
+
+	/** @brief @todo  */
+	UClass* SelectedClass = nullptr;
+	
+	// Localized text
+	/** @brief @todo  GROUP */
+	static FText StatBase_TitleText;
+	static FText StatProgress_Header_Name;
+	static FText StatProgress_Header_Category;
+	static FText StatProgress_Header_CurrentValue;
+	static FText StatProgress_Header_Level;
+	static FText StatProgress_Header_Experience;
+	static FText StatProgress_Header_ModifiedOffset;
 };
 
-/* @brief @todo */
-UCLASS(Blueprintable)
-class PDBASEPROGRESSION_API UPDStatSubsystem : public UEngineSubsystem
-{
-	GENERATED_BODY()
-public:
-	/* @brief @todo */
-	static UPDStatSubsystem* Get();
-
-	/* @brief @todo */
-	void LatentInitialization();
-
-	/** @brief @todo  */
-	void ResolveCrossBehaviours(
-		UPDStatHandler* OwnersStatHandler,
-		const FPDStatsRow& SelectedStat,
-		const FGameplayTag& StatSourceTag,
-		FPDStatsCrossBehaviourRules& CrossBehaviourRules,
-		double& CrossBehaviourOffset_Normalized) const;
-	/** @brief @todo  */
-	void ResolveCrossBehaviourDelta(
-		int32 OldLevel,
-		int32 LevelDelta,
-		const FPDStatsRow& SelectedStat,
-		const FGameplayTag& StatSourceTag,
-		double& CrossBehaviourOffset_Normalized) const;
-
-	/* @brief @todo */
-	UFUNCTION(BlueprintCallable)
-	FPDSkillTree& GetTreeTypeData(const FGameplayTag& RequestedTree) const;
-	FPDSkillTree* GetTreeTypeDataPtr(const FGameplayTag& RequestedTree) const;
-
-	/* @brief @todo */
-	UFUNCTION(BlueprintCallable)
-	FPDSkillTree& GetTreeTypeDataFromSkill(const FGameplayTag& RequestedSkill) const;
-	FPDSkillTree* GetTreeTypeDataPtrFromSkill(const FGameplayTag& RequestedSkill) const;
-	
-	/* @brief @todo */
-	UFUNCTION(BlueprintCallable)
-	FPDProgressionClassRow& GetClassTypeData(const FGameplayTag& RequestedClass) const;
-	FPDProgressionClassRow* GetClassTypeDataPtr(const FGameplayTag& RequestedClass) const;
-
-	/* @brief @todo */
-	UFUNCTION(BlueprintCallable)
-	FPDStatsRow& GetStatTypeData(const FGameplayTag& RequestedStat) const;
-	FPDStatsRow* GetStatTypeDataPtr(const FGameplayTag& RequestedStat) const;
-
-	/** @brief @todo */
-	UFUNCTION(BlueprintCallable)
-	static FString GetTagNameLeaf(const FGameplayTag& Tag);
-
-	/** @brief @todo */
-	UFUNCTION(BlueprintCallable)
-	static FString GetTagCategory(const FGameplayTag& Tag);	
-	
-	/** @brief @todo */
-	UFUNCTION(BlueprintCallable)
-	static FString GetTagNameLeafAndParent(const FGameplayTag& Tag);	
-	
-	/* @brief @todo */
-	TMap<FGameplayTag, FPDSkillTree*> TreeTypes;
-
-	/* @brief @todo */
-	TMap<FGameplayTag, FGameplayTag> SkillToTreeMapping;
-	
-	/* @brief @todo */
-	TMap<FGameplayTag, FPDProgressionClassRow*> ClassTypes;
-	/* @brief @todo */
-	TMap<FGameplayTag, FPDStatsRow*> DefaultStats;
-
-	/* @brief Key is a 'Tag' that affect value of the 'List of Tags' */
-	TMap<FGameplayTag, TArray<FGameplayTag>> StatCrossBehaviourMap;
-	/* @brief Key is a 'Tag' that is affected by value of the 'List of Tags' */
-	TMap<FGameplayTag, TArray<FGameplayTag>> StatCrossBehaviourBackMapped;
-
-
-	/** @brief @todo  */
-	UPROPERTY()
-	TMap<int32, UPDStatHandler*> StatHandlers;
-};
-		
-	
 
 /**
 Business Source License 1.1

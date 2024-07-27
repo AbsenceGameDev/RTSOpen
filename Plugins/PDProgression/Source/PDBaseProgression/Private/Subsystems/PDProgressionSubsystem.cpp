@@ -2,6 +2,9 @@
 
 #include "Subsystems/PDProgressionSubsystem.h"
 
+#include "Components/PDProgressionComponent.h"
+#include "Net/PDProgressionNetDatum.h"
+
 UPDStatSubsystem* UPDStatSubsystem::Get()
 {
 	static UPDStatSubsystem* Self = nullptr;
@@ -105,6 +108,70 @@ void UPDStatSubsystem::LatentInitialization()
 	}
 }
 
+void UPDStatSubsystem::ResolveCrossBehaviours(
+	UPDStatHandler* OwnersStatHandler,
+	const FPDStatsRow& SelectedStat,
+	const FGameplayTag& StatSourceTag,
+	FPDStatsCrossBehaviourRules& CrossBehaviourRules,
+	double& CrossBehaviourOffset_Normalized) const
+{
+	const FPDStatsRow* StatSourceDefaultDataPtr = GetStatTypeDataPtr(StatSourceTag);
+
+	const FPDStatMapping* StatMapping = OwnersStatHandler->LocalStatMappings.Find(StatSourceTag);
+	if (StatSourceDefaultDataPtr == nullptr || StatMapping == nullptr) { return; }
+
+	const FPDStatNetDatum& StatSourceActiveDatum = OwnersStatHandler->StatList.Items[StatMapping->Index];
+
+	CrossBehaviourRules = SelectedStat.RulesAffectedBy.FindRef(StatSourceTag);
+
+	float CrossBehaviourMultiplier = 1.0;
+	if (CrossBehaviourRules.RuleSetLevelCurveMultiplier != nullptr)
+	{
+		CrossBehaviourMultiplier = 
+			CrossBehaviourRules.RuleSetLevelCurveMultiplier->GetFloatValue(StatSourceActiveDatum.CurrentLevel);
+	}
+
+	const int32 StatSourceBaseDivisor = StatSourceDefaultDataPtr->Representation.BaseDivisor;
+	const int32 CrossBehaviourOffset_NotNormalized = CrossBehaviourRules.CrossBehaviourBaseValue * CrossBehaviourMultiplier;
+	CrossBehaviourOffset_Normalized = static_cast<double>(CrossBehaviourOffset_NotNormalized) / static_cast<double>(StatSourceBaseDivisor);
+}
+
+void UPDStatSubsystem::ResolveCrossBehaviourDelta(
+	int32 OldLevel,
+	int32 LevelDelta,
+	const FPDStatsRow& SelectedStat,
+	const FGameplayTag& StatTargetTag,
+	double& DeltaNewLevelOffset) const
+{
+	FPDStatsCrossBehaviourRules CrossBehaviourRules;
+	const FPDStatsRow* StatTargetDefaultDataPtr = GetStatTypeDataPtr(StatTargetTag);
+		
+	if (StatTargetDefaultDataPtr == nullptr) { return;; }
+
+	// Find out our (SelectedStatTag) effect on target stat (Stats that are affected by us)
+	float CrossBehaviourMultiplier = 1.0;
+	float NextCrossBehaviourMultiplier = 1.0;
+	CrossBehaviourRules = StatTargetDefaultDataPtr->RulesAffectedBy.FindRef(SelectedStat.ProgressionTag);
+	if (CrossBehaviourRules.RuleSetLevelCurveMultiplier != nullptr)
+	{
+		CrossBehaviourMultiplier = 
+			CrossBehaviourRules.RuleSetLevelCurveMultiplier->GetFloatValue(OldLevel);
+		NextCrossBehaviourMultiplier = 
+			CrossBehaviourRules.RuleSetLevelCurveMultiplier->GetFloatValue(OldLevel + LevelDelta);
+	}
+
+	const int32 StatTargetBaseDivisor = StatTargetDefaultDataPtr->Representation.BaseDivisor;
+	const int32 CurrentCrossBehaviourOffset_NotNormalized = CrossBehaviourRules.CrossBehaviourBaseValue * CrossBehaviourMultiplier;
+	const double CurrentCrossBehaviourOffset_Normalized =
+		static_cast<double>(CurrentCrossBehaviourOffset_NotNormalized) / static_cast<double>(StatTargetBaseDivisor);
+	const int32 NextCrossBehaviourOffset_NotNormalized = CrossBehaviourRules.CrossBehaviourBaseValue * NextCrossBehaviourMultiplier;
+	const double NextCrossBehaviourOffset_Normalized =
+		static_cast<double>(NextCrossBehaviourOffset_NotNormalized) / static_cast<double>(StatTargetBaseDivisor);
+		
+	DeltaNewLevelOffset = NextCrossBehaviourOffset_Normalized - CurrentCrossBehaviourOffset_Normalized;
+}
+
+
 FPDSkillTree& UPDStatSubsystem::GetTreeTypeData(const FGameplayTag& RequestedTree) const
 {
 	static FPDSkillTree Dummy;
@@ -166,6 +233,27 @@ FPDStatsRow* UPDStatSubsystem::GetStatTypeDataPtr(const FGameplayTag& RequestedS
 	return DefaultStats.Contains(RequestedStat)
 		? *DefaultStats.Find(RequestedStat)
 		: nullptr;
+}
+
+FString UPDStatSubsystem::GetTagNameLeaf(const FGameplayTag& Tag)
+{
+	const FString& TagProtoString = Tag.GetTagName().ToString();
+	const int32 CutoffIndex = 1 + TagProtoString.Find(".", ESearchCase::IgnoreCase, ESearchDir::FromEnd);
+	const FString TagResultString = TagProtoString.RightChop(CutoffIndex);
+
+	return TagResultString;
+}
+
+FString UPDStatSubsystem::GetTagCategory(const FGameplayTag& Tag)
+{
+	return GetTagNameLeaf(Tag.RequestDirectParent());
+}
+
+FString UPDStatSubsystem::GetTagNameLeafAndParent(const FGameplayTag& Tag)
+{
+	const FString TagCategoryResultString = GetTagNameLeaf(Tag.RequestDirectParent());
+	const FString TagResultString = GetTagNameLeaf(Tag);
+	return TagCategoryResultString + TagResultString;
 }
 
 

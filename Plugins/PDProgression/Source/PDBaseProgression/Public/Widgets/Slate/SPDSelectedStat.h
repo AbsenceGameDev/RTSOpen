@@ -3,115 +3,115 @@
 #pragma once
 
 #include "CoreMinimal.h"
-#include "GameplayTagContainer.h"
-#include "PDProgressionCommon.h"
-#include "PDProgressionSubsystem.generated.h"
+#include "PDProgressionSharedUI.h"
 
-class UPDStatHandler;
-struct FPDProgressionClassRow;
+#include "GameplayTags.h"
+#include "Net/PDProgressionNetDatum.h"
+#include "Subsystems/EngineSubsystem.h"
 
-/* @brief @todo */
-UCLASS(Config = "Game", DefaultConfig)
-class PDBASEPROGRESSION_API UPDProgressionSubsystemSettings : public UDeveloperSettings
+#include "Layout/Geometry.h"
+#include "Input/Reply.h"
+#include "Widgets/DeclarativeSyntaxSupport.h"
+#include "Widgets/SCompoundWidget.h"
+
+class FPaintArgs;
+class FSlateWindowElementList;
+struct FSlateBrush;
+
+
+// @todo (PRIO 1) Need a widget for a button to upgrade a stat and a developer setting to tell if the button should be visible or not, this is be able to cater to different players // Todo also make the inventory system
+// @todo Cont. This would need to allow selection of type of token to be used, in case a upgrade allows for different types of tokens
+
+// @todo (PRIO 3/BACKLOG) Need a widget for selecting the Category : Create a view that shows other, unlocked, stats in the same category
+
+
+/** @brief @todo/in-progress Widget for data regarding the selected stats level and experience
+ * @todo Need to have an experience-bar which also may display numbers
+ * @details Show amount of tokens, and their types that will be earned upon gaining next level, and any relevant stat changes that will occur */
+class PDBASEPROGRESSION_API SPDSelectedStat_LevelData
+	: public  SCompoundWidget
+	, public FPDStatWidgetBase<FPDSkillTokenBase, FPDStatViewAffectedStat>
 {
-	GENERATED_BODY()
-
 public:
-	/* @brief @todo */
-	UPROPERTY(Config, EditAnywhere, Category = "ProgressionTables", Meta = (RequiredAssetDataTags="RowStructure=/Script/PDBaseProgression.PDStatsRow"))
-	TArray<TSoftObjectPtr<UDataTable>> ProgressionStatTables;
 
-	/* @brief @todo */
-	UPROPERTY(Config, EditAnywhere, Category = "ProgressionTables", Meta = (RequiredAssetDataTags="RowStructure=/Script/PDBaseProgression.PDProgressionClassRow"))
-	TArray<TSoftObjectPtr<UDataTable>> ProgressionClassTables;
+	SLATE_BEGIN_ARGS(SPDSelectedStat_LevelData){}
+	SLATE_END_ARGS()
 
-	/* @brief @todo */
-	UPROPERTY(Config, EditAnywhere, Category = "ProgressionTables", Meta = (RequiredAssetDataTags="RowStructure=/Script/PDBaseProgression.PDSkillTree"))
-	TArray<TSoftObjectPtr<UDataTable>> ProgressionTreeTables;	
+	/** @brief @todo  */
+	void Construct(
+		const FArguments& InArgs,
+		int32 InOwnerID,
+		const FGameplayTag& InSelectedStatTag,
+		TArray<TSharedPtr<FPDSkillTokenBase>>& TokenArrayRef,
+		TArray<TSharedPtr<FPDStatViewAffectedStat>>& AffectedStatsRef);
+
+	/** @brief @todo  */
+	TSharedRef<ITableRow> MakeListViewWidget_LinkedStat_TokensToGrant(TSharedPtr<FPDSkillTokenBase> FpdStatViewTokensToGrant, const TSharedRef<STableViewBase>& TableViewBase) const;
+
+	/** @brief @todo  */
+	void Refresh(int32 InOwnerID, TArray<TSharedPtr<FPDSkillTokenBase>>& TokenArrayRef, TArray<TSharedPtr<FPDStatViewAffectedStat>>& AffectedStatsRef, int32 InSectionWidth);
+
+	/** @brief @todo  */
+	void OnComponentSelected_LinkedStat_TokensToGrant(TSharedPtr<FPDSkillTokenBase> StatViewTokensToGrant, ESelectInfo::Type Arg) const;
+	/** @brief @todo  */
+	TSharedRef<ITableRow> MakeListViewWidget_LinkedStat_AffectedStats(TSharedPtr<FPDStatViewAffectedStat> StatViewAffectedStats, const TSharedRef<STableViewBase>& TableViewBase) const;
+	/** @brief @todo  */
+	void OnComponentSelected_LinkedStat_AffectedStats(TSharedPtr<FPDStatViewAffectedStat> FpdStatViewAffectedStats, ESelectInfo::Type Arg) const;
+	/** @brief @todo  */
+	void UpdateChildSlot();
+
+	/** @brief @todo  */
+	void PrepareData();
+	
+	/** @brief @todo  GROUP*/
+	static FText SelectedStatLevelLabel;
+	static FText Token_SectionTitle;
+	static FText TokenName_ColumnLabel;
+	static FText TokenCount_ColumnLabel;
+	
+	static FText OtherStats_SectionTitle;
+	static FText OtherStatsAffectedName_ColumnLabel;
+	static FText OtherStatsAffectedValue_ColumnLabel;
+	
+	static FText TokenEntryLabel;
+	static FText OtherStatsAffectedEntryLabel;
+
+	static FText ExperienceBar_Title;
 };
 
-/* @brief @todo */
-UCLASS(Blueprintable)
-class PDBASEPROGRESSION_API UPDStatSubsystem : public UEngineSubsystem
+// @todo A SPDSelectedStat is meant to be displayed when selecting the stats offset value, consider renaming it to be more clear
+class PDBASEPROGRESSION_API SPDSelectedStat_OffsetData
+	: public SCompoundWidget
+	, public FPDStatWidgetBase<FPDStatViewModifySource>
 {
-	GENERATED_BODY()
 public:
-	/* @brief @todo */
-	static UPDStatSubsystem* Get();
 
-	/* @brief @todo */
-	void LatentInitialization();
+	SLATE_BEGIN_ARGS(SPDSelectedStat_OffsetData){}
+	SLATE_END_ARGS()
 
 	/** @brief @todo  */
-	void ResolveCrossBehaviours(
-		UPDStatHandler* OwnersStatHandler,
-		const FPDStatsRow& SelectedStat,
-		const FGameplayTag& StatSourceTag,
-		FPDStatsCrossBehaviourRules& CrossBehaviourRules,
-		double& CrossBehaviourOffset_Normalized) const;
-	/** @brief @todo  */
-	void ResolveCrossBehaviourDelta(
-		int32 OldLevel,
-		int32 LevelDelta,
-		const FPDStatsRow& SelectedStat,
-		const FGameplayTag& StatSourceTag,
-		double& CrossBehaviourOffset_Normalized) const;
-
-	/* @brief @todo */
-	UFUNCTION(BlueprintCallable)
-	FPDSkillTree& GetTreeTypeData(const FGameplayTag& RequestedTree) const;
-	FPDSkillTree* GetTreeTypeDataPtr(const FGameplayTag& RequestedTree) const;
-
-	/* @brief @todo */
-	UFUNCTION(BlueprintCallable)
-	FPDSkillTree& GetTreeTypeDataFromSkill(const FGameplayTag& RequestedSkill) const;
-	FPDSkillTree* GetTreeTypeDataPtrFromSkill(const FGameplayTag& RequestedSkill) const;
-	
-	/* @brief @todo */
-	UFUNCTION(BlueprintCallable)
-	FPDProgressionClassRow& GetClassTypeData(const FGameplayTag& RequestedClass) const;
-	FPDProgressionClassRow* GetClassTypeDataPtr(const FGameplayTag& RequestedClass) const;
-
-	/* @brief @todo */
-	UFUNCTION(BlueprintCallable)
-	FPDStatsRow& GetStatTypeData(const FGameplayTag& RequestedStat) const;
-	FPDStatsRow* GetStatTypeDataPtr(const FGameplayTag& RequestedStat) const;
-
-	/** @brief @todo */
-	UFUNCTION(BlueprintCallable)
-	static FString GetTagNameLeaf(const FGameplayTag& Tag);
-
-	/** @brief @todo */
-	UFUNCTION(BlueprintCallable)
-	static FString GetTagCategory(const FGameplayTag& Tag);	
-	
-	/** @brief @todo */
-	UFUNCTION(BlueprintCallable)
-	static FString GetTagNameLeafAndParent(const FGameplayTag& Tag);	
-	
-	/* @brief @todo */
-	TMap<FGameplayTag, FPDSkillTree*> TreeTypes;
-
-	/* @brief @todo */
-	TMap<FGameplayTag, FGameplayTag> SkillToTreeMapping;
-	
-	/* @brief @todo */
-	TMap<FGameplayTag, FPDProgressionClassRow*> ClassTypes;
-	/* @brief @todo */
-	TMap<FGameplayTag, FPDStatsRow*> DefaultStats;
-
-	/* @brief Key is a 'Tag' that affect value of the 'List of Tags' */
-	TMap<FGameplayTag, TArray<FGameplayTag>> StatCrossBehaviourMap;
-	/* @brief Key is a 'Tag' that is affected by value of the 'List of Tags' */
-	TMap<FGameplayTag, TArray<FGameplayTag>> StatCrossBehaviourBackMapped;
-
+	void Construct(const FArguments& InArgs, int32 InOwnerID, const FGameplayTag& InSelectedStatTag, TArray<TSharedPtr<FPDStatViewModifySource>>& ArrayRef);
 
 	/** @brief @todo  */
-	UPROPERTY()
-	TMap<int32, UPDStatHandler*> StatHandlers;
+	void PrepareData();
+	/** @brief @todo  */
+	void Refresh(int32 InOwnerID, TArray<TSharedPtr<FPDStatViewModifySource>>& DataViewRef, const int32 NewSectionWidth);
+
+	/** @brief @todo  */
+	TSharedRef<ITableRow> MakeListViewWidget_LinkedStat(TSharedPtr<FPDStatViewModifySource> StatViewModifySource, const TSharedRef<STableViewBase>& OwnerTable) const;
+	/** @brief @todo  */
+	void OnComponentSelected_LinkedStat(TSharedPtr<FPDStatViewModifySource> StatViewModifySource, ESelectInfo::Type Arg) const;
+	/** @brief @todo  */
+	virtual void UpdateChildSlot();
+	
+	/** @brief @todo  GROUP */
+	static FText StatSources_Header_Title;
+	static FText StatSources_Header_Name;
+	static FText StatSources_Header_Category;
+	static FText StatSources_Header_AppliedOffset;
+	static FText StatSources_Header_Curves;
 };
-		
-	
+
 
 /**
 Business Source License 1.1

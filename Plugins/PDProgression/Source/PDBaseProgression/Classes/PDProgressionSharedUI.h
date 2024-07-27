@@ -4,11 +4,8 @@
 
 #include "CoreMinimal.h"
 #include "GameplayTags.h"
-#include "Net/PDProgressionNetDatum.h"
 #include "Subsystems/EngineSubsystem.h"
 
-#include "Blueprint/UserWidget.h"
-#include "Components/Widget.h"
 #include "Layout/Geometry.h"
 #include "Input/Reply.h"
 #include "Widgets/DeclarativeSyntaxSupport.h"
@@ -20,6 +17,7 @@ class FPaintArgs;
 class FSlateWindowElementList;
 struct FSlateBrush;
 
+/** @brief @todo  */
 namespace EPDStatListSections
 {
 	enum
@@ -33,6 +31,111 @@ namespace EPDStatListSections
 	};
 }
 
+/** @brief @todo  */
+struct PDBASEPROGRESSION_API FPDStatStatics
+{
+public:
+
+	/** @brief @todo  */
+	static TSharedRef<SHeaderRow> CreateHeaderRow(
+		TSharedPtr<SHeaderRow>& ExistingHeader,
+		double SectionWidth,
+		double SectionCount,
+		...);
+	
+	/** @brief @todo  */
+	static FPDStatWidgetHeaderSlotParams CreateHeaderSlotParam(
+		FGameplayTag StatTag,
+		double InTotalValue,
+		bool IncludeParent = true);
+	
+};
+
+/** @brief @todo  */
+USTRUCT(Blueprintable)
+struct FPDStatWidgetHeaderSlotParams
+{
+	GENERATED_BODY()
+
+	/** @brief @todo  */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	FText SectionText;
+
+	/** @brief @todo  */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	FText ValueText;	
+};
+
+/** @brief @todo/in-progress Widget for data regarding the selected stats level and experience
+ * @todo Need to have an experience-bar which also may display numbers
+ * @details Show amount of tokens, and their types that will be earned upon gaining next level, and any relevant stat changes that will occur */
+struct FPDStatViewHeaderBase
+{
+	/** @brief @todo  */
+	TSharedPtr<SHeaderRow> Header = nullptr;
+};
+
+template<typename TViewType>
+struct FPDStatViewHeaderData : FPDStatViewHeaderBase
+{
+	/** @brief @todo  */
+	TSharedPtr<SListView<TSharedPtr<TViewType>>> ListView = nullptr;
+	/** @brief @todo  */
+	TArray<TSharedPtr<TViewType>>* DataViewPtr = nullptr;
+
+	/** @brief @todo  */
+	TSharedPtr<STableRow< TSharedPtr<TViewType>>> LatestTableRow;	
+};
+
+
+template<typename ... TViewTypes>
+struct PDBASEPROGRESSION_API FPDStatWidgetBase
+{
+private:
+	static constexpr std::size_t TViewTypeCount = sizeof...(TViewTypes); //you may use `constexpr` instead of `const`
+public:
+	FPDStatWidgetBase(): OwnerID(0) { }
+	FPDStatWidgetBase(int32 InOwnerID) : OwnerID(InOwnerID) {}
+	
+	/** @brief @todo  */
+	virtual ~FPDStatWidgetBase() = default;
+
+	/** @brief @todo  */
+	void InitializeFonts()
+	{
+		if (TitleFont.TypefaceFontName.IsNone())
+		{
+			UpdateFonts();
+		}
+	}
+
+	/** @brief @todo  */
+	void UpdateFonts()
+	{
+		// @todo Set up a custom slate styleset for the saveeditors fonts and icons 
+		TitleFont = FAppStyle::GetFontStyle( TEXT("PropertyWindow.NormalFont"));
+		TitleFont.Size *= 8;
+		HalfSizedTitleFont = TitleFont;
+		HalfSizedTitleFont.Size /= 2;
+	}
+	
+	/** @brief @todo  */
+	FSlateFontInfo TitleFont;
+	/** @brief @todo  */
+	FSlateFontInfo HalfSizedTitleFont;
+
+	/** @brief @todo  */
+	int32 OwnerID;
+	/** @brief @todo  */
+	FGameplayTag SelectedStatTag;
+	/** @brief @todo  */
+	int32 SectionWidth = 50;
+
+	/** @brief @todo  */
+	TTuple<FPDStatViewHeaderData<TViewTypes>...> HeaderDataViews; 
+};
+
+/** @brief @todo  */
 USTRUCT(Blueprintable)
 struct FPDStatViewModifySource
 {
@@ -51,6 +154,7 @@ struct FPDStatViewModifySource
 	UCurveFloat* StatOffsetCurveSource = nullptr;		
 };
 
+/** @brief @todo  */
 USTRUCT(Blueprintable)
 struct FPDStatViewAffectedStat
 {
@@ -64,289 +168,6 @@ struct FPDStatViewAffectedStat
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
 	double TotalAffectedDelta;
 	
-};
-
-// @todo (PRIO 1) Need a widget for a button to upgrade a stat and a developer setting to tell if the button should be visible or not, this is be able to cater to different players // Todo also make the inventory system
-// @todo Cont. This would need to allow selection of type of token to be used, in case a upgrade allows for different types of tokens
-
-// @todo (PRIO 3/BACKLOG) Need a widget for selecting the Category : Create a view that shows other, unlocked, stats in the same category
-
-
-
-/** @brief @todo/in-progress Widget for data regarding the selected stats level and experience
- * @todo Need to have an experience-bar which also may display numbers
- * @details Show amount of tokens, and their types that will be earned upon gaining next level, and any relevant stat changes that will occur */
-class PDBASEPROGRESSION_API SPDSelectedStat_LevelData : public  SCompoundWidget
-{
-public:
-	FSlateFontInfo TitleFont;
-	FSlateFontInfo HalfSizedTitleFont;
-
-	SLATE_BEGIN_ARGS(SPDSelectedStat_LevelData){}
-	SLATE_END_ARGS()
-
-	void Construct(
-		const FArguments& InArgs,
-		int32 InOwnerID,
-		const FGameplayTag& InSelectedStatTag,
-		TArray<TSharedPtr<FPDSkillTokenBase>>& TokenArrayRef,
-		TArray<TSharedPtr<FPDStatViewAffectedStat>>& AffectedStatsRef);
-
-	TSharedRef<ITableRow> MakeListViewWidget_LinkedStat_TokensToGrant(TSharedPtr<FPDSkillTokenBase> FpdStatViewTokensToGrant, const TSharedRef<STableViewBase>& TableViewBase) const;
-
-	void Refresh(int32 InOwnerID, TArray<TSharedPtr<FPDSkillTokenBase>>& TokenArrayRef, TArray<TSharedPtr<FPDStatViewAffectedStat>>& AffectedStatsRef, int32 InSectionWidth);
-
-	void OnComponentSelected_LinkedStat_TokensToGrant(TSharedPtr<FPDSkillTokenBase> StatViewTokensToGrant, ESelectInfo::Type Arg) const;
-	TSharedRef<ITableRow> MakeListViewWidget_LinkedStat_AffectedStats(TSharedPtr<FPDStatViewAffectedStat> StatViewAffectedStats, const TSharedRef<STableViewBase>& TableViewBase) const;
-	void OnComponentSelected_LinkedStat_AffectedStats(TSharedPtr<FPDStatViewAffectedStat> FpdStatViewAffectedStats, ESelectInfo::Type Arg) const;
-	void UpdateChildSlot();
-
-	void PrepareData();
-
-
-	int32 OwnerID;
-	FGameplayTag SelectedStatTag;
-	int32 SectionWidth = 50;
-
-	TSharedPtr<SListView<TSharedPtr<FPDSkillTokenBase>>> TokenArrayListView = nullptr;
-	TArray<TSharedPtr<FPDSkillTokenBase>>* TokenArrayPtr;
-
-	TSharedPtr<SListView<TSharedPtr<FPDStatViewAffectedStat>>> AffectedStatsListView = nullptr;
-	TArray<TSharedPtr<FPDStatViewAffectedStat>>* AffectedStatsPtr;
-
-	TSharedPtr<SHeaderRow> TokenHeader = nullptr;
-	TSharedPtr<SHeaderRow> AffectedHeader = nullptr;
-
-	static FText SelectedStatLevelLabel;
-	static FText Token_ColumnLabel;
-	static FText TokenName_ColumnLabel;
-	static FText TokenCount_ColumnLabel;
-	
-	static FText OtherStats_ColumnLabel;
-	static FText OtherStatsAffectedName_ColumnLabel;
-	static FText OtherStatsAffectedValue_ColumnLabel;
-	
-	static FText TokenEntryLabel;
-	static FText OtherStatsAffectedEntryLabel;
-
-	static FText ExperienceBar_Title;
-
-	
-};
-
-// @todo A SPDSelectedStat is meant to be displayed when selecting the stats offset value, consider renaming it to be more clear
-class PDBASEPROGRESSION_API SPDSelectedStat_OffsetData : public SCompoundWidget
-{
-public:
-
-	FSlateFontInfo TitleFont;
-
-	SLATE_BEGIN_ARGS(SPDSelectedStat_OffsetData){}
-	SLATE_END_ARGS()
-
-	void Construct(const FArguments& InArgs, int32 InOwnerID, const FGameplayTag& InSelectedStatTag, TArray<TSharedPtr<FPDStatViewModifySource>>& ArrayRef);
-
-	void PrepareData();
-	void Refresh(int32 InOwnerID, TArray<TSharedPtr<FPDStatViewModifySource>>& DataViewRef, const int32 NewSectionWidth);
-
-	TSharedRef<ITableRow> MakeListViewWidget_LinkedStat(TSharedPtr<FPDStatViewModifySource> StatViewModifySource, const TSharedRef<STableViewBase>& OwnerTable) const;
-	void OnComponentSelected_LinkedStat(TSharedPtr<FPDStatViewModifySource> StatViewModifySource, ESelectInfo::Type Arg) const;
-	virtual void UpdateChildSlot();
-
-
-	int32 SectionWidth = 50;
-
-	int32 OwnerID = 0;	
-	FGameplayTag SelectedStatTag{};
-	TSharedPtr<SHeaderRow> Header = nullptr;
-	TSharedPtr<SListView<TSharedPtr<FPDStatViewModifySource>>> ModifySourceListView = nullptr;
-	TArray<TSharedPtr<FPDStatViewModifySource>>* SelectedStatModifierSources;
-	
-	// Labels
-	static FText StatSources_Header_Title;
-	
-	static FText StatSources_Header_Name;
-	static FText StatSources_Header_Category;
-	static FText StatSources_Header_AppliedOffset;
-	static FText StatSources_Header_Curves;
-};
-
-class PDBASEPROGRESSION_API SPDStatList : public SCompoundWidget
-{
-public:
-
-	/** @brief Font we want to use for titles in teh save editor */
-	FSlateFontInfo TitleFont;	
-
-	DECLARE_DELEGATE_OneParam( FOnStatDataChosen, const FPDStatNetDatum&);
-	
-	SLATE_BEGIN_ARGS(SPDStatList) { }
- 		SLATE_EVENT(FOnUserScrolled, OnUserScrolled)
- 		SLATE_EVENT(FOnClicked, OnUserClicked)
-	SLATE_END_ARGS()
-	
-	/** @brief Stores a pointer to the copied save data and then Calls UpdateChildSlot, passing ArrayRef as the opaquedata parameter */
-	void Construct(const FArguments& InArgs, int32 InOwnerID, TArray<TSharedPtr<FPDStatNetDatum>>& DataViewRef, const int32 InSectionWidth);
-	void Refresh(int32 InOwnerID, TArray<TSharedPtr<FPDStatNetDatum>>& DataViewRef, const int32 NewSectionWidth);
-	void PrepareData();
-	/** @brief Base call, ensures we have a title-font loaded, Sets up the child slot, and passes in the data view array to an slistview wrapped in a scrollbox */
-	virtual void UpdateChildSlot();
-	
-	/** @brief Displays the actual list item for each entry in ConversationStatesAsSharedArray, which in this case is the states in 'FPDStatNetDatum' */
-	TSharedRef<ITableRow> MakeListViewWidget_AllStatData(TSharedPtr<FPDStatNetDatum> InItem, const TSharedRef<STableViewBase>& OwnerTable) const;
-	void OnComponentSelected_AllStatData(TSharedPtr<FPDStatNetDatum> InItem, ESelectInfo::Type InSelectInfo);
-	
-	/** @brief Array 'View' that is used to display the data related to this editor widget */
-	TArray<TSharedPtr<FPDStatNetDatum>>* StatsAsSharedArray;
-
-	// Callbacks
-	FOnStatDataChosen OnStatDataChosen{};
-
-	UClass* SelectedClass = nullptr;
-
-	// View Tables
-	TSharedPtr<STableRow< TSharedPtr<FPDStatNetDatum>>> StatTable = nullptr;
-	TSharedPtr<SListView<TSharedPtr<FPDStatNetDatum>>> ActualList = nullptr;
-	TSharedPtr<SHeaderRow> Header = nullptr;
-
-	
-	int32 OwnerID = INDEX_NONE;
-	// TArray<int32> SectionWidths = {50, 50, 50, 50, 50, 50};
-	int32 SectionWidth = 50;		
-
-	
-	// Localized text
-	static FText StatBase_TitleText;
-	static FText StatProgress_Header_Name;
-	static FText StatProgress_Header_Category;
-	static FText StatProgress_Header_CurrentValue;
-	static FText StatProgress_Header_Level;
-	static FText StatProgress_Header_Experience;
-	static FText StatProgress_Header_ModifiedOffset;
-};
-
-DECLARE_DYNAMIC_DELEGATE_RetVal(int, FOwnerIDDelegate);
-
-
-
-UCLASS(Blueprintable)
-class PDBASEPROGRESSION_API UPDStatListInnerWidget : public UWidget
-{
-	GENERATED_BODY()
-public:
-	void RefreshStatOffset_Popup();
-	/* @brief @todo */
-	virtual TSharedRef<SWidget> RebuildWidget() override;
-	/* @brief @todo */
-	virtual void ReleaseSlateResources(bool bReleaseChildren) override;
-
-	/* @brief @todo */
-	virtual void SynchronizeProperties() override;
-	/* @brief @todo */
-	virtual void OnBindingChanged(const FName& Property) override;
-	/* @brief @todo */
-	void RefreshStatListOnChangedProperty(FPropertyChangedEvent& PropertyChangedEvent);
-
-	/* @brief @todo */
-	virtual void PostEditChangeProperty(FPropertyChangedEvent& PropertyChangedEvent) override;
-	/* @brief @todo */
-	virtual void PostEditChangeChainProperty(FPropertyChangedChainEvent& PropertyChangedEvent) override;
-	
-	/* @brief @todo */
-	void RefreshInnerStatList();
-	void RefreshStatLevel_Popup();
-
-	/* @brief @todo */
-	UFUNCTION(BlueprintCallable)
-	virtual void UpdateOwner(int32 NewOwner);
-	
-	/** @brief Wrapbox that wraps our SPDStatList derived widgets */
-	/* @brief @todo */
-	TSharedPtr<class SWrapBox> InnerSlateWrapbox;
-	
-	/* @brief @todo */
-	/** @brief Base ptr to a SPDStatList widget */
-	TSharedPtr<SPDStatList> InnerStatList;
-
-	/* @brief @todo Write Supporting code to actually open this as an interactable window */
-	TSharedPtr<SPDSelectedStat_LevelData> SelectedStatLevelData_PopUp;
-
-	/* @brief @todo Write Supporting code to actually open this as an interactable window */
-	TSharedPtr<SPDSelectedStat_OffsetData> SelectedStatOffsetData_PopUp;	
-
-	/* @brief @todo */
-	UPROPERTY(EditAnywhere, BlueprintReadWrite)
-	int32 OwnerID = 0;
-
-	/* @brief @todo */
-	UPROPERTY()
-	FOwnerIDDelegate OwnerIDDelegate;
-
-	/* @brief @todo */
-	UPROPERTY(EditAnywhere, BlueprintReadWrite)
-	TArray<FPDStatNetDatum> EditorTestEntries_BaseList{};
-	
-	/* @brief @todo */
-	UPROPERTY(EditAnywhere, BlueprintReadWrite)
-	TArray<FPDStatViewModifySource> EditorTestEntries_OffsetPopup_ModifySources{};
-	
-	/* @brief @todo */
-	UPROPERTY(EditAnywhere, BlueprintReadWrite)
-	TArray<FPDSkillTokenBase> EditorTestEntries_LevelPopup_TokenData{};
-	/* @brief @todo */
-	UPROPERTY(EditAnywhere, BlueprintReadWrite)
-	TArray<FPDStatViewAffectedStat> EditorTestEntries_LevelPopup_AffectedStatsData{};
-	
-	
-	/* @brief @todo */
-	UPROPERTY(EditAnywhere, BlueprintReadWrite)
-	int32 SectionWidth = 50;		
-	// TArray<int32> SectionWidths = {50, 50, 50, 50, 50};		
-
-	/* @brief @todo */
-	PROPERTY_BINDING_IMPLEMENTATION(int32, OwnerID);
-	
-	//
-	// Dataviews
-	
-	/* @brief @todo */
-	TArray<TSharedPtr<FPDStatNetDatum>> NetDataView{};
-
-	/* @brief @todo */
-	TArray<TSharedPtr<FPDStatViewModifySource>> ModifyingSourcesDataView{};
-	
-	/* @brief @todo */
-	TArray<TSharedPtr<FPDSkillTokenBase>> TokenDataView;
-	
-	/* @brief @todo */
-	TArray<TSharedPtr<FPDStatViewAffectedStat>> AffectedStatsDataView;
-	
-};
-
-/* @brief @todo */
-UCLASS(Blueprintable)
-class PDBASEPROGRESSION_API UPDStatListUserWidget : public UUserWidget
-{
-	GENERATED_BODY()
-
-public:
-	DECLARE_DELEGATE_RetVal(int, FOwnerIDDelegate)
-	
-	/* @brief @todo */
-	UFUNCTION()
-	virtual void NativePreConstruct() override;
-
-	// @todo must set up
-	/* @brief @todo */
-	UFUNCTION()
-	virtual int32 GetOwnerID();
-
-	/* @brief @todo */
-	FOwnerIDDelegate OwnerIDDelegate;
-	
-	/* @brief @todo */
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Meta = (BindWidget))
-	UPDStatListInnerWidget* InnerStatList;
 };
 
 /** A timeline widget.*/
@@ -434,10 +255,58 @@ private:
 	/** Current offset of the graph */
 	float Offset = 0;
 
+	/** @brief @todo  */
 	float DrawingOffsetX = 0;
 
+	/** @brief @todo  */
 	FGeometry DrawingGeometry;
 };
+
+
+//
+// Stat Widget Base
+#define SetTitleSlot(TSlateType, Title, TitleFont) \
+		TSlateType::Slot() \
+		  .Padding(FMargin{0, 0}) \
+		  .AutoHeight() \
+		[ \
+			SNew(STextBlock) \
+				.Font(TitleFont) \
+				.Justification(ETextJustify::Center) \
+				.Text(Title) \
+		]
+
+
+#define SetListViewSlot(TSlateType, SlotMaxSize, TargetListView) \
+TSlateType::Slot() \
+	.Padding(FMargin{0, 0}) \
+	.FillHeight(10) \
+[ \
+	SNew(SScrollBox) \
+	.ScrollBarAlwaysVisible(true) \
+	.ScrollBarVisibility(EVisibility::Visible) \
+	.ScrollBarThickness(UE::Slate::FDeprecateVector2DParameter(10)) \
+	.Orientation(EOrientation::Orient_Vertical) \
+	+SScrollBox::Slot() \
+		.AutoSize() \
+		.MaxSize(SlotMaxSize) \
+	[ \
+		TargetListView \
+	] \
+]
+
+#define SetListHeaderSlot(TSlateType, TextContent, SectionWidth) \
+SHorizontalBox::Slot() \
+.MaxWidth(SectionWidth) \
+[ \
+	SNew(STextBlock) \
+	.Text(TextContent) \
+	.MinDesiredWidth(SectionWidth) \
+]
+
+#define SetWidgetTitle(TSlateType, Title, TitleFont) \
+	SNew(TSlateType) \
+		+ SetTitleSlot(TSlateType, Title, TitleFont)
 
 
 /**

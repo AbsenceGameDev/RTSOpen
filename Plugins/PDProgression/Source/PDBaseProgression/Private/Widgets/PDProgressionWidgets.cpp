@@ -1,117 +1,189 @@
 /* @author: Ario Amin @ Permafrost Development. @copyright: Full BSL(1.1) License included at bottom of the file  */
 
-#pragma once
+#include "Widgets/PDProgressionWidgets.h"
+#include "Widgets/Slate/SPDSelectedStat.h"
+#include "Widgets/Slate/SPDStatList.h"
+#include "PDProgressionSharedUI.h"
 
-#include "CoreMinimal.h"
-#include "GameplayTagContainer.h"
-#include "PDProgressionCommon.h"
-#include "PDProgressionSubsystem.generated.h"
+#include "Textures/SlateIcon.h"
+#include "Widgets/Layout/SWrapBox.h"
+#include "Framework/Commands/UIAction.h"
 
-class UPDStatHandler;
-struct FPDProgressionClassRow;
+// Class picker 
+#include "Subsystems/PDProgressionSubsystem.h"
 
-/* @brief @todo */
-UCLASS(Config = "Game", DefaultConfig)
-class PDBASEPROGRESSION_API UPDProgressionSubsystemSettings : public UDeveloperSettings
+#define LOCTEXT_NAMESPACE "PDStatList"
+
+void UPDStatListInnerWidget::OnBindingChanged(const FName& Property)
 {
-	GENERATED_BODY()
+	Super::OnBindingChanged(Property);
+}
 
-public:
-	/* @brief @todo */
-	UPROPERTY(Config, EditAnywhere, Category = "ProgressionTables", Meta = (RequiredAssetDataTags="RowStructure=/Script/PDBaseProgression.PDStatsRow"))
-	TArray<TSoftObjectPtr<UDataTable>> ProgressionStatTables;
-
-	/* @brief @todo */
-	UPROPERTY(Config, EditAnywhere, Category = "ProgressionTables", Meta = (RequiredAssetDataTags="RowStructure=/Script/PDBaseProgression.PDProgressionClassRow"))
-	TArray<TSoftObjectPtr<UDataTable>> ProgressionClassTables;
-
-	/* @brief @todo */
-	UPROPERTY(Config, EditAnywhere, Category = "ProgressionTables", Meta = (RequiredAssetDataTags="RowStructure=/Script/PDBaseProgression.PDSkillTree"))
-	TArray<TSoftObjectPtr<UDataTable>> ProgressionTreeTables;	
-};
-
-/* @brief @todo */
-UCLASS(Blueprintable)
-class PDBASEPROGRESSION_API UPDStatSubsystem : public UEngineSubsystem
+void UPDStatListInnerWidget::RefreshStatListOnChangedProperty(FPropertyChangedEvent& PropertyChangedEvent)
 {
-	GENERATED_BODY()
-public:
-	/* @brief @todo */
-	static UPDStatSubsystem* Get();
+	const FProperty* Property = PropertyChangedEvent.Property;
+	if (Property == nullptr) { return; }
 
-	/* @brief @todo */
-	void LatentInitialization();
-
-	/** @brief @todo  */
-	void ResolveCrossBehaviours(
-		UPDStatHandler* OwnersStatHandler,
-		const FPDStatsRow& SelectedStat,
-		const FGameplayTag& StatSourceTag,
-		FPDStatsCrossBehaviourRules& CrossBehaviourRules,
-		double& CrossBehaviourOffset_Normalized) const;
-	/** @brief @todo  */
-	void ResolveCrossBehaviourDelta(
-		int32 OldLevel,
-		int32 LevelDelta,
-		const FPDStatsRow& SelectedStat,
-		const FGameplayTag& StatSourceTag,
-		double& CrossBehaviourOffset_Normalized) const;
-
-	/* @brief @todo */
-	UFUNCTION(BlueprintCallable)
-	FPDSkillTree& GetTreeTypeData(const FGameplayTag& RequestedTree) const;
-	FPDSkillTree* GetTreeTypeDataPtr(const FGameplayTag& RequestedTree) const;
-
-	/* @brief @todo */
-	UFUNCTION(BlueprintCallable)
-	FPDSkillTree& GetTreeTypeDataFromSkill(const FGameplayTag& RequestedSkill) const;
-	FPDSkillTree* GetTreeTypeDataPtrFromSkill(const FGameplayTag& RequestedSkill) const;
+	const FName PropertyName = Property->GetFName();
+	const bool bDoesPropertyHaveCorrectName =
+		PropertyName.IsEqual(GET_MEMBER_NAME_CHECKED(UPDStatListInnerWidget, EditorTestEntries_BaseList))
+		|| PropertyName.IsEqual(GET_MEMBER_NAME_CHECKED(UPDStatListInnerWidget, SectionWidth));
+	if (bDoesPropertyHaveCorrectName == false) { return; }
 	
-	/* @brief @todo */
-	UFUNCTION(BlueprintCallable)
-	FPDProgressionClassRow& GetClassTypeData(const FGameplayTag& RequestedClass) const;
-	FPDProgressionClassRow* GetClassTypeDataPtr(const FGameplayTag& RequestedClass) const;
+	RefreshInnerStatList();
+}
 
-	/* @brief @todo */
-	UFUNCTION(BlueprintCallable)
-	FPDStatsRow& GetStatTypeData(const FGameplayTag& RequestedStat) const;
-	FPDStatsRow* GetStatTypeDataPtr(const FGameplayTag& RequestedStat) const;
+void UPDStatListInnerWidget::PostEditChangeProperty(FPropertyChangedEvent& PropertyChangedEvent)
+{
+	RefreshStatListOnChangedProperty(PropertyChangedEvent);
+	Super::PostEditChangeProperty(PropertyChangedEvent);
+}
 
-	/** @brief @todo */
-	UFUNCTION(BlueprintCallable)
-	static FString GetTagNameLeaf(const FGameplayTag& Tag);
+void UPDStatListInnerWidget::PostEditChangeChainProperty(FPropertyChangedChainEvent& PropertyChangedEvent)
+{
+	RefreshStatListOnChangedProperty(PropertyChangedEvent);
+	Super::PostEditChangeChainProperty(PropertyChangedEvent);
+}
 
-	/** @brief @todo */
-	UFUNCTION(BlueprintCallable)
-	static FString GetTagCategory(const FGameplayTag& Tag);	
-	
-	/** @brief @todo */
-	UFUNCTION(BlueprintCallable)
-	static FString GetTagNameLeafAndParent(const FGameplayTag& Tag);	
-	
-	/* @brief @todo */
-	TMap<FGameplayTag, FPDSkillTree*> TreeTypes;
+void UPDStatListInnerWidget::SynchronizeProperties()
+{
+	Super::SynchronizeProperties();
+}
 
-	/* @brief @todo */
-	TMap<FGameplayTag, FGameplayTag> SkillToTreeMapping;
-	
-	/* @brief @todo */
-	TMap<FGameplayTag, FPDProgressionClassRow*> ClassTypes;
-	/* @brief @todo */
-	TMap<FGameplayTag, FPDStatsRow*> DefaultStats;
-
-	/* @brief Key is a 'Tag' that affect value of the 'List of Tags' */
-	TMap<FGameplayTag, TArray<FGameplayTag>> StatCrossBehaviourMap;
-	/* @brief Key is a 'Tag' that is affected by value of the 'List of Tags' */
-	TMap<FGameplayTag, TArray<FGameplayTag>> StatCrossBehaviourBackMapped;
-
-
-	/** @brief @todo  */
-	UPROPERTY()
-	TMap<int32, UPDStatHandler*> StatHandlers;
-};
+void UPDStatListInnerWidget::RefreshInnerStatList()
+{
+	NetDataView.Empty();
+	if (InnerStatList.IsValid())
+	{
+#if WITH_EDITOR
+		if (IsDesignTime())
+		{
+			for (const FPDStatNetDatum& EditorEntry :  EditorTestEntries_BaseList)
+			{
+				TSharedRef<FPDStatNetDatum> SharedNetDatum = MakeShared<FPDStatNetDatum>(EditorEntry);
+				NetDataView.Emplace(SharedNetDatum);			
+			}
+		}
+#endif // WITH_EDITOR
 		
+		InnerStatList->Refresh(INDEX_NONE, NetDataView, SectionWidth);
+	}
+}
+
+void UPDStatListInnerWidget::RefreshStatLevel_Popup()
+{
+	TokenDataView.Empty();
+	AffectedStatsDataView.Empty();
+	if (SelectedStatLevelData_PopUp.IsValid())
+	{
+#if WITH_EDITOR
+		if (IsDesignTime())
+		{
+			for (const FPDSkillTokenBase& EditorEntry :  EditorTestEntries_LevelPopup_TokenData)
+			{
+				TSharedRef<FPDSkillTokenBase> SharedDatum = MakeShared<FPDSkillTokenBase>(EditorEntry);
+				TokenDataView.Emplace(SharedDatum);			
+			}
+
+			for (const FPDStatViewAffectedStat& EditorEntry :  EditorTestEntries_LevelPopup_AffectedStatsData)
+			{
+				TSharedRef<FPDStatViewAffectedStat> SharedDatum = MakeShared<FPDStatViewAffectedStat>(EditorEntry);
+				AffectedStatsDataView.Emplace(SharedDatum);			
+			}			
+		}
+#endif // WITH_EDITOR
+		
+		SelectedStatLevelData_PopUp->Refresh(INDEX_NONE, TokenDataView, AffectedStatsDataView, SectionWidth);
+	}
+}
+
+void UPDStatListInnerWidget::RefreshStatOffset_Popup()
+{
+	ModifyingSourcesDataView.Empty();
+	if (SelectedStatOffsetData_PopUp.IsValid())
+	{
+#if WITH_EDITOR
+		if (IsDesignTime())
+		{
+			for (const FPDStatViewModifySource& EditorEntry :  EditorTestEntries_OffsetPopup_ModifySources)
+			{
+				TSharedRef<FPDStatViewModifySource> SharedDatum = MakeShared<FPDStatViewModifySource>(EditorEntry);
+				ModifyingSourcesDataView.Emplace(SharedDatum);			
+			}
+		}
+#endif // WITH_EDITOR
+		
+		SelectedStatOffsetData_PopUp->Refresh(INDEX_NONE, ModifyingSourcesDataView, SectionWidth);
+	}
+}
+
+TSharedRef<SWidget> UPDStatListInnerWidget::RebuildWidget()
+{
+	if (InnerSlateWrapbox.IsValid() == false)
+	{
+		InnerSlateWrapbox = SNew(SWrapBox);
+	}
+	if (InnerStatList.IsValid() == false)
+	{
+#if WITH_EDITOR
+		if (IsDesignTime())
+		{
+			for (const FPDStatNetDatum& EditorEntry :  EditorTestEntries_BaseList)
+			{
+				TSharedRef<FPDStatNetDatum> SharedNetDatum = MakeShared<FPDStatNetDatum>(EditorEntry);
+				NetDataView.Emplace(SharedNetDatum);			
+			}
+		}
+#endif // WITH_EDITOR
+		
+		InnerStatList =
+			SNew(SPDStatList, OwnerID, NetDataView, SectionWidth);
+	}
+
+	InnerSlateWrapbox->ClearChildren();
+	SWrapBox::FScopedWidgetSlotArguments WrapboxSlot = InnerSlateWrapbox->AddSlot();
+	WrapboxSlot.AttachWidget(InnerStatList.ToSharedRef());
 	
+	return InnerSlateWrapbox.ToSharedRef();
+}
+
+void UPDStatListInnerWidget::ReleaseSlateResources(bool bReleaseChildren)
+{
+	InnerSlateWrapbox.Reset();
+	InnerStatList.Reset();
+	
+	Super::ReleaseSlateResources(bReleaseChildren);
+}
+
+void UPDStatListInnerWidget::UpdateOwner(int32 NewOwner)
+{
+	OwnerID = NewOwner;
+}
+
+void UPDStatListUserWidget::NativePreConstruct()
+{
+	if (InnerStatList != nullptr)
+	{
+		InnerStatList->UpdateOwner(GetOwnerID());
+	}
+	
+	Super::NativePreConstruct();
+}
+
+int32 UPDStatListUserWidget::GetOwnerID()
+{
+	if (OwnerIDDelegate.IsBound() == false)
+	{
+		UE_LOG(PDLog_Progression, Warning, TEXT("UPDStatListUserWidget(%s)::GetOwnerID -- Failed -- OwnerIDDelegate is not bound!"), *GetName())
+
+		return 0;
+	}
+	
+	return OwnerIDDelegate.Execute();
+}
+
+
+#undef LOCTEXT_NAMESPACE
 
 /**
 Business Source License 1.1
@@ -225,3 +297,4 @@ other recipients of the licensed work to be provided by Licensor:
 
 4. Not to modify this License in any other way.
  **/
+

@@ -9,10 +9,14 @@
 struct FPDStatMapping;
 struct FGameplayTag;
 
+/** @brief @todo  */
 struct FDerivedDataCacheResourceStatKeyFuncs : BaseKeyFuncs<FPDStatMapping, FGameplayTag, false>
 {
+	/** @brief @todo  */
 	static const FGameplayTag& GetSetKey(const FPDStatMapping& Element) { return Element.Tag; }
+	/** @brief @todo  */
 	static bool Matches(const FGameplayTag& A, const FGameplayTag& B) { return A == B; }
+	/** @brief @todo  */
 	static uint32 GetKeyHash(const FGameplayTag& Key) { return GetTypeHash(Key); }
 };
 
@@ -25,47 +29,60 @@ class PDBASEPROGRESSION_API UPDStatHandler : public UActorComponent
 
 public:
 
+	/** @brief @todo  */
 	virtual void BeginPlay() override;
 
+	/** @brief @todo  */
 	UFUNCTION(BlueprintCallable)
 	double GetStatValue(const FGameplayTag& StatTag);
 	
+	/** @brief @todo  */
 	UFUNCTION(BlueprintNativeEvent, BlueprintCallable)
 	void IncreaseStatLevel(const FGameplayTag& StatTag, int32 LevelDelta = 1);
 
+	/** @brief @todo  */
 	UFUNCTION(BlueprintNativeEvent, BlueprintCallable)
 	void IncreaseStatExperience(const FGameplayTag& StatTag, int32 ExperienceDelta);	
 
+	/** @brief @todo  */
 	UFUNCTION(BlueprintNativeEvent, BlueprintCallable)
 	void AttemptUnlockSkill(const FGameplayTag& SkillTag);
 
+	/** @brief @todo  */
 	UFUNCTION(BlueprintNativeEvent, BlueprintCallable)
 	void AttemptLockSkill(const FGameplayTag& SkillTag);	
 	
-	/* @brief Used to fill the  */
+	/** @brief Used to fill the  */
 	UFUNCTION(BlueprintNativeEvent, BlueprintCallable)
 	void SetClass(const FGameplayTag& ClassTag);
 
+	/** @brief @todo  */
 	void ModifySkill(const FGameplayTag& SkillTag, bool bUnlock);
+	/** @brief @todo  */
 	bool HasCompleteAuthority() const;
+
+	/** @brief @todo  */
 	UFUNCTION(BlueprintCallable)
 	void GrantTokens(const FGameplayTag& StatTag, int32 LevelDelta, int32 CurrentLevel);
-	/* @brief Boiler plate for replication setup */
+
+	/** @brief Boiler plate for replication setup */
 	virtual void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override;
 	
 	/* @brief @todo */
 	UPROPERTY(Replicated)
 	FPDStatList StatList{};
 
+	/** @brief @todo  */
 	UPROPERTY(Replicated)
 	TArray<FPDSkillTokenBase> Tokens; // Will arguably never be above 100 entries in practice, very likely even below 10 in many games
 
+	/** @brief @todo  */
 	UPROPERTY(Replicated)
 	TArray<FPDSkillTokenBase> TokensSpentTotal; // Will arguably never be above 100 entries in practice, very likely even below 10 in many games
 
+	/** @brief @todo  */
 	UPROPERTY()
 	int32 OwnerID; // Will arguably never be above 100 entries in practice, very likely even below 10 in many games
-	
 	
 	/* @brief @todo */
 	TSet<FPDStatMapping, FDerivedDataCacheResourceStatKeyFuncs> LocalStatMappings;
