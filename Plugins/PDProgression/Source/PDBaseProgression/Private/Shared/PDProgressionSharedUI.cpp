@@ -62,7 +62,6 @@ TSharedRef<SHeaderRow> FPDStatStatics::CreateHeaderRow(
 	
 	// Apply the gathered data and create a header column
 
-	// @todo resolve bug, it only displays the first character of each string! 
 	FieldIdx = 0;
 	for (; FieldIdx < SectionCount ; FieldIdx++)
 	{
@@ -81,12 +80,12 @@ TSharedRef<SHeaderRow> FPDStatStatics::CreateHeaderRow(
 }
 
 
-FPDStatWidgetHeaderSlotParams FPDStatStatics::CreateHeaderSlotParam(
+FPDStatDataViewSlotParams FPDStatStatics::CreateDataViewSlotParam(
 	FGameplayTag StatTag,
 	double InTotalValue,
 	const bool IncludeParent)
 {
-	const FString AffectedStatAndCategoryText =
+	const FString StatAndCategoryText =
 		IncludeParent
 		? UPDStatSubsystem::GetTagNameLeafAndParent(StatTag)
 		: UPDStatSubsystem::GetTagNameLeaf(StatTag);
@@ -96,8 +95,8 @@ FPDStatWidgetHeaderSlotParams FPDStatStatics::CreateHeaderSlotParam(
 	const FString Sign = AbsTotalValue > 0.0 ? "+" : "-";
 
 	return 
-	FPDStatWidgetHeaderSlotParams{
-		FText::FromString(AffectedStatAndCategoryText),
+	FPDStatDataViewSlotParams{
+		FText::FromString(StatAndCategoryText),
 		FText::FromString(Sign + FString::FromInt(AbsTotalValue))};
 }
 

@@ -25,8 +25,8 @@ struct FSlateBrush;
 // @todo (PRIO 3/BACKLOG) Need a widget for selecting the Category : Create a view that shows other, unlocked, stats in the same category
 
 
-/** @brief @todo/in-progress Widget for data regarding the selected stats level and experience
- * @todo Need to have an experience-bar which also may display numbers
+/** @brief @inprogress Widget for data regarding the selected stats level and experience
+ * @inprogress Need to have an experience-bar which also may display numbers
  * @details Show amount of tokens, and their types that will be earned upon gaining next level, and any relevant stat changes that will occur */
 class PDBASEPROGRESSION_API SPDSelectedStat_LevelData
 	: public  SCompoundWidget
@@ -37,7 +37,8 @@ public:
 	SLATE_BEGIN_ARGS(SPDSelectedStat_LevelData){}
 	SLATE_END_ARGS()
 
-	/** @brief @todo  */
+	/** @brief Copies parameters into member properties then calls 'PrepareData' and 'UpdateChildSlot'.
+	 * Is used by slate when a new widget is constructed */
 	void Construct(
 		const FArguments& InArgs,
 		int32 InOwnerID,
@@ -45,41 +46,43 @@ public:
 		TArray<TSharedPtr<FPDSkillTokenBase>>& TokenArrayRef,
 		TArray<TSharedPtr<FPDStatViewAffectedStat>>& AffectedStatsRef);
 
-	/** @brief @todo  */
-	TSharedRef<ITableRow> MakeListViewWidget_LinkedStat_TokensToGrant(TSharedPtr<FPDSkillTokenBase> FpdStatViewTokensToGrant, const TSharedRef<STableViewBase>& TableViewBase) const;
-
-	/** @brief @todo  */
+	/** @brief Refreshes the elements in 'HeaderDataViews.Key.DataViewPtr' & 'HeaderDataViews.Value.DataViewPtr' and calls rebuild on their respective list-views  */
 	void Refresh(int32 InOwnerID, TArray<TSharedPtr<FPDSkillTokenBase>>& TokenArrayRef, TArray<TSharedPtr<FPDStatViewAffectedStat>>& AffectedStatsRef, int32 InSectionWidth);
-
-	/** @brief @todo  */
+	
+	/** @brief Token entry widget. Is used to display levelling, token-related, data about a selected stat. How many tokens of a given type will be granted upon leveling the stat  */
+	TSharedRef<ITableRow> MakeListViewWidget_LinkedStat_TokensToGrant(TSharedPtr<FPDSkillTokenBase> StatViewTokensToGrant, const TSharedRef<STableViewBase>& TableViewBase) const;
+	/** @brief Unused. Reserved.   */
 	void OnComponentSelected_LinkedStat_TokensToGrant(TSharedPtr<FPDSkillTokenBase> StatViewTokensToGrant, ESelectInfo::Type Arg) const;
-	/** @brief @todo  */
+	
+	/** @brief Affected Stat entry widget. Represents the a stat that will be affected when another selected stat levels up, and displays the total increase or decrease of said stat value */
 	TSharedRef<ITableRow> MakeListViewWidget_LinkedStat_AffectedStats(TSharedPtr<FPDStatViewAffectedStat> StatViewAffectedStats, const TSharedRef<STableViewBase>& TableViewBase) const;
-	/** @brief @todo  */
+	/** @brief Unused. Reserved.   */
 	void OnComponentSelected_LinkedStat_AffectedStats(TSharedPtr<FPDStatViewAffectedStat> FpdStatViewAffectedStats, ESelectInfo::Type Arg) const;
-	/** @brief @todo  */
+	/** @brief Builds the data-view headers and the child-slot composition (Defines the widget-layout) */
 	void UpdateChildSlot();
 
-	/** @brief @todo  */
+	/** @brief Resolves the token types and amounts we will grant upon reaching the next level, caches the results */
 	void PrepareData();
 	
-	/** @brief @todo  GROUP*/
-	static FText SelectedStatLevelLabel;
-	static FText Token_SectionTitle;
-	static FText TokenName_ColumnLabel;
-	static FText TokenCount_ColumnLabel;
+	/** @defgroup SelectedStat_Labels */
+	static FText SelectedStatLevelLabel;        /**< @ingroup SelectedStat_Labels */
+	static FText Token_SectionTitle;            /**< @ingroup SelectedStat_Labels */
+	static FText TokenName_ColumnLabel;         /**< @ingroup SelectedStat_Labels */
+	static FText TokenCount_ColumnLabel;        /**< @ingroup SelectedStat_Labels */
 	
-	static FText OtherStats_SectionTitle;
-	static FText OtherStatsAffectedName_ColumnLabel;
-	static FText OtherStatsAffectedValue_ColumnLabel;
+	static FText OtherStats_SectionTitle;             /**< @ingroup SelectedStat_Labels */
+	static FText OtherStatsAffectedName_ColumnLabel;  /**< @ingroup SelectedStat_Labels */
+	static FText OtherStatsAffectedValue_ColumnLabel; /**< @ingroup SelectedStat_Labels */
 	
-	static FText TokenEntryLabel;
-	static FText OtherStatsAffectedEntryLabel;
+	static FText TokenEntryLabel;              /**< @ingroup SelectedStat_Labels */
+	static FText OtherStatsAffectedEntryLabel; /**< @ingroup SelectedStat_Labels */
 
-	static FText ExperienceBar_Title;
+	static FText ExperienceBar_Title;  /**< @ingroup SelectedStat_Labels */
 };
 
-// @todo A SPDSelectedStat is meant to be displayed when selecting the stats offset value, consider renaming it to be more clear
+
+/** @brief A SPDSelectedStat_OffsetData displays the expected crossbehaviour value for a 'stat-B' based on Stat a given 'stat B',
+ * @note This is going to be used for when selecting a stat's total crossbehaviour: To list a all sources that the crossbehviour is composed from */
 class PDBASEPROGRESSION_API SPDSelectedStat_OffsetData
 	: public SCompoundWidget
 	, public FPDStatWidgetBase<FPDStatViewModifySource>
@@ -89,27 +92,28 @@ public:
 	SLATE_BEGIN_ARGS(SPDSelectedStat_OffsetData){}
 	SLATE_END_ARGS()
 
-	/** @brief @todo  */
+	/** @brief Copies parameters into member properties then calls 'PrepareData' and 'UpdateChildSlot'.
+	 * Is used by slate when a new widget is constructed */
 	void Construct(const FArguments& InArgs, int32 InOwnerID, const FGameplayTag& InSelectedStatTag, TArray<TSharedPtr<FPDStatViewModifySource>>& ArrayRef);
 
-	/** @brief @todo  */
+	/** @brief Resolves the expected cross behaviour value increase for next level, caches the results */
 	void PrepareData();
-	/** @brief @todo  */
+	/** @brief Refreshes the elements in 'HeaderDataViews.Value.DataViewPtr' and calls rebuild on 'HeaderDataViews.Value.ListView'  */
 	void Refresh(int32 InOwnerID, TArray<TSharedPtr<FPDStatViewModifySource>>& DataViewRef, const int32 NewSectionWidth);
 
-	/** @brief @todo  */
+	/** @brief Representation of the entry widgets of the offset/modifier targets   */
 	TSharedRef<ITableRow> MakeListViewWidget_LinkedStat(TSharedPtr<FPDStatViewModifySource> StatViewModifySource, const TSharedRef<STableViewBase>& OwnerTable) const;
-	/** @brief @todo  */
+	/** @brief Unused. Reserved  */
 	void OnComponentSelected_LinkedStat(TSharedPtr<FPDStatViewModifySource> StatViewModifySource, ESelectInfo::Type Arg) const;
-	/** @brief @todo  */
+	/** @brief Builds the data-view headers and the child-slot composition (Defines the widget-layout) */
 	virtual void UpdateChildSlot();
 	
-	/** @brief @todo  GROUP */
-	static FText StatSources_Header_Title;
-	static FText StatSources_Header_Name;
-	static FText StatSources_Header_Category;
-	static FText StatSources_Header_AppliedOffset;
-	static FText StatSources_Header_Curves;
+	/** @defgroup SelectedSources_Labels */
+	static FText StatSources_Header_Title;         /**< @ingroup SelectedSources_Labels */
+	static FText StatSources_Header_Name;          /**< @ingroup SelectedSources_Labels */
+	static FText StatSources_Header_Category;      /**< @ingroup SelectedSources_Labels */
+	static FText StatSources_Header_AppliedOffset; /**< @ingroup SelectedSources_Labels */
+	static FText StatSources_Header_Curves;        /**< @ingroup SelectedSources_Labels */
 };
 
 

@@ -6,7 +6,7 @@
 #include "GameplayTagContainer.h"
 #include "PDProgressionEvaluator.generated.h"
 
-/* @brief @todo */
+/** @brief Ruleset (arithmetic) operation selector */
 UENUM()
 enum class EPDRulesetOpType : uint8
 {
@@ -17,7 +17,7 @@ enum class EPDRulesetOpType : uint8
 	EPower
 };
 
-/* @brief @todo */
+/** @brief Ruleset operation value source selector */
 UENUM()
 enum class EPDRulesetOpTarget : uint8
 {
@@ -27,7 +27,7 @@ enum class EPDRulesetOpTarget : uint8
 };
 
 
-/* @brief @todo */
+/** @brief Ruleset operator definition */
 USTRUCT(Blueprintable)
 struct PDBASEPROGRESSION_API FPDRulesetOperatorStruct : public FTableRowBase
 {
@@ -56,11 +56,11 @@ struct PDBASEPROGRESSION_API FPDRulesetOperatorStruct : public FTableRowBase
 	FDataTableRowHandle InnerRulesetHandle;
 };
 
-/* @brief @todo */
+/** @brief Ruleset evaluator. Evaluates a value over a given rulset.  */
 template<typename TValueType>
 struct FPDRulesetEvaluator
 {
-	/* @brief @todo */
+	/** @brief Iterates a ruleset, sorts operators based on math precedence, then applies their operations on the  */
 	TValueType Eval(
 		const TArray<FPDRulesetOperatorStruct>& Ruleset, 
 		const TValueType& SelectedValue)
@@ -198,11 +198,11 @@ struct PDBASEPROGRESSION_API FPDRulesetRow : public FTableRowBase
 {
 	GENERATED_BODY()
 
-	/* @brief @todo */
+	/** @brief The tag for this ruleset, Tags are used as a form of ID */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
 	FGameplayTag RuleSetTagID;
 
-	/* @brief @todo */
+	/** @brief Actual list of operations that this ruleset is composed of */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
 	TArray<FPDRulesetOperatorStruct> RuleSetOperation;
 };

@@ -8,35 +8,42 @@
 #include "Net/Serialization/FastArraySerializer.h"
 #include "PDProgressionNetDatum.generated.h"
 
-/* @brief @todo */
+/** @brief Replicated datum. This is the definition of a 'packet' of data we transmit per entry of a given 'fastarray'
+ * @note Replicates values that represent the stats tag, it's current crossbehaviour value, it's current level and experience
+ * @note Also has some helper functions to process and apply the crossbehaviour to the current stat value
+ * @todo Make some variant or change that allows some stats to never update, and thus not change, so we avoid over-saturating the network
+ */
 USTRUCT(Blueprintable)
 struct PDBASEPROGRESSION_API FPDStatNetDatum : public FFastArraySerializerItem
 {
 	GENERATED_BODY()
 	
-	/* @brief @todo */
+	/** @brief The tag of this stat. Is needed to track the different values that stat system handles */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
 	FGameplayTag ProgressionTag;
 
-	/* @brief @todo */
+	/** @brief The current crossbehaviour value, the current values of others stats total effect on this stat */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
 	int32 CrossBehaviourValue = 0;	
 	
-	/* @brief @todo */
+	/** @brief The current level of the stat. Is needed for tracking and to resolve values from the expected crossbehaviour and token curves */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
 	int32 CurrentLevel = 0;
-	/* @brief @todo */
+	
+	/** @brief The current total experience of the stat. Is needed for validation: resolving the expected level at this amount of total experience */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
 	int32 CurrentExperience = 0;
 
-	/* @brief @todo */
+	/** @brief The stat value of the stat, purpose is up to the stat definition. This is what the crossbehaviour value targets */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
 	double CurrentStatValue;
 
-	/* @brief @todo */
+	/** @brief Processes and returns the current stat value with the crossbehaviour applied */
 	double GetAppliedValue() const;
 
-	/* @brief @todo */
+	/** @brief Processes the crossbehaviour.
+	 * @note This means it applies this stats basedivisor to the current crossbehaviour,
+	 * which is defined in the stats row in the stat-table it is contained within */
 	double GetProcessedCrossBehaviour() const;	
 	
 	/** @brief This is called on the client when they receive a replicated update.
@@ -53,13 +60,14 @@ struct PDBASEPROGRESSION_API FPDStatNetDatum : public FFastArraySerializerItem
 	void PostReplicatedChange(const FPDStatList& OwningList);
 };
 
-/* @brief @todo */
+/** @brief Fastaarray boilerplate.
+ * @note Keeps an actual array of items and mark it in NetSerialize so the replication system knows it should treat it differently */
 USTRUCT(Blueprintable)
 struct PDBASEPROGRESSION_API FPDStatList : public FFastArraySerializer
 {
 	GENERATED_BODY()
 	
-	/** @brief @todo  */
+	/** @brief Marks 'Items' so the replication system knows it should treat it differently  */
 	bool NetSerialize(FNetDeltaSerializeInfo& DeltaParams);
 
 	/** @note Adds any given stat to the itemlist */
@@ -69,12 +77,12 @@ struct PDBASEPROGRESSION_API FPDStatList : public FFastArraySerializer
 	/** @note Just calls AddStat, is a placeholder impl. reserved for later use */
 	void AddPassiveEffect(const FGameplayTag& StatTag, int32 StatExperience, int32 StatLevel);
 
-	/* @brief @todo */
+	/** @brief Actual inner list of items that we want to replicate */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
 	TArray<FPDStatNetDatum> Items;
 };
 
-/** @brief @todo  */
+/** @brief Engine boilerplate for fastarrays */
 template<>
 struct TStructOpsTypeTraits<FPDStatList> : TStructOpsTypeTraitsBase2<FPDStatList>
 {

@@ -12,7 +12,6 @@
 void UPDStatHandler::BeginPlay()
 {
 	Super::BeginPlay();
-
 	
 	UPDStatSubsystem::Get()->StatHandlers.Emplace(OwnerID, this);
 }
@@ -59,8 +58,8 @@ void UPDStatHandler::ModifySkill(const FGameplayTag& SkillTag, const bool bUnloc
 				// actually unlock skill here, set it's stat level to 1, should have been 0 before
 				StatList.AddStat(InSkillTag, 0, bUnlock);
 
-				CategoryTokenValues->TokenValue -= SkillCost;      // Remove from user
-				TotalTokensSpentOnCategory->TokenValue += SkillCost; // Add to tally
+				CategoryTokenValues->TokenValue -=  (bUnlock)* SkillCost;      // Remove from user
+				TotalTokensSpentOnCategory->TokenValue += (bUnlock)*SkillCost; // Add to tally
 			}
 		};
 	
@@ -77,6 +76,7 @@ void UPDStatHandler::ModifySkill(const FGameplayTag& SkillTag, const bool bUnloc
 	
 	TFunction<void(const TArray<FDataTableRowHandle>&)> BranchMapper;
 
+	// @todo slow recursion, re-do
 	// TArray<FPDSkillBranch> BranchPaths. Recursively map all skills in a tree back to the tree, for fast access downstream
 	BranchMapper= [&, SkillTag, TreeRowTag = Tree->Tag](const TArray<FDataTableRowHandle>& BranchPaths)
 	{
@@ -133,7 +133,7 @@ bool UPDStatHandler::HasCompleteAuthority() const
 	}
 
 	switch (GetOwner()->GetNetMode())
-	{
+	{ 
 	case NM_MAX:
 	case NM_Client:
 		return false;

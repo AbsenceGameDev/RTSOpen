@@ -9,19 +9,19 @@
 struct FPDStatMapping;
 struct FGameplayTag;
 
-/** @brief @todo  */
+/** @brief Key mapping comparison functions, used  for tset searching  */
 struct FDerivedDataCacheResourceStatKeyFuncs : BaseKeyFuncs<FPDStatMapping, FGameplayTag, false>
 {
-	/** @brief @todo  */
+	/** @brief Returns what the t-set should consider the actual key of FPDStatMapping  */
 	static const FGameplayTag& GetSetKey(const FPDStatMapping& Element) { return Element.Tag; }
-	/** @brief @todo  */
+	/** @brief Comparison function used by the t-set   */
 	static bool Matches(const FGameplayTag& A, const FGameplayTag& B) { return A == B; }
-	/** @brief @todo  */
+	/** @brief Gets inners typehash of the key, we want FPDStatMapping's with differing indexes and same tag to still match */
 	static uint32 GetKeyHash(const FGameplayTag& Key) { return GetTypeHash(Key); }
 };
 
 
-/* @brief Progtession system network manager */
+/** @brief Progression system network manager */
 UCLASS(Blueprintable)
 class PDBASEPROGRESSION_API UPDStatHandler : public UActorComponent
 {
@@ -29,26 +29,32 @@ class PDBASEPROGRESSION_API UPDStatHandler : public UActorComponent
 
 public:
 
-	/** @brief @todo  */
+	/** @brief Registers this StatHandler with the UPDStatSubsystem  */
 	virtual void BeginPlay() override;
 
-	/** @brief @todo  */
+	/** @brief Finds the stat and returns it's applied value, if it exists.
+	 *  @details If it exists then return the applied stat value, otherwise return 0*/
 	UFUNCTION(BlueprintCallable)
 	double GetStatValue(const FGameplayTag& StatTag);
 	
-	/** @brief @todo  */
+	/** @brief Finds the stat and increases it's level by the given amount, if the owner has complete authority .
+	 *  @details Increases levels and propagates applied changes to other stats that that levelled up stat is set to modify, in the stats 'AffectedBy' array*/
 	UFUNCTION(BlueprintNativeEvent, BlueprintCallable)
 	void IncreaseStatLevel(const FGameplayTag& StatTag, int32 LevelDelta = 1);
 
-	/** @brief @todo  */
+	/** @brief Finds the stat and increases it's experience by the given amount, if the owner has complete authority .
+	 *  @details Increases experience and in-case we increase level it calls IncreaseStatLevel*/
 	UFUNCTION(BlueprintNativeEvent, BlueprintCallable)
 	void IncreaseStatExperience(const FGameplayTag& StatTag, int32 ExperienceDelta);	
 
-	/** @brief @todo  */
+	/** @brief Finds a skill stat and attempts to unlock it, if the owner has complete authority .
+	 *  @details Sets a skill stat to level 1, fails if we do not have the necessary tokens to unlock it
+	 *  @todo Apply skill effects (Also, consider allowing stats to have stat tied to them, stats that unlock and activate upon this stat unlocking)*/
 	UFUNCTION(BlueprintNativeEvent, BlueprintCallable)
 	void AttemptUnlockSkill(const FGameplayTag& SkillTag);
 
-	/** @brief @todo  */
+	/** @brief Finds a skill stat and attempts to lock it, if the owner has complete authority .
+	 *  @details Sets a skill stat to level 0 */
 	UFUNCTION(BlueprintNativeEvent, BlueprintCallable)
 	void AttemptLockSkill(const FGameplayTag& SkillTag);	
 	
@@ -56,35 +62,42 @@ public:
 	UFUNCTION(BlueprintNativeEvent, BlueprintCallable)
 	void SetClass(const FGameplayTag& ClassTag);
 
-	/** @brief @todo  */
+	/** @brief Called by unlock and lock skill, handles the actual logic. See@LockSkill & @UnlockSkill  */
 	void ModifySkill(const FGameplayTag& SkillTag, bool bUnlock);
-	/** @brief @todo  */
+	/** @brief Check owner net-mode/role. If we have appropriate authority in the correct context then return true. 
+	 * @details - Returns true if we are standalone or server and we have authority.
+	 * @details - Return false proxy or max/none owner roles. and if NetMode is NM_Client*/
 	bool HasCompleteAuthority() const;
 
-	/** @brief @todo  */
+	/** @brief Grants the owner all tokens granted between the current level and the new level  */
 	UFUNCTION(BlueprintCallable)
 	void GrantTokens(const FGameplayTag& StatTag, int32 LevelDelta, int32 CurrentLevel);
 
 	/** @brief Boiler plate for replication setup */
 	virtual void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override;
 	
-	/* @brief @todo */
+	/** @brief The replicated list of stats, fastarray serializer list as it is expected to have many elements.
+	 * Indices are mapped locally to a gameplay tag so we can reduce search complexity drastically */
 	UPROPERTY(Replicated)
 	FPDStatList StatList{};
 
-	/** @brief @todo  */
+	/** @brief Replicated list of tokens, a regular replicated array is fine -- expecting small number of entries
+	 * Will arguably never be above 50 entries in practice, even in a game like PoE,
+	 * very likely even below 10 in most games */
 	UPROPERTY(Replicated)
-	TArray<FPDSkillTokenBase> Tokens; // Will arguably never be above 100 entries in practice, very likely even below 10 in many games
+	TArray<FPDSkillTokenBase> Tokens;
 
-	/** @brief @todo  */
+	/** @brief Total tokens spent so-far, keep for tracking and comparison purposes.
+	 * @note FPDSkillTokenBase keeps a tag and a number */
 	UPROPERTY(Replicated)
 	TArray<FPDSkillTokenBase> TokensSpentTotal; // Will arguably never be above 100 entries in practice, very likely even below 10 in many games
 
-	/** @brief @todo  */
+	/** @brief Persistent ID of the owner, used for routing and mapping  */
 	UPROPERTY()
-	int32 OwnerID; // Will arguably never be above 100 entries in practice, very likely even below 10 in many games
+	int32 OwnerID; 
 	
-	/* @brief @todo */
+	/** @brief Locally tracked set of tags and indices in 'StatList',
+	 * @note has a custom key matching function so we can resolve an FPDStatMapping::index from a given tag */
 	TSet<FPDStatMapping, FDerivedDataCacheResourceStatKeyFuncs> LocalStatMappings;
 };
 

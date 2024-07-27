@@ -163,28 +163,19 @@ void SPDSelectedStat_LevelData::PrepareData()
 	TArray<TSharedPtr<FPDStatViewAffectedStat>>*& AffectedStatsPtr = HeaderDataViews.Value.DataViewPtr;
 	const TSharedPtr<SListView<TSharedPtr<FPDStatViewAffectedStat>>>& AffectedStatsListView = HeaderDataViews.Value.ListView;
 	
-	if (TokenArrayPtr == nullptr || TokenArrayListView.IsValid() == false)
-	{
-		return;
-	}
-	
-	if (AffectedStatsPtr == nullptr || AffectedStatsListView.IsValid() == false)
-	{
-		return;
-	}
+	if (TokenArrayPtr == nullptr || TokenArrayListView.IsValid() == false) { return; }
+	if (AffectedStatsPtr == nullptr || AffectedStatsListView.IsValid() == false) { return; }
 	
 	static UPDStatSubsystem* StatSubsystem = UPDStatSubsystem::Get();
 	const FPDStatsRow& SelectedStat = StatSubsystem->GetStatTypeData(SelectedStatTag);
 	const TArray<FGameplayTag>& StatsThatWeAffect = StatSubsystem->StatCrossBehaviourMap.FindRef(SelectedStatTag);
 
 	UPDStatHandler** OwnersStatHandler = StatSubsystem->StatHandlers.Find(OwnerID);
-	if (OwnersStatHandler == nullptr || *OwnersStatHandler == nullptr)
-	{
-		return;
-	}
+	if (OwnersStatHandler == nullptr || *OwnersStatHandler == nullptr) { return; }
 
+	constexpr int32 DeltaLevel = 1;
 	const FPDStatMapping* StatMapping = (*OwnersStatHandler)->LocalStatMappings.Find(SelectedStatTag);
-	int32 SelectedStatNextLevel = 1 + (StatMapping == nullptr
+	int32 SelectedStatNextLevel = DeltaLevel + (StatMapping == nullptr
 		? 0
 		: SelectedStatNextLevel = (*OwnersStatHandler)->StatList.Items[StatMapping->Index].CurrentLevel);
 
@@ -197,9 +188,8 @@ void SPDSelectedStat_LevelData::PrepareData()
 
 		// Find out our (SelectedStatTag) effect on target stat (Stats that are affected by us)
 		double DeltaNewLevelOffset; 
-		constexpr int32 DeltaLevel = 1;
 		StatSubsystem->ResolveCrossBehaviourDelta(
-			DeltaLevel,
+			SelectedStatNextLevel - DeltaLevel,
 			SelectedStatNextLevel,
 			*StatTargetDefaultDataPtr, 
 			SelectedStatTag,
@@ -239,8 +229,8 @@ TSharedRef<ITableRow> SPDSelectedStat_LevelData::MakeListViewWidget_LinkedStat_T
 	TSharedPtr<STableRow< TSharedPtr<FPDSkillTokenBase>>> StatTable = nullptr;
 
 	// (DONE) 1. StatViewModifySource->StatTag
-	const FPDStatWidgetHeaderSlotParams& HeaderSlotParam =
-		FPDStatStatics::CreateHeaderSlotParam(StatViewTokensToGrant->TokenType, StatViewTokensToGrant->TokenValue);
+	const FPDStatDataViewSlotParams& HeaderSlotParam =
+		FPDStatStatics::CreateDataViewSlotParam(StatViewTokensToGrant->TokenType, StatViewTokensToGrant->TokenValue);
 	
 	constexpr double WidthDiscrepancy = (1.015);
 	const float TrueSectionWidth = SectionWidth * WidthDiscrepancy;
@@ -299,8 +289,8 @@ TSharedRef<ITableRow> SPDSelectedStat_LevelData::MakeListViewWidget_LinkedStat_A
 	TSharedPtr<STableRow< TSharedPtr<FPDStatViewAffectedStat>>> StatTable = nullptr;
 
 	// (DONE) 1. StatViewModifySource->StatTag
-	const FPDStatWidgetHeaderSlotParams& HeaderSlotParam =
-		FPDStatStatics::CreateHeaderSlotParam(CurrentAffectedStat->AffectedStat, CurrentAffectedStat->TotalAffectedDelta);
+	const FPDStatDataViewSlotParams& HeaderSlotParam =
+		FPDStatStatics::CreateDataViewSlotParam(CurrentAffectedStat->AffectedStat, CurrentAffectedStat->TotalAffectedDelta);
 
 	constexpr double WidthDiscrepancy = (1.015);
 	const float TrueSectionWidth = SectionWidth * WidthDiscrepancy;
@@ -360,9 +350,15 @@ void SPDSelectedStat_OffsetData::PrepareData()
 	for (const FGameplayTag& StatSourceTag : StatsThatAffectUs)
 	{
 		FPDStatsCrossBehaviourRules CrossBehaviourRules;
+
+		const FPDStatMapping* StatMapping = (*OwnersStatHandler)->LocalStatMappings.Find(StatSourceTag);
+		int32 StatSourceLevel = (StatMapping == nullptr
+			? 0
+			: StatSourceLevel = (*OwnersStatHandler)->StatList.Items[StatMapping->Index].CurrentLevel);		
+		
 		double CrossBehaviourOffset_Normalized;
 		StatSubsystem->ResolveCrossBehaviours(
-			*OwnersStatHandler,
+			StatSourceLevel,
 			SelectedStat, 
 			StatSourceTag,
 			CrossBehaviourRules,
@@ -439,8 +435,8 @@ TSharedRef<ITableRow> SPDSelectedStat_OffsetData::MakeListViewWidget_LinkedStat(
 {
 	TSharedPtr<STableRow< TSharedPtr<FPDStatViewModifySource>>> StatTable = nullptr;
 
-	const FPDStatWidgetHeaderSlotParams& HeaderSlotParam =
-		FPDStatStatics::CreateHeaderSlotParam(StatViewModifySource->StatTag, StatViewModifySource->AppliedStatOffset);
+	const FPDStatDataViewSlotParams& HeaderSlotParam =
+		FPDStatStatics::CreateDataViewSlotParam(StatViewModifySource->StatTag, StatViewModifySource->AppliedStatOffset);
 	
 	// @todo 3. StatViewModifySource->StatOffsetCurveSource;
 	const FText PlaceholderCurveString = LOCTEXT("Placeholder93u490803","TODO - IMPLEMENT CURVE DISPLAY/VIEW");

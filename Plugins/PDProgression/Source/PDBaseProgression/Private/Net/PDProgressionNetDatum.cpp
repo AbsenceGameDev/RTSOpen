@@ -36,8 +36,6 @@ void FPDStatNetDatum::PostReplicatedChange(const FPDStatList& OwningList)
 
 }
 
-
-/* @brief @todo */
 bool FPDStatList::NetSerialize(FNetDeltaSerializeInfo& DeltaParams)
 {
 	return

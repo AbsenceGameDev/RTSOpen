@@ -42,7 +42,7 @@ DECLARE_LOG_CATEGORY_CLASS(PDLog_Progression, Log, All);
 
 struct FPDStatList;
 
-/* @brief @todo */
+/** @brief Progression behaviour selector. do we earns progression via classic forms (missions, scripts, etc) or do we tie it to an action? */
 UENUM()
 enum class EPDProgressionBehaviourType : uint8
 {
@@ -50,7 +50,7 @@ enum class EPDProgressionBehaviourType : uint8
 	EActionBased
 };
 
-/* @brief @todo */
+/** @brief Progression type selector : are we an active effect, a passive effect or a basic stat? */
 UENUM()
 enum class EPDProgressionType : uint8
 {
@@ -59,89 +59,65 @@ enum class EPDProgressionType : uint8
 	EStat
 };
 
-/* @brief @todo */
-USTRUCT(Blueprintable)
-struct FPDValueProgressionCompound
-{
-	GENERATED_BODY()
-
-	/* @brief @todo */
-	UPROPERTY(EditAnywhere, BlueprintReadWrite)
-	int32 BaseValue;
-
-	/* @brief @todo */
-	UPROPERTY(EditAnywhere, BlueprintReadWrite)
-	UCurveFloat* ValueProgression = nullptr;
-	
-};
-
-/* @brief @todo */
+/** @brief Stat value default data -- base value and a value progression curve (how will the value change as the stat levels up) */
 USTRUCT(Blueprintable)
 struct PDBASEPROGRESSION_API FPDStatsValue
 {
 	GENERATED_BODY()
-
-	// Not thread safe! Lock accesses to BaseValueRepresentations, BaseDivisor 
-	/* @brief @todo */
+	
+	/** @brief Attempts to resolve 'ValueProgression->GetFloatValue(Level)'
+	 * @details Applies the ValueProgression result for 'Level' to the BaseValue, before applying the BaseDivisor to that result and returning the final result 
+	 * @note Not thread safe! Lock accesses to BaseValueRepresentations, BaseDivisor */
 	double ResolveValue(int32 Level) const;
 	
-	/* @brief @todo */
+	/** @brief The base/default value of this stat */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
 	int32 BaseValue;
 
-	/* @brief @todo */
+	/** @brief The value modifier progression curve of this stat, different levels give different values */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
 	UCurveFloat* ValueProgression = nullptr;	
 
-	/* @brief
+	/** @brief
 	 * @todo Needs a slider with minimum value of 1,
 	 * @todo And needs a setter function that clamps any requested new value to minimum 1 */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
 	int32 BaseDivisor = 1;
 };
 
-/* @brief @todo */
-USTRUCT(Blueprintable)
-struct PDBASEPROGRESSION_API FPDStatGameValue
-{
-	GENERATED_BODY()
-	
-	/* @brief @todo */
-	UPROPERTY(EditAnywhere, BlueprintReadWrite)
-	double BaseValue = 0.0;
-};
-
-
-/* @brief @todo */
+/** @brief Cross-behaviour rules:
+ * - Ruleset tag that tells which ruleset to use
+ * - Basevalue, 'CrossBehaviourBaseValue', that will be scaled using the 'RuleSetLevelCurveMultiplier'
+ */
 USTRUCT(Blueprintable)
 struct PDBASEPROGRESSION_API FPDStatsCrossBehaviourRules
 {
 	GENERATED_BODY()
 	
-	/* @brief This is the ruleset for this cross behaviour*/
+	/** @brief This is the ruleset for this cross behaviour*/
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
 	FGameplayTag RuleSetTag;
 
-	/* @brief This is the level curve multiplier for this cross behaviour */
+	/** @brief This is the level curve multiplier for this cross behaviour */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
 	int32 CrossBehaviourBaseValue = 0;	
 	
-	/* @brief This is the level curve multiplier for this cross behaviour */
+	/** @brief This is the level curve multiplier for this cross behaviour */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
 	UCurveFloat* RuleSetLevelCurveMultiplier;	
 };
 
-/* @brief @todo */
+/** @brief Base compound struct for a skill-token: Composes of a tag and a value */
 USTRUCT(Blueprintable)
 struct FPDSkillTokenBase
 {
 	GENERATED_BODY()
 
-	/* @brief @todo */
+	/** @brief The type of token this represents. Is used when being accessed and compared against */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
 	FGameplayTag TokenType{};	
 
-	/* @brief @todo */
+	/** @brief The type of token this represents. For now is mainly used to indicate tokens in store or used tokens */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
 	int32 TokenValue = 0;
 
@@ -164,23 +140,24 @@ struct FPDSkillTokenBase
 	}	
 };
 
-/* @brief @todo */
+/** @brief Extension of 'FPDSkillTokenBase' which adds a 'MinTokenLevel' member, is used to gate unlocks */
 USTRUCT(Blueprintable)
 struct FPDSkillTokenRules : public FPDSkillTokenBase
 {
 	GENERATED_BODY()
 	
-	/* @brief @todo */
+	/** @brief Is used to gate unlocks */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
 	int32 MinTokenLevel = 0;	
 };
 
-/* @brief @todo */
+/** @brief A branch in the skill-tree type. is used to define deeper depths and more branches to the tree */
 USTRUCT(Blueprintable)
 struct FPDSkillBranch : public FTableRowBase
 {
 	GENERATED_BODY()
-	/* @brief Unlock requirements:
+	
+	/** @brief Unlock requirements:
 	 * 1. How many tokens to unlock.
 	 * 2. Of which type (token category).
 	 * 3. What is the minimum token level needed to be able unlock this skill
@@ -188,15 +165,16 @@ struct FPDSkillBranch : public FTableRowBase
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
 	FPDSkillTokenRules TokenRules{};	
 	
-	/* @brief @todo */
+	/** @brief Table-row handle to the root skill of the owning tree (a skill is just a fancy stat, so filter by stat tables) */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Meta=(RowType="/Script/PDBaseProgression.PDStatsRow"))
 	FDataTableRowHandle BranchRootSkill;
 
-	/* @brief @todo */
+	/** @brief Potential branches of this skill branch */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Meta=(RequiredAssetDataTags="RowStructure=/Script/PDBaseProgression.PDSkillBranch"))
 	TArray<FDataTableRowHandle> BranchPaths;	
 };
 
+/** @brief Skill tree datatable row-entry. Is used by datatables to define skill-trees */
 USTRUCT(Blueprintable)
 struct FPDSkillTree : public FTableRowBase
 {
@@ -211,49 +189,49 @@ struct FPDSkillTree : public FTableRowBase
 	TMap<FGameplayTag, FPDSkillBranch> Skills;
 };
 
-/* @brief @todo */
+/** @brief Stat datatable row entry. Is used by datatables to define skill-trees */
 USTRUCT(Blueprintable)
 struct PDBASEPROGRESSION_API FPDStatsRow : public FTableRowBase
 {
 	GENERATED_BODY()
 	
-	/* @brief @todo */
+	/** @brief Tag of the stat-row, used for comparison and hashing purposes */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
 	FGameplayTag ProgressionTag;
-	/* @brief @todo */
+	/** @brief Tags that we are affected by and the rules by which we are affected. oils down to a list of tags and cross-behaviour curvess*/
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
 	TMap<FGameplayTag /*StatTag*/, FPDStatsCrossBehaviourRules> RulesAffectedBy;
-	/* @brief @todo */
+	/** @brief Behaviour of this stat, classic or action-based*/
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
 	EPDProgressionBehaviourType BehaviourType;
-	/* @brief @todo */
+	/** @brief Stat-type. Is stat, active affect or passive effects. */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
 	EPDProgressionType ProgressionType;
-	/* @brief @todo */
+	/** @brief This is the value representation of the stat, has base-value, value-progression curve and base-divisor */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
 	FPDStatsValue Representation;
-	/* @brief @todo */
+	/** @brief Max (stat-)level of this stat @todo Move into FPDStatsValue? */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
 	int32 MaxLevel = 1;
-	/* @brief @todo */
+	/** @brief Experience progression curve. Tells us how much total experience is needed increasing a level.   */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
 	UCurveFloat* ExperienceCurve;
-	/* @brief @todo */
+	/** @brief Token grant curves. Tells us how much tokens we will gain, and of which types, for each level.   */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
 	TMap<FGameplayTag, UCurveFloat*> TokensToGrantPerLevel;	
 };
 
-/* @brief @todo */
+/** @brief Stat-mapping struct to keep a mapping between a tag and the stat in our replicated stat-array */
 USTRUCT(Blueprintable)
 struct PDBASEPROGRESSION_API FPDStatMapping
 {
 	GENERATED_BODY()
 	
-	/* @brief @todo */
+	/** @brief Index in the fastarray for the stat of this mapping */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
 	int32 Index = 0;
 
-	/* @brief @todo */
+	/** @brief Tag the stat of this mapping */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
 	FGameplayTag Tag;
 	
@@ -271,29 +249,30 @@ inline uint32 GetTypeHash(const FPDStatMapping& StatMapping)
 	return Hash;
 }
 
-/** @brief @todo  */
+/** @brief Progression class definitions: Default stats/effects, granted/available skill-trees and a self-referencing class-tag
+ * @note think: 'bard', 'warlock', etc  */
 USTRUCT(Blueprintable)
 struct FPDProgressionClassRow : public FTableRowBase
 {
 	GENERATED_BODY()
 	
-	/* @brief @todo */
+	/** @brief Tag of the progression-class, used for comparison and hashing purposes */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite) 
 	FGameplayTag Tag;
 
-	/* @brief @todo */
+	/** @brief Default stats to start enabled with */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite) 
 	TSet<FGameplayTag> DefaultStats;
 
-	/* @brief @todo */
+	/** @brief Default (active) status effects to start enabled with */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite) 
 	TSet<FGameplayTag> DefaultActiveEffects;
 
-	/* @brief @todo */
+	/** @brief Default (passive) status effects to start enabled with */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite) 
 	TSet<FGameplayTag> DefaultPassiveEffects;
 
-	/* @brief @todo */
+	/** @brief Trees granted availability to the class. A character with this class will have theses tree available of unlocking, if they meet the additional unlock requirements ofcourse  */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite) 
 	TSet<FGameplayTag> GrantedTrees;
 };

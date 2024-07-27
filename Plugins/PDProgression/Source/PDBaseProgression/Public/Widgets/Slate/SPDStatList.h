@@ -22,7 +22,7 @@ struct FSlateBrush;
 
 // @todo (PRIO 3/BACKLOG) Need a widget for selecting the Category : Create a view that shows other, unlocked, stats in the same category
 
-/** @brief @todo  */
+/** @brief @inprogress Widget for data regarding all the users stats, has entries such as Category/Stat-name/levels/experience/value-offsets */
 class PDBASEPROGRESSION_API SPDStatList
 	: public SCompoundWidget
 	, public FPDStatWidgetBase<FPDStatNetDatum>
@@ -38,9 +38,10 @@ public:
 	
 	/** @brief Stores a pointer to the copied save data and then Calls UpdateChildSlot, passing ArrayRef as the opaquedata parameter */
 	void Construct(const FArguments& InArgs, int32 InOwnerID, TArray<TSharedPtr<FPDStatNetDatum>>& DataViewRef, const int32 InSectionWidth);
-	/** @brief @todo  */
+	/** @brief Refreshes our list view, used when there has been an update to the data we want to view 
+	 * @details Refreshes the elements in 'HeaderDataViews.Key.DataViewPtr' and calls rebuild on 'HeaderDataViews.Key.ListView'  */
 	void Refresh(int32 InOwnerID, TArray<TSharedPtr<FPDStatNetDatum>>& DataViewRef, const int32 NewSectionWidth);
-	/** @brief @todo  */
+	/** @brief Prepares our view data. Iterates our owners StatList and fills 'StatsAsSharedArray' accordingly  */
 	void PrepareData();
 	/** @brief Base call, ensures we have a title-font loaded, Sets up the child slot, and passes in the data view array to an slistview wrapped in a scrollbox */
 	virtual void UpdateChildSlot();
@@ -53,21 +54,18 @@ public:
 	TArray<TSharedPtr<FPDStatNetDatum>>* StatsAsSharedArray;
 
 	// Callbacks
-	/** @brief @todo  */
+	/** @brief Unused. Reserved for later  */
 	FOnStatDataChosen OnStatDataChosen{};
-
-	/** @brief @todo  */
-	UClass* SelectedClass = nullptr;
 	
-	// Localized text
-	/** @brief @todo  GROUP */
-	static FText StatBase_TitleText;
-	static FText StatProgress_Header_Name;
-	static FText StatProgress_Header_Category;
-	static FText StatProgress_Header_CurrentValue;
-	static FText StatProgress_Header_Level;
-	static FText StatProgress_Header_Experience;
-	static FText StatProgress_Header_ModifiedOffset;
+	/** @defgroup StatProgressList_Labels
+	 * Localized text */
+	static FText StatBase_TitleText;                 /**< @ingroup SelectedSources_Labels */
+	static FText StatProgress_Header_Name;           /**< @ingroup SelectedSources_Labels */
+	static FText StatProgress_Header_Category;       /**< @ingroup SelectedSources_Labels */
+	static FText StatProgress_Header_CurrentValue;   /**< @ingroup SelectedSources_Labels */
+	static FText StatProgress_Header_Level;          /**< @ingroup SelectedSources_Labels */
+	static FText StatProgress_Header_Experience;     /**< @ingroup SelectedSources_Labels */
+	static FText StatProgress_Header_ModifiedOffset; /**< @ingroup SelectedSources_Labels */
 };
 
 

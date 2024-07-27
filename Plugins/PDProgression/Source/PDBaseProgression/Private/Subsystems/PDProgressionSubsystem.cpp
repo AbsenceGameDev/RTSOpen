@@ -109,58 +109,54 @@ void UPDStatSubsystem::LatentInitialization()
 }
 
 void UPDStatSubsystem::ResolveCrossBehaviours(
-	UPDStatHandler* OwnersStatHandler,
+	int32 StatSourceLevel,
 	const FPDStatsRow& SelectedStat,
 	const FGameplayTag& StatSourceTag,
 	FPDStatsCrossBehaviourRules& CrossBehaviourRules,
 	double& CrossBehaviourOffset_Normalized) const
 {
 	const FPDStatsRow* StatSourceDefaultDataPtr = GetStatTypeDataPtr(StatSourceTag);
-
-	const FPDStatMapping* StatMapping = OwnersStatHandler->LocalStatMappings.Find(StatSourceTag);
-	if (StatSourceDefaultDataPtr == nullptr || StatMapping == nullptr) { return; }
-
-	const FPDStatNetDatum& StatSourceActiveDatum = OwnersStatHandler->StatList.Items[StatMapping->Index];
-
+	if (StatSourceDefaultDataPtr == nullptr) { return; }
+	
 	CrossBehaviourRules = SelectedStat.RulesAffectedBy.FindRef(StatSourceTag);
 
 	float CrossBehaviourMultiplier = 1.0;
 	if (CrossBehaviourRules.RuleSetLevelCurveMultiplier != nullptr)
 	{
 		CrossBehaviourMultiplier = 
-			CrossBehaviourRules.RuleSetLevelCurveMultiplier->GetFloatValue(StatSourceActiveDatum.CurrentLevel);
+			CrossBehaviourRules.RuleSetLevelCurveMultiplier->GetFloatValue(StatSourceLevel);
 	}
 
 	const int32 StatSourceBaseDivisor = StatSourceDefaultDataPtr->Representation.BaseDivisor;
 	const int32 CrossBehaviourOffset_NotNormalized = CrossBehaviourRules.CrossBehaviourBaseValue * CrossBehaviourMultiplier;
-	CrossBehaviourOffset_Normalized = static_cast<double>(CrossBehaviourOffset_NotNormalized) / static_cast<double>(StatSourceBaseDivisor);
+	CrossBehaviourOffset_Normalized =
+		static_cast<double>(CrossBehaviourOffset_NotNormalized) / static_cast<double>(StatSourceBaseDivisor);
 }
 
 void UPDStatSubsystem::ResolveCrossBehaviourDelta(
-	int32 OldLevel,
-	int32 LevelDelta,
-	const FPDStatsRow& SelectedStat,
-	const FGameplayTag& StatTargetTag,
+	int32 SelectedStat_OldLevel,
+	int32 SelectedStat_LevelDelta,
+	const FPDStatsRow& SelectedStat_Datum,
+	const FGameplayTag& StatTarget_Tag,
 	double& DeltaNewLevelOffset) const
 {
-	FPDStatsCrossBehaviourRules CrossBehaviourRules;
-	const FPDStatsRow* StatTargetDefaultDataPtr = GetStatTypeDataPtr(StatTargetTag);
+	const FPDStatsRow* StatTarget_DefaultDataPtr = GetStatTypeDataPtr(StatTarget_Tag);
 		
-	if (StatTargetDefaultDataPtr == nullptr) { return;; }
+	if (StatTarget_DefaultDataPtr == nullptr) { return; }
 
 	// Find out our (SelectedStatTag) effect on target stat (Stats that are affected by us)
 	float CrossBehaviourMultiplier = 1.0;
 	float NextCrossBehaviourMultiplier = 1.0;
-	CrossBehaviourRules = StatTargetDefaultDataPtr->RulesAffectedBy.FindRef(SelectedStat.ProgressionTag);
+	const FPDStatsCrossBehaviourRules& CrossBehaviourRules = StatTarget_DefaultDataPtr->RulesAffectedBy.FindRef(SelectedStat_Datum.ProgressionTag);
 	if (CrossBehaviourRules.RuleSetLevelCurveMultiplier != nullptr)
 	{
 		CrossBehaviourMultiplier = 
-			CrossBehaviourRules.RuleSetLevelCurveMultiplier->GetFloatValue(OldLevel);
+			CrossBehaviourRules.RuleSetLevelCurveMultiplier->GetFloatValue(SelectedStat_OldLevel);
 		NextCrossBehaviourMultiplier = 
-			CrossBehaviourRules.RuleSetLevelCurveMultiplier->GetFloatValue(OldLevel + LevelDelta);
+			CrossBehaviourRules.RuleSetLevelCurveMultiplier->GetFloatValue(SelectedStat_OldLevel + SelectedStat_LevelDelta);
 	}
 
-	const int32 StatTargetBaseDivisor = StatTargetDefaultDataPtr->Representation.BaseDivisor;
+	const int32 StatTargetBaseDivisor = StatTarget_DefaultDataPtr->Representation.BaseDivisor;
 	const int32 CurrentCrossBehaviourOffset_NotNormalized = CrossBehaviourRules.CrossBehaviourBaseValue * CrossBehaviourMultiplier;
 	const double CurrentCrossBehaviourOffset_Normalized =
 		static_cast<double>(CurrentCrossBehaviourOffset_NotNormalized) / static_cast<double>(StatTargetBaseDivisor);

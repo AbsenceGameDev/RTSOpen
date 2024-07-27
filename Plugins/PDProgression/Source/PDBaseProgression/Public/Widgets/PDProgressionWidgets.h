@@ -27,101 +27,108 @@ struct FSlateBrush;
 
 DECLARE_DYNAMIC_DELEGATE_RetVal(int, FOwnerIDDelegate);
 
-/** @brief @todo  */
+/** @brief Inner uwidget which houses our 'stat' slate widgets, and exposes some editor controls to them  */
 UCLASS(Blueprintable)
 class PDBASEPROGRESSION_API UPDStatListInnerWidget : public UWidget
 {
 	GENERATED_BODY()
 public:
-	void RefreshStatOffset_Popup();
-	/* @brief @todo */
+	/** @brief UE Boiler-plate, instantiates  'InnerSlateWrapbox' (a SWrapBox) and our 'InnerStatList' which is added to a slot in the wrapbox.
+	 * @return the sharedref of the 'InnerSlateWrapbox */
 	virtual TSharedRef<SWidget> RebuildWidget() override;
-	/* @brief @todo */
+	/** @brief UE Boiler-plate, Resets InnerSlateWrapbox and InnerStatList then calls super */
 	virtual void ReleaseSlateResources(bool bReleaseChildren) override;
-
-	/* @brief @todo */
-	virtual void SynchronizeProperties() override;
-	/* @brief @todo */
-	virtual void OnBindingChanged(const FName& Property) override;
-	/* @brief @todo */
-	void RefreshStatListOnChangedProperty(FPropertyChangedEvent& PropertyChangedEvent);
-
-	/* @brief @todo */
-	virtual void PostEditChangeProperty(FPropertyChangedEvent& PropertyChangedEvent) override;
-	/* @brief @todo */
-	virtual void PostEditChangeChainProperty(FPropertyChangedChainEvent& PropertyChangedEvent) override;
 	
-	/* @brief @todo */
+	/** @brief Calls RefreshInnerStatList after ensuring either 'EditorTestEntries_BaseList' or  'SectionWidth' has changed */
+	void RefreshStatListOnChangedProperty(FPropertyChangedEvent& PropertyChangedEvent);
+	/** @brief Calls 'RefreshStatListOnChangedProperty', passes along 'PropertyChangedEvent' */
+	virtual void PostEditChangeProperty(FPropertyChangedEvent& PropertyChangedEvent) override;
+	/** @brief Calls 'RefreshStatListOnChangedProperty', passes along 'PropertyChangedEvent' */
+	virtual void PostEditChangeChainProperty(FPropertyChangedChainEvent& PropertyChangedEvent) override;
+	/** @brief Calls super, otherwise unused. Reserved for later use. */
+	virtual void SynchronizeProperties() override;
+	/** @brief Calls super, otherwise unused. Reserved for later use. */
+	virtual void OnBindingChanged(const FName& Property) override;
+
+	
+	/** @brief Calls Refresh on 'InnerStatList'.
+	 * @note Additionally, if in design-time in editor then it also re-fills 'NetDataView' from the test data in 'EditorTestEntries_BaseList'  */
 	void RefreshInnerStatList();
+
+	/** @brief Calls Refresh on 'SelectedStatOffsetData_PopUp'.
+	 * @note Additionally, if in design-time in editor then it also re-fills 'ModifyingSourcesDataView' from the test data in 'EditorTestEntries_OffsetPopup_ModifySources'  */
+	void RefreshStatOffset_Popup();	
+	/** @brief Calls Refresh on 'SelectedStatLevelData_PopUp'.
+	 * @note Additionally, if in design-time in editor then it also re-fills 'TokenDataView' from the test data in 'EditorTestEntries_LevelPopup_TokenData'  */
 	void RefreshStatLevel_Popup();
 
-	/* @brief @todo */
+	/** @brief Setter for OwnerID. OwnerID is used for routing the widget to the correct player. If more than one player is in the same client */
 	UFUNCTION(BlueprintCallable)
 	virtual void UpdateOwner(int32 NewOwner);
 	
 	/** @brief Wrapbox that wraps our SPDStatList derived widgets */
-	/* @brief @todo */
 	TSharedPtr<class SWrapBox> InnerSlateWrapbox;
 	
-	/* @brief @todo */
 	/** @brief Base ptr to a SPDStatList widget */
 	TSharedPtr<SPDStatList> InnerStatList;
 
-	/* @brief @todo Write Supporting code to actually open this as an interactable window */
+	/** @brief Popup widget that is used to display a stats levelling data
+	 * @todo Write Supporting code to actually open this as an interactable window */
 	TSharedPtr<SPDSelectedStat_LevelData> SelectedStatLevelData_PopUp;
 
-	/* @brief @todo Write Supporting code to actually open this as an interactable window */
+	/** @brief Popup widget that is used to display a stats sources of current offsets
+	 * @todo Write Supporting code to actually open this as an interactable window */
 	TSharedPtr<SPDSelectedStat_OffsetData> SelectedStatOffsetData_PopUp;	
 
-	/* @brief @todo */
+	/** @brief ID to route to our owwer.  */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
 	int32 OwnerID = 0;
 
-	/* @brief @todo */
+	/** @brief Delegate used to resolve the owner ID */
 	UPROPERTY()
 	FOwnerIDDelegate OwnerIDDelegate;
 
-	/* @brief @todo */
+	/** @brief Editor test data. Used to test/inspect in visual design editor */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
 	TArray<FPDStatNetDatum> EditorTestEntries_BaseList{};
 	
-	/* @brief @todo */
+	/** @brief Editor test data for pop-up view of offset sources. Used to test/inspect in visual design editor */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
 	TArray<FPDStatViewModifySource> EditorTestEntries_OffsetPopup_ModifySources{};
 	
-	/* @brief @todo */
+	/** @brief Editor test data for pop-up view of levelling data -- tokens. Used to test/inspect in visual design editor */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
 	TArray<FPDSkillTokenBase> EditorTestEntries_LevelPopup_TokenData{};
-	/* @brief @todo */
+	/** @brief Editor test data for pop-up view of levelling data -- affected stats. Used to test/inspect in visual design editor */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
 	TArray<FPDStatViewAffectedStat> EditorTestEntries_LevelPopup_AffectedStatsData{};
 	
-	/* @brief @todo */
+	/** @brief (Uniform) width of each column in the entries of 'InnerStatList' */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
 	int32 SectionWidth = 50;		
 	// TArray<int32> SectionWidths = {50, 50, 50, 50, 50};		
 
-	/* @brief @todo */
+	/** @brief Sets up editor binding callbacks, available to set up from the visual design editor */
 	PROPERTY_BINDING_IMPLEMENTATION(int32, OwnerID);
 	
 	//
 	// Dataviews
 	
-	/* @brief @todo */
+	/** @brief Data-view of our netdatums */
 	TArray<TSharedPtr<FPDStatNetDatum>> NetDataView{};
 
-	/* @brief @todo */
+	/** @brief Data-view of our sources of offsets */
 	TArray<TSharedPtr<FPDStatViewModifySource>> ModifyingSourcesDataView{};
 	
-	/* @brief @todo */
+	/** @brief Data-view of our expected tokens next level */
 	TArray<TSharedPtr<FPDSkillTokenBase>> TokenDataView;
 	
-	/* @brief @todo */
+	/** @brief Data-view of our affected stats and effect amount when we reach  next level */
 	TArray<TSharedPtr<FPDStatViewAffectedStat>> AffectedStatsDataView;
 	
 };
 
-/* @brief @todo */
+/** @brief User facing widget. Mainly just a wrapper for above UWidget */
 UCLASS(Blueprintable)
 class PDBASEPROGRESSION_API UPDStatListUserWidget : public UUserWidget
 {
@@ -130,19 +137,18 @@ class PDBASEPROGRESSION_API UPDStatListUserWidget : public UUserWidget
 public:
 	DECLARE_DELEGATE_RetVal(int, FOwnerIDDelegate)
 	
-	/* @brief @todo */
+	/** @brief Updates the owner of 'InnerStatList' */
 	UFUNCTION()
 	virtual void NativePreConstruct() override;
 
-	// @todo must set up
-	/* @brief @todo */
+	/** @brief Executes 'OwnerIDDelegate' if bound. Logs a warning int is yet to be bound */
 	UFUNCTION()
 	virtual int32 GetOwnerID();
 
-	/* @brief @todo */
+	/** @brief Bind ot a function of choice which resolves the owner to som reliably persistent ID */
 	FOwnerIDDelegate OwnerIDDelegate;
 	
-	/* @brief @todo */
+	/** @brief Enforces creation of a 'UPDStatListInnerWidget' via BindWidget meta specifier*/
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Meta = (BindWidget))
 	UPDStatListInnerWidget* InnerStatList;
 };

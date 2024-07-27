@@ -14,10 +14,6 @@
 
 #define LOCTEXT_NAMESPACE "PDStatList"
 
-void UPDStatListInnerWidget::OnBindingChanged(const FName& Property)
-{
-	Super::OnBindingChanged(Property);
-}
 
 void UPDStatListInnerWidget::RefreshStatListOnChangedProperty(FPropertyChangedEvent& PropertyChangedEvent)
 {
@@ -48,6 +44,11 @@ void UPDStatListInnerWidget::PostEditChangeChainProperty(FPropertyChangedChainEv
 void UPDStatListInnerWidget::SynchronizeProperties()
 {
 	Super::SynchronizeProperties();
+}
+
+void UPDStatListInnerWidget::OnBindingChanged(const FName& Property)
+{
+	Super::OnBindingChanged(Property);
 }
 
 void UPDStatListInnerWidget::RefreshInnerStatList()

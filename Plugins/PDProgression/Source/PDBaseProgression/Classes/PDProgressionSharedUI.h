@@ -17,7 +17,7 @@ class FPaintArgs;
 class FSlateWindowElementList;
 struct FSlateBrush;
 
-/** @brief @todo  */
+/** @brief Unused. Reserved  */
 namespace EPDStatListSections
 {
 	enum
@@ -31,37 +31,39 @@ namespace EPDStatListSections
 	};
 }
 
-/** @brief @todo  */
+/** @brief Static helper functions for stat widgets  */
 struct PDBASEPROGRESSION_API FPDStatStatics
 {
 public:
 
-	/** @brief @todo  */
+	/** @brief Creates a header row and fills it's column id's and labels based on the input
+	 * @note - Ensures the header exists, instantiates it otherwise
+	 * @note - Adds all requested columns to the table then returns the header ref */
 	static TSharedRef<SHeaderRow> CreateHeaderRow(
 		TSharedPtr<SHeaderRow>& ExistingHeader,
 		double SectionWidth,
 		double SectionCount,
 		...);
 	
-	/** @brief @todo  */
-	static FPDStatWidgetHeaderSlotParams CreateHeaderSlotParam(
+	/** @brief Resolves the strings for the section text and value text of a dataview slot */
+	static FPDStatDataViewSlotParams CreateDataViewSlotParam(
 		FGameplayTag StatTag,
 		double InTotalValue,
 		bool IncludeParent = true);
 	
 };
 
-/** @brief @todo  */
+/** @brief Keeps a 'section' text and 'value' text to be displayed in a data-view slot */
 USTRUCT(Blueprintable)
-struct FPDStatWidgetHeaderSlotParams
+struct FPDStatDataViewSlotParams
 {
 	GENERATED_BODY()
 
-	/** @brief @todo  */
+	/** @brief The title-/label- text of a target */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
 	FText SectionText;
 
-	/** @brief @todo  */
+	/** @brief The value-text of a target */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
 	FText ValueText;	
 };
@@ -69,38 +71,34 @@ struct FPDStatWidgetHeaderSlotParams
 /** @brief @todo/in-progress Widget for data regarding the selected stats level and experience
  * @todo Need to have an experience-bar which also may display numbers
  * @details Show amount of tokens, and their types that will be earned upon gaining next level, and any relevant stat changes that will occur */
-struct FPDStatViewHeaderBase
-{
-	/** @brief @todo  */
-	TSharedPtr<SHeaderRow> Header = nullptr;
-};
-
 template<typename TViewType>
-struct FPDStatViewHeaderData : FPDStatViewHeaderBase
+struct FPDStatViewHeaderData
 {
-	/** @brief @todo  */
+	/** @brief Actual header slate widget  */
+	TSharedPtr<SHeaderRow> Header = nullptr;
+	
+	/** @brief List-view that will be displayed under the header  */
 	TSharedPtr<SListView<TSharedPtr<TViewType>>> ListView = nullptr;
-	/** @brief @todo  */
+	/** @brief Pointer to the inner data that will be displayed under the header  */
 	TArray<TSharedPtr<TViewType>>* DataViewPtr = nullptr;
 
-	/** @brief @todo  */
+	/** @brief Mostly unused. Reserved for later use. Rethink any current use */
 	TSharedPtr<STableRow< TSharedPtr<TViewType>>> LatestTableRow;	
 };
 
 
+/** @brief DataView Widget base class, Keeps some shared functions as-well as assigning our dataview types via template parameters */
 template<typename ... TViewTypes>
 struct PDBASEPROGRESSION_API FPDStatWidgetBase
 {
 private:
-	static constexpr std::size_t TViewTypeCount = sizeof...(TViewTypes); //you may use `constexpr` instead of `const`
+	static constexpr std::size_t TViewTypeCount = sizeof...(TViewTypes); 
 public:
 	FPDStatWidgetBase(): OwnerID(0) { }
 	FPDStatWidgetBase(int32 InOwnerID) : OwnerID(InOwnerID) {}
-	
-	/** @brief @todo  */
 	virtual ~FPDStatWidgetBase() = default;
 
-	/** @brief @todo  */
+	/** @brief Initializes/Updates our font(s) if they have no valid typeface  */
 	void InitializeFonts()
 	{
 		if (TitleFont.TypefaceFontName.IsNone())
@@ -109,33 +107,32 @@ public:
 		}
 	}
 
-	/** @brief @todo  */
+	/** @brief Gets a fontstyle, and then apply different scaling to the different fonts  */
 	void UpdateFonts()
 	{
 		// @todo Set up a custom slate styleset for the saveeditors fonts and icons 
-		TitleFont = FAppStyle::GetFontStyle( TEXT("PropertyWindow.NormalFont"));
+		HalfSizedTitleFont = TitleFont = FAppStyle::GetFontStyle( TEXT("PropertyWindow.NormalFont"));
 		TitleFont.Size *= 8;
-		HalfSizedTitleFont = TitleFont;
-		HalfSizedTitleFont.Size /= 2;
+		HalfSizedTitleFont.Size *= 4;
 	}
 	
-	/** @brief @todo  */
+	/** @brief Our main title font  */
 	FSlateFontInfo TitleFont;
-	/** @brief @todo  */
+	/** @brief Our sub-title font  */
 	FSlateFontInfo HalfSizedTitleFont;
 
-	/** @brief @todo  */
+	/** @brief ID of player/Owner of this slate widget */
 	int32 OwnerID;
-	/** @brief @todo  */
+	/** @brief The selected tag, needed cache for some derived classes */
 	FGameplayTag SelectedStatTag;
-	/** @brief @todo  */
+	/** @brief The (uniform) width of each section in our data-view widget(s) */
 	int32 SectionWidth = 50;
 
-	/** @brief @todo  */
+	/** @brief Our data-view meta-data */
 	TTuple<FPDStatViewHeaderData<TViewTypes>...> HeaderDataViews; 
 };
 
-/** @brief @todo  */
+/** @brief Modify Source data construct. Used by the 'SPDSelectedStat_OffsetData' slate widgets */
 USTRUCT(Blueprintable)
 struct FPDStatViewModifySource
 {
@@ -154,7 +151,7 @@ struct FPDStatViewModifySource
 	UCurveFloat* StatOffsetCurveSource = nullptr;		
 };
 
-/** @brief @todo  */
+/** @brief Stat cross-behaviour data construct. Used by the 'SPDSelectedStat_LevelData' slate widgets */
 USTRUCT(Blueprintable)
 struct FPDStatViewAffectedStat
 {
@@ -164,7 +161,7 @@ struct FPDStatViewAffectedStat
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
 	FGameplayTag AffectedStat;
 
-	/** @brief @todo  */
+	/** @brief The total effect from another stat on this stat */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
 	double TotalAffectedDelta;
 	
@@ -192,7 +189,7 @@ public:
 
 	SLATE_END_ARGS()
 
-	/* @brief @todo */
+	/** @brief Sets min/max calues, label spacing and our 'BackgroundImage' brush. Resets our 'Zoom' and 'Offset'  */
 	void Construct( const FArguments& InArgs );
 
 	// SWidget interface
@@ -203,36 +200,36 @@ public:
 	FVector2D ComputeDesiredSize(float) const override;
 	// End of SWidget interface
 
-	/* @brief @todo */
+	/** @brief Sets zoom, clamps it to a minimum of 1.0 */
 	void SetZoom(float InZoom) { Zoom = FMath::Max(InZoom, 1.0f); }
 
-	/* @brief @todo */
+	/** @brief Returns the current zoom value */
 	float GetZoom() const { return Zoom; }
 	
-	/* @brief @todo */
+	/** @brief Update our offset */
 	void SetOffset(float InOffset) { Offset = InOffset; } 
 
-	/* @brief @todo */
+	/** @brief Get our current offset */
 	float GetOffset() const { return Offset; }
 
-	/* @brief @todo */
+	/** @brief Override our min/max values */
 	void SetMinMaxValues(float InMin, float InMax)
 	{
 		MinValue = InMin;
 		MaxValue = InMax;
 	}
 
-	/* @brief @todo */
+	/** @brief Return our min/max values */
 	void GetMinMaxValues(float &InMin, float &InMax)
 	{
 		InMin = MinValue;
 		InMax = MaxValue;
 	}
 
-	/* @brief @todo */
+	/** @brief Override our draw geom. */
 	void SetDrawingGeometry(const FGeometry& Geometry) { DrawingGeometry = Geometry; }
 
-	/* @brief @todo */
+	/** @brief Retrieve our draw geom. */
 	FGeometry GetDrawingGeometry() const { return DrawingGeometry; }
 
 private:
@@ -255,10 +252,10 @@ private:
 	/** Current offset of the graph */
 	float Offset = 0;
 
-	/** @brief @todo  */
+	/** @brief Offset our Draws on x */
 	float DrawingOffsetX = 0;
 
-	/** @brief @todo  */
+	/** @brief Our drawing geometry */
 	FGeometry DrawingGeometry;
 };
 

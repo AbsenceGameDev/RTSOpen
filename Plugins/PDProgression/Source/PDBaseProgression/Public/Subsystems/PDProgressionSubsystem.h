@@ -10,103 +10,128 @@
 class UPDStatHandler;
 struct FPDProgressionClassRow;
 
-/* @brief @todo */
+/** @brief Our source for shared, project-wide progression system settings.
+ * @details Our source for all stat-tables, progression class tables and skill-tree tables  */
 UCLASS(Config = "Game", DefaultConfig)
 class PDBASEPROGRESSION_API UPDProgressionSubsystemSettings : public UDeveloperSettings
 {
 	GENERATED_BODY()
 
 public:
-	/* @brief @todo */
+	/** @brief List of stat tables to use as global stat source */
 	UPROPERTY(Config, EditAnywhere, Category = "ProgressionTables", Meta = (RequiredAssetDataTags="RowStructure=/Script/PDBaseProgression.PDStatsRow"))
 	TArray<TSoftObjectPtr<UDataTable>> ProgressionStatTables;
 
-	/* @brief @todo */
+	/** @brief List of stat classes and skill-trees made available to them. Think 'Bard','Warlock', etc */
 	UPROPERTY(Config, EditAnywhere, Category = "ProgressionTables", Meta = (RequiredAssetDataTags="RowStructure=/Script/PDBaseProgression.PDProgressionClassRow"))
 	TArray<TSoftObjectPtr<UDataTable>> ProgressionClassTables;
 
-	/* @brief @todo */
+	/** @brief List of actual skill-tree tables, These tables define what stats counts as skills and their progression paths */
 	UPROPERTY(Config, EditAnywhere, Category = "ProgressionTables", Meta = (RequiredAssetDataTags="RowStructure=/Script/PDBaseProgression.PDSkillTree"))
 	TArray<TSoftObjectPtr<UDataTable>> ProgressionTreeTables;	
 };
 
-/* @brief @todo */
+/** @brief The subsystem for the stat system.
+ * @details Handles mapping the stat-system tables for quick downstream access to data and common calculations in the stat-system */
 UCLASS(Blueprintable)
 class PDBASEPROGRESSION_API UPDStatSubsystem : public UEngineSubsystem
 {
 	GENERATED_BODY()
 public:
-	/* @brief @todo */
+	/** @brief Singleton-style getter, used for simplifying access, thus it is used for code-productivity */
 	static UPDStatSubsystem* Get();
 
-	/* @brief @todo */
+	/** @brief Maps all the the classes, skilltrees and stats, along-side stat crossbehaviours*/
 	void LatentInitialization();
 
-	/** @brief @todo  */
+	/** @brief Resolves the cross behaviour for the given stat, in case it has a 'RuleSetLevelCurveMultiplier' set. Otherwise do not modify per level  */
 	void ResolveCrossBehaviours(
-		UPDStatHandler* OwnersStatHandler,
+		int32 StatSourceLevel,
 		const FPDStatsRow& SelectedStat,
 		const FGameplayTag& StatSourceTag,
 		FPDStatsCrossBehaviourRules& CrossBehaviourRules,
 		double& CrossBehaviourOffset_Normalized) const;
-	/** @brief @todo  */
+	/** @brief Resolves the delta between two levels different cross behaviours, for a given pair of stats.
+	 * @note Only resolve in case it has a 'RuleSetLevelCurveMultiplier' set. Otherwise do not modify per level.  */
 	void ResolveCrossBehaviourDelta(
-		int32 OldLevel,
-		int32 LevelDelta,
-		const FPDStatsRow& SelectedStat,
+		int32 SelectedStat_OldLevel,
+		int32 SelectedStat_LevelDelta,
+		const FPDStatsRow& SelectedStat_Datum,
 		const FGameplayTag& StatSourceTag,
 		double& CrossBehaviourOffset_Normalized) const;
 
-	/* @brief @todo */
+	/** @brief Tree-tag keyed access to table entries for 'Skill Trees',
+	 * @note Has faster reads compared to searching the actual datatables.
+	 * @note Returns a dummy ref if the tree is not found */
 	UFUNCTION(BlueprintCallable)
 	FPDSkillTree& GetTreeTypeData(const FGameplayTag& RequestedTree) const;
+	/** @brief Tree-tag keyed access to table entries for 'Skill Trees',
+	 * @note Has faster reads compared to searching the actual datatables.
+	 * @note Returns a nullptr if the tree is not found */	
 	FPDSkillTree* GetTreeTypeDataPtr(const FGameplayTag& RequestedTree) const;
 
-	/* @brief @todo */
+	/** @brief Skill-tag keyed access to table entries for 'Skill Trees',
+	 * @note Has faster reads compared to searching the actual datatables.
+	 * @note Returns a dummy ref if the tree is not found */
 	UFUNCTION(BlueprintCallable)
 	FPDSkillTree& GetTreeTypeDataFromSkill(const FGameplayTag& RequestedSkill) const;
+
+	/** @brief Skill-tag keyed access to table entries for 'Skill Trees',
+	 * @note Has faster reads compared to searching the actual datatables.
+	 * @note Returns a nullptr if the tree is not found */	
 	FPDSkillTree* GetTreeTypeDataPtrFromSkill(const FGameplayTag& RequestedSkill) const;
 	
-	/* @brief @todo */
+	/** @brief Class-tag keyed access to table entries for 'Stat Classes',
+	 * @note Has faster reads compared to searching the actual datatables.
+	 * @note Returns a dummy ref if the class is not found */	
 	UFUNCTION(BlueprintCallable)
 	FPDProgressionClassRow& GetClassTypeData(const FGameplayTag& RequestedClass) const;
+	/** @brief Class-tag keyed access to table entries for 'Stat Classes',
+	 * @note Has faster reads compared to searching the actual datatables.
+	 * @note Returns a nullptr if the class is not found */	
 	FPDProgressionClassRow* GetClassTypeDataPtr(const FGameplayTag& RequestedClass) const;
 
-	/* @brief @todo */
+	/** @brief Stat-tag keyed access to table entries for 'Stats',
+	 * @note Has faster reads compared to searching the actual datatables.
+	 * @note Returns a dummy ref if the class is not found */	
 	UFUNCTION(BlueprintCallable)
 	FPDStatsRow& GetStatTypeData(const FGameplayTag& RequestedStat) const;
+	/** @brief Stat-tag keyed access to table entries for 'Stats',
+	 * @note Has faster reads compared to searching the actual datatables.
+	 * @note Returns a nullptr if the class is not found */
 	FPDStatsRow* GetStatTypeDataPtr(const FGameplayTag& RequestedStat) const;
 
-	/** @brief @todo */
+	/** @brief Gets the name of the tag, at the depth this tag is at. meaning ParentA.ParentB.ThisTag returns "ThisTag" */
 	UFUNCTION(BlueprintCallable)
 	static FString GetTagNameLeaf(const FGameplayTag& Tag);
 
-	/** @brief @todo */
+	/** @brief Gets the name of the tag, at the depth this tag is at. meaning ParentA.ParentB.ThisTag returns "ParentB" */
 	UFUNCTION(BlueprintCallable)
 	static FString GetTagCategory(const FGameplayTag& Tag);	
 	
-	/** @brief @todo */
+	/** @brief Gets the name of the tag, at the depth this tag is at. meaning ParentA.ParentB.ThisTag returns "ParentB.ThisTag" */
 	UFUNCTION(BlueprintCallable)
 	static FString GetTagNameLeafAndParent(const FGameplayTag& Tag);	
 	
-	/* @brief @todo */
+	/** @brief Tree table row entries mapped by their tree-tag. Used for fast down-stream access */
 	TMap<FGameplayTag, FPDSkillTree*> TreeTypes;
 
-	/* @brief @todo */
+	/** @brief Tree table row tags mapped by their containing skill-tags. Used for fast down-stream access  */
 	TMap<FGameplayTag, FGameplayTag> SkillToTreeMapping;
 	
-	/* @brief @todo */
+	/** @brief Class table row entries mapped by their class-tag. Used for fast down-stream access */
 	TMap<FGameplayTag, FPDProgressionClassRow*> ClassTypes;
-	/* @brief @todo */
+	/** @brief Stat (default values) table row entries mapped by their stat-tag. Used for fast down-stream access */
 	TMap<FGameplayTag, FPDStatsRow*> DefaultStats;
 
-	/* @brief Key is a 'Tag' that affect value of the 'List of Tags' */
+	/** @brief Key is a 'Tag' that affect value of the 'List of Tags' */
 	TMap<FGameplayTag, TArray<FGameplayTag>> StatCrossBehaviourMap;
-	/* @brief Key is a 'Tag' that is affected by value of the 'List of Tags' */
+	/** @brief Key is a 'Tag' that is affected by value of the 'List of Tags' */
 	TMap<FGameplayTag, TArray<FGameplayTag>> StatCrossBehaviourBackMapped;
 
 
-	/** @brief @todo  */
+	/** @brief Mapped stat-handlers, mapped by owner-/player-id,
+	 * @note Will have all the games stat-handlers on the server. If on the client, it will 1 entry per player connected via the same client  */
 	UPROPERTY()
 	TMap<int32, UPDStatHandler*> StatHandlers;
 };
