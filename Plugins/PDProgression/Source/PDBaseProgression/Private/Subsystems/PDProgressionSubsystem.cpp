@@ -249,7 +249,7 @@ FString UPDStatSubsystem::GetTagNameLeafAndParent(const FGameplayTag& Tag)
 {
 	const FString TagCategoryResultString = GetTagNameLeaf(Tag.RequestDirectParent());
 	const FString TagResultString = GetTagNameLeaf(Tag);
-	return TagCategoryResultString + TagResultString;
+	return TagCategoryResultString + "::" + TagResultString;
 }
 
 

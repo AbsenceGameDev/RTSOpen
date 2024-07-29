@@ -160,6 +160,23 @@ void SPDStatList::OnComponentSelected_AllStatData(TSharedPtr<FPDStatNetDatum> In
 	}			
 }
 
+FReply SPDStatList::DesignTimeTranslation(const FGeometry& MyGeometry, const FPointerEvent& MouseEvent)
+{
+	if (bIsDesignTime == false ) { return FReply::Unhandled(); }
+
+	// MouseEvent.IsMouseButtonDown();
+
+	return SCompoundWidget::OnDragDetected(MyGeometry, MouseEvent); // @todo replace
+}
+
+FReply SPDStatList::OnDragDetected(const FGeometry& MyGeometry, const FPointerEvent& MouseEvent)
+{
+	FReply TranslationHandled = DesignTimeTranslation(MyGeometry, MouseEvent);
+	if (TranslationHandled.IsEventHandled()) { return TranslationHandled; }
+	
+	return SCompoundWidget::OnDragDetected(MyGeometry, MouseEvent);
+}
+
 #undef LOCTEXT_NAMESPACE
 
 /**

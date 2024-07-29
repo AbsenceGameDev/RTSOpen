@@ -44,10 +44,15 @@ public:
 		int32 InOwnerID,
 		const FGameplayTag& InSelectedStatTag,
 		TArray<TSharedPtr<FPDSkillTokenBase>>& TokenArrayRef,
-		TArray<TSharedPtr<FPDStatViewAffectedStat>>& AffectedStatsRef);
+		TArray<TSharedPtr<FPDStatViewAffectedStat>>& AffectedStatsRef,
+		const int32 InSectionWidth);
 
 	/** @brief Refreshes the elements in 'HeaderDataViews.Key.DataViewPtr' & 'HeaderDataViews.Value.DataViewPtr' and calls rebuild on their respective list-views  */
-	void Refresh(int32 InOwnerID, TArray<TSharedPtr<FPDSkillTokenBase>>& TokenArrayRef, TArray<TSharedPtr<FPDStatViewAffectedStat>>& AffectedStatsRef, int32 InSectionWidth);
+	void Refresh(
+		int32 InOwnerID,
+		TArray<TSharedPtr<FPDSkillTokenBase>>& TokenArrayRef,
+		TArray<TSharedPtr<FPDStatViewAffectedStat>>& AffectedStatsRef,
+		const int32 InSectionWidth);
 	
 	/** @brief Token entry widget. Is used to display levelling, token-related, data about a selected stat. How many tokens of a given type will be granted upon leveling the stat  */
 	TSharedRef<ITableRow> MakeListViewWidget_LinkedStat_TokensToGrant(TSharedPtr<FPDSkillTokenBase> StatViewTokensToGrant, const TSharedRef<STableViewBase>& TableViewBase) const;
@@ -63,6 +68,14 @@ public:
 
 	/** @brief Resolves the token types and amounts we will grant upon reaching the next level, caches the results */
 	void PrepareData();
+
+	//
+	// Translation
+	/** @brief @todo implement translation during detected drag movements */
+	virtual FReply DesignTimeTranslation(const FGeometry& MyGeometry, const FPointerEvent& MouseEvent) override;
+	/** @brief Calls DesignTimeTranslation  */
+	virtual FReply OnDragDetected(const FGeometry& MyGeometry, const FPointerEvent& MouseEvent) override;
+	
 	
 	/** @defgroup SelectedStat_Labels */
 	static FText SelectedStatLevelLabel;        /**< @ingroup SelectedStat_Labels */
@@ -94,12 +107,19 @@ public:
 
 	/** @brief Copies parameters into member properties then calls 'PrepareData' and 'UpdateChildSlot'.
 	 * Is used by slate when a new widget is constructed */
-	void Construct(const FArguments& InArgs, int32 InOwnerID, const FGameplayTag& InSelectedStatTag, TArray<TSharedPtr<FPDStatViewModifySource>>& ArrayRef);
+	void Construct(const FArguments& InArgs,
+		int32 InOwnerID,
+		const FGameplayTag& InSelectedStatTag,
+		TArray<TSharedPtr<FPDStatViewModifySource>>& ArrayRef,
+		const int32 InSectionWidth);
 
 	/** @brief Resolves the expected cross behaviour value increase for next level, caches the results */
 	void PrepareData();
 	/** @brief Refreshes the elements in 'HeaderDataViews.Value.DataViewPtr' and calls rebuild on 'HeaderDataViews.Value.ListView'  */
-	void Refresh(int32 InOwnerID, TArray<TSharedPtr<FPDStatViewModifySource>>& DataViewRef, const int32 NewSectionWidth);
+	void Refresh(
+		int32 InOwnerID,
+		TArray<TSharedPtr<FPDStatViewModifySource>>& DataViewRef,
+		const int32 NewSectionWidth);
 
 	/** @brief Representation of the entry widgets of the offset/modifier targets   */
 	TSharedRef<ITableRow> MakeListViewWidget_LinkedStat(TSharedPtr<FPDStatViewModifySource> StatViewModifySource, const TSharedRef<STableViewBase>& OwnerTable) const;
@@ -107,6 +127,13 @@ public:
 	void OnComponentSelected_LinkedStat(TSharedPtr<FPDStatViewModifySource> StatViewModifySource, ESelectInfo::Type Arg) const;
 	/** @brief Builds the data-view headers and the child-slot composition (Defines the widget-layout) */
 	virtual void UpdateChildSlot();
+
+	//
+	// Translation	
+	/** @brief @todo implement translation during detected drag movements */
+	virtual FReply DesignTimeTranslation(const FGeometry& MyGeometry, const FPointerEvent& MouseEvent) override;
+	/** @brief Calls DesignTimeTranslation  */
+	virtual FReply OnDragDetected(const FGeometry& MyGeometry, const FPointerEvent& MouseEvent) override;
 	
 	/** @defgroup SelectedSources_Labels */
 	static FText StatSources_Header_Title;         /**< @ingroup SelectedSources_Labels */

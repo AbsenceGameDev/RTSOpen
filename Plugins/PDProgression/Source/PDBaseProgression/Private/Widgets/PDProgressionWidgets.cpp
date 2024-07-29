@@ -7,6 +7,7 @@
 
 #include "Textures/SlateIcon.h"
 #include "Widgets/Layout/SWrapBox.h"
+#include "Widgets/SCanvas.h"
 #include "Framework/Commands/UIAction.h"
 
 // Class picker 
@@ -17,13 +18,27 @@
 
 void UPDStatListInnerWidget::RefreshStatListOnChangedProperty(FPropertyChangedEvent& PropertyChangedEvent)
 {
-	const FProperty* Property = PropertyChangedEvent.Property;
-	if (Property == nullptr) { return; }
-
-	const FName PropertyName = Property->GetFName();
+	const FName PropertyName = PropertyChangedEvent.GetPropertyName();
 	const bool bDoesPropertyHaveCorrectName =
 		PropertyName.IsEqual(GET_MEMBER_NAME_CHECKED(UPDStatListInnerWidget, EditorTestEntries_BaseList))
 		|| PropertyName.IsEqual(GET_MEMBER_NAME_CHECKED(UPDStatListInnerWidget, SectionWidth));
+
+	if (PropertyName.IsEqual(GET_MEMBER_NAME_CHECKED(UPDStatListInnerWidget, Visibility_BaseStatList)))
+	{
+		SetVisibility_StatLevelData(Visibility_BaseStatList);
+		return;
+	}
+	if (PropertyName.IsEqual(GET_MEMBER_NAME_CHECKED(UPDStatListInnerWidget, Visibility_LevellingDataPopup)))
+	{
+		SetVisibility_StatLevelData(Visibility_LevellingDataPopup);
+		return;
+	}
+	if (PropertyName.IsEqual(GET_MEMBER_NAME_CHECKED(UPDStatListInnerWidget, Visibility_ModifySourcesPopup)))
+	{
+		SetVisibility_StatOffsets(Visibility_ModifySourcesPopup);
+		return;
+	}	
+	
 	if (bDoesPropertyHaveCorrectName == false) { return; }
 	
 	RefreshInnerStatList();
@@ -51,48 +66,44 @@ void UPDStatListInnerWidget::OnBindingChanged(const FName& Property)
 	Super::OnBindingChanged(Property);
 }
 
+void UPDStatListInnerWidget::SetVisibility_StatList(ESlateVisibility NewVisibility)
+{
+	if (InnerStatList.IsValid() == false) { return; }
+	InnerStatList->SetVisibility(ConvertSerializedVisibilityToRuntime(NewVisibility));
+	InnerStatList->Invalidate(EInvalidateWidgetReason::Paint);
+}
+
+void UPDStatListInnerWidget::SetVisibility_StatOffsets(ESlateVisibility NewVisibility)
+{
+	if (SelectedStatOffsetData_PopUp.IsValid() == false) { return; }
+	SelectedStatOffsetData_PopUp->SetVisibility(ConvertSerializedVisibilityToRuntime(NewVisibility));	
+	SelectedStatOffsetData_PopUp->Invalidate(EInvalidateWidgetReason::Paint);
+}
+
+void UPDStatListInnerWidget::SetVisibility_StatLevelData(ESlateVisibility NewVisibility)
+{
+	if (SelectedStatLevelData_PopUp.IsValid() == false) { return; }
+	SelectedStatLevelData_PopUp->SetVisibility(ConvertSerializedVisibilityToRuntime(NewVisibility));
+	SelectedStatLevelData_PopUp->Invalidate(EInvalidateWidgetReason::Paint);
+}
+
+
 void UPDStatListInnerWidget::RefreshInnerStatList()
 {
 	NetDataView.Empty();
 	if (InnerStatList.IsValid())
 	{
-#if WITH_EDITOR
-		if (IsDesignTime())
-		{
-			for (const FPDStatNetDatum& EditorEntry :  EditorTestEntries_BaseList)
-			{
-				TSharedRef<FPDStatNetDatum> SharedNetDatum = MakeShared<FPDStatNetDatum>(EditorEntry);
-				NetDataView.Emplace(SharedNetDatum);			
-			}
-		}
-#endif // WITH_EDITOR
-		
+		UpdateDataViewWithEditorTestEntries(NetDataView, EditorTestEntries_BaseList);
 		InnerStatList->Refresh(INDEX_NONE, NetDataView, SectionWidth);
 	}
 }
 
 void UPDStatListInnerWidget::RefreshStatLevel_Popup()
 {
-	TokenDataView.Empty();
-	AffectedStatsDataView.Empty();
 	if (SelectedStatLevelData_PopUp.IsValid())
 	{
-#if WITH_EDITOR
-		if (IsDesignTime())
-		{
-			for (const FPDSkillTokenBase& EditorEntry :  EditorTestEntries_LevelPopup_TokenData)
-			{
-				TSharedRef<FPDSkillTokenBase> SharedDatum = MakeShared<FPDSkillTokenBase>(EditorEntry);
-				TokenDataView.Emplace(SharedDatum);			
-			}
-
-			for (const FPDStatViewAffectedStat& EditorEntry :  EditorTestEntries_LevelPopup_AffectedStatsData)
-			{
-				TSharedRef<FPDStatViewAffectedStat> SharedDatum = MakeShared<FPDStatViewAffectedStat>(EditorEntry);
-				AffectedStatsDataView.Emplace(SharedDatum);			
-			}			
-		}
-#endif // WITH_EDITOR
+		UpdateDataViewWithEditorTestEntries(TokenDataView, EditorTestEntries_LevelPopup_TokenData);
+		UpdateDataViewWithEditorTestEntries(AffectedStatsDataView, EditorTestEntries_LevelPopup_AffectedStatsData);
 		
 		SelectedStatLevelData_PopUp->Refresh(INDEX_NONE, TokenDataView, AffectedStatsDataView, SectionWidth);
 	}
@@ -100,20 +111,9 @@ void UPDStatListInnerWidget::RefreshStatLevel_Popup()
 
 void UPDStatListInnerWidget::RefreshStatOffset_Popup()
 {
-	ModifyingSourcesDataView.Empty();
 	if (SelectedStatOffsetData_PopUp.IsValid())
 	{
-#if WITH_EDITOR
-		if (IsDesignTime())
-		{
-			for (const FPDStatViewModifySource& EditorEntry :  EditorTestEntries_OffsetPopup_ModifySources)
-			{
-				TSharedRef<FPDStatViewModifySource> SharedDatum = MakeShared<FPDStatViewModifySource>(EditorEntry);
-				ModifyingSourcesDataView.Emplace(SharedDatum);			
-			}
-		}
-#endif // WITH_EDITOR
-		
+		UpdateDataViewWithEditorTestEntries(ModifyingSourcesDataView, EditorTestEntries_OffsetPopup_ModifySources);
 		SelectedStatOffsetData_PopUp->Refresh(INDEX_NONE, ModifyingSourcesDataView, SectionWidth);
 	}
 }
@@ -126,25 +126,38 @@ TSharedRef<SWidget> UPDStatListInnerWidget::RebuildWidget()
 	}
 	if (InnerStatList.IsValid() == false)
 	{
-#if WITH_EDITOR
-		if (IsDesignTime())
-		{
-			for (const FPDStatNetDatum& EditorEntry :  EditorTestEntries_BaseList)
-			{
-				TSharedRef<FPDStatNetDatum> SharedNetDatum = MakeShared<FPDStatNetDatum>(EditorEntry);
-				NetDataView.Emplace(SharedNetDatum);			
-			}
-		}
-#endif // WITH_EDITOR
-		
-		InnerStatList =
-			SNew(SPDStatList, OwnerID, NetDataView, SectionWidth);
+		UpdateDataViewWithEditorTestEntries(NetDataView, EditorTestEntries_BaseList);
+		InnerStatList = SNew(SPDStatList, OwnerID, NetDataView, SectionWidth);
 	}
+	SetVisibility_StatList(Visibility_BaseStatList);
 
-	InnerSlateWrapbox->ClearChildren();
-	SWrapBox::FScopedWidgetSlotArguments WrapboxSlot = InnerSlateWrapbox->AddSlot();
-	WrapboxSlot.AttachWidget(InnerStatList.ToSharedRef());
+	static const FGameplayTag DummyStarterTag = FGameplayTag{};
+	if (SelectedStatLevelData_PopUp.IsValid()  == false)
+	{
+		UpdateDataViewWithEditorTestEntries(TokenDataView, EditorTestEntries_LevelPopup_TokenData);
+		UpdateDataViewWithEditorTestEntries(AffectedStatsDataView, EditorTestEntries_LevelPopup_AffectedStatsData);
+		SelectedStatLevelData_PopUp = SNew(SPDSelectedStat_LevelData, OwnerID, DummyStarterTag ,TokenDataView, AffectedStatsDataView, SectionWidth);
+	}
+	SetVisibility_StatLevelData(Visibility_LevellingDataPopup);
+
+	if (SelectedStatOffsetData_PopUp.IsValid()  == false)
+	{
+		UpdateDataViewWithEditorTestEntries(ModifyingSourcesDataView, EditorTestEntries_OffsetPopup_ModifySources);
+		SelectedStatOffsetData_PopUp = SNew(SPDSelectedStat_OffsetData, OwnerID, DummyStarterTag, ModifyingSourcesDataView, SectionWidth);
+	}
+	SetVisibility_StatOffsets(Visibility_ModifySourcesPopup);
 	
+	
+	InnerSlateWrapbox->ClearChildren();
+	SWrapBox::FScopedWidgetSlotArguments StatList_CanvasSlot = InnerSlateWrapbox->AddSlot();
+	StatList_CanvasSlot.AttachWidget(InnerStatList.ToSharedRef());
+
+	SWrapBox::FScopedWidgetSlotArguments SelectedStatLevelDataPopup_CanvasSlot = InnerSlateWrapbox->AddSlot();
+	SelectedStatLevelDataPopup_CanvasSlot.AttachWidget(SelectedStatLevelData_PopUp.ToSharedRef());
+
+	SWrapBox::FScopedWidgetSlotArguments AffectedStatsPopup_CanvasSlot = InnerSlateWrapbox->AddSlot();
+	AffectedStatsPopup_CanvasSlot.AttachWidget(SelectedStatOffsetData_PopUp.ToSharedRef());
+
 	return InnerSlateWrapbox.ToSharedRef();
 }
 
@@ -152,6 +165,8 @@ void UPDStatListInnerWidget::ReleaseSlateResources(bool bReleaseChildren)
 {
 	InnerSlateWrapbox.Reset();
 	InnerStatList.Reset();
+	SelectedStatLevelData_PopUp.Reset();
+	SelectedStatOffsetData_PopUp.Reset();
 	
 	Super::ReleaseSlateResources(bReleaseChildren);
 }

@@ -15,15 +15,9 @@
 
 #include "PDProgressionWidgets.generated.h"
 
-struct FPDStatViewAffectedStat;
-struct FPDStatViewModifySource;
-class SPDSelectedStat_OffsetData;
-class SPDSelectedStat_LevelData;
-class SPDStatList;
-class FPaintArgs;
-class FSlateWindowElementList;
-struct FSlateBrush;
-
+// Don't long lists of forward declares, compacting the list into two lines, one for slatecore stuff, the other for our own stuff
+class SCanvas; class SWrapBox; class FPaintArgs; class FSlateWindowElementList; struct FSlateBrush;
+class SPDSelectedStat_OffsetData; class SPDSelectedStat_LevelData; class SPDStatList; struct FPDStatViewAffectedStat; struct FPDStatViewModifySource;
 
 DECLARE_DYNAMIC_DELEGATE_RetVal(int, FOwnerIDDelegate);
 
@@ -50,6 +44,38 @@ public:
 	/** @brief Calls super, otherwise unused. Reserved for later use. */
 	virtual void OnBindingChanged(const FName& Property) override;
 
+	/** @brief Sets the stat-list visibility to 'Collapsed'. Exposing slate widget controls to BP */
+	UFUNCTION(BlueprintCallable)
+	void SetVisibility_StatList(ESlateVisibility NewVisibility);
+	/** @brief Sets the stat-offset popup visibility to 'Collapsed'. Exposing slate widget controls to BP */
+	UFUNCTION(BlueprintCallable)
+	void SetVisibility_StatOffsets(ESlateVisibility NewVisibility);
+	/** @brief Sets the stat-level popup visibility to 'Collapsed'. Exposing slate widget controls to BP */
+	UFUNCTION(BlueprintCallable)
+	void SetVisibility_StatLevelData(ESlateVisibility NewVisibility);
+
+protected:
+	/** @brief Updates our dataview with entries found in our input editor test entries array,
+	 * @details this allows us to populate our inner list views in design-time for testing how elements are displayed */
+	template<typename TDataViewElem>
+	void UpdateDataViewWithEditorTestEntries(
+		TArray<TSharedPtr<TDataViewElem>>& DataView,
+		const TArray<TDataViewElem>& EditorTestEntries)
+	{
+#if WITH_EDITOR
+		if (IsDesignTime() == false) { return; }
+
+		DataView.Empty();
+		for (const TDataViewElem& EditorEntry : EditorTestEntries)
+		{
+			TSharedRef<TDataViewElem> SharedNetDatum = MakeShared<TDataViewElem>(EditorEntry);
+			DataView.Emplace(SharedNetDatum);			
+		}
+#endif // WITH_EDITOR	
+	}
+
+	
+public:	
 	
 	/** @brief Calls Refresh on 'InnerStatList'.
 	 * @note Additionally, if in design-time in editor then it also re-fills 'NetDataView' from the test data in 'EditorTestEntries_BaseList'  */
@@ -66,21 +92,24 @@ public:
 	UFUNCTION(BlueprintCallable)
 	virtual void UpdateOwner(int32 NewOwner);
 	
-	/** @brief Wrapbox that wraps our SPDStatList derived widgets */
-	TSharedPtr<class SWrapBox> InnerSlateWrapbox;
+	/** @deprecated !!Remove in coming commits!! @brief Wrapbox that wraps our SPDStatList derived widgets */
+	TSharedPtr<SWrapBox> InnerSlateWrapbox = nullptr;
 	
 	/** @brief Base ptr to a SPDStatList widget */
-	TSharedPtr<SPDStatList> InnerStatList;
+	TSharedPtr<SPDStatList> InnerStatList = nullptr;
 
+	/** @brief Canvas that our stat widgets are contained within */
+	TSharedPtr<SCanvas> SlateCanvas = nullptr;
+	
 	/** @brief Popup widget that is used to display a stats levelling data
-	 * @todo Write Supporting code to actually open this as an interactable window */
+	 * @done Write Supporting code to actually open this as an interactable window */
 	TSharedPtr<SPDSelectedStat_LevelData> SelectedStatLevelData_PopUp;
 
 	/** @brief Popup widget that is used to display a stats sources of current offsets
-	 * @todo Write Supporting code to actually open this as an interactable window */
+	 * @done Write Supporting code to actually open this as an interactable window */
 	TSharedPtr<SPDSelectedStat_OffsetData> SelectedStatOffsetData_PopUp;	
 
-	/** @brief ID to route to our owwer.  */
+	/** @brief ID to route to our owner.  */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
 	int32 OwnerID = 0;
 
@@ -88,32 +117,48 @@ public:
 	UPROPERTY()
 	FOwnerIDDelegate OwnerIDDelegate;
 
+	/** @brief (Uniform) width of each column in the entries of 'InnerStatList' */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Progression|Widgets")
+	int32 SectionWidth = 50;
+	
 	/** @brief Editor test data. Used to test/inspect in visual design editor */
-	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Progression|Widgets|Stat List")
 	TArray<FPDStatNetDatum> EditorTestEntries_BaseList{};
 	
 	/** @brief Editor test data for pop-up view of offset sources. Used to test/inspect in visual design editor */
-	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Progression|Widgets|Modify Sources")
 	TArray<FPDStatViewModifySource> EditorTestEntries_OffsetPopup_ModifySources{};
 	
 	/** @brief Editor test data for pop-up view of levelling data -- tokens. Used to test/inspect in visual design editor */
-	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Progression|Widgets|Level Data")
 	TArray<FPDSkillTokenBase> EditorTestEntries_LevelPopup_TokenData{};
 	/** @brief Editor test data for pop-up view of levelling data -- affected stats. Used to test/inspect in visual design editor */
-	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Progression|Widgets|Level Data")
 	TArray<FPDStatViewAffectedStat> EditorTestEntries_LevelPopup_AffectedStatsData{};
 	
-	/** @brief (Uniform) width of each column in the entries of 'InnerStatList' */
-	UPROPERTY(EditAnywhere, BlueprintReadWrite)
-	int32 SectionWidth = 50;		
-	// TArray<int32> SectionWidths = {50, 50, 50, 50, 50};		
-
+	//
+	// Property bindables
+	
 	/** @brief Sets up editor binding callbacks, available to set up from the visual design editor */
 	PROPERTY_BINDING_IMPLEMENTATION(int32, OwnerID);
 	
 	//
-	// Dataviews
+	// Widget controls
 	
+	/** @brief Sets up editor binding callbacks, available to set up from the visual design editor */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Progression|Widgets|Modify Sources")
+	ESlateVisibility Visibility_ModifySourcesPopup = ESlateVisibility::Visible;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Progression|Widgets|Level Data")
+	ESlateVisibility Visibility_LevellingDataPopup = ESlateVisibility::Visible;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Progression|Widgets|Stat List")
+	ESlateVisibility Visibility_BaseStatList = ESlateVisibility::Visible;
+	
+	
+protected:	
+	//
+	// Dataviews
 	/** @brief Data-view of our netdatums */
 	TArray<TSharedPtr<FPDStatNetDatum>> NetDataView{};
 

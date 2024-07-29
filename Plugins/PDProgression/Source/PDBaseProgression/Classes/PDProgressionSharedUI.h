@@ -107,6 +107,9 @@ public:
 		}
 	}
 
+	/** @brief Must be overridden in child classes to implement translation during detected drag movements */
+	virtual FReply DesignTimeTranslation(const FGeometry& MyGeometry, const FPointerEvent& MouseEvent) = 0;
+
 	/** @brief Gets a fontstyle, and then apply different scaling to the different fonts  */
 	void UpdateFonts()
 	{
@@ -129,7 +132,10 @@ public:
 	int32 SectionWidth = 50;
 
 	/** @brief Our data-view meta-data */
-	TTuple<FPDStatViewHeaderData<TViewTypes>...> HeaderDataViews; 
+	TTuple<FPDStatViewHeaderData<TViewTypes>...> HeaderDataViews;
+
+	/** @brief Flag that we use to tell widgets that implements us if we are in design-time or not */
+	bool bIsDesignTime = true;
 };
 
 /** @brief Modify Source data construct. Used by the 'SPDSelectedStat_OffsetData' slate widgets */

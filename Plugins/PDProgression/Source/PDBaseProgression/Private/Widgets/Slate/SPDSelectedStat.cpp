@@ -53,8 +53,10 @@ void SPDSelectedStat_LevelData::Construct(
 	int32 InOwnerID,
 	const FGameplayTag& InSelectedStatTag,
 	TArray<TSharedPtr<FPDSkillTokenBase>>& TokenArrayRef,
-	TArray<TSharedPtr<FPDStatViewAffectedStat>>& AffectedStatsRef)
+	TArray<TSharedPtr<FPDStatViewAffectedStat>>& AffectedStatsRef,
+	const int32 InSectionWidth)
 {
+	SectionWidth = InSectionWidth;
 	TArray<TSharedPtr<FPDSkillTokenBase>>*& TokenArrayPtr = HeaderDataViews.Key.DataViewPtr;
 	TArray<TSharedPtr<FPDStatViewAffectedStat>>*& AffectedStatsPtr = HeaderDataViews.Value.DataViewPtr;
 
@@ -222,34 +224,28 @@ void SPDSelectedStat_LevelData::PrepareData()
 	}
 }
 
-TSharedRef<ITableRow> SPDSelectedStat_LevelData::MakeListViewWidget_LinkedStat_TokensToGrant(
-	TSharedPtr<FPDSkillTokenBase> StatViewTokensToGrant,
-	const TSharedRef<STableViewBase>& OwnerTable) const
+FReply  SPDSelectedStat_LevelData::DesignTimeTranslation(const FGeometry& MyGeometry, const FPointerEvent& MouseEvent)
 {
-	TSharedPtr<STableRow< TSharedPtr<FPDSkillTokenBase>>> StatTable = nullptr;
+	if (bIsDesignTime == false ) { return FReply::Unhandled(); }
 
-	// (DONE) 1. StatViewModifySource->StatTag
-	const FPDStatDataViewSlotParams& HeaderSlotParam =
-		FPDStatStatics::CreateDataViewSlotParam(StatViewTokensToGrant->TokenType, StatViewTokensToGrant->TokenValue);
-	
-	constexpr double WidthDiscrepancy = (1.015);
-	const float TrueSectionWidth = SectionWidth * WidthDiscrepancy;
-	StatTable = SNew( STableRow< TSharedPtr<FPDSkillTokenBase> >, OwnerTable )
-	[
-		SNew(SHorizontalBox)
-		+ SetListHeaderSlot(SHorizontalBox, HeaderSlotParam.SectionText, TrueSectionWidth )
-		+ SetListHeaderSlot(SHorizontalBox, HeaderSlotParam.ValueText, TrueSectionWidth )
-	];
+	// MouseEvent.IsMouseButtonDown();
 
+	return SCompoundWidget::OnDragDetected(MyGeometry, MouseEvent); // @todo replace
+}
+
+FReply SPDSelectedStat_LevelData::OnDragDetected(const FGeometry& MyGeometry, const FPointerEvent& MouseEvent)
+{
+	FReply TranslationHandled = DesignTimeTranslation(MyGeometry, MouseEvent);
+	if (TranslationHandled.IsEventHandled()) { return TranslationHandled; }
 	
-	return StatTable.ToSharedRef();
+	return SCompoundWidget::OnDragDetected(MyGeometry, MouseEvent);
 }
 
 void SPDSelectedStat_LevelData::Refresh(
 	int32 InOwnerID,
 	TArray<TSharedPtr<FPDSkillTokenBase>>& TokenArrayRef,
 	TArray<TSharedPtr<FPDStatViewAffectedStat>>& AffectedStatsRef,
-	int32 InSectionWidth)
+	const int32 InSectionWidth)
 {
 	OwnerID = InOwnerID;
 	SectionWidth = InSectionWidth;
@@ -276,10 +272,26 @@ void SPDSelectedStat_LevelData::Refresh(
 
 }
 
-void SPDSelectedStat_LevelData::OnComponentSelected_LinkedStat_TokensToGrant(
+TSharedRef<ITableRow> SPDSelectedStat_LevelData::MakeListViewWidget_LinkedStat_TokensToGrant(
 	TSharedPtr<FPDSkillTokenBase> StatViewTokensToGrant,
-	ESelectInfo::Type Arg) const
+	const TSharedRef<STableViewBase>& OwnerTable) const
 {
+	TSharedPtr<STableRow< TSharedPtr<FPDSkillTokenBase>>> StatTable = nullptr;
+
+	// (DONE) 1. StatViewModifySource->StatTag
+	const FPDStatDataViewSlotParams& HeaderSlotParam =
+		FPDStatStatics::CreateDataViewSlotParam(StatViewTokensToGrant->TokenType, StatViewTokensToGrant->TokenValue);
+	
+	constexpr double WidthDiscrepancy = (1.015);
+	const float TrueSectionWidth = SectionWidth * WidthDiscrepancy;
+	StatTable = SNew( STableRow< TSharedPtr<FPDSkillTokenBase> >, OwnerTable )
+	[
+		SNew(SHorizontalBox)
+		+ SetListHeaderSlot(SHorizontalBox, HeaderSlotParam.SectionText, TrueSectionWidth )
+		+ SetListHeaderSlot(SHorizontalBox, HeaderSlotParam.ValueText, TrueSectionWidth )
+	];
+	
+	return StatTable.ToSharedRef();
 }
 
 TSharedRef<ITableRow> SPDSelectedStat_LevelData::MakeListViewWidget_LinkedStat_AffectedStats(
@@ -297,7 +309,6 @@ TSharedRef<ITableRow> SPDSelectedStat_LevelData::MakeListViewWidget_LinkedStat_A
 	StatTable = SNew( STableRow< TSharedPtr<FPDStatViewAffectedStat> >, OwnerTable )
 	[
 		SNew(SHorizontalBox)
-		+ SHorizontalBox::Slot()
 		+ SetListHeaderSlot(SHorizontalBox, HeaderSlotParam.SectionText, TrueSectionWidth )
 		+ SetListHeaderSlot(SHorizontalBox, HeaderSlotParam.ValueText, TrueSectionWidth )
 	];
@@ -305,19 +316,27 @@ TSharedRef<ITableRow> SPDSelectedStat_LevelData::MakeListViewWidget_LinkedStat_A
 	return StatTable.ToSharedRef();
 	
 }
+
+void SPDSelectedStat_LevelData::OnComponentSelected_LinkedStat_TokensToGrant(
+	TSharedPtr<FPDSkillTokenBase> StatViewTokensToGrant,
+	ESelectInfo::Type Arg) const { } // @todo
+
 void SPDSelectedStat_LevelData::OnComponentSelected_LinkedStat_AffectedStats(
 	TSharedPtr<FPDStatViewAffectedStat> StatViewAffectedStats,
-	ESelectInfo::Type Arg) const
-{
-	// @todo
-}
+	ESelectInfo::Type Arg) const { } // @todo
 
 
 
 //
 // Selected Stat - Offset modify sources view
-void SPDSelectedStat_OffsetData::Construct(const FArguments& InArgs, int32 InOwnerID, const FGameplayTag& InSelectedStatTag, TArray<TSharedPtr<FPDStatViewModifySource>>& ArrayRef)
+void SPDSelectedStat_OffsetData::Construct(
+	const FArguments& InArgs,
+	int32 InOwnerID,
+	const FGameplayTag& InSelectedStatTag,
+	TArray<TSharedPtr<FPDStatViewModifySource>>& ArrayRef,
+	const int32 InSectionWidth)
 {
+	SectionWidth = InSectionWidth;
 	TArray<TSharedPtr<FPDStatViewModifySource>>*& SelectedStatModifierSources = HeaderDataViews.Value.DataViewPtr;
 	OwnerID = InOwnerID;
 	
@@ -379,14 +398,14 @@ void SPDSelectedStat_OffsetData::PrepareData()
 void SPDSelectedStat_OffsetData::Refresh(
 	int32 InOwnerID,
 	TArray<TSharedPtr<FPDStatViewModifySource>>& DataViewRef,
-	const int32 NewSectionWidth)
+	const int32 InSectionWidth)
 {
 	TArray<TSharedPtr<FPDStatViewModifySource>>*& SelectedStatModifierSources = HeaderDataViews.Value.DataViewPtr;
 	const TSharedPtr<SListView<TSharedPtr<FPDStatViewModifySource>>>& ModifySourceListView = HeaderDataViews.Value.ListView;
 	
 	OwnerID = InOwnerID;
 	SelectedStatModifierSources = &DataViewRef;
-	SectionWidth = NewSectionWidth;
+	SectionWidth = InSectionWidth;
 	
 	if (ModifySourceListView.IsValid() == false) { return; }
 
@@ -410,8 +429,8 @@ void SPDSelectedStat_OffsetData::UpdateChildSlot()
 	ModifySourceListView = SNew(SListView<TSharedPtr<FPDStatViewModifySource>>)
 		.HeaderRow(Header)
 		.ListItemsSource(SelectedStatModifierSources)
-		.OnSelectionChanged( this, &SPDSelectedStat_OffsetData::OnComponentSelected_LinkedStat )	
-		.OnGenerateRow( this, &SPDSelectedStat_OffsetData::MakeListViewWidget_LinkedStat);
+		.OnGenerateRow( this, &SPDSelectedStat_OffsetData::MakeListViewWidget_LinkedStat)
+		.OnSelectionChanged( this, &SPDSelectedStat_OffsetData::OnComponentSelected_LinkedStat );	
 	
 	ChildSlot
 	.HAlign(HAlign_Center)
@@ -429,14 +448,34 @@ void SPDSelectedStat_OffsetData::UpdateChildSlot()
 	
 }
 
+FReply SPDSelectedStat_OffsetData::DesignTimeTranslation(const FGeometry& MyGeometry, const FPointerEvent& MouseEvent)
+{
+	if (bIsDesignTime == false) { return FReply::Unhandled(); }
+
+	// MouseEvent. .IsMouseButtonDown();
+
+	return SCompoundWidget::OnDragDetected(MyGeometry, MouseEvent); // @todo replace
+}
+
+FReply SPDSelectedStat_OffsetData::OnDragDetected(const FGeometry& MyGeometry, const FPointerEvent& MouseEvent)
+{
+	FReply TranslationHandled = DesignTimeTranslation(MyGeometry, MouseEvent);
+	if (TranslationHandled.IsEventHandled()) { return TranslationHandled; }
+	
+	return SCompoundWidget::OnDragDetected(MyGeometry, MouseEvent);
+}
+
 TSharedRef<ITableRow> SPDSelectedStat_OffsetData::MakeListViewWidget_LinkedStat(
 	TSharedPtr<FPDStatViewModifySource> StatViewModifySource,
 	const TSharedRef<STableViewBase>& OwnerTable) const
 {
 	TSharedPtr<STableRow< TSharedPtr<FPDStatViewModifySource>>> StatTable = nullptr;
 
-	const FPDStatDataViewSlotParams& HeaderSlotParam =
-		FPDStatStatics::CreateDataViewSlotParam(StatViewModifySource->StatTag, StatViewModifySource->AppliedStatOffset);
+	const FPDStatDataViewSlotParams& HeaderSlotParam_RepresentedStat =
+		FPDStatStatics::CreateDataViewSlotParam(StatViewModifySource->StatTag, StatViewModifySource->AppliedStatOffset, false);
+
+	const FPDStatDataViewSlotParams& HeaderSlotParam_Parent =
+		FPDStatStatics::CreateDataViewSlotParam(StatViewModifySource->StatTag, INDEX_NONE, false);	
 	
 	// @todo 3. StatViewModifySource->StatOffsetCurveSource;
 	const FText PlaceholderCurveString = LOCTEXT("Placeholder93u490803","TODO - IMPLEMENT CURVE DISPLAY/VIEW");
@@ -448,11 +487,12 @@ TSharedRef<ITableRow> SPDSelectedStat_OffsetData::MakeListViewWidget_LinkedStat(
 		[
 			SNew(SHorizontalBox)
 
-			// Name Field			
-			+ SHorizontalBox::Slot()
+			// Name & Category Fields			
+			+ SetListHeaderSlot(SHorizontalBox, HeaderSlotParam_RepresentedStat.SectionText, TrueSectionWidth )
+			+ SetListHeaderSlot(SHorizontalBox, HeaderSlotParam_Parent.SectionText, TrueSectionWidth )
 
-			+ SetListHeaderSlot(SHorizontalBox, HeaderSlotParam.SectionText, TrueSectionWidth )
-			+ SetListHeaderSlot(SHorizontalBox, HeaderSlotParam.ValueText, TrueSectionWidth )
+			// Value Field		
+			+ SetListHeaderSlot(SHorizontalBox, HeaderSlotParam_RepresentedStat.ValueText, TrueSectionWidth )
 			
 			// @todo 3. StatViewModifySource->StatOffsetCurveSource;
 			// Curve display, Showing the Applied offset			

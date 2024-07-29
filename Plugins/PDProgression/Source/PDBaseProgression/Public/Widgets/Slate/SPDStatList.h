@@ -53,6 +53,14 @@ public:
 	/** @brief Array 'View' that is used to display the data related to this editor widget */
 	TArray<TSharedPtr<FPDStatNetDatum>>* StatsAsSharedArray;
 
+	//
+	// Translation	
+	/** @brief @todo implement translation during detected drag movements */
+	virtual FReply DesignTimeTranslation(const FGeometry& MyGeometry, const FPointerEvent& MouseEvent) override;
+	/** @brief Calls DesignTimeTranslation  */
+	virtual FReply OnDragDetected(const FGeometry& MyGeometry, const FPointerEvent& MouseEvent) override;
+
+	
 	// Callbacks
 	/** @brief Unused. Reserved for later  */
 	FOnStatDataChosen OnStatDataChosen{};
