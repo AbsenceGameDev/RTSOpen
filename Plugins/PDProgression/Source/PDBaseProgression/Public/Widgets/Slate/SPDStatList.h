@@ -43,8 +43,12 @@ public:
 	void Refresh(int32 InOwnerID, TArray<TSharedPtr<FPDStatNetDatum>>& DataViewRef, const int32 NewSectionWidth);
 	/** @brief Prepares our view data. Iterates our owners StatList and fills 'StatsAsSharedArray' accordingly  */
 	void PrepareData();
+
+	/** @brief Defines our header definition, is called on construction but is also called on table changes after construction */
+	virtual TSharedPtr<SHeaderRow> RefreshHeaderRow(int32 HeaderRowIdx = 0) override;
+
 	/** @brief Base call, ensures we have a title-font loaded, Sets up the child slot, and passes in the data view array to an slistview wrapped in a scrollbox */
-	virtual void UpdateChildSlot();
+	virtual void UpdateChildSlot() override;
 	
 	/** @brief Displays the actual list item for each entry in ConversationStatesAsSharedArray, which in this case is the states in 'FPDStatNetDatum' */
 	TSharedRef<ITableRow> MakeListViewWidget_AllStatData(TSharedPtr<FPDStatNetDatum> InItem, const TSharedRef<STableViewBase>& OwnerTable) const;

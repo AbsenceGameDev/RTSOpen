@@ -24,7 +24,7 @@
 #define LOCTEXT_NAMESPACE "SPDStatList"
 
 
-FText SPDSelectedStat_LevelData::SelectedStatLevelLabel = LOCTEXT("Stat_LevelData_Title", "LEVEL DATA");;
+FText SPDSelectedStat_LevelData::SelectedStatLevelLabel = LOCTEXT("Stat_LevelData_Title", "LEVEL");;
 FText SPDSelectedStat_LevelData::Token_SectionTitle = LOCTEXT("Stat_LevelData_TokensToGrant", "TOKENS");;
 FText SPDSelectedStat_LevelData::TokenName_ColumnLabel = LOCTEXT("Stat_LevelData_TokensToGrant", "NAME");;
 FText SPDSelectedStat_LevelData::TokenCount_ColumnLabel = LOCTEXT("Stat_LevelData_TokensToGrant", "COUNT");;
@@ -37,7 +37,7 @@ FText SPDSelectedStat_LevelData::OtherStatsAffectedEntryLabel = LOCTEXT("Stat_Le
 FText SPDSelectedStat_LevelData::ExperienceBar_Title = LOCTEXT("Stat_LevelData_ExperienceBar_Title", "EXPERIENCE");;
 
 
-FText SPDSelectedStat_OffsetData::StatSources_Header_Title = LOCTEXT("StatSource_HeaderRow_Name", "STAT SOURCE LIST");
+FText SPDSelectedStat_OffsetData::StatSources_Header_Title = LOCTEXT("StatSource_HeaderRow_Name", "OFFSETS");
 FText SPDSelectedStat_OffsetData::StatSources_Header_Name = LOCTEXT("StatSource_HeaderRow_Name", "NAME");
 FText SPDSelectedStat_OffsetData::StatSources_Header_Category = LOCTEXT("StatSource_HeaderRow_Name", "CATEGORY");
 FText SPDSelectedStat_OffsetData::StatSources_Header_AppliedOffset = LOCTEXT("StatSource_HeaderRow_Name", "VALUE OFFSET");
@@ -56,7 +56,7 @@ void SPDSelectedStat_LevelData::Construct(
 	TArray<TSharedPtr<FPDStatViewAffectedStat>>& AffectedStatsRef,
 	const int32 InSectionWidth)
 {
-	SectionWidth = InSectionWidth;
+	WidgetSettings.DataViewSectionWidth = InSectionWidth;
 	TArray<TSharedPtr<FPDSkillTokenBase>>*& TokenArrayPtr = HeaderDataViews.Key.DataViewPtr;
 	TArray<TSharedPtr<FPDStatViewAffectedStat>>*& AffectedStatsPtr = HeaderDataViews.Value.DataViewPtr;
 
@@ -69,23 +69,50 @@ void SPDSelectedStat_LevelData::Construct(
 	UpdateChildSlot();
 }
 
+TSharedPtr<SHeaderRow> SPDSelectedStat_LevelData::RefreshHeaderRow(int32 HeaderRowIdx)
+{
+	// We want to be able to update the  header row, without redrawing the whole list
+	switch (HeaderRowIdx)
+	{
+	default: 
+	case 0:
+		{
+			TSharedPtr<SHeaderRow> TokenHeader = 
+			FPDStatStatics::CreateHeaderRow(HeaderDataViews.Key.Header, WidgetSettings.DataViewSectionWidth, 2,
+				"0", *TokenName_ColumnLabel.ToString(),
+				"1", *TokenCount_ColumnLabel.ToString());
+			TokenHeader->Invalidate(EInvalidateWidgetReason::Paint);
+
+			return TokenHeader;
+		}
+	case 1:
+		{
+			TSharedPtr<SHeaderRow> AffectedHeader = 	
+			FPDStatStatics::CreateHeaderRow(HeaderDataViews.Value.Header, WidgetSettings.DataViewSectionWidth, 2,
+				"0", *OtherStatsAffectedName_ColumnLabel.ToString(),
+				"1", *OtherStatsAffectedValue_ColumnLabel.ToString());
+			AffectedHeader->Invalidate(EInvalidateWidgetReason::Paint);
+			return AffectedHeader;
+		}
+	}
+	
+	return nullptr;
+}
+
 void SPDSelectedStat_LevelData::UpdateChildSlot()
 {
 	InitializeFonts();
 
+	const int32 MaxWidth = WidgetSettings.MaxSUWidth;
+	const int32 MaxHeight = WidgetSettings.MaxSUHeight; 
+
 	TArray<TSharedPtr<FPDSkillTokenBase>>*& TokenArrayPtr = HeaderDataViews.Key.DataViewPtr;
 	TSharedPtr<SListView<TSharedPtr<FPDSkillTokenBase>>>& TokenArrayListView = HeaderDataViews.Key.ListView;
-	TSharedPtr<SHeaderRow>& TokenHeader = HeaderDataViews.Key.Header;
-	FPDStatStatics::CreateHeaderRow(TokenHeader, SectionWidth, 2,
-		"0", *TokenName_ColumnLabel.ToString(),
-		"1", *TokenCount_ColumnLabel.ToString());
+	const TSharedPtr<SHeaderRow> TokenHeader = RefreshHeaderRow(0);
 
 	TArray<TSharedPtr<FPDStatViewAffectedStat>>*& AffectedStatsPtr = HeaderDataViews.Value.DataViewPtr;
 	TSharedPtr<SListView<TSharedPtr<FPDStatViewAffectedStat>>>& AffectedStatsListView = HeaderDataViews.Value.ListView;
-	TSharedPtr<SHeaderRow>& AffectedHeader = HeaderDataViews.Value.Header;	
-	FPDStatStatics::CreateHeaderRow(AffectedHeader, SectionWidth, 2,
-		"0", *OtherStatsAffectedName_ColumnLabel.ToString(),
-		"1", *OtherStatsAffectedValue_ColumnLabel.ToString());	
+	const TSharedPtr<SHeaderRow> AffectedHeader = RefreshHeaderRow(1);
 	
 	TokenArrayListView =
 		SNew(SListView<TSharedPtr<FPDSkillTokenBase>>)
@@ -104,8 +131,8 @@ void SPDSelectedStat_LevelData::UpdateChildSlot()
 	static FSlateBrush ProgressBarBrush;
 	ProgressBarBrush.ImageType = ESlateBrushImageType::NoImage;
 	ProgressBarBrush.TintColor = FSlateColor(FLinearColor::Transparent);
-	ProgressBarBrush.ImageSize.X = 200.0f;
-	ProgressBarBrush.ImageSize.Y = 20.0f;
+	ProgressBarBrush.ImageSize.X = MaxWidth;
+	ProgressBarBrush.ImageSize.Y = MaxHeight != INDEX_NONE ? MaxHeight / 75.0f : 10.0f;
 	static FProgressBarStyle ProgressBarStyle;
 	ProgressBarStyle.BackgroundImage = ProgressBarBrush;
 	
@@ -116,13 +143,14 @@ void SPDSelectedStat_LevelData::UpdateChildSlot()
 		SNew(SHorizontalBox)
 		+ SHorizontalBox::Slot()
 		.FillWidth(10)
+		.MaxWidth(MaxWidth)
 		[
-			SetWidgetTitle(SVerticalBox, SelectedStatLevelLabel, TitleFont)
-			+ SetTitleSlot(SVerticalBox, Token_SectionTitle, HalfSizedTitleFont)
-				+ SetListViewSlot(SVerticalBox, 800, TokenArrayListView.ToSharedRef())
-				+ SetListViewSlot(SVerticalBox, 800, AffectedStatsListView.ToSharedRef())
+			SetWidgetTitle(SVerticalBox, SelectedStatLevelLabel, WidgetSettings.TitleFont)
+			+ SetTitleSlot(SVerticalBox, Token_SectionTitle, WidgetSettings.SubTitleFont)
+				+ SetListViewSlot(SVerticalBox, MaxHeight, TokenArrayListView.ToSharedRef())
+				+ SetListViewSlot(SVerticalBox, MaxHeight, AffectedStatsListView.ToSharedRef())
 			
-			+ SetTitleSlot(SVerticalBox, ExperienceBar_Title, HalfSizedTitleFont)
+			+ SetTitleSlot(SVerticalBox, ExperienceBar_Title, WidgetSettings.SubTitleFont)
 			+ SVerticalBox::Slot() 
 				.Padding(FMargin{0, 0})
 				.FillHeight(10)
@@ -137,7 +165,7 @@ void SPDSelectedStat_LevelData::UpdateChildSlot()
 	
 					SNew(SHorizontalBox)
 					+ SHorizontalBox::Slot()
-					.MaxWidth(200)
+					.MaxWidth(MaxWidth)
 					[
 						SNew(SProgressBar)
 						.Percent(0.5)
@@ -248,8 +276,10 @@ void SPDSelectedStat_LevelData::Refresh(
 	const int32 InSectionWidth)
 {
 	OwnerID = InOwnerID;
-	SectionWidth = InSectionWidth;
 
+	const bool bIsSectionWidthChanged = WidgetSettings.DataViewSectionWidth != InSectionWidth;
+	WidgetSettings.DataViewSectionWidth = InSectionWidth;
+	
 	TArray<TSharedPtr<FPDSkillTokenBase>>*& TokenArrayPtr = HeaderDataViews.Key.DataViewPtr;
 	const TSharedPtr<SListView<TSharedPtr<FPDSkillTokenBase>>>& TokenArrayListView = HeaderDataViews.Key.ListView;
 	TArray<TSharedPtr<FPDStatViewAffectedStat>>*& AffectedStatsPtr = HeaderDataViews.Value.DataViewPtr;
@@ -261,15 +291,22 @@ void SPDSelectedStat_LevelData::Refresh(
 	PrepareData();
 	if (TokenArrayListView.IsValid())
 	{
+		if (bIsSectionWidthChanged) { RefreshHeaderRow(0); }
+				
 		TokenArrayListView->SetItemsSource(TokenArrayPtr);
 		TokenArrayListView->RebuildList();
+		TokenArrayListView->Invalidate(EInvalidateWidgetReason::Paint);
 	}
 	if (AffectedStatsListView.IsValid())
 	{
+		if (bIsSectionWidthChanged) { RefreshHeaderRow(1); }		
+		
 		AffectedStatsListView->SetItemsSource(AffectedStatsPtr);
 		AffectedStatsListView->RebuildList();
+		AffectedStatsListView->Invalidate(EInvalidateWidgetReason::Paint);
 	}
 
+	Invalidate(EInvalidateWidgetReason::Paint);
 }
 
 TSharedRef<ITableRow> SPDSelectedStat_LevelData::MakeListViewWidget_LinkedStat_TokensToGrant(
@@ -283,7 +320,7 @@ TSharedRef<ITableRow> SPDSelectedStat_LevelData::MakeListViewWidget_LinkedStat_T
 		FPDStatStatics::CreateDataViewSlotParam(StatViewTokensToGrant->TokenType, StatViewTokensToGrant->TokenValue);
 	
 	constexpr double WidthDiscrepancy = (1.015);
-	const float TrueSectionWidth = SectionWidth * WidthDiscrepancy;
+	const float TrueSectionWidth = WidgetSettings.DataViewSectionWidth * WidthDiscrepancy;
 	StatTable = SNew( STableRow< TSharedPtr<FPDSkillTokenBase> >, OwnerTable )
 	[
 		SNew(SHorizontalBox)
@@ -305,7 +342,7 @@ TSharedRef<ITableRow> SPDSelectedStat_LevelData::MakeListViewWidget_LinkedStat_A
 		FPDStatStatics::CreateDataViewSlotParam(CurrentAffectedStat->AffectedStat, CurrentAffectedStat->TotalAffectedDelta);
 
 	constexpr double WidthDiscrepancy = (1.015);
-	const float TrueSectionWidth = SectionWidth * WidthDiscrepancy;
+	const float TrueSectionWidth = WidgetSettings.DataViewSectionWidth * WidthDiscrepancy;
 	StatTable = SNew( STableRow< TSharedPtr<FPDStatViewAffectedStat> >, OwnerTable )
 	[
 		SNew(SHorizontalBox)
@@ -326,7 +363,6 @@ void SPDSelectedStat_LevelData::OnComponentSelected_LinkedStat_AffectedStats(
 	ESelectInfo::Type Arg) const { } // @todo
 
 
-
 //
 // Selected Stat - Offset modify sources view
 void SPDSelectedStat_OffsetData::Construct(
@@ -336,7 +372,7 @@ void SPDSelectedStat_OffsetData::Construct(
 	TArray<TSharedPtr<FPDStatViewModifySource>>& ArrayRef,
 	const int32 InSectionWidth)
 {
-	SectionWidth = InSectionWidth;
+	WidgetSettings.DataViewSectionWidth = InSectionWidth;
 	TArray<TSharedPtr<FPDStatViewModifySource>>*& SelectedStatModifierSources = HeaderDataViews.Value.DataViewPtr;
 	OwnerID = InOwnerID;
 	
@@ -405,27 +441,42 @@ void SPDSelectedStat_OffsetData::Refresh(
 	
 	OwnerID = InOwnerID;
 	SelectedStatModifierSources = &DataViewRef;
-	SectionWidth = InSectionWidth;
+
+	const bool bIsSectionWidthChanged = WidgetSettings.DataViewSectionWidth != InSectionWidth;
+	WidgetSettings.DataViewSectionWidth = InSectionWidth;
 	
 	if (ModifySourceListView.IsValid() == false) { return; }
 
 	PrepareData();
+	if (bIsSectionWidthChanged) { RefreshHeaderRow(0); }	
+	
 	ModifySourceListView->RebuildList();
+	ModifySourceListView->Invalidate(EInvalidateWidgetReason::Paint);
+	Invalidate(EInvalidateWidgetReason::Paint);
+}
+
+TSharedPtr<SHeaderRow> SPDSelectedStat_OffsetData::RefreshHeaderRow(int32 HeaderRowIdx)
+{
+	TSharedPtr<SHeaderRow> Header = 
+	FPDStatStatics::CreateHeaderRow(HeaderDataViews.Value.Header, WidgetSettings.DataViewSectionWidth, 4,
+		"0", *StatSources_Header_Name.ToString(),
+		"1", *StatSources_Header_Category.ToString(),
+		"2", *StatSources_Header_AppliedOffset.ToString(),
+		"3", *StatSources_Header_Curves.ToString());
+	Header->Invalidate(EInvalidateWidgetReason::Paint);
+	return Header;
 }
 
 void SPDSelectedStat_OffsetData::UpdateChildSlot()
 {
 	InitializeFonts();
+	const int32 MaxWidth = WidgetSettings.MaxSUWidth;
+	const int32 MaxHeight = WidgetSettings.MaxSUHeight; 
+	
 	TArray<TSharedPtr<FPDStatViewModifySource>>*& SelectedStatModifierSources = HeaderDataViews.Value.DataViewPtr;
 	TSharedPtr<SListView<TSharedPtr<FPDStatViewModifySource>>>& ModifySourceListView = HeaderDataViews.Value.ListView;
 
-	TSharedPtr<SHeaderRow>& Header = HeaderDataViews.Value.Header;
-	FPDStatStatics::CreateHeaderRow(Header, SectionWidth, 4,
-		"0", *StatSources_Header_Name.ToString(),
-		"1", *StatSources_Header_Category.ToString(),
-		"2", *StatSources_Header_AppliedOffset.ToString(),
-		"3", *StatSources_Header_Curves.ToString());	
-	
+	const TSharedPtr<SHeaderRow> Header = RefreshHeaderRow();
 	ModifySourceListView = SNew(SListView<TSharedPtr<FPDStatViewModifySource>>)
 		.HeaderRow(Header)
 		.ListItemsSource(SelectedStatModifierSources)
@@ -439,13 +490,13 @@ void SPDSelectedStat_OffsetData::UpdateChildSlot()
 		SNew(SHorizontalBox)
 		+ SHorizontalBox::Slot()
 		.FillWidth(10)
+		.MaxWidth(MaxWidth)
 		[
-			SetWidgetTitle(SVerticalBox, StatSources_Header_Title, TitleFont)
+			SetWidgetTitle(SVerticalBox, StatSources_Header_Title, WidgetSettings.TitleFont)
 			
-			+ SetListViewSlot(SVerticalBox, 800, ModifySourceListView.ToSharedRef())
+			+ SetListViewSlot(SVerticalBox, MaxWidth, ModifySourceListView.ToSharedRef())
 		]
-	];	
-	
+	];
 }
 
 FReply SPDSelectedStat_OffsetData::DesignTimeTranslation(const FGeometry& MyGeometry, const FPointerEvent& MouseEvent)
@@ -475,13 +526,13 @@ TSharedRef<ITableRow> SPDSelectedStat_OffsetData::MakeListViewWidget_LinkedStat(
 		FPDStatStatics::CreateDataViewSlotParam(StatViewModifySource->StatTag, StatViewModifySource->AppliedStatOffset, false);
 
 	const FPDStatDataViewSlotParams& HeaderSlotParam_Parent =
-		FPDStatStatics::CreateDataViewSlotParam(StatViewModifySource->StatTag, INDEX_NONE, false);	
+		FPDStatStatics::CreateDataViewSlotParam(StatViewModifySource->StatTag.RequestDirectParent(), INDEX_NONE, false);	
 	
 	// @todo 3. StatViewModifySource->StatOffsetCurveSource;
 	const FText PlaceholderCurveString = LOCTEXT("Placeholder93u490803","TODO - IMPLEMENT CURVE DISPLAY/VIEW");
 	
 	constexpr double WidthDiscrepancy = (1.015);
-	const float TrueSectionWidth = SectionWidth * WidthDiscrepancy;
+	const float TrueSectionWidth = WidgetSettings.DataViewSectionWidth * WidthDiscrepancy;
 	StatTable =
 		SNew( STableRow< TSharedPtr<FPDStatViewModifySource> >, OwnerTable )
 		[

@@ -34,27 +34,35 @@ FText SPDStatList::StatProgress_Header_ModifiedOffset = LOCTEXT("Stat_HeaderRow_
 // STAT-LIST MAIN
 void SPDStatList::Construct(const FArguments& InArgs, int32 InOwnerID, TArray<TSharedPtr<FPDStatNetDatum>>& DataViewRef, const int32 InSectionWidth)
 {
-	SectionWidth = InSectionWidth;
-	Refresh(InOwnerID, DataViewRef, SectionWidth);
+	WidgetSettings.DataViewSectionWidth = InSectionWidth;
+	Refresh(InOwnerID, DataViewRef, WidgetSettings.DataViewSectionWidth);
 }
 
-void SPDStatList::Refresh(int32 InOwnerID, TArray<TSharedPtr<FPDStatNetDatum>>& DataViewRef, const int32 NewSectionWidth)
+void SPDStatList::Refresh(int32 InOwnerID, TArray<TSharedPtr<FPDStatNetDatum>>& DataViewRef, const int32 InSectionWidth)
 {
 	OwnerID = InOwnerID;
 	StatsAsSharedArray = &DataViewRef;
 
+	const bool bIsSectionWidthChanged = WidgetSettings.DataViewSectionWidth != InSectionWidth;
+	WidgetSettings.DataViewSectionWidth = InSectionWidth;
+	
 	// Potentially lazy construction
 	const TSharedPtr<SListView<TSharedPtr<FPDStatNetDatum>>> ActualList = HeaderDataViews.Value.ListView;
-	if (ActualList.IsValid() == false || SectionWidth != NewSectionWidth)
+	if (ActualList.IsValid() == false)
 	{
 		UpdateChildSlot();
 	}
 	else
 	{
 		PrepareData();
+		if (bIsSectionWidthChanged) { RefreshHeaderRow(0); }
+		
 		ActualList->SetItemsSource(StatsAsSharedArray);
 		ActualList->RebuildList();
+		ActualList->Invalidate(EInvalidateWidgetReason::Paint);
 	}
+	
+	Invalidate(EInvalidateWidgetReason::Paint);	
 }
 
 void SPDStatList::PrepareData()
@@ -72,18 +80,28 @@ void SPDStatList::PrepareData()
 	InitializeFonts();
 }
 
-void SPDStatList::UpdateChildSlot()
+TSharedPtr<SHeaderRow> SPDStatList::RefreshHeaderRow(int32 HeaderRowIdx)
 {
-	PrepareData();
-	TSharedPtr<SHeaderRow>& Header = HeaderDataViews.Value.Header;
-	FPDStatStatics::CreateHeaderRow(Header, SectionWidth, 6,
+	TSharedPtr<SHeaderRow> Header =
+	FPDStatStatics::CreateHeaderRow(HeaderDataViews.Value.Header, WidgetSettings.DataViewSectionWidth, 6,
 		"0", *StatProgress_Header_Name.ToString(),
 		"1", *StatProgress_Header_Category.ToString(),
 		"2", *StatProgress_Header_Level.ToString(),
 		"3", *StatProgress_Header_Experience.ToString(),
 		"4", *StatProgress_Header_CurrentValue.ToString(),
 		"5", *StatProgress_Header_ModifiedOffset.ToString());
+	Header->Invalidate(EInvalidateWidgetReason::Paint);
 
+	return Header;
+}
+
+void SPDStatList::UpdateChildSlot()
+{
+	const int32 MaxWidth = WidgetSettings.MaxSUHeight;
+	
+	PrepareData();
+
+	const TSharedPtr<SHeaderRow> Header = RefreshHeaderRow();
 	HeaderDataViews.Value.ListView = SNew(SListView<TSharedPtr<FPDStatNetDatum>>)
 		.HeaderRow(Header)
 		.ListItemsSource(StatsAsSharedArray)
@@ -97,8 +115,9 @@ void SPDStatList::UpdateChildSlot()
 		SNew(SHorizontalBox)
 		+ SHorizontalBox::Slot()
 		.FillWidth(10)
+		.MaxWidth(MaxWidth)
 		[
-			SetWidgetTitle(SVerticalBox, StatBase_TitleText, TitleFont)
+			SetWidgetTitle(SVerticalBox, StatBase_TitleText, WidgetSettings.TitleFont)
 			+ SetListViewSlot(SVerticalBox, 800, HeaderDataViews.Value.ListView.ToSharedRef())
 		]
 	];	
@@ -130,7 +149,7 @@ TSharedRef<ITableRow> SPDStatList::MakeListViewWidget_AllStatData(TSharedPtr<FPD
 	// offsetting by a tiny amount as a workaround for now
 	constexpr double WidthDiscrepancy = (1.015);
 
-	const float TrueSectionWidth = SectionWidth * WidthDiscrepancy;
+	const float TrueSectionWidth = WidgetSettings.DataViewSectionWidth * WidthDiscrepancy;
 	
 	MutableThis->HeaderDataViews.Value.LatestTableRow =
 		SNew( STableRow< TSharedPtr<FPDStatNetDatum> >, OwnerTable )

@@ -3,6 +3,7 @@
 #pragma once
 
 #include "CoreMinimal.h"
+#include "PDProgressionSharedUI.h"
 #include "Net/PDProgressionNetDatum.h"
 #include "Subsystems/EngineSubsystem.h"
 
@@ -32,7 +33,7 @@ public:
 	virtual TSharedRef<SWidget> RebuildWidget() override;
 	/** @brief UE Boiler-plate, Resets InnerSlateWrapbox and InnerStatList then calls super */
 	virtual void ReleaseSlateResources(bool bReleaseChildren) override;
-	
+
 	/** @brief Calls RefreshInnerStatList after ensuring either 'EditorTestEntries_BaseList' or  'SectionWidth' has changed */
 	void RefreshStatListOnChangedProperty(FPropertyChangedEvent& PropertyChangedEvent);
 	/** @brief Calls 'RefreshStatListOnChangedProperty', passes along 'PropertyChangedEvent' */
@@ -53,6 +54,30 @@ public:
 	/** @brief Sets the stat-level popup visibility to 'Collapsed'. Exposing slate widget controls to BP */
 	UFUNCTION(BlueprintCallable)
 	void SetVisibility_StatLevelData(ESlateVisibility NewVisibility);
+
+	/** @brief Updates the stat-list main widget size limits. Exposing slate widget controls to BP */
+	UFUNCTION(BlueprintCallable)
+	void SetSizeLimits_StatListDataView(int32 SlateUnitSizeX, int32 SlateUnitSizeY);
+	
+	/** @brief Updates the offset popup size limits. Exposing slate widget controls to BP */
+	UFUNCTION(BlueprintCallable)
+	void SetSizeLimits_OffsetsDataView(int32 SlateUnitSizeX, int32 SlateUnitSizeY);
+	
+	/** @brief Updates the stat-level popup size limits. Exposing slate widget controls to BP */
+	UFUNCTION(BlueprintCallable)
+	void SetSizeLimits_LevelDataView(int32 SlateUnitSizeX, int32 SlateUnitSizeY);
+
+	/** @brief Updates the stat-list main widget fonts. Exposing slate widget controls to BP */
+	UFUNCTION(BlueprintCallable)		
+	void SetFonts_StatListDataView(const FSlateFontInfo& TitleFont, const FSlateFontInfo& SubTitleFont);
+	
+	/** @brief Updates the stat-level popup fonts. Exposing slate widget controls to BP */
+	UFUNCTION(BlueprintCallable)	
+	void SetFonts_LevelDataView(const FSlateFontInfo& TitleFont, const FSlateFontInfo& SubTitleFont);
+
+	/** @brief Updates the offset popup fonts. Exposing slate widget controls to BP */
+	UFUNCTION(BlueprintCallable)		
+	void SetFonts_OffsetsDataView(const FSlateFontInfo& TitleFont, const FSlateFontInfo& SubTitleFont);
 
 protected:
 	/** @brief Updates our dataview with entries found in our input editor test entries array,
@@ -116,10 +141,6 @@ public:
 	/** @brief Delegate used to resolve the owner ID */
 	UPROPERTY()
 	FOwnerIDDelegate OwnerIDDelegate;
-
-	/** @brief (Uniform) width of each column in the entries of 'InnerStatList' */
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Progression|Widgets")
-	int32 SectionWidth = 50;
 	
 	/** @brief Editor test data. Used to test/inspect in visual design editor */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Progression|Widgets|Stat List")
@@ -144,17 +165,19 @@ public:
 	
 	//
 	// Widget controls
-	
-	/** @brief Sets up editor binding callbacks, available to set up from the visual design editor */
+
+	/** @brief ModifySourcesPopup - BP/editor Exposed controls */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Progression|Widgets|Modify Sources")
-	ESlateVisibility Visibility_ModifySourcesPopup = ESlateVisibility::Visible;
-
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Progression|Widgets|Level Data")
-	ESlateVisibility Visibility_LevellingDataPopup = ESlateVisibility::Visible;
-
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Progression|Widgets|Stat List")
-	ESlateVisibility Visibility_BaseStatList = ESlateVisibility::Visible;
+	FPDWidgetBaseSettings Settings_ModifySourcesPopup;
 	
+	/** @brief LevellingDataPopup - BP/editor Exposed controls */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Progression|Widgets|Level Data")
+	FPDWidgetBaseSettings Settings_LevellingDataPopup;	
+
+	/** @brief BaseStatList - BP/editor Exposed controls */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Progression|Widgets|Stat List")
+	FPDWidgetBaseSettings Settings_BaseStatList;		
+
 	
 protected:	
 	//

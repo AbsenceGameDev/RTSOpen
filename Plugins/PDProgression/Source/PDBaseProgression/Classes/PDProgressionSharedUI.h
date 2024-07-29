@@ -86,6 +86,63 @@ struct FPDStatViewHeaderData
 	TSharedPtr<STableRow< TSharedPtr<TViewType>>> LatestTableRow;	
 };
 
+constexpr int32 FallbackUniformSize = 800;
+
+/** @brief Contains all settings that ended up being teh same on different widgets, keeping them together here makes things a bit more contained and easier for a human to parse the different widget class definitions */
+USTRUCT(Blueprintable)
+struct FPDWidgetBaseSettings
+{
+	GENERATED_BODY()
+
+	FPDWidgetBaseSettings()
+		: Visibility(ESlateVisibility()) {}		
+	
+	FPDWidgetBaseSettings(
+		ESlateVisibility InVisibility)
+		: Visibility(InVisibility)
+		, MaxSUWidth(FallbackUniformSize)
+		, MaxSUHeight(FallbackUniformSize) {}	
+	
+	FPDWidgetBaseSettings(
+		ESlateVisibility InVisibility,
+		int32 InMaxUniformSize)
+		: Visibility(InVisibility)
+		, MaxSUWidth(InMaxUniformSize)
+		, MaxSUHeight(InMaxUniformSize) {}	
+	
+	FPDWidgetBaseSettings(
+		ESlateVisibility InVisibility_ModifySourcesPopup,
+		int32 InMaxSUWidth,
+		int32 InMaxSUHeight)
+		: Visibility(InVisibility_ModifySourcesPopup)
+		, MaxSUWidth(InMaxSUWidth)
+		, MaxSUHeight(InMaxSUHeight) {}
+
+	//
+	// Widget controls
+	
+	/** @brief Our main title font  */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Progression|Widgets|Modify Sources")
+	FSlateFontInfo TitleFont;
+	/** @brief Our sub-title font  */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Progression|Widgets|Modify Sources")
+	FSlateFontInfo SubTitleFont;
+	
+	/** @brief ModifySourcesPopup - BP/editor Exposed visibility controls */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Progression|Widgets|Modify Sources")
+	ESlateVisibility Visibility; // = ESlateVisibility::Visible;
+	/** @brief To pass down to widgets we construct within ourselves to control their sizing/limits */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Progression|Widgets|Modify Sources")
+	int32 MaxSUWidth = 800;
+	/** @brief To pass down to widgets we construct within ourselves to control their sizing/limits */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Progression|Widgets|Modify Sources")
+	int32 MaxSUHeight = 800;
+
+	/** @brief The (uniform) width of each section in our data-view widget(s) */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Progression|Widgets|Modify Sources")
+	int32 DataViewSectionWidth = 120;	
+};
+
 
 /** @brief DataView Widget base class, Keeps some shared functions as-well as assigning our dataview types via template parameters */
 template<typename ... TViewTypes>
@@ -101,11 +158,17 @@ public:
 	/** @brief Initializes/Updates our font(s) if they have no valid typeface  */
 	void InitializeFonts()
 	{
-		if (TitleFont.TypefaceFontName.IsNone())
+		if (WidgetSettings.TitleFont.TypefaceFontName.IsNone())
 		{
 			UpdateFonts();
 		}
 	}
+
+	/** @brief Implement in child classes to return our header row definition */
+	virtual TSharedPtr<SHeaderRow> RefreshHeaderRow(int32 HeaderRowIdx = 0) = 0;
+
+	/** @brief Base call, ensures we have a title-font loaded, Sets up the child slot, and passes in the data view array to an slistview wrapped in a scrollbox */
+	virtual void UpdateChildSlot() = 0;
 
 	/** @brief Must be overridden in child classes to implement translation during detected drag movements */
 	virtual FReply DesignTimeTranslation(const FGeometry& MyGeometry, const FPointerEvent& MouseEvent) = 0;
@@ -114,22 +177,19 @@ public:
 	void UpdateFonts()
 	{
 		// @todo Set up a custom slate styleset for the saveeditors fonts and icons 
-		HalfSizedTitleFont = TitleFont = FAppStyle::GetFontStyle( TEXT("PropertyWindow.NormalFont"));
-		TitleFont.Size *= 8;
-		HalfSizedTitleFont.Size *= 4;
+		WidgetSettings.SubTitleFont = WidgetSettings.TitleFont = FAppStyle::GetFontStyle( TEXT("PropertyWindow.NormalFont"));
+		WidgetSettings.TitleFont.Size *= 8;
+		WidgetSettings.SubTitleFont.Size *= 2;
 	}
 	
-	/** @brief Our main title font  */
-	FSlateFontInfo TitleFont;
-	/** @brief Our sub-title font  */
-	FSlateFontInfo HalfSizedTitleFont;
-
+	
 	/** @brief ID of player/Owner of this slate widget */
 	int32 OwnerID;
 	/** @brief The selected tag, needed cache for some derived classes */
 	FGameplayTag SelectedStatTag;
-	/** @brief The (uniform) width of each section in our data-view widget(s) */
-	int32 SectionWidth = 50;
+
+	/** @brief The settings for our widget */
+	FPDWidgetBaseSettings WidgetSettings;
 
 	/** @brief Our data-view meta-data */
 	TTuple<FPDStatViewHeaderData<TViewTypes>...> HeaderDataViews;

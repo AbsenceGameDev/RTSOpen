@@ -63,8 +63,12 @@ public:
 	TSharedRef<ITableRow> MakeListViewWidget_LinkedStat_AffectedStats(TSharedPtr<FPDStatViewAffectedStat> StatViewAffectedStats, const TSharedRef<STableViewBase>& TableViewBase) const;
 	/** @brief Unused. Reserved.   */
 	void OnComponentSelected_LinkedStat_AffectedStats(TSharedPtr<FPDStatViewAffectedStat> FpdStatViewAffectedStats, ESelectInfo::Type Arg) const;
+
+	/** @brief Defines our header definition, is called on construction but is also called on table changes after construction */
+	virtual TSharedPtr<SHeaderRow> RefreshHeaderRow(int32 HeaderRowIdx = 0) override;	
+	
 	/** @brief Builds the data-view headers and the child-slot composition (Defines the widget-layout) */
-	void UpdateChildSlot();
+	virtual void UpdateChildSlot() override;
 
 	/** @brief Resolves the token types and amounts we will grant upon reaching the next level, caches the results */
 	void PrepareData();
@@ -125,8 +129,12 @@ public:
 	TSharedRef<ITableRow> MakeListViewWidget_LinkedStat(TSharedPtr<FPDStatViewModifySource> StatViewModifySource, const TSharedRef<STableViewBase>& OwnerTable) const;
 	/** @brief Unused. Reserved  */
 	void OnComponentSelected_LinkedStat(TSharedPtr<FPDStatViewModifySource> StatViewModifySource, ESelectInfo::Type Arg) const;
+
+	/** @brief Defines our header definition, is called on construction but is also called on table changes after construction */
+	virtual TSharedPtr<SHeaderRow> RefreshHeaderRow(int32 HeaderRowIdx = 0) override;	
+	
 	/** @brief Builds the data-view headers and the child-slot composition (Defines the widget-layout) */
-	virtual void UpdateChildSlot();
+	virtual void UpdateChildSlot() override;
 
 	//
 	// Translation	

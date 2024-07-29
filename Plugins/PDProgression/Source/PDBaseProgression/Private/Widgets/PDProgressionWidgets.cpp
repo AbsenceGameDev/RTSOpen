@@ -15,33 +15,120 @@
 
 #define LOCTEXT_NAMESPACE "PDStatList"
 
-
 void UPDStatListInnerWidget::RefreshStatListOnChangedProperty(FPropertyChangedEvent& PropertyChangedEvent)
 {
 	const FName PropertyName = PropertyChangedEvent.GetPropertyName();
-	const bool bDoesPropertyHaveCorrectName =
-		PropertyName.IsEqual(GET_MEMBER_NAME_CHECKED(UPDStatListInnerWidget, EditorTestEntries_BaseList))
-		|| PropertyName.IsEqual(GET_MEMBER_NAME_CHECKED(UPDStatListInnerWidget, SectionWidth));
+	const FName PotentialStructPropertyName = PropertyChangedEvent.GetMemberPropertyName();
 
-	if (PropertyName.IsEqual(GET_MEMBER_NAME_CHECKED(UPDStatListInnerWidget, Visibility_BaseStatList)))
+	if (PropertyName.IsEqual(GET_MEMBER_NAME_CHECKED(UPDStatListInnerWidget, EditorTestEntries_BaseList)))
 	{
-		SetVisibility_StatLevelData(Visibility_BaseStatList);
+		RefreshInnerStatList();
 		return;
 	}
-	if (PropertyName.IsEqual(GET_MEMBER_NAME_CHECKED(UPDStatListInnerWidget, Visibility_LevellingDataPopup)))
+
+	if (PropertyName.IsEqual(GET_MEMBER_NAME_CHECKED(UPDStatListInnerWidget, EditorTestEntries_LevelPopup_TokenData))
+		|| PropertyName.IsEqual(GET_MEMBER_NAME_CHECKED(UPDStatListInnerWidget, EditorTestEntries_LevelPopup_AffectedStatsData)))
 	{
-		SetVisibility_StatLevelData(Visibility_LevellingDataPopup);
+		RefreshStatLevel_Popup();
 		return;
 	}
-	if (PropertyName.IsEqual(GET_MEMBER_NAME_CHECKED(UPDStatListInnerWidget, Visibility_ModifySourcesPopup)))
+
+	if (PropertyName.IsEqual(GET_MEMBER_NAME_CHECKED(UPDStatListInnerWidget, EditorTestEntries_OffsetPopup_ModifySources)))
 	{
-		SetVisibility_StatOffsets(Visibility_ModifySourcesPopup);
+		RefreshStatOffset_Popup();
 		return;
-	}	
+	}		
+
+	if (PotentialStructPropertyName.IsEqual(GET_MEMBER_NAME_CHECKED(UPDStatListInnerWidget, Settings_BaseStatList)))
+	{
+		if (PropertyName.IsEqual(GET_MEMBER_NAME_CHECKED(FPDWidgetBaseSettings, Visibility)))
+		{
+			SetVisibility_StatLevelData(Settings_BaseStatList.Visibility);
+			return;
+		}
+
+		if (PropertyName.IsEqual(GET_MEMBER_NAME_CHECKED(FPDWidgetBaseSettings, DataViewSectionWidth)))
+		{
+			RefreshInnerStatList();
+			return;
+		}		
+
+		if (PropertyName.IsEqual(GET_MEMBER_NAME_CHECKED(FPDWidgetBaseSettings, MaxSUWidth))
+		 || PropertyName.IsEqual(GET_MEMBER_NAME_CHECKED(FPDWidgetBaseSettings, MaxSUHeight)))
+		{
+			SetSizeLimits_StatListDataView(Settings_BaseStatList.MaxSUWidth, Settings_BaseStatList.MaxSUHeight);
+			return;
+		}
+
+		if (PropertyName.IsEqual(GET_MEMBER_NAME_CHECKED(FPDWidgetBaseSettings, TitleFont))
+		 || PropertyName.IsEqual(GET_MEMBER_NAME_CHECKED(FPDWidgetBaseSettings, SubTitleFont)))
+		{
+			SetFonts_StatListDataView(Settings_BaseStatList.TitleFont, Settings_BaseStatList.SubTitleFont);
+			return;
+		}		
+		
+	}
 	
-	if (bDoesPropertyHaveCorrectName == false) { return; }
-	
-	RefreshInnerStatList();
+	if (PotentialStructPropertyName.IsEqual(GET_MEMBER_NAME_CHECKED(UPDStatListInnerWidget, Settings_LevellingDataPopup)))
+	{
+		if (PropertyName.IsEqual(GET_MEMBER_NAME_CHECKED(FPDWidgetBaseSettings, Visibility)))
+		{
+			SetVisibility_StatLevelData(Settings_LevellingDataPopup.Visibility);
+			return;
+		}
+
+		if (PropertyName.IsEqual(GET_MEMBER_NAME_CHECKED(FPDWidgetBaseSettings, DataViewSectionWidth)))
+		{
+			RefreshStatLevel_Popup();
+			return;
+		}				
+		
+		if (PropertyName.IsEqual(GET_MEMBER_NAME_CHECKED(FPDWidgetBaseSettings, MaxSUWidth))
+		 || PropertyName.IsEqual(GET_MEMBER_NAME_CHECKED(FPDWidgetBaseSettings, MaxSUHeight)))
+		{
+			SetSizeLimits_LevelDataView(Settings_LevellingDataPopup.MaxSUWidth, Settings_LevellingDataPopup.MaxSUHeight);
+			return;
+		}
+
+		if (PropertyName.IsEqual(GET_MEMBER_NAME_CHECKED(FPDWidgetBaseSettings, TitleFont))
+		 || PropertyName.IsEqual(GET_MEMBER_NAME_CHECKED(FPDWidgetBaseSettings, SubTitleFont)))
+		{
+			SetFonts_LevelDataView(Settings_BaseStatList.TitleFont, Settings_BaseStatList.SubTitleFont);
+			return;
+		}			
+		
+		return;
+	}
+	if (PotentialStructPropertyName.IsEqual(GET_MEMBER_NAME_CHECKED(UPDStatListInnerWidget, Settings_ModifySourcesPopup)))
+	{
+		if (PropertyName.IsEqual(GET_MEMBER_NAME_CHECKED(FPDWidgetBaseSettings, Visibility)))
+		{
+			SetVisibility_StatOffsets(Settings_ModifySourcesPopup.Visibility);
+			return;
+		}
+
+		if (PropertyName.IsEqual(GET_MEMBER_NAME_CHECKED(FPDWidgetBaseSettings, DataViewSectionWidth)))
+		{
+			RefreshStatOffset_Popup();
+			return;
+		}					
+		
+		if (PropertyName.IsEqual(GET_MEMBER_NAME_CHECKED(FPDWidgetBaseSettings, MaxSUWidth))
+		 || PropertyName.IsEqual(GET_MEMBER_NAME_CHECKED(FPDWidgetBaseSettings, MaxSUHeight)))
+		{
+			SetSizeLimits_OffsetsDataView(Settings_ModifySourcesPopup.MaxSUWidth, Settings_ModifySourcesPopup.MaxSUHeight);
+			return;
+		}
+
+		if (PropertyName.IsEqual(GET_MEMBER_NAME_CHECKED(FPDWidgetBaseSettings, TitleFont))
+		 || PropertyName.IsEqual(GET_MEMBER_NAME_CHECKED(FPDWidgetBaseSettings, SubTitleFont)))
+		{
+			SetFonts_OffsetsDataView(Settings_BaseStatList.TitleFont, Settings_BaseStatList.SubTitleFont);
+			return;
+		}			
+		
+		return;
+	}
 }
 
 void UPDStatListInnerWidget::PostEditChangeProperty(FPropertyChangedEvent& PropertyChangedEvent)
@@ -66,6 +153,9 @@ void UPDStatListInnerWidget::OnBindingChanged(const FName& Property)
 	Super::OnBindingChanged(Property);
 }
 
+//
+// @todo clean up re-used functionality
+
 void UPDStatListInnerWidget::SetVisibility_StatList(ESlateVisibility NewVisibility)
 {
 	if (InnerStatList.IsValid() == false) { return; }
@@ -87,6 +177,69 @@ void UPDStatListInnerWidget::SetVisibility_StatLevelData(ESlateVisibility NewVis
 	SelectedStatLevelData_PopUp->Invalidate(EInvalidateWidgetReason::Paint);
 }
 
+//
+// @todo clean up re-used functionality
+void UPDStatListInnerWidget::SetSizeLimits_StatListDataView(int32 SlateUnitSizeX, int32 SlateUnitSizeY)
+{
+	if (InnerStatList.IsValid() == false) { return; }
+	InnerStatList->WidgetSettings.MaxSUWidth = SlateUnitSizeX;
+	InnerStatList->WidgetSettings.MaxSUHeight = SlateUnitSizeY;
+
+	InnerStatList->UpdateChildSlot();
+	InnerStatList->Invalidate(EInvalidateWidgetReason::Paint);
+}
+
+void UPDStatListInnerWidget::SetSizeLimits_OffsetsDataView(int32 SlateUnitSizeX, int32 SlateUnitSizeY)
+{
+	if (SelectedStatOffsetData_PopUp.IsValid() == false) { return; }
+	SelectedStatOffsetData_PopUp->WidgetSettings.MaxSUWidth = SlateUnitSizeX;
+	SelectedStatOffsetData_PopUp->WidgetSettings.MaxSUHeight = SlateUnitSizeY;
+	
+	
+	SelectedStatOffsetData_PopUp->UpdateChildSlot();
+	SelectedStatOffsetData_PopUp->Invalidate(EInvalidateWidgetReason::Paint);
+}
+
+void UPDStatListInnerWidget::SetSizeLimits_LevelDataView(int32 SlateUnitSizeX, int32 SlateUnitSizeY)
+{
+	if (SelectedStatLevelData_PopUp.IsValid() == false) { return; }
+	SelectedStatLevelData_PopUp->WidgetSettings.MaxSUWidth = SlateUnitSizeX;
+	SelectedStatLevelData_PopUp->WidgetSettings.MaxSUHeight = SlateUnitSizeY;
+
+	SelectedStatLevelData_PopUp->UpdateChildSlot();
+	SelectedStatLevelData_PopUp->Invalidate(EInvalidateWidgetReason::Paint);
+}
+
+void UPDStatListInnerWidget::SetFonts_StatListDataView(const FSlateFontInfo& TitleFont, const FSlateFontInfo& SubTitleFont)
+{
+	if (InnerStatList.IsValid() == false) { return; }
+	InnerStatList->WidgetSettings.TitleFont = TitleFont;
+	InnerStatList->WidgetSettings.SubTitleFont = SubTitleFont;
+
+	InnerStatList->UpdateChildSlot();
+	InnerStatList->Invalidate(EInvalidateWidgetReason::Paint);	
+}
+
+void UPDStatListInnerWidget::SetFonts_LevelDataView(const FSlateFontInfo& TitleFont, const FSlateFontInfo& SubTitleFont)
+{
+	if (SelectedStatLevelData_PopUp.IsValid() == false) { return; }
+	SelectedStatLevelData_PopUp->WidgetSettings.TitleFont = TitleFont;
+	SelectedStatLevelData_PopUp->WidgetSettings.SubTitleFont = SubTitleFont;
+
+	SelectedStatLevelData_PopUp->UpdateChildSlot();
+	SelectedStatLevelData_PopUp->Invalidate(EInvalidateWidgetReason::Paint);
+}
+
+void UPDStatListInnerWidget::SetFonts_OffsetsDataView(const FSlateFontInfo& TitleFont, const FSlateFontInfo& SubTitleFont)
+{
+	if (SelectedStatOffsetData_PopUp.IsValid() == false) { return; }
+	SelectedStatOffsetData_PopUp->WidgetSettings.TitleFont = TitleFont;
+	SelectedStatOffsetData_PopUp->WidgetSettings.SubTitleFont = SubTitleFont;
+	
+	
+	SelectedStatOffsetData_PopUp->UpdateChildSlot();
+	SelectedStatOffsetData_PopUp->Invalidate(EInvalidateWidgetReason::Paint);	
+}
 
 void UPDStatListInnerWidget::RefreshInnerStatList()
 {
@@ -94,7 +247,7 @@ void UPDStatListInnerWidget::RefreshInnerStatList()
 	if (InnerStatList.IsValid())
 	{
 		UpdateDataViewWithEditorTestEntries(NetDataView, EditorTestEntries_BaseList);
-		InnerStatList->Refresh(INDEX_NONE, NetDataView, SectionWidth);
+		InnerStatList->Refresh(INDEX_NONE, NetDataView, Settings_BaseStatList.DataViewSectionWidth);
 	}
 }
 
@@ -105,7 +258,7 @@ void UPDStatListInnerWidget::RefreshStatLevel_Popup()
 		UpdateDataViewWithEditorTestEntries(TokenDataView, EditorTestEntries_LevelPopup_TokenData);
 		UpdateDataViewWithEditorTestEntries(AffectedStatsDataView, EditorTestEntries_LevelPopup_AffectedStatsData);
 		
-		SelectedStatLevelData_PopUp->Refresh(INDEX_NONE, TokenDataView, AffectedStatsDataView, SectionWidth);
+		SelectedStatLevelData_PopUp->Refresh(INDEX_NONE, TokenDataView, AffectedStatsDataView, Settings_LevellingDataPopup.DataViewSectionWidth);
 	}
 }
 
@@ -114,7 +267,7 @@ void UPDStatListInnerWidget::RefreshStatOffset_Popup()
 	if (SelectedStatOffsetData_PopUp.IsValid())
 	{
 		UpdateDataViewWithEditorTestEntries(ModifyingSourcesDataView, EditorTestEntries_OffsetPopup_ModifySources);
-		SelectedStatOffsetData_PopUp->Refresh(INDEX_NONE, ModifyingSourcesDataView, SectionWidth);
+		SelectedStatOffsetData_PopUp->Refresh(INDEX_NONE, ModifyingSourcesDataView,  Settings_ModifySourcesPopup.DataViewSectionWidth);
 	}
 }
 
@@ -127,25 +280,25 @@ TSharedRef<SWidget> UPDStatListInnerWidget::RebuildWidget()
 	if (InnerStatList.IsValid() == false)
 	{
 		UpdateDataViewWithEditorTestEntries(NetDataView, EditorTestEntries_BaseList);
-		InnerStatList = SNew(SPDStatList, OwnerID, NetDataView, SectionWidth);
+		InnerStatList = SNew(SPDStatList, OwnerID, NetDataView, Settings_BaseStatList.DataViewSectionWidth);
 	}
-	SetVisibility_StatList(Visibility_BaseStatList);
+	SetVisibility_StatList(Settings_BaseStatList.Visibility);
 
 	static const FGameplayTag DummyStarterTag = FGameplayTag{};
 	if (SelectedStatLevelData_PopUp.IsValid()  == false)
 	{
 		UpdateDataViewWithEditorTestEntries(TokenDataView, EditorTestEntries_LevelPopup_TokenData);
 		UpdateDataViewWithEditorTestEntries(AffectedStatsDataView, EditorTestEntries_LevelPopup_AffectedStatsData);
-		SelectedStatLevelData_PopUp = SNew(SPDSelectedStat_LevelData, OwnerID, DummyStarterTag ,TokenDataView, AffectedStatsDataView, SectionWidth);
+		SelectedStatLevelData_PopUp = SNew(SPDSelectedStat_LevelData, OwnerID, DummyStarterTag ,TokenDataView, AffectedStatsDataView, Settings_LevellingDataPopup.DataViewSectionWidth);
 	}
-	SetVisibility_StatLevelData(Visibility_LevellingDataPopup);
+	SetVisibility_StatLevelData(Settings_LevellingDataPopup.Visibility);
 
 	if (SelectedStatOffsetData_PopUp.IsValid()  == false)
 	{
 		UpdateDataViewWithEditorTestEntries(ModifyingSourcesDataView, EditorTestEntries_OffsetPopup_ModifySources);
-		SelectedStatOffsetData_PopUp = SNew(SPDSelectedStat_OffsetData, OwnerID, DummyStarterTag, ModifyingSourcesDataView, SectionWidth);
+		SelectedStatOffsetData_PopUp = SNew(SPDSelectedStat_OffsetData, OwnerID, DummyStarterTag, ModifyingSourcesDataView, Settings_ModifySourcesPopup.DataViewSectionWidth);
 	}
-	SetVisibility_StatOffsets(Visibility_ModifySourcesPopup);
+	SetVisibility_StatOffsets(Settings_ModifySourcesPopup.Visibility);
 	
 	
 	InnerSlateWrapbox->ClearChildren();
