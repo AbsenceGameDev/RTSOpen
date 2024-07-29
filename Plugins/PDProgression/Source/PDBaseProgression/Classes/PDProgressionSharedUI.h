@@ -128,6 +128,16 @@ struct FPDWidgetBaseSettings
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Progression|Widgets|Modify Sources")
 	FSlateFontInfo SubTitleFont;
 	
+	/** @brief Our table-header font .
+	 * @todo        This is not set up currently, SHeaderRow does not have a straight forward way to change the font afaik
+	 * @todo cont.  but I will dig through the source when I have some more spare time for lower priority changes */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Progression|Widgets|Modify Sources")
+	FSlateFontInfo TableHeaderFont;
+	/** @brief Our table-entry font  */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Progression|Widgets|Modify Sources")
+	FSlateFontInfo TableEntryFont;
+	
+	
 	/** @brief ModifySourcesPopup - BP/editor Exposed visibility controls */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Progression|Widgets|Modify Sources")
 	ESlateVisibility Visibility; // = ESlateVisibility::Visible;
@@ -158,11 +168,14 @@ public:
 	/** @brief Initializes/Updates our font(s) if they have no valid typeface  */
 	void InitializeFonts()
 	{
-		if (WidgetSettings.TitleFont.TypefaceFontName.IsNone())
+		if (WidgetSettings.TitleFont.HasValidFont() == false)
 		{
 			UpdateFonts();
 		}
 	}
+	/** @brief Retrieves an immutable reference to the widget settings */
+	virtual const FPDWidgetBaseSettings& RetrieveSettings() const { return WidgetSettings; };
+	
 
 	/** @brief Implement in child classes to return our header row definition */
 	virtual TSharedPtr<SHeaderRow> RefreshHeaderRow(int32 HeaderRowIdx = 0) = 0;
@@ -181,21 +194,30 @@ public:
 		WidgetSettings.TitleFont.Size *= 8;
 		WidgetSettings.SubTitleFont.Size *= 2;
 	}
+
+protected:
+	/** @brief Overwrites the widget settings, used when we have changes something in UMG land and want to update the base settings */
+	virtual void UpdateSettings(const FPDWidgetBaseSettings& OverrideSettings) { WidgetSettings = OverrideSettings; };
+	/** @brief Retrieves an mutable reference to the widget settings */
+	virtual FPDWidgetBaseSettings& RetrieveMutableSettings() const { return const_cast<FPDWidgetBaseSettings&>(WidgetSettings); };	
+
+public:
 	
 	
 	/** @brief ID of player/Owner of this slate widget */
 	int32 OwnerID;
 	/** @brief The selected tag, needed cache for some derived classes */
 	FGameplayTag SelectedStatTag;
-
-	/** @brief The settings for our widget */
-	FPDWidgetBaseSettings WidgetSettings;
-
+	
 	/** @brief Our data-view meta-data */
 	TTuple<FPDStatViewHeaderData<TViewTypes>...> HeaderDataViews;
 
 	/** @brief Flag that we use to tell widgets that implements us if we are in design-time or not */
 	bool bIsDesignTime = true;
+
+private:
+	/** @brief The settings for our widget */
+	FPDWidgetBaseSettings WidgetSettings;
 };
 
 /** @brief Modify Source data construct. Used by the 'SPDSelectedStat_OffsetData' slate widgets */
@@ -358,12 +380,13 @@ TSlateType::Slot() \
 	] \
 ]
 
-#define SetListHeaderSlot(TSlateType, TextContent, SectionWidth) \
+#define SetListHeaderSlot(TSlateType, TextContent, InFont, SectionWidth) \
 SHorizontalBox::Slot() \
 .MaxWidth(SectionWidth) \
 [ \
 	SNew(STextBlock) \
 	.Text(TextContent) \
+	.Font(InFont) \
 	.MinDesiredWidth(SectionWidth) \
 ]
 

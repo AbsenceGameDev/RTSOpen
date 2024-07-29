@@ -19,7 +19,7 @@ void UPDStatListInnerWidget::RefreshStatListOnChangedProperty(FPropertyChangedEv
 {
 	const FName PropertyName = PropertyChangedEvent.GetPropertyName();
 	const FName PotentialStructPropertyName = PropertyChangedEvent.GetMemberPropertyName();
-
+	
 	if (PropertyName.IsEqual(GET_MEMBER_NAME_CHECKED(UPDStatListInnerWidget, EditorTestEntries_BaseList)))
 	{
 		RefreshInnerStatList();
@@ -60,13 +60,13 @@ void UPDStatListInnerWidget::RefreshStatListOnChangedProperty(FPropertyChangedEv
 			return;
 		}
 
-		if (PropertyName.IsEqual(GET_MEMBER_NAME_CHECKED(FPDWidgetBaseSettings, TitleFont))
-		 || PropertyName.IsEqual(GET_MEMBER_NAME_CHECKED(FPDWidgetBaseSettings, SubTitleFont)))
+		if (PropertyName.IsEqual(GET_MEMBER_NAME_CHECKED(FSlateFontInfo, FontObject)))
 		{
-			SetFonts_StatListDataView(Settings_BaseStatList.TitleFont, Settings_BaseStatList.SubTitleFont);
+			SetFonts_StatListDataView(Settings_BaseStatList.TitleFont, Settings_BaseStatList.SubTitleFont,
+				Settings_BaseStatList.TableHeaderFont, Settings_BaseStatList.TableEntryFont);
 			return;
-		}		
-		
+		}
+		return;
 	}
 	
 	if (PotentialStructPropertyName.IsEqual(GET_MEMBER_NAME_CHECKED(UPDStatListInnerWidget, Settings_LevellingDataPopup)))
@@ -90,15 +90,16 @@ void UPDStatListInnerWidget::RefreshStatListOnChangedProperty(FPropertyChangedEv
 			return;
 		}
 
-		if (PropertyName.IsEqual(GET_MEMBER_NAME_CHECKED(FPDWidgetBaseSettings, TitleFont))
-		 || PropertyName.IsEqual(GET_MEMBER_NAME_CHECKED(FPDWidgetBaseSettings, SubTitleFont)))
+		if (PropertyName.IsEqual(GET_MEMBER_NAME_CHECKED(FSlateFontInfo, FontObject)))
 		{
-			SetFonts_LevelDataView(Settings_BaseStatList.TitleFont, Settings_BaseStatList.SubTitleFont);
+			SetFonts_LevelDataView(Settings_LevellingDataPopup.TitleFont, Settings_LevellingDataPopup.SubTitleFont,
+				Settings_LevellingDataPopup.TableHeaderFont, Settings_LevellingDataPopup.TableEntryFont);
 			return;
 		}			
 		
 		return;
 	}
+	
 	if (PotentialStructPropertyName.IsEqual(GET_MEMBER_NAME_CHECKED(UPDStatListInnerWidget, Settings_ModifySourcesPopup)))
 	{
 		if (PropertyName.IsEqual(GET_MEMBER_NAME_CHECKED(FPDWidgetBaseSettings, Visibility)))
@@ -120,14 +121,11 @@ void UPDStatListInnerWidget::RefreshStatListOnChangedProperty(FPropertyChangedEv
 			return;
 		}
 
-		if (PropertyName.IsEqual(GET_MEMBER_NAME_CHECKED(FPDWidgetBaseSettings, TitleFont))
-		 || PropertyName.IsEqual(GET_MEMBER_NAME_CHECKED(FPDWidgetBaseSettings, SubTitleFont)))
+		if (PropertyName.IsEqual(GET_MEMBER_NAME_CHECKED(FSlateFontInfo, FontObject)))
 		{
-			SetFonts_OffsetsDataView(Settings_BaseStatList.TitleFont, Settings_BaseStatList.SubTitleFont);
-			return;
+			SetFonts_OffsetsDataView(Settings_ModifySourcesPopup.TitleFont, Settings_ModifySourcesPopup.SubTitleFont,
+				Settings_ModifySourcesPopup.TableHeaderFont, Settings_ModifySourcesPopup.TableEntryFont);
 		}			
-		
-		return;
 	}
 }
 
@@ -182,8 +180,10 @@ void UPDStatListInnerWidget::SetVisibility_StatLevelData(ESlateVisibility NewVis
 void UPDStatListInnerWidget::SetSizeLimits_StatListDataView(int32 SlateUnitSizeX, int32 SlateUnitSizeY)
 {
 	if (InnerStatList.IsValid() == false) { return; }
-	InnerStatList->WidgetSettings.MaxSUWidth = SlateUnitSizeX;
-	InnerStatList->WidgetSettings.MaxSUHeight = SlateUnitSizeY;
+
+	FPDWidgetBaseSettings& Settings = InnerStatList->RetrieveMutableSettings();
+	Settings.MaxSUWidth = SlateUnitSizeX;
+	Settings.MaxSUHeight = SlateUnitSizeY;
 
 	InnerStatList->UpdateChildSlot();
 	InnerStatList->Invalidate(EInvalidateWidgetReason::Paint);
@@ -192,9 +192,10 @@ void UPDStatListInnerWidget::SetSizeLimits_StatListDataView(int32 SlateUnitSizeX
 void UPDStatListInnerWidget::SetSizeLimits_OffsetsDataView(int32 SlateUnitSizeX, int32 SlateUnitSizeY)
 {
 	if (SelectedStatOffsetData_PopUp.IsValid() == false) { return; }
-	SelectedStatOffsetData_PopUp->WidgetSettings.MaxSUWidth = SlateUnitSizeX;
-	SelectedStatOffsetData_PopUp->WidgetSettings.MaxSUHeight = SlateUnitSizeY;
-	
+
+	FPDWidgetBaseSettings& Settings = SelectedStatOffsetData_PopUp->RetrieveMutableSettings();
+	Settings.MaxSUWidth = SlateUnitSizeX;
+	Settings.MaxSUHeight = SlateUnitSizeY;
 	
 	SelectedStatOffsetData_PopUp->UpdateChildSlot();
 	SelectedStatOffsetData_PopUp->Invalidate(EInvalidateWidgetReason::Paint);
@@ -203,39 +204,57 @@ void UPDStatListInnerWidget::SetSizeLimits_OffsetsDataView(int32 SlateUnitSizeX,
 void UPDStatListInnerWidget::SetSizeLimits_LevelDataView(int32 SlateUnitSizeX, int32 SlateUnitSizeY)
 {
 	if (SelectedStatLevelData_PopUp.IsValid() == false) { return; }
-	SelectedStatLevelData_PopUp->WidgetSettings.MaxSUWidth = SlateUnitSizeX;
-	SelectedStatLevelData_PopUp->WidgetSettings.MaxSUHeight = SlateUnitSizeY;
+
+	
+	FPDWidgetBaseSettings& Settings = SelectedStatLevelData_PopUp->RetrieveMutableSettings();
+	Settings.MaxSUWidth = SlateUnitSizeX;
+	Settings.MaxSUHeight = SlateUnitSizeY;
 
 	SelectedStatLevelData_PopUp->UpdateChildSlot();
 	SelectedStatLevelData_PopUp->Invalidate(EInvalidateWidgetReason::Paint);
 }
 
-void UPDStatListInnerWidget::SetFonts_StatListDataView(const FSlateFontInfo& TitleFont, const FSlateFontInfo& SubTitleFont)
+void UPDStatListInnerWidget::SetFonts_StatListDataView(const FSlateFontInfo& TitleFont, const FSlateFontInfo& SubTitleFont,
+	const FSlateFontInfo& TableHeaderFont, const FSlateFontInfo& TableEntryFont)
 {
 	if (InnerStatList.IsValid() == false) { return; }
-	InnerStatList->WidgetSettings.TitleFont = TitleFont;
-	InnerStatList->WidgetSettings.SubTitleFont = SubTitleFont;
 
+	FPDWidgetBaseSettings& Settings = InnerStatList->RetrieveMutableSettings();
+	Settings.TitleFont = TitleFont;
+	Settings.SubTitleFont = SubTitleFont;
+	Settings.TableHeaderFont = TableHeaderFont;
+	Settings.TableEntryFont = TableEntryFont;
+
+	
 	InnerStatList->UpdateChildSlot();
 	InnerStatList->Invalidate(EInvalidateWidgetReason::Paint);	
 }
 
-void UPDStatListInnerWidget::SetFonts_LevelDataView(const FSlateFontInfo& TitleFont, const FSlateFontInfo& SubTitleFont)
+void UPDStatListInnerWidget::SetFonts_LevelDataView(const FSlateFontInfo& TitleFont, const FSlateFontInfo& SubTitleFont,
+	const FSlateFontInfo& TableHeaderFont, const FSlateFontInfo& TableEntryFont)
 {
 	if (SelectedStatLevelData_PopUp.IsValid() == false) { return; }
-	SelectedStatLevelData_PopUp->WidgetSettings.TitleFont = TitleFont;
-	SelectedStatLevelData_PopUp->WidgetSettings.SubTitleFont = SubTitleFont;
+
+	FPDWidgetBaseSettings& Settings = SelectedStatLevelData_PopUp->RetrieveMutableSettings();
+	Settings.TitleFont = TitleFont;
+	Settings.SubTitleFont = SubTitleFont;
+	Settings.TableHeaderFont = TableHeaderFont;
+	Settings.TableEntryFont = TableEntryFont;
 
 	SelectedStatLevelData_PopUp->UpdateChildSlot();
 	SelectedStatLevelData_PopUp->Invalidate(EInvalidateWidgetReason::Paint);
 }
 
-void UPDStatListInnerWidget::SetFonts_OffsetsDataView(const FSlateFontInfo& TitleFont, const FSlateFontInfo& SubTitleFont)
+void UPDStatListInnerWidget::SetFonts_OffsetsDataView(const FSlateFontInfo& TitleFont, const FSlateFontInfo& SubTitleFont,
+	const FSlateFontInfo& TableHeaderFont, const FSlateFontInfo& TableEntryFont)
 {
 	if (SelectedStatOffsetData_PopUp.IsValid() == false) { return; }
-	SelectedStatOffsetData_PopUp->WidgetSettings.TitleFont = TitleFont;
-	SelectedStatOffsetData_PopUp->WidgetSettings.SubTitleFont = SubTitleFont;
 	
+	FPDWidgetBaseSettings& Settings = SelectedStatOffsetData_PopUp->RetrieveMutableSettings();
+	Settings.TitleFont = TitleFont;
+	Settings.SubTitleFont = SubTitleFont;
+	Settings.TableHeaderFont = TableHeaderFont;
+	Settings.TableEntryFont = TableEntryFont;
 	
 	SelectedStatOffsetData_PopUp->UpdateChildSlot();
 	SelectedStatOffsetData_PopUp->Invalidate(EInvalidateWidgetReason::Paint);	
@@ -247,7 +266,7 @@ void UPDStatListInnerWidget::RefreshInnerStatList()
 	if (InnerStatList.IsValid())
 	{
 		UpdateDataViewWithEditorTestEntries(NetDataView, EditorTestEntries_BaseList);
-		InnerStatList->Refresh(INDEX_NONE, NetDataView, Settings_BaseStatList.DataViewSectionWidth);
+		InnerStatList->Refresh(INDEX_NONE, NetDataView, Settings_BaseStatList);
 	}
 }
 
@@ -258,7 +277,7 @@ void UPDStatListInnerWidget::RefreshStatLevel_Popup()
 		UpdateDataViewWithEditorTestEntries(TokenDataView, EditorTestEntries_LevelPopup_TokenData);
 		UpdateDataViewWithEditorTestEntries(AffectedStatsDataView, EditorTestEntries_LevelPopup_AffectedStatsData);
 		
-		SelectedStatLevelData_PopUp->Refresh(INDEX_NONE, TokenDataView, AffectedStatsDataView, Settings_LevellingDataPopup.DataViewSectionWidth);
+		SelectedStatLevelData_PopUp->Refresh(INDEX_NONE, TokenDataView, AffectedStatsDataView, Settings_LevellingDataPopup);
 	}
 }
 
@@ -267,7 +286,7 @@ void UPDStatListInnerWidget::RefreshStatOffset_Popup()
 	if (SelectedStatOffsetData_PopUp.IsValid())
 	{
 		UpdateDataViewWithEditorTestEntries(ModifyingSourcesDataView, EditorTestEntries_OffsetPopup_ModifySources);
-		SelectedStatOffsetData_PopUp->Refresh(INDEX_NONE, ModifyingSourcesDataView,  Settings_ModifySourcesPopup.DataViewSectionWidth);
+		SelectedStatOffsetData_PopUp->Refresh(INDEX_NONE, ModifyingSourcesDataView,  Settings_ModifySourcesPopup);
 	}
 }
 
@@ -280,7 +299,7 @@ TSharedRef<SWidget> UPDStatListInnerWidget::RebuildWidget()
 	if (InnerStatList.IsValid() == false)
 	{
 		UpdateDataViewWithEditorTestEntries(NetDataView, EditorTestEntries_BaseList);
-		InnerStatList = SNew(SPDStatList, OwnerID, NetDataView, Settings_BaseStatList.DataViewSectionWidth);
+		InnerStatList = SNew(SPDStatList, OwnerID, NetDataView, Settings_BaseStatList);
 	}
 	SetVisibility_StatList(Settings_BaseStatList.Visibility);
 
@@ -289,14 +308,14 @@ TSharedRef<SWidget> UPDStatListInnerWidget::RebuildWidget()
 	{
 		UpdateDataViewWithEditorTestEntries(TokenDataView, EditorTestEntries_LevelPopup_TokenData);
 		UpdateDataViewWithEditorTestEntries(AffectedStatsDataView, EditorTestEntries_LevelPopup_AffectedStatsData);
-		SelectedStatLevelData_PopUp = SNew(SPDSelectedStat_LevelData, OwnerID, DummyStarterTag ,TokenDataView, AffectedStatsDataView, Settings_LevellingDataPopup.DataViewSectionWidth);
+		SelectedStatLevelData_PopUp = SNew(SPDSelectedStat_LevelData, OwnerID, DummyStarterTag ,TokenDataView, AffectedStatsDataView, Settings_LevellingDataPopup);
 	}
 	SetVisibility_StatLevelData(Settings_LevellingDataPopup.Visibility);
 
 	if (SelectedStatOffsetData_PopUp.IsValid()  == false)
 	{
 		UpdateDataViewWithEditorTestEntries(ModifyingSourcesDataView, EditorTestEntries_OffsetPopup_ModifySources);
-		SelectedStatOffsetData_PopUp = SNew(SPDSelectedStat_OffsetData, OwnerID, DummyStarterTag, ModifyingSourcesDataView, Settings_ModifySourcesPopup.DataViewSectionWidth);
+		SelectedStatOffsetData_PopUp = SNew(SPDSelectedStat_OffsetData, OwnerID, DummyStarterTag, ModifyingSourcesDataView, Settings_ModifySourcesPopup);
 	}
 	SetVisibility_StatOffsets(Settings_ModifySourcesPopup.Visibility);
 	

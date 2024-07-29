@@ -37,10 +37,10 @@ public:
 	SLATE_END_ARGS()
 	
 	/** @brief Stores a pointer to the copied save data and then Calls UpdateChildSlot, passing ArrayRef as the opaquedata parameter */
-	void Construct(const FArguments& InArgs, int32 InOwnerID, TArray<TSharedPtr<FPDStatNetDatum>>& DataViewRef, const int32 InSectionWidth);
+	void Construct(const FArguments& InArgs, int32 InOwnerID, TArray<TSharedPtr<FPDStatNetDatum>>& DataViewRef, const FPDWidgetBaseSettings& WidgetSettingsUpdate);
 	/** @brief Refreshes our list view, used when there has been an update to the data we want to view 
 	 * @details Refreshes the elements in 'HeaderDataViews.Key.DataViewPtr' and calls rebuild on 'HeaderDataViews.Key.ListView'  */
-	void Refresh(int32 InOwnerID, TArray<TSharedPtr<FPDStatNetDatum>>& DataViewRef, const int32 NewSectionWidth);
+	void Refresh(int32 InOwnerID, TArray<TSharedPtr<FPDStatNetDatum>>& DataViewRef, const FPDWidgetBaseSettings& WidgetSettingsUpdate);
 	/** @brief Prepares our view data. Iterates our owners StatList and fills 'StatsAsSharedArray' accordingly  */
 	void PrepareData();
 
@@ -78,6 +78,8 @@ public:
 	static FText StatProgress_Header_Level;          /**< @ingroup SelectedSources_Labels */
 	static FText StatProgress_Header_Experience;     /**< @ingroup SelectedSources_Labels */
 	static FText StatProgress_Header_ModifiedOffset; /**< @ingroup SelectedSources_Labels */
+	
+	friend class UPDStatListInnerWidget;	
 };
 
 

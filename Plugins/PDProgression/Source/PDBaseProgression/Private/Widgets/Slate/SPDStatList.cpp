@@ -32,19 +32,19 @@ FText SPDStatList::StatProgress_Header_ModifiedOffset = LOCTEXT("Stat_HeaderRow_
 
 //
 // STAT-LIST MAIN
-void SPDStatList::Construct(const FArguments& InArgs, int32 InOwnerID, TArray<TSharedPtr<FPDStatNetDatum>>& DataViewRef, const int32 InSectionWidth)
+void SPDStatList::Construct(const FArguments& InArgs, int32 InOwnerID, TArray<TSharedPtr<FPDStatNetDatum>>& DataViewRef, const FPDWidgetBaseSettings& WidgetSettingsUpdate)
 {
-	WidgetSettings.DataViewSectionWidth = InSectionWidth;
-	Refresh(InOwnerID, DataViewRef, WidgetSettings.DataViewSectionWidth);
+	Refresh(InOwnerID, DataViewRef, WidgetSettingsUpdate);
 }
 
-void SPDStatList::Refresh(int32 InOwnerID, TArray<TSharedPtr<FPDStatNetDatum>>& DataViewRef, const int32 InSectionWidth)
+void SPDStatList::Refresh(int32 InOwnerID, TArray<TSharedPtr<FPDStatNetDatum>>& DataViewRef, const FPDWidgetBaseSettings& WidgetSettingsUpdate)
 {
+	const FPDWidgetBaseSettings& Settings = RetrieveMutableSettings();
+	const bool bIsSectionWidthChanged = Settings.DataViewSectionWidth != WidgetSettingsUpdate.DataViewSectionWidth;
+	UpdateSettings(WidgetSettingsUpdate);
+
 	OwnerID = InOwnerID;
 	StatsAsSharedArray = &DataViewRef;
-
-	const bool bIsSectionWidthChanged = WidgetSettings.DataViewSectionWidth != InSectionWidth;
-	WidgetSettings.DataViewSectionWidth = InSectionWidth;
 	
 	// Potentially lazy construction
 	const TSharedPtr<SListView<TSharedPtr<FPDStatNetDatum>>> ActualList = HeaderDataViews.Value.ListView;
@@ -82,8 +82,10 @@ void SPDStatList::PrepareData()
 
 TSharedPtr<SHeaderRow> SPDStatList::RefreshHeaderRow(int32 HeaderRowIdx)
 {
+	const FPDWidgetBaseSettings& Settings = RetrieveSettings();
+	
 	TSharedPtr<SHeaderRow> Header =
-	FPDStatStatics::CreateHeaderRow(HeaderDataViews.Value.Header, WidgetSettings.DataViewSectionWidth, 6,
+	FPDStatStatics::CreateHeaderRow(HeaderDataViews.Value.Header, Settings.DataViewSectionWidth, 6,
 		"0", *StatProgress_Header_Name.ToString(),
 		"1", *StatProgress_Header_Category.ToString(),
 		"2", *StatProgress_Header_Level.ToString(),
@@ -97,7 +99,8 @@ TSharedPtr<SHeaderRow> SPDStatList::RefreshHeaderRow(int32 HeaderRowIdx)
 
 void SPDStatList::UpdateChildSlot()
 {
-	const int32 MaxWidth = WidgetSettings.MaxSUHeight;
+	const FPDWidgetBaseSettings& Settings = RetrieveSettings();
+	const int32 MaxWidth = Settings.MaxSUHeight;
 	
 	PrepareData();
 
@@ -117,7 +120,7 @@ void SPDStatList::UpdateChildSlot()
 		.FillWidth(10)
 		.MaxWidth(MaxWidth)
 		[
-			SetWidgetTitle(SVerticalBox, StatBase_TitleText, WidgetSettings.TitleFont)
+			SetWidgetTitle(SVerticalBox, StatBase_TitleText, Settings.TitleFont)
 			+ SetListViewSlot(SVerticalBox, 800, HeaderDataViews.Value.ListView.ToSharedRef())
 		]
 	];	
@@ -126,6 +129,8 @@ void SPDStatList::UpdateChildSlot()
 
 TSharedRef<ITableRow> SPDStatList::MakeListViewWidget_AllStatData(TSharedPtr<FPDStatNetDatum> InItem, const TSharedRef<STableViewBase>& OwnerTable) const
 {
+	const FPDWidgetBaseSettings& Settings = RetrieveSettings();
+	
 	const FPDStatNetDatum& CurrentStatNetDatum = *InItem.Get();
 
 	const FGameplayTag& StatTag = CurrentStatNetDatum.ProgressionTag;
@@ -149,18 +154,18 @@ TSharedRef<ITableRow> SPDStatList::MakeListViewWidget_AllStatData(TSharedPtr<FPD
 	// offsetting by a tiny amount as a workaround for now
 	constexpr double WidthDiscrepancy = (1.015);
 
-	const float TrueSectionWidth = WidgetSettings.DataViewSectionWidth * WidthDiscrepancy;
+	const float TrueSectionWidth = Settings.DataViewSectionWidth * WidthDiscrepancy;
 	
 	MutableThis->HeaderDataViews.Value.LatestTableRow =
 		SNew( STableRow< TSharedPtr<FPDStatNetDatum> >, OwnerTable )
 	[
 		SNew(SHorizontalBox)
-		+ SetListHeaderSlot(SHorizontalBox, StatNameAsText, TrueSectionWidth )
-		+ SetListHeaderSlot(SHorizontalBox, StatCategoryAsText, TrueSectionWidth )
-		+ SetListHeaderSlot(SHorizontalBox, LevelAsText, TrueSectionWidth )
-		+ SetListHeaderSlot(SHorizontalBox, ExperienceAsText, TrueSectionWidth )
-		+ SetListHeaderSlot(SHorizontalBox, AppliedValueAsText, TrueSectionWidth )
-		+ SetListHeaderSlot(SHorizontalBox, ModifiersAsText, TrueSectionWidth )
+		+ SetListHeaderSlot(SHorizontalBox, StatNameAsText, Settings.TableEntryFont, TrueSectionWidth )
+		+ SetListHeaderSlot(SHorizontalBox, StatCategoryAsText, Settings.TableEntryFont, TrueSectionWidth )
+		+ SetListHeaderSlot(SHorizontalBox, LevelAsText, Settings.TableEntryFont, TrueSectionWidth )
+		+ SetListHeaderSlot(SHorizontalBox, ExperienceAsText, Settings.TableEntryFont, TrueSectionWidth )
+		+ SetListHeaderSlot(SHorizontalBox, AppliedValueAsText, Settings.TableEntryFont, TrueSectionWidth )
+		+ SetListHeaderSlot(SHorizontalBox, ModifiersAsText, Settings.TableEntryFont, TrueSectionWidth )
 	];
 
 	// ...

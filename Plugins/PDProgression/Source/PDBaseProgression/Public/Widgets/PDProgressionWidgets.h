@@ -69,15 +69,18 @@ public:
 
 	/** @brief Updates the stat-list main widget fonts. Exposing slate widget controls to BP */
 	UFUNCTION(BlueprintCallable)		
-	void SetFonts_StatListDataView(const FSlateFontInfo& TitleFont, const FSlateFontInfo& SubTitleFont);
+	void SetFonts_StatListDataView(const FSlateFontInfo& TitleFont, const FSlateFontInfo& SubTitleFont,
+		const FSlateFontInfo& TableHeaderFont, const FSlateFontInfo& TableEntryFont);
 	
 	/** @brief Updates the stat-level popup fonts. Exposing slate widget controls to BP */
 	UFUNCTION(BlueprintCallable)	
-	void SetFonts_LevelDataView(const FSlateFontInfo& TitleFont, const FSlateFontInfo& SubTitleFont);
+	void SetFonts_LevelDataView(const FSlateFontInfo& TitleFont, const FSlateFontInfo& SubTitleFont,
+		const FSlateFontInfo& TableHeaderFont, const FSlateFontInfo& TableEntryFont);
 
 	/** @brief Updates the offset popup fonts. Exposing slate widget controls to BP */
 	UFUNCTION(BlueprintCallable)		
-	void SetFonts_OffsetsDataView(const FSlateFontInfo& TitleFont, const FSlateFontInfo& SubTitleFont);
+	void SetFonts_OffsetsDataView(const FSlateFontInfo& TitleFont, const FSlateFontInfo& SubTitleFont,
+		const FSlateFontInfo& TableHeaderFont, const FSlateFontInfo& TableEntryFont);
 
 protected:
 	/** @brief Updates our dataview with entries found in our input editor test entries array,

@@ -45,14 +45,14 @@ public:
 		const FGameplayTag& InSelectedStatTag,
 		TArray<TSharedPtr<FPDSkillTokenBase>>& TokenArrayRef,
 		TArray<TSharedPtr<FPDStatViewAffectedStat>>& AffectedStatsRef,
-		const int32 InSectionWidth);
+		const FPDWidgetBaseSettings& WidgetSettingsUpdate);
 
 	/** @brief Refreshes the elements in 'HeaderDataViews.Key.DataViewPtr' & 'HeaderDataViews.Value.DataViewPtr' and calls rebuild on their respective list-views  */
 	void Refresh(
 		int32 InOwnerID,
 		TArray<TSharedPtr<FPDSkillTokenBase>>& TokenArrayRef,
 		TArray<TSharedPtr<FPDStatViewAffectedStat>>& AffectedStatsRef,
-		const int32 InSectionWidth);
+		const FPDWidgetBaseSettings& WidgetSettingsUpdate);
 	
 	/** @brief Token entry widget. Is used to display levelling, token-related, data about a selected stat. How many tokens of a given type will be granted upon leveling the stat  */
 	TSharedRef<ITableRow> MakeListViewWidget_LinkedStat_TokensToGrant(TSharedPtr<FPDSkillTokenBase> StatViewTokensToGrant, const TSharedRef<STableViewBase>& TableViewBase) const;
@@ -95,6 +95,8 @@ public:
 	static FText OtherStatsAffectedEntryLabel; /**< @ingroup SelectedStat_Labels */
 
 	static FText ExperienceBar_Title;  /**< @ingroup SelectedStat_Labels */
+	
+	friend class UPDStatListInnerWidget;	
 };
 
 
@@ -115,7 +117,7 @@ public:
 		int32 InOwnerID,
 		const FGameplayTag& InSelectedStatTag,
 		TArray<TSharedPtr<FPDStatViewModifySource>>& ArrayRef,
-		const int32 InSectionWidth);
+		const FPDWidgetBaseSettings& WidgetSettingsUpdate);
 
 	/** @brief Resolves the expected cross behaviour value increase for next level, caches the results */
 	void PrepareData();
@@ -123,7 +125,7 @@ public:
 	void Refresh(
 		int32 InOwnerID,
 		TArray<TSharedPtr<FPDStatViewModifySource>>& DataViewRef,
-		const int32 NewSectionWidth);
+		const FPDWidgetBaseSettings& WidgetSettingsUpdate);
 
 	/** @brief Representation of the entry widgets of the offset/modifier targets   */
 	TSharedRef<ITableRow> MakeListViewWidget_LinkedStat(TSharedPtr<FPDStatViewModifySource> StatViewModifySource, const TSharedRef<STableViewBase>& OwnerTable) const;
@@ -149,6 +151,8 @@ public:
 	static FText StatSources_Header_Category;      /**< @ingroup SelectedSources_Labels */
 	static FText StatSources_Header_AppliedOffset; /**< @ingroup SelectedSources_Labels */
 	static FText StatSources_Header_Curves;        /**< @ingroup SelectedSources_Labels */
+	
+	friend class UPDStatListInnerWidget;	
 };
 
 
