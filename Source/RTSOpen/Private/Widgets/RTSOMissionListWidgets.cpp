@@ -1,119 +1,63 @@
 ﻿/* @author: Ario Amin @ Permafrost Development. @copyright: Full BSL(1.1) License included at bottom of the file  */
+#include "Widgets/RTSOMissionListWidgets.h"
 
-#pragma once
+#include "Components/HorizontalBox.h"
+#include "Widgets/Layout/SWrapBox.h"
+#include "Widgets/Slate/SRTSOMissionList.h"
 
-#include "CoreMinimal.h"
-#include "GameplayTagContainer.h"
-#include "Subsystems/EngineSubsystem.h"
+#define LOCTEXT_NAMESPACE "RTSOMissionList"
 
-#include "RTSOpenCommon.h"
-#include "SaveEditor/SRTSOSaveEditor.h"
-#include "SRTSOMissionList.generated.h"
-
-
-/** @brief Conversation Actor State wrapper */
-USTRUCT()
-struct FRTSOMissionProgress
+TSharedRef<SWidget> URTSOMissionListInnerWidget::RebuildWidget()
 {
-	GENERATED_BODY()
-
-	/** @brief Map of a players complete progression data. Datum per mission tag */
-	UPROPERTY(EditAnywhere)
-	TMap<FGameplayTag, FRTSOConversationMetaProgressionDatum> ProgressionDataMap;
-
-};
-
-
-class RTSOPEN_API SRTSOMissionList : public SCompoundWidget
-{
-public:
-	
-	/** @brief Generic call to create picker windows of differing types @todo finish impl. of related Picker classes  */
-	template<typename TPickerClass>
-	TSharedRef<SWindow> CreatePickerDialog(TSharedRef<SWindow>& PickerWindow, UClass* FilterInterfaceClass)
+	if (InnerWrapBox.IsValid() == false)
 	{
-		FClassViewerInitializationOptions InitOptions;
-		InitOptions.Mode = EClassViewerMode::ClassPicker;
-		InitOptions.DisplayMode = EClassViewerDisplayMode::TreeView;
-
-		const TSharedRef<FRTSSaveEd_InteractableClassFilter> SaveEd_InteractableClassFilter = MakeShared<FRTSSaveEd_InteractableClassFilter>();
-		SaveEd_InteractableClassFilter->InterfaceThatMustBeImplemented = FilterInterfaceClass;
-		InitOptions.ClassFilters.Add(SaveEd_InteractableClassFilter);
+		InnerWrapBox =
+			SNew(SWrapBox);
+	}
 	
-		return SNew(TPickerClass)
-				.ParentWindow(PickerWindow)
-				.Options(InitOptions)
-				.AssetType(nullptr);		
+	if (InnerMissionList.IsValid() == false)
+	{
+		InnerMissionList =
+			SNew(SRTSOMissionList, OwnerID, LinkedSaveData, MissionDataView);
 	}
 
-	/** @brief Generic call to create picker windows of differing types @todo finish impl. of related Picker classes  */
-	template<typename TPickerClass>
-	TSharedRef<SWindow> CreatePickerWindow()
-	{
-		// Create the window to pick the class
-		TSharedRef<SWindow> PickerWindow = SNew(SWindow)
-			.Title(FText())
-			.SizingRule( ESizingRule::Autosized )
-			.ClientSize( FVector2D( 0.f, 300.f ))
-			.SupportsMaximize(false)
-			.SupportsMinimize(false);
-
-		TSharedRef<TPickerClass> PickerDialog = CreatePickerDialog<TPickerClass>(PickerWindow, UPDInteractInterface::StaticClass());
-		PickerWindow->SetContent(PickerDialog);
-
-		const TSharedPtr<SWindow> ParentWindow = FSlateApplication::Get().GetActiveTopLevelRegularWindow();
-		if( ParentWindow.IsValid() )
-		{
-			FSlateApplication::Get().AddModalWindow(PickerWindow, ParentWindow );
-		}
-
-		return PickerWindow;		
-	}
-
-	/** @brief Font we want to use for titles in teh save editor */
-	FSlateFontInfo TitleFont;	
-	/** @brief Linked copy of the selected savedata. Any changes will be on this copy until we want to commit them to the actual save-file */
-	FRTSSaveData* LinkedSaveDataCopy = nullptr;	
-
-	DECLARE_DELEGATE_OneParam( FOnMissionDataChosen, const FRTSOMissionProgress&);
+	InnerWrapBox->ClearChildren();
+	SWrapBox::FScopedWidgetSlotArguments SlotArg = InnerWrapBox->AddSlot();
+	SlotArg.AttachWidget(InnerMissionList.ToSharedRef());
 	
-	SLATE_BEGIN_ARGS(SRTSOMissionList) { }
- 		SLATE_EVENT(FOnUserScrolled, OnUserScrolled)
- 		SLATE_EVENT(FOnClicked, OnUserClicked)
-	SLATE_END_ARGS()
-	
-	/** @brief Stores a pointer to the copied save data and then Calls UpdateChildSlot, passing ArrayRef as the opaquedata parameter */
-	void Construct(const FArguments& InArgs, int32 InOwnerID, FRTSSaveData* InLinkedData,  TArray<TSharedPtr<FRTSOMissionProgress>>& ArrayRef);
-	/** @brief Base call, ensures we have a title-font loaded, Sets up the child slot, and passes in the data view array to an slistview wrapped in a scrollbox */
-	virtual void UpdateChildSlot(void* OpaqueData);
-	
-	/** @brief Displays the actual list item for each entry in ConversationStatesAsSharedArray, which in this case is the states in 'FRTSOMissionProgress' */
-	TSharedRef<ITableRow> MakeListViewWidget_AllMissionData(TSharedPtr<FRTSOMissionProgress> InItem, const TSharedRef<STableViewBase>& OwnerTable) const;
-	void OnComponentSelected_AllMissionData(TSharedPtr<FRTSOMissionProgress> InItem, ESelectInfo::Type InSelectInfo);
-	
-	/** @brief Array 'View' that is used to display the data related to this editor widget */
-	TArray<TSharedPtr<FRTSOMissionProgress>>* MissionsAsSharedArray;
+	return Super::RebuildWidget();
+}
 
-	// Callbacks
-	FOnMissionDataChosen OnMissionDataChosen{};
-
-	UClass* SelectedClass = nullptr;
-
-	// View Tables
-	TSharedPtr<STableRow< TSharedPtr<FRTSOMissionProgress>>> ConversationStateTable;
-
-	int32 OwnerID = INDEX_NONE;
+void URTSOMissionListInnerWidget::ReleaseSlateResources(bool bReleaseChildren)
+{
+	InnerWrapBox.Reset();
+	InnerMissionList.Reset();
 	
-	// Localized text
-	static FText MissionBase_TitleText;
-	static FText MissionProgress_BaseData_Active_TitleText;
-	static FText MissionProgress_BaseData_Inactive_TitleText;
-	static FText MissionProgress_BaseData_ActorID_TitleText;
-	static FText MissionProgress_BaseData_Type_TitleText;
-	static FText MissionProgress_MissionData_TitleText;
-	static FText MissionProgress_MissionData_MissionList_TitleText;
-	static FText MissionProgress_MissionData_ProgressionPerPlayer_TitleText;
-};
+	Super::ReleaseSlateResources(bReleaseChildren);
+}
+
+void URTSOMissionListUserWidget::NativeConstruct()
+{
+	Super::NativeConstruct();
+}
+
+void URTSOMissionListUserWidget::NativeDestruct()
+{
+	Super::NativeDestruct();
+}
+
+void URTSOMissionListUserWidget::NativePreConstruct()
+{
+	Super::NativePreConstruct();
+}
+
+void URTSOMissionListUserWidget::NativeTick(const FGeometry& MyGeometry, float InDeltaTime)
+{
+	Super::NativeTick(MyGeometry, InDeltaTime);
+}
+
+
+#undef LOCTEXT_NAMESPACE
 
 
 /**

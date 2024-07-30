@@ -212,9 +212,9 @@ void SRTSOMissionList::OnComponentSelected_AllMissionData(TSharedPtr<FRTSOMissio
 		break;
 	}
 	
-	if(OnConversationStateDataChosen.IsBound())
+	if(OnMissionDataChosen.IsBound())
 	{
-		OnConversationStateDataChosen.Execute(*InItem.Get());
+		OnMissionDataChosen.Execute(*InItem.Get());
 	}			
 }
 

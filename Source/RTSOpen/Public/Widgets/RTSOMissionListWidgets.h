@@ -1,118 +1,71 @@
 ﻿/* @author: Ario Amin @ Permafrost Development. @copyright: Full BSL(1.1) License included at bottom of the file  */
-
 #pragma once
 
 #include "CoreMinimal.h"
-#include "GameplayTagContainer.h"
-#include "Subsystems/EngineSubsystem.h"
+#include "Blueprint/UserWidget.h"
+#include "RTSOMissionListWidgets.generated.h"
 
-#include "RTSOpenCommon.h"
-#include "SaveEditor/SRTSOSaveEditor.h"
-#include "SRTSOMissionList.generated.h"
-
-
-/** @brief Conversation Actor State wrapper */
-USTRUCT()
-struct FRTSOMissionProgress
+struct FRTSSaveData;
+struct FRTSOMissionProgress;
+class SWrapBox;
+class SRTSOMissionList;
+class UHorizontalBox;
+class UTileView;
+/**
+ * @brief  Loads custom tags that may have been added by a player/user
+*/
+UCLASS(Blueprintable)
+class RTSOPEN_API URTSOMissionListInnerWidget : public UWidget
 {
 	GENERATED_BODY()
+public:
 
-	/** @brief Map of a players complete progression data. Datum per mission tag */
-	UPROPERTY(EditAnywhere)
-	TMap<FGameplayTag, FRTSOConversationMetaProgressionDatum> ProgressionDataMap;
+	/** @brief Creates slate objects to assign to our our wrapbox sharedptr and our mission-list sharedptr  */
+	virtual TSharedRef<SWidget> RebuildWidget() override;
+	/** @brief Releases the shared pointers for the mission list and tha wrap box */
+	virtual void ReleaseSlateResources(bool bReleaseChildren) override;
 
+	/** @brief The shared pointer to our underlying slate object,
+	 * which we pass some data through and to expose functionality to the editor */
+	TSharedPtr<SRTSOMissionList> InnerMissionList = nullptr;
+	/** @brief Wraps our slat object. Reserved for further use */
+	TSharedPtr<SWrapBox> InnerWrapBox = nullptr;
+
+	/** @brief Owner ID.
+	 * @note Pure pass-through to our underlying slate 'SRTSOMissionList' object */
+	UPROPERTY()
+	int32 OwnerID = INDEX_NONE;
+	/** @brief Saved data.
+	 * @note Pure pass-through to our underlying slate 'SRTSOMissionList' object */
+	FRTSSaveData* LinkedSaveData = nullptr;
+	/** @brief Mission data view.
+	 * @note Is constructed in here then passed to our underlying slate 'SRTSOMissionList' object */
+	TArray<TSharedPtr<FRTSOMissionProgress>> MissionDataView{};
+	
 };
 
 
-class RTSOPEN_API SRTSOMissionList : public SCompoundWidget
+/**
+ * @brief  Loads custom tags that may have been added by a player/user
+*/
+UCLASS(Blueprintable)
+class RTSOPEN_API URTSOMissionListUserWidget : public UUserWidget
 {
+	GENERATED_BODY()
 public:
+	/** @brief Reserved, does nothing */
+	virtual void NativeConstruct() override;
+	/** @brief Reserved, does nothing */
+	virtual void NativeDestruct() override;
+	/** @brief Reserved, does nothing */
+	virtual void NativePreConstruct() override;
+	/** @brief Reserved, does nothing */
+	virtual void NativeTick(const FGeometry& MyGeometry, float InDeltaTime) override;
+
+
+	UPROPERTY(EditAnywhere, Meta = (BindWidget))
+	URTSOMissionListInnerWidget* InnerMissionWidget = nullptr;
 	
-	/** @brief Generic call to create picker windows of differing types @todo finish impl. of related Picker classes  */
-	template<typename TPickerClass>
-	TSharedRef<SWindow> CreatePickerDialog(TSharedRef<SWindow>& PickerWindow, UClass* FilterInterfaceClass)
-	{
-		FClassViewerInitializationOptions InitOptions;
-		InitOptions.Mode = EClassViewerMode::ClassPicker;
-		InitOptions.DisplayMode = EClassViewerDisplayMode::TreeView;
-
-		const TSharedRef<FRTSSaveEd_InteractableClassFilter> SaveEd_InteractableClassFilter = MakeShared<FRTSSaveEd_InteractableClassFilter>();
-		SaveEd_InteractableClassFilter->InterfaceThatMustBeImplemented = FilterInterfaceClass;
-		InitOptions.ClassFilters.Add(SaveEd_InteractableClassFilter);
-	
-		return SNew(TPickerClass)
-				.ParentWindow(PickerWindow)
-				.Options(InitOptions)
-				.AssetType(nullptr);		
-	}
-
-	/** @brief Generic call to create picker windows of differing types @todo finish impl. of related Picker classes  */
-	template<typename TPickerClass>
-	TSharedRef<SWindow> CreatePickerWindow()
-	{
-		// Create the window to pick the class
-		TSharedRef<SWindow> PickerWindow = SNew(SWindow)
-			.Title(FText())
-			.SizingRule( ESizingRule::Autosized )
-			.ClientSize( FVector2D( 0.f, 300.f ))
-			.SupportsMaximize(false)
-			.SupportsMinimize(false);
-
-		TSharedRef<TPickerClass> PickerDialog = CreatePickerDialog<TPickerClass>(PickerWindow, UPDInteractInterface::StaticClass());
-		PickerWindow->SetContent(PickerDialog);
-
-		const TSharedPtr<SWindow> ParentWindow = FSlateApplication::Get().GetActiveTopLevelRegularWindow();
-		if( ParentWindow.IsValid() )
-		{
-			FSlateApplication::Get().AddModalWindow(PickerWindow, ParentWindow );
-		}
-
-		return PickerWindow;		
-	}
-
-	/** @brief Font we want to use for titles in teh save editor */
-	FSlateFontInfo TitleFont;	
-	/** @brief Linked copy of the selected savedata. Any changes will be on this copy until we want to commit them to the actual save-file */
-	FRTSSaveData* LinkedSaveDataCopy = nullptr;	
-
-	DECLARE_DELEGATE_OneParam( FOnMissionDataChosen, const FRTSOMissionProgress&);
-	
-	SLATE_BEGIN_ARGS(SRTSOMissionList) { }
- 		SLATE_EVENT(FOnUserScrolled, OnUserScrolled)
- 		SLATE_EVENT(FOnClicked, OnUserClicked)
-	SLATE_END_ARGS()
-	
-	/** @brief Stores a pointer to the copied save data and then Calls UpdateChildSlot, passing ArrayRef as the opaquedata parameter */
-	void Construct(const FArguments& InArgs, int32 InOwnerID, FRTSSaveData* InLinkedData,  TArray<TSharedPtr<FRTSOMissionProgress>>& ArrayRef);
-	/** @brief Base call, ensures we have a title-font loaded, Sets up the child slot, and passes in the data view array to an slistview wrapped in a scrollbox */
-	virtual void UpdateChildSlot(void* OpaqueData);
-	
-	/** @brief Displays the actual list item for each entry in ConversationStatesAsSharedArray, which in this case is the states in 'FRTSOMissionProgress' */
-	TSharedRef<ITableRow> MakeListViewWidget_AllMissionData(TSharedPtr<FRTSOMissionProgress> InItem, const TSharedRef<STableViewBase>& OwnerTable) const;
-	void OnComponentSelected_AllMissionData(TSharedPtr<FRTSOMissionProgress> InItem, ESelectInfo::Type InSelectInfo);
-	
-	/** @brief Array 'View' that is used to display the data related to this editor widget */
-	TArray<TSharedPtr<FRTSOMissionProgress>>* MissionsAsSharedArray;
-
-	// Callbacks
-	FOnMissionDataChosen OnMissionDataChosen{};
-
-	UClass* SelectedClass = nullptr;
-
-	// View Tables
-	TSharedPtr<STableRow< TSharedPtr<FRTSOMissionProgress>>> ConversationStateTable;
-
-	int32 OwnerID = INDEX_NONE;
-	
-	// Localized text
-	static FText MissionBase_TitleText;
-	static FText MissionProgress_BaseData_Active_TitleText;
-	static FText MissionProgress_BaseData_Inactive_TitleText;
-	static FText MissionProgress_BaseData_ActorID_TitleText;
-	static FText MissionProgress_BaseData_Type_TitleText;
-	static FText MissionProgress_MissionData_TitleText;
-	static FText MissionProgress_MissionData_MissionList_TitleText;
-	static FText MissionProgress_MissionData_ProgressionPerPlayer_TitleText;
 };
 
 
