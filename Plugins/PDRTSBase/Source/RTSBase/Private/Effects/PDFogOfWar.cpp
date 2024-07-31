@@ -1,108 +1,179 @@
-/* @author: Ario Amin @ Permafrost Development. @copyright: Full BSL(1.1) License included at bottom of the file  */
+﻿/* @author: Ario Amin @ Permafrost Development. @copyright: Full BSL(1.1) License included at bottom of the file  */
 
-#pragma once
+#include "Effects/PDFogOfWar.h"
+#include "PDRTSCommon.h"
 
-#include "CoreMinimal.h"
-#include "Net/PDProgressionNetDatum.h"
-#include "PDProgressionComponent.generated.h"
-
-struct FPDStatMapping;
-struct FGameplayTag;
-
-/** @brief Key mapping comparison functions, used  for tset searching  */
-struct FPDStatKeyFuncs : BaseKeyFuncs<FPDStatMapping, FGameplayTag, false>
+void FPDWorldData::ProcessChangeForCellVisibilityState(const FPDVisitedWorldDatum& WorldLocation)
 {
-	/** @brief Returns what the t-set should consider the actual key of FPDStatMapping  */
-	static const FGameplayTag& GetSetKey(const FPDStatMapping& Element) { return Element.Tag; }
-	/** @brief Comparison function used by the t-set   */
-	static bool Matches(const FGameplayTag& A, const FGameplayTag& B) { return A == B; }
-	/** @brief Gets inners typehash of the key, we want FPDStatMapping's with differing indexes and same tag to still match */
-	static uint32 GetKeyHash(const FGameplayTag& Key) { return GetTypeHash(Key); }
-};
+	// Cell size determines how much of the world will be revealed
+	const double CellSize = UPDHashGridSubsystem::Get()->UniformCellSize;
 
+	const FVector CellClampedLocation = WorldLocation.WorldPosition.ToFloatVector(CellSize);
+	const double RevealEndX = CellClampedLocation.X + CellSize;
+	const double RevealEndY = CellClampedLocation.Y + CellSize;
+}
 
-/** @brief Progression system network manager */
-UCLASS(Blueprintable)
-class PDBASEPROGRESSION_API UPDStatHandler : public UActorComponent
+// Reserved for now
+void FPDWorldData::VisitedWorldLocation(const FPDVisitedWorldDatum& WorldLocation)
 {
-	GENERATED_BODY()
-
-public:
-
-	/** @brief Registers this StatHandler with the UPDStatSubsystem  */
-	virtual void BeginPlay() override;
-
-	/** @brief Finds the stat and returns it's applied value, if it exists.
-	 *  @details If it exists then return the applied stat value, otherwise return 0*/
-	UFUNCTION(BlueprintCallable)
-	double GetStatValue(const FGameplayTag& StatTag);
+	bool bVisibilityChanged = true;
 	
-	/** @brief Finds the stat and increases it's level by the given amount, if the owner has complete authority .
-	 *  @details Increases levels and propagates applied changes to other stats that that levelled up stat is set to modify, in the stats 'AffectedBy' array*/
-	UFUNCTION(BlueprintNativeEvent, BlueprintCallable)
-	void IncreaseStatLevel(const FGameplayTag& StatTag, int32 LevelDelta = 1);
+	if (WorldCellStates.Contains(WorldLocation.WorldPosition))
+	{
+		// Already In the map, update visibility state
+		FPDVisitedWorldDatum& CellState = *WorldCellStates.Find(WorldLocation.WorldPosition);
+		bVisibilityChanged = CellState.WorldVisibility != WorldLocation.WorldVisibility;
+		CellState.WorldVisibility = WorldLocation.WorldVisibility;  
+	}
+	else
+	{
+		WorldCellStates.Emplace(WorldLocation); 
+	}
 
-	/** @brief Finds the stat and increases it's experience by the given amount, if the owner has complete authority .
-	 *  @details Increases experience and in-case we increase level it calls IncreaseStatLevel*/
-	UFUNCTION(BlueprintNativeEvent, BlueprintCallable)
-	void IncreaseStatExperience(const FGameplayTag& StatTag, int32 ExperienceDelta);	
-
-	/** @brief Finds a skill stat and attempts to unlock it, if the owner has complete authority .
-	 *  @details Sets a skill stat to level 1, fails if we do not have the necessary tokens to unlock it
-	 *  @todo Apply skill effects (Also, consider allowing stats to have stat tied to them, stats that unlock and activate upon this stat unlocking)*/
-	UFUNCTION(BlueprintNativeEvent, BlueprintCallable)
-	void AttemptUnlockSkill(const FGameplayTag& SkillTag);
-
-	/** @brief Finds a skill stat and attempts to lock it, if the owner has complete authority .
-	 *  @details Sets a skill stat to level 0 */
-	UFUNCTION(BlueprintNativeEvent, BlueprintCallable)
-	void AttemptLockSkill(const FGameplayTag& SkillTag);	
 	
-	/** @brief Used to fill the  */
-	UFUNCTION(BlueprintNativeEvent, BlueprintCallable)
-	void SetClass(const FGameplayTag& ClassTag);
+	// Do nothing if we've not updated our visibility
+	if (bVisibilityChanged == false) { return;}
 
-	/** @brief Called by unlock and lock skill, handles the actual logic. See@LockSkill & @UnlockSkill  */
-	void ModifySkill(const FGameplayTag& SkillTag, bool bUnlock);
-	/** @brief Check owner net-mode/role. If we have appropriate authority in the correct context then return true. 
-	 * @details - Returns true if we are standalone or server and we have authority.
-	 * @details - Return false proxy or max/none owner roles. and if NetMode is NM_Client*/
-	bool HasCompleteAuthority() const;
-
-	/** @brief Grants the owner all tokens granted between the current level and the new level  */
-	UFUNCTION(BlueprintCallable)
-	void GrantTokens(const FGameplayTag& StatTag, int32 LevelDelta, int32 CurrentLevel);
-
-	/** @brief Boiler plate for replication setup */
-	virtual void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override;
 	
-	/** @brief The replicated list of stats, fastarray serializer list as it is expected to have many elements.
-	 * Indices are mapped locally to a gameplay tag so we can reduce search complexity drastically */
-	UPROPERTY(Replicated)
-	FPDStatList StatList{};
-
-	/** @brief Replicated list of tokens, a regular replicated array is fine -- expecting small number of entries
-	 * Will arguably never be above 50 entries in practice, even in a game like PoE,
-	 * very likely even below 10 in most games */
-	UPROPERTY(Replicated)
-	TArray<FPDSkillTokenBase> Tokens;
-
-	/** @brief Total tokens spent so-far, keep for tracking and comparison purposes.
-	 * @note FPDSkillTokenBase keeps a tag and a number */
-	UPROPERTY(Replicated)
-	TArray<FPDSkillTokenBase> TokensSpentTotal; // Will arguably never be above 100 entries in practice, very likely even below 10 in many games
-
-	/** @brief Persistent ID of the owner, used for routing and mapping  */
-	UPROPERTY()
-	int32 OwnerID; 
+	ProcessChangeForCellVisibilityState(WorldLocation);
 	
-	/** @brief Locally tracked set of tags and indices in 'StatList',
-	 * @note has a custom key matching function so we can resolve an FPDStatMapping::index from a given tag */
-	TSet<FPDStatMapping, FPDStatKeyFuncs> LocalStatMappings;
-};
+}
+
+void FPDWorldData::VisitedWorldLocation(const FVector& WorldLocation)
+{
+	// This (UPDHashGridSubsystem::GetCellIndexStatic) will clamp to the worlds cell sizes
+	const FPDVisitedWorldDatum ConstructedWorldDatum{
+		UPDHashGridSubsystem::GetCellIndexStatic(WorldLocation),
+	EPDWorldVisibility::EVisible};
+
+	VisitedWorldLocation(ConstructedWorldDatum);
+}
+
+UPDFogOfWarSubsystem::UPDFogOfWarSubsystem()
+{
+	RequestedFOWState = OldFOWState = FGameplayTag{};
+}
+
+void UPDFogOfWarSubsystem::OnWorldBeginPlay(UWorld& InWorld)
+{
+	Super::OnWorldBeginPlay(InWorld);
+
+	ProcessTables();
+}
+
+bool UPDFogOfWarSubsystem::HasCompleteAuthority() const
+{
+	switch (GetWorld()->GetNetMode())
+	{ 
+	default: ;
+	case NM_MAX:
+	case NM_Client:
+		return false;
+	case NM_Standalone:
+	case NM_DedicatedServer:
+	case NM_ListenServer:
+		break;
+	}
+	return true;
+}
+
+void UPDFogOfWarSubsystem::Tick(float DeltaTime)
+{
+	// if on server or single player, otherwise exit out early
+
+	if (HasCompleteAuthority() == false)
+	{
+		Deinitialize();
+		return;
+	}
+	
+	
+	
+	Super::Tick(DeltaTime);
+}
+
+void UPDFogOfWarSubsystem::SetCustomMode_Implementation(FGameplayTag Tag)
+{
+	// If TagToSettings has a valid entry, then TagToTable & TagToRowName also have the same valid entries  
+	if (TagToSettings.Contains(Tag) == false)
+	{
+		const FString BuildString =
+			"UPDFogOfWarSubsystem::SetCustomMode -- "
+			"\n Trying to set mode without a valid gameplay tag. Skipping processing entry";
+		UE_LOG(PDLog_RTSBase, Error, TEXT("%s"), *BuildString);
+		
+		return;
+	}
+	
+
+	// Overwriting current selected settings
+	CurrentSettingsHandle.DataTable = TagToTable.FindRef(Tag);
+	CurrentSettingsHandle.RowName   = TagToRowname.FindRef(Tag);
+	
+	const FPDFogOfWarSettings& Settings = *TagToSettings.FindRef(Tag);
+
+	// @todo  Apply settings 
+}
 
 
+void UPDFogOfWarSubsystem::ProcessTables()
+{
+	const UPDFogOfWarSettingsSource* FogOfWarGlobalSettings = GetDefault<UPDFogOfWarSettingsSource>();
+	
+	for (const TSoftObjectPtr<UDataTable> SoftObjectTablePtr : FogOfWarGlobalSettings->SettingsTables)
+	{
+		const UDataTable* Table = SoftObjectTablePtr.LoadSynchronous();
+		if (Table == nullptr
+			|| Table->IsValidLowLevelFast() == false
+			|| Table->RowStruct != FPDFogOfWarSettings::StaticStruct())
+		{
+			continue;
+		}
 
+		TArray<FPDFogOfWarSettings*> Rows;
+		Table->GetAllRows("", Rows);
+		TArray<FName> RowNames = Table->GetRowNames();
+		
+		for (const FName& Name : RowNames)
+		{
+			FPDFogOfWarSettings* DefaultDatum = Table->FindRow<FPDFogOfWarSettings>(Name,"");
+			check(DefaultDatum != nullptr) // This should never be nullptr
+
+			const FGameplayTag& FOWMode = DefaultDatum->FOWMode;
+
+			if (FOWMode.IsValid() == false)
+			{
+				FString BuildString = "UPDFogOfWarSubsystem::ProcessTables -- "
+				+ FString::Printf(TEXT("Processing table(%s)"), *Table->GetName()) 
+				+ FString::Printf(TEXT("\n Trying to add settings on row (%s) Which does not have a valid gameplay tag. Skipping processing entry"), *Name.ToString());
+				UE_LOG(PDLog_RTSBase, Error, TEXT("%s"), *BuildString);
+
+				// @todo Write some test cases and some data validation to handle this properly, the logs will do for now  
+				continue;
+			}
+			
+			// @note If duplicates, ignore duplicate and output errors to screen and to log
+			if (TagToSettings.Contains(FOWMode))
+			{
+				const UDataTable* RetrievedTable = *TagToTable.Find(FOWMode);
+				
+				FString BuildString = "UPDFogOfWarSubsystem::ProcessTables -- "
+				+ FString::Printf(TEXT("Processing table(%s)"), *Table->GetName()) 
+				+ FString::Printf(TEXT("\n Trying to add setting(%s) which has already been added by previous table(%s)."),
+						*FOWMode.GetTagName().ToString(), RetrievedTable != nullptr ? *RetrievedTable->GetName() : *FString("INVALID TABLE"));
+				UE_LOG(PDLog_RTSBase, Error, TEXT("%s"), *BuildString);
+
+				// @todo Write some test cases and some data validation to handle this properly, the logs will do for now  
+				continue;
+			}
+			
+
+			TagToSettings.Emplace(FOWMode) = DefaultDatum;
+			TagToTable.Emplace(FOWMode) = Table;
+			TagToRowname.Emplace(FOWMode) = Name;
+		}
+	}
+}
 
 /**
 Business Source License 1.1

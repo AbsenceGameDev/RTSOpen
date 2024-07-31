@@ -51,6 +51,13 @@ struct PDRTSBASE_API FPDGridCell : public FIntVector
 		return IsNeighbour2D(OtherCell) && Delta.Z >= -1 && Delta.Z <= 1 ;
 	}
 
+	/** @brief this->XY must be equal to Other.XY */
+	bool IsSame2D(const FPDGridCell & OtherCell) const
+	{
+		return this->X == OtherCell.X
+			&& this->Y == OtherCell.Y;
+	}	
+
 	/** @brief this->XYZ must be equal to Other.XYZ */
 	bool operator==(const FPDGridCell & OtherCell) const
 	{

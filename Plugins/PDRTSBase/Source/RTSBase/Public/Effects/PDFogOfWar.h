@@ -1,107 +1,169 @@
-/* @author: Ario Amin @ Permafrost Development. @copyright: Full BSL(1.1) License included at bottom of the file  */
+﻿/* @author: Ario Amin @ Permafrost Development. @copyright: Full BSL(1.1) License included at bottom of the file  */
 
 #pragma once
 
 #include "CoreMinimal.h"
-#include "Net/PDProgressionNetDatum.h"
-#include "PDProgressionComponent.generated.h"
+#include "GameplayTags.h"
+#include "PDRTSSharedHashGrid.h"
+#include "PDFogOfWar.generated.h"
 
-struct FPDStatMapping;
-struct FGameplayTag;
+class UTextureRenderTarget2D;
+
+/** @brief What level of visibility does this area have? */
+UENUM()
+enum class EPDWorldVisibility : uint8
+{
+	EVisible,
+	EObscured,
+	ENotVisible,
+};
+
+/** @brief A simple struct which is acting the update states for the fog of war system */
+USTRUCT(Blueprintable)
+struct PDRTSBASE_API FPDVisitedWorldDatum
+{
+	GENERATED_BODY()
+
+	/** @brief The position for this update, we only care about X & Y */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	FPDGridCell WorldPosition;
+
+	/** @brief The level of visibility for this update */
+	UPROPERTY(VisibleInstanceOnly, BlueprintReadWrite)
+	EPDWorldVisibility WorldVisibility;	
+	
+};
 
 /** @brief Key mapping comparison functions, used  for tset searching  */
-struct FPDStatKeyFuncs : BaseKeyFuncs<FPDStatMapping, FGameplayTag, false>
+struct FPDFogOfWarKeyFuncs : BaseKeyFuncs<FPDVisitedWorldDatum, FPDGridCell, false>
 {
 	/** @brief Returns what the t-set should consider the actual key of FPDStatMapping  */
-	static const FGameplayTag& GetSetKey(const FPDStatMapping& Element) { return Element.Tag; }
+	static const FPDGridCell& GetSetKey(const FPDVisitedWorldDatum& Element) { return Element.WorldPosition; }
 	/** @brief Comparison function used by the t-set   */
-	static bool Matches(const FGameplayTag& A, const FGameplayTag& B) { return A == B; }
+	static bool Matches(const FPDGridCell& A, const FPDGridCell& B) { return A.IsSame2D(B); }
 	/** @brief Gets inners typehash of the key, we want FPDStatMapping's with differing indexes and same tag to still match */
-	static uint32 GetKeyHash(const FGameplayTag& Key) { return GetTypeHash(Key); }
+	static uint32 GetKeyHash(const FPDGridCell& Key)
+	{
+		FPDGridCell KeyCopy = Key;
+		KeyCopy.Z = 0; // Always clear z
+		return GetTypeHash(KeyCopy);
+	}
 };
 
 
-/** @brief Progression system network manager */
-UCLASS(Blueprintable)
-class PDBASEPROGRESSION_API UPDStatHandler : public UActorComponent
+/** @brief A simple struct which is acting as a players world mappings */
+USTRUCT(Blueprintable)
+struct PDRTSBASE_API FPDWorldData
+{
+    GENERATED_BODY()
+
+	/** @brief Unfinished.
+	 * @todo write to 2d texture: White == visited & visible, Gray == visited & not visible, Black == not visited
+	 * @todo have setting to allow to pipe into niagara script as-well, and set up a niagara script for that 
+	 * */
+    void ProcessChangeForCellVisibilityState(const FPDVisitedWorldDatum& WorldLocation);
+
+	/** @brief Checks with WorldCellStates if we've already been to the cell
+	 * and calls 'ProcessChangeForCellVisibilityState' if the cell is new or it's visibility state has changed */
+	void VisitedWorldLocation(const FPDVisitedWorldDatum& WorldLocation);
+
+	/** @brief Convenience function: 
+	 * @details Converts the location into a hashgrid cell (FPDGridCell) and constructs a FPDVisitedWorldDatum,
+	 * to then call the overloaded 'VisitedWorldLocation' with the constructed type */
+	void VisitedWorldLocation(const FVector& WorldLocation);	
+	
+	/** @brief The absolute size of the positive part of the world plane */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	FVector2D WorldSizePositive;
+
+	/** @brief The absolute size of the negative part of the world plane */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	FVector2D WorldSizeNegative;
+	
+	/** @brief The center of the world plane */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	FVector2D WorldCenter;
+
+private:
+	/** @brief World Cells and their state */
+	// UPROPERTY(VisibleInstanceOnly, BlueprintReadWrite, Meta = (AllowPrivateAccess="true"))
+	TSet<FPDVisitedWorldDatum, FPDFogOfWarKeyFuncs> WorldCellStates;	
+	
+};
+
+/** @brief Settings (table row) type for the Fog of war system. */
+USTRUCT(Blueprintable)
+struct PDRTSBASE_API FPDFogOfWarSettings : public FTableRowBase
+{
+    GENERATED_BODY()
+	
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Fog of War")
+	FGameplayTag FOWMode;
+};
+
+UCLASS(BlueprintType)
+class UPDFogOfWarSettingsSource : public UDeveloperSettings
 {
 	GENERATED_BODY()
 
 public:
-
-	/** @brief Registers this StatHandler with the UPDStatSubsystem  */
-	virtual void BeginPlay() override;
-
-	/** @brief Finds the stat and returns it's applied value, if it exists.
-	 *  @details If it exists then return the applied stat value, otherwise return 0*/
-	UFUNCTION(BlueprintCallable)
-	double GetStatValue(const FGameplayTag& StatTag);
-	
-	/** @brief Finds the stat and increases it's level by the given amount, if the owner has complete authority .
-	 *  @details Increases levels and propagates applied changes to other stats that that levelled up stat is set to modify, in the stats 'AffectedBy' array*/
-	UFUNCTION(BlueprintNativeEvent, BlueprintCallable)
-	void IncreaseStatLevel(const FGameplayTag& StatTag, int32 LevelDelta = 1);
-
-	/** @brief Finds the stat and increases it's experience by the given amount, if the owner has complete authority .
-	 *  @details Increases experience and in-case we increase level it calls IncreaseStatLevel*/
-	UFUNCTION(BlueprintNativeEvent, BlueprintCallable)
-	void IncreaseStatExperience(const FGameplayTag& StatTag, int32 ExperienceDelta);	
-
-	/** @brief Finds a skill stat and attempts to unlock it, if the owner has complete authority .
-	 *  @details Sets a skill stat to level 1, fails if we do not have the necessary tokens to unlock it
-	 *  @todo Apply skill effects (Also, consider allowing stats to have stat tied to them, stats that unlock and activate upon this stat unlocking)*/
-	UFUNCTION(BlueprintNativeEvent, BlueprintCallable)
-	void AttemptUnlockSkill(const FGameplayTag& SkillTag);
-
-	/** @brief Finds a skill stat and attempts to lock it, if the owner has complete authority .
-	 *  @details Sets a skill stat to level 0 */
-	UFUNCTION(BlueprintNativeEvent, BlueprintCallable)
-	void AttemptLockSkill(const FGameplayTag& SkillTag);	
-	
-	/** @brief Used to fill the  */
-	UFUNCTION(BlueprintNativeEvent, BlueprintCallable)
-	void SetClass(const FGameplayTag& ClassTag);
-
-	/** @brief Called by unlock and lock skill, handles the actual logic. See@LockSkill & @UnlockSkill  */
-	void ModifySkill(const FGameplayTag& SkillTag, bool bUnlock);
-	/** @brief Check owner net-mode/role. If we have appropriate authority in the correct context then return true. 
-	 * @details - Returns true if we are standalone or server and we have authority.
-	 * @details - Return false proxy or max/none owner roles. and if NetMode is NM_Client*/
-	bool HasCompleteAuthority() const;
-
-	/** @brief Grants the owner all tokens granted between the current level and the new level  */
-	UFUNCTION(BlueprintCallable)
-	void GrantTokens(const FGameplayTag& StatTag, int32 LevelDelta, int32 CurrentLevel);
-
-	/** @brief Boiler plate for replication setup */
-	virtual void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override;
-	
-	/** @brief The replicated list of stats, fastarray serializer list as it is expected to have many elements.
-	 * Indices are mapped locally to a gameplay tag so we can reduce search complexity drastically */
-	UPROPERTY(Replicated)
-	FPDStatList StatList{};
-
-	/** @brief Replicated list of tokens, a regular replicated array is fine -- expecting small number of entries
-	 * Will arguably never be above 50 entries in practice, even in a game like PoE,
-	 * very likely even below 10 in most games */
-	UPROPERTY(Replicated)
-	TArray<FPDSkillTokenBase> Tokens;
-
-	/** @brief Total tokens spent so-far, keep for tracking and comparison purposes.
-	 * @note FPDSkillTokenBase keeps a tag and a number */
-	UPROPERTY(Replicated)
-	TArray<FPDSkillTokenBase> TokensSpentTotal; // Will arguably never be above 100 entries in practice, very likely even below 10 in many games
-
-	/** @brief Persistent ID of the owner, used for routing and mapping  */
-	UPROPERTY()
-	int32 OwnerID; 
-	
-	/** @brief Locally tracked set of tags and indices in 'StatList',
-	 * @note has a custom key matching function so we can resolve an FPDStatMapping::index from a given tag */
-	TSet<FPDStatMapping, FPDStatKeyFuncs> LocalStatMappings;
+	/** @brief Potential Sources for fog of war settings */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Fog of War", Meta = (RequiredAssetDataTags = "RowStructure=/Script/PDRTSBase.PDFogOfWarSettings"))
+	TArray<TSoftObjectPtr<UDataTable>> SettingsTables{};	
 };
 
+/** @brief The camera manager class. Gets settings from a settings datatable-row handle */
+UCLASS(BlueprintType)
+class PDRTSBASE_API UPDFogOfWarSubsystem : public UTickableWorldSubsystem
+{
+    GENERATED_BODY()
 
+public:
+    UPDFogOfWarSubsystem();
+	
+	/** @brief Calls Super::BeginPlay then proceeds to call 'ProcessTables' */
+	virtual void OnWorldBeginPlay(UWorld& InWorld) override;
+
+	/** @brief Ensures the that the world is not a client world, only server or single player worlds allowed */
+	bool HasCompleteAuthority() const;
+
+    /** @brief @todo Update the fog of war, read positions and write to store */
+	virtual void Tick(float DeltaTime) override;
+
+	/** @brief Sets the given mode and loads the settings for that mode */
+    UFUNCTION(BlueprintNativeEvent, BlueprintCallable, Category = Camera)
+    void SetCustomMode(FGameplayTag Tag);
+
+protected:
+	/** @brief Process all camera settings tables */
+    void ProcessTables();
+    
+public:
+	/** @brief 'Fog of War settings' handle. Points to the settings entry we want to apply to this manager. */
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Fog of War", Meta = (RowType = "/Script/PDRTSBase.PDFogOfWarSettings"))
+    FDataTableRowHandle CurrentSettingsHandle;
+	/** @brief Pointer directly to the actual settings entry after it has been resolved by 'CurrentSettingsHandle' */
+    FPDFogOfWarSettings* SettingPtr = nullptr;
+
+	/** @brief Fog of War State: Requested*/
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Fog of War")
+    FGameplayTag RequestedFOWState{};
+
+	/** @brief Fog of War State: Previous */
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Fog of War")
+    FGameplayTag OldFOWState{};
+
+	UPROPERTY(VisibleInstanceOnly, BlueprintReadWrite, Category = "Fog of War")
+	TMap<AController*, FPDVisitedWorldDatum> TrackedControllers;
+
+    /* Associative maps */
+	/** @brief Map to associate a type tag with the manager settings it points to in the table it was sourced from */
+    TMap<FGameplayTag /*Type tag*/, FPDFogOfWarSettings* /*SettingsRow*/> TagToSettings;
+	/** @brief Map to associate a type tag with the table it was sourced from */
+    TMap<FGameplayTag /*Type tag*/, const UDataTable* /*Table*/> TagToTable;
+	/** @brief Map to associate a type tag with the rowname of the entry it was sourced from */
+    TMap<FGameplayTag /*Type tag*/, FName /*Rowname*/> TagToRowname;
+};
 
 
 /**
