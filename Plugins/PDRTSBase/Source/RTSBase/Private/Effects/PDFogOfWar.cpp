@@ -2,18 +2,10 @@
 
 #include "Effects/PDFogOfWar.h"
 #include "PDRTSCommon.h"
+#include "RHICommandList.h"
+#include "Rendering/Texture2DResource.h"
 
-void FPDWorldData::ProcessChangeForCellVisibilityState(const FPDVisitedWorldDatum& WorldLocation)
-{
-	// Cell size determines how much of the world will be revealed
-	const double CellSize = UPDHashGridSubsystem::Get()->UniformCellSize;
 
-	const FVector CellClampedLocation = WorldLocation.WorldPosition.ToFloatVector(CellSize);
-	const double RevealEndX = CellClampedLocation.X + CellSize;
-	const double RevealEndY = CellClampedLocation.Y + CellSize;
-}
-
-// Reserved for now
 void FPDWorldData::VisitedWorldLocation(const FPDVisitedWorldDatum& WorldLocation)
 {
 	bool bVisibilityChanged = true;
@@ -35,8 +27,8 @@ void FPDWorldData::VisitedWorldLocation(const FPDVisitedWorldDatum& WorldLocatio
 	if (bVisibilityChanged == false) { return;}
 
 	
-	ProcessChangeForCellVisibilityState(WorldLocation);
-	
+	UpdateCellStateOnMap(WorldLocation);
+	UpdateTexture();
 }
 
 void FPDWorldData::VisitedWorldLocation(const FVector& WorldLocation)
@@ -47,6 +39,200 @@ void FPDWorldData::VisitedWorldLocation(const FVector& WorldLocation)
 	EPDWorldVisibility::EVisible};
 
 	VisitedWorldLocation(ConstructedWorldDatum);
+}
+
+void FPDWorldData::InitializeFOWTexture()
+{
+	if (InitCount > 0)
+	{
+		DeinitializeFOWTexture(); // remove previously allocated data if this is called multiple times in a row on the same object
+	}
+	InitCount++;
+	
+	
+	TotalWorldSize = WorldDescriptor.SizeNegative + WorldDescriptor.SizePositive;
+	FOWTextureTotalPixels = TotalWorldSize.X * TotalWorldSize.Y;
+
+	// Get Total Bytes of Texture - Each pixel has 4 bytes for RGBA
+	FOWTextureDataSize = FOWTextureTotalPixels * 4;
+	FOWTextureDataSqrtSize = TotalWorldSize.X * 4;
+
+	// Initialize Texture Data Array
+	FOWTextureData = new uint8[FOWTextureDataSize];
+
+	// Create Dynamic Texture Object
+	FOWTexture = UTexture2D::CreateTransient(TotalWorldSize.X, TotalWorldSize.Y, EPixelFormat::PF_R8G8B8A8, "FOWTexture");
+	FOWTexture->CompressionSettings = TextureCompressionSettings::TC_VectorDisplacementmap;
+	FOWTexture->SRGB = 0;
+	FOWTexture->Filter = TextureFilter::TF_Nearest;
+	FOWTexture->AddToRoot();
+	FOWTexture->UpdateResource();
+
+	//Create Update Region Struct Instance
+	TextureRegion = new FUpdateTextureRegion2D(0, 0, 0, 0, TotalWorldSize.X, TotalWorldSize.Y);
+
+	// Initial fill then update texture
+	SetMapUndiscovered();	
+	UpdateTexture();
+}
+
+void FPDWorldData::DeinitializeFOWTexture()
+{
+	if (InitCount < 0)
+	{
+		return;
+	}
+	--InitCount;
+	
+	FOWTexture->RemoveFromRoot();
+
+	// Initialize Texture Data Array
+	delete [] FOWTextureData;
+	delete TextureRegion;
+
+}
+
+
+
+void FPDWorldData::FillMap(const bool bDiscovered) const
+{
+	const FColor Color = bDiscovered ? FColor::White : FColor::Black;
+	
+	// Loop for each pixel, setting the pixels values from Color
+	for (uint32 i = 0; i < FOWTextureTotalPixels; i++)
+	{
+		const uint32 ColourStartIdx = i * 4;
+		FOWTextureData[ColourStartIdx] = Color.B;
+		FOWTextureData[ColourStartIdx + 1] = Color.G;
+		FOWTextureData[ColourStartIdx + 2] = Color.R;
+		FOWTextureData[ColourStartIdx + 3] = Color.A;
+	}	
+}
+
+void FPDWorldData::UpdateCellStateOnMap(const FPDVisitedWorldDatum& WorldLocation) const
+{
+	//
+	// SELECT CELL VISIBILITY STATE:
+	
+	FColor Color = FColor::Black;
+	switch (WorldLocation.WorldVisibility)
+	{
+	case EPDWorldVisibility::EVisible:
+		Color = FColor::White;
+		break;
+	case EPDWorldVisibility::EObscured:
+		Color = FColor::Silver;
+		break;
+	case EPDWorldVisibility::ENotVisible:
+	default:
+		break;
+	}
+
+	//
+	// UPDATE WHOLE CELL:
+	
+	// Cell size determines how much of the world will be revealed
+	const double CellSize = UPDHashGridSubsystem::Get()->UniformCellSize;
+
+	const FVector CellClampedLocation = WorldLocation.WorldPosition.ToFloatVector(CellSize);
+
+	constexpr static double FloatingPointTruncOffset = 0.5; 
+	const double RevealEndRow = CellClampedLocation.X + CellSize + FloatingPointTruncOffset; 
+	const double RevealEndCol = CellClampedLocation.Y + CellSize + FloatingPointTruncOffset;
+
+	const int32 RowSize = TotalWorldSize.X;
+	for (int32 ColStep = CellClampedLocation.Y; ColStep < RevealEndCol; ColStep++)
+	{
+		for (int32 RowStep = CellClampedLocation.X; RowStep < RevealEndRow; RowStep++)
+		{
+			const uint32 CellPixelFirstColourIdx = ((ColStep * RowSize) + RowStep) * 4;
+			
+			FOWTextureData[CellPixelFirstColourIdx] = Color.B;
+			FOWTextureData[CellPixelFirstColourIdx + 1] = Color.G;
+			FOWTextureData[CellPixelFirstColourIdx + 2] = Color.R;
+			FOWTextureData[CellPixelFirstColourIdx + 3] = Color.A;	
+		}
+
+	}
+}
+
+void FPDWorldData::SetMapDiscovered() const
+{
+	FillMap(true);
+}
+
+void FPDWorldData::SetMapUndiscovered() const
+{
+	FillMap(false);
+}
+
+void FPDWorldData::UpdateTexture(bool bFreeInnerData)
+{
+    if (FOWTexture == nullptr)
+    {
+        UE_LOG(LogTemp, Warning, TEXT("FOW Texture tried to Update before being initialized!"));
+        return;
+    }
+
+	// Defining the region data to pass into the render command. 
+    struct FPDUpdateRegionData
+    {
+        FTexture2DResource* Texture2DResource;
+        FRHITexture2D* TextureRHI;
+        int32 MipIndex;
+        uint32 NumRegions;
+        FUpdateTextureRegion2D* Regions;
+        uint32 SrcPitch;
+        uint32 SrcBpp;
+        uint8* SrcData;
+    };
+
+
+	// Create an instance of 'FPDUpdateRegionData' and set all the values based on our texture variables. 
+    FPDUpdateRegionData* RegionData = new FPDUpdateRegionData;
+
+    UTexture2D* Texture = FOWTexture;
+
+	// Assign region data
+    RegionData->Texture2DResource = static_cast<FTexture2DResource*>(Texture->GetResource());
+    RegionData->TextureRHI = RegionData->Texture2DResource->GetTexture2DRHI();
+    RegionData->NumRegions = 1;
+    RegionData->MipIndex = 0;
+    RegionData->SrcData = FOWTextureData;
+    RegionData->Regions = TextureRegion;
+    RegionData->SrcPitch = FOWTextureDataSqrtSize;
+    RegionData->SrcBpp = 4;
+
+	// Creating an ENQUEUE_RENDER_COMMAND, passing that region data we just defined.
+    ENQUEUE_RENDER_COMMAND(UpdateTextureRegionsData)(
+        [RegionData, bFreeInnerData, Texture](FRHICommandListImmediate& RHICmdList)
+        {
+            for (uint32 RegionIndex = 0; RegionIndex < RegionData->NumRegions; ++RegionIndex)
+            {
+	            const int32 CurrentFirstMip = Texture->FirstResourceMemMip;
+                if (RegionData->TextureRHI == nullptr || RegionData->MipIndex < CurrentFirstMip)
+                {
+	                continue;
+                }
+
+            	// Update the Texture.
+                RHIUpdateTexture2D(
+                    RegionData->TextureRHI,
+                    RegionData->MipIndex - CurrentFirstMip,
+                    RegionData->Regions[RegionIndex],
+                    RegionData->SrcPitch,
+                    RegionData->SrcData
+                    + RegionData->Regions[RegionIndex].SrcY * RegionData->SrcPitch
+                    + RegionData->Regions[RegionIndex].SrcX * RegionData->SrcBpp
+                );
+            }
+            if (bFreeInnerData)
+            {
+                FMemory::Free(RegionData->Regions);
+                FMemory::Free(RegionData->SrcData);
+            }
+            delete RegionData;
+        });
 }
 
 UPDFogOfWarSubsystem::UPDFogOfWarSubsystem()
@@ -87,9 +273,42 @@ void UPDFogOfWarSubsystem::Tick(float DeltaTime)
 		return;
 	}
 	
-	
-	
 	Super::Tick(DeltaTime);
+}
+
+void UPDFogOfWarSubsystem::UpdateWorldDatum(AController* RequestedController, const FPDVisitedWorldDatum& WorldLocation)
+{
+	const bool bIsNewControllerValid = RequestedController != nullptr && RequestedController->IsValidLowLevelFast();
+	if (TrackedControllers.Contains(RequestedController) == false || bIsNewControllerValid == false)
+	{
+		if (bIsNewControllerValid)
+		{
+			FPDWorldData InitWorldData;
+			InitWorldData.WorldDescriptor = WorldDescriptor;
+			InitWorldData.InitializeFOWTexture();
+			
+			TrackedControllers.Emplace(RequestedController, InitWorldData);
+		}
+		else
+		{
+			return;
+		}
+	}
+
+	FPDWorldData* TrackedControllerWorldData = TrackedControllers.Find(RequestedController);
+	if (TrackedControllerWorldData == nullptr) { return; }
+
+	TrackedControllerWorldData->VisitedWorldLocation(WorldLocation);
+}
+
+void UPDFogOfWarSubsystem::UpdateWorldLocation(AController* RequestedController, const FVector& WorldLocation)
+{
+	// This (UPDHashGridSubsystem::GetCellIndexStatic) will clamp to the worlds cell sizes
+	const FPDVisitedWorldDatum ConstructedWorldDatum{
+		UPDHashGridSubsystem::GetCellIndexStatic(WorldLocation),
+	EPDWorldVisibility::EVisible};
+	
+	UpdateWorldDatum(RequestedController, ConstructedWorldDatum);
 }
 
 void UPDFogOfWarSubsystem::SetCustomMode_Implementation(FGameplayTag Tag)

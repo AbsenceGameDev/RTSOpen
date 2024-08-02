@@ -50,6 +50,24 @@ struct FPDFogOfWarKeyFuncs : BaseKeyFuncs<FPDVisitedWorldDatum, FPDGridCell, fal
 	}
 };
 
+/** @brief A simple struct which is acting as a simplified world definition, defaults to a 8km x 8km world size */
+USTRUCT(Blueprintable)
+struct PDRTSBASE_API FPDWorldDescriptor
+{
+	GENERATED_BODY()
+	
+	/** @brief The absolute size of the positive part of the world plane */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	FVector2D SizePositive {800000};
+
+	/** @brief The absolute size of the negative part of the world plane */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	FVector2D SizeNegative {800000};
+	
+	/** @brief The center of the world plane */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	FVector2D Pivot;
+};
 
 /** @brief A simple struct which is acting as a players world mappings */
 USTRUCT(Blueprintable)
@@ -57,12 +75,8 @@ struct PDRTSBASE_API FPDWorldData
 {
     GENERATED_BODY()
 
-	/** @brief Unfinished.
-	 * @todo write to 2d texture: White == visited & visible, Gray == visited & not visible, Black == not visited
-	 * @todo have setting to allow to pipe into niagara script as-well, and set up a niagara script for that 
-	 * */
-    void ProcessChangeForCellVisibilityState(const FPDVisitedWorldDatum& WorldLocation);
-
+	~FPDWorldData() { DeinitializeFOWTexture(); };
+	
 	/** @brief Checks with WorldCellStates if we've already been to the cell
 	 * and calls 'ProcessChangeForCellVisibilityState' if the cell is new or it's visibility state has changed */
 	void VisitedWorldLocation(const FPDVisitedWorldDatum& WorldLocation);
@@ -70,25 +84,64 @@ struct PDRTSBASE_API FPDWorldData
 	/** @brief Convenience function: 
 	 * @details Converts the location into a hashgrid cell (FPDGridCell) and constructs a FPDVisitedWorldDatum,
 	 * to then call the overloaded 'VisitedWorldLocation' with the constructed type */
-	void VisitedWorldLocation(const FVector& WorldLocation);	
-	
-	/** @brief The absolute size of the positive part of the world plane */
-	UPROPERTY(EditAnywhere, BlueprintReadWrite)
-	FVector2D WorldSizePositive;
+	void VisitedWorldLocation(const FVector& WorldLocation);
 
-	/** @brief The absolute size of the negative part of the world plane */
-	UPROPERTY(EditAnywhere, BlueprintReadWrite)
-	FVector2D WorldSizeNegative;
-	
-	/** @brief The center of the world plane */
-	UPROPERTY(EditAnywhere, BlueprintReadWrite)
-	FVector2D WorldCenter;
+	/** @brief Initializes the member 'FOWTexture' */
+	void InitializeFOWTexture();
 
+	/** @brief Set texture data to either all black or all white*/
+	void FillMap(const bool bDiscovered) const;
+
+	/** @brief Set texture data for the pixels covering the given cell to white, black or gray/silver*/
+	void UpdateCellStateOnMap(const FPDVisitedWorldDatum& WorldLocation) const;	
+	
+	/** @brief Set texture data to all white, removing all FOW */
+	void SetMapDiscovered() const;
+	
+	/** @brief Set texture data to all black, clearing any FOW progress */
+	void SetMapUndiscovered() const;
+
+	/** @brief De-initializes the member 'FOWTexture' */
+	void DeinitializeFOWTexture();
+
+	/** @brief Update Texture Object from Texture Data */
+	void UpdateTexture(bool bFreeInnerData = false);
+
+	/** @brief Describes the world this data pertains to */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	FPDWorldDescriptor WorldDescriptor;
+
+	/** @brief The absolute world size */
+	UPROPERTY(VisibleInstanceOnly, BlueprintReadWrite)
+	FVector2D TotalWorldSize;
+	
+	
 private:
 	/** @brief World Cells and their state */
-	// UPROPERTY(VisibleInstanceOnly, BlueprintReadWrite, Meta = (AllowPrivateAccess="true"))
-	TSet<FPDVisitedWorldDatum, FPDFogOfWarKeyFuncs> WorldCellStates;	
+	TSet<FPDVisitedWorldDatum, FPDFogOfWarKeyFuncs> WorldCellStates;
 	
+	/** @brief FOW Texture, dynamic resource */
+	UPROPERTY()
+	UTexture2D* FOWTexture = nullptr;
+
+	/** @brief Update Region Struct */
+	FUpdateTextureRegion2D* TextureRegion = nullptr;
+	
+	/** @brief Array that contains the pixel values for the FOW texture */
+	uint8* FOWTextureData = nullptr;
+
+	/** @brief Total Bytes of Texture Data */
+	uint32 FOWTextureDataSize;
+
+	/** @brief Texture Data Sqrt Size */
+	uint32 FOWTextureDataSqrtSize;
+
+	/** @brief Total Count of Pixels in Texture */
+	uint32 FOWTextureTotalPixels;	
+
+	int32 InitCount = 0;
+	
+	friend class UPDFogOfWarSubsystem;
 };
 
 /** @brief Settings (table row) type for the Fog of war system. */
@@ -127,8 +180,19 @@ public:
 	/** @brief Ensures the that the world is not a client world, only server or single player worlds allowed */
 	bool HasCompleteAuthority() const;
 
-    /** @brief @todo Update the fog of war, read positions and write to store */
-	virtual void Tick(float DeltaTime) override;
+	/** @brief @todo Update the fog of war, read positions and write to store */
+	virtual void Tick(float DeltaTime) override;	
+	
+	/** @brief Checks with WorldCellStates if we've already been to the cell
+	 * and calls 'ProcessChangeForCellVisibilityState' if the cell is new or it's visibility state has changed */
+    UFUNCTION(BlueprintCallable, Category = "Fog of War")
+	void UpdateWorldDatum(AController* RequestedController, const FPDVisitedWorldDatum& WorldLocation);
+
+	/** @brief Convenience function: 
+	 * @details Converts the location into a hashgrid cell (FPDGridCell) and constructs a FPDVisitedWorldDatum,
+	 * to then call the overloaded 'VisitedWorldLocation' with the constructed type */
+    UFUNCTION(BlueprintCallable, Category = "Fog of War")
+	void UpdateWorldLocation(AController* RequestedController, const FVector& WorldLocation);
 
 	/** @brief Sets the given mode and loads the settings for that mode */
     UFUNCTION(BlueprintNativeEvent, BlueprintCallable, Category = Camera)
@@ -145,6 +209,10 @@ public:
 	/** @brief Pointer directly to the actual settings entry after it has been resolved by 'CurrentSettingsHandle' */
     FPDFogOfWarSettings* SettingPtr = nullptr;
 
+	/** @brief The world coordinates we want the subsystem to have a view over */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	FPDWorldDescriptor WorldDescriptor;	
+
 	/** @brief Fog of War State: Requested*/
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Fog of War")
     FGameplayTag RequestedFOWState{};
@@ -153,8 +221,9 @@ public:
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Fog of War")
     FGameplayTag OldFOWState{};
 
+	/** @brief Controllers we are tracking FOW state for */
 	UPROPERTY(VisibleInstanceOnly, BlueprintReadWrite, Category = "Fog of War")
-	TMap<AController*, FPDVisitedWorldDatum> TrackedControllers;
+	TMap<AController*, FPDWorldData> TrackedControllers;
 
     /* Associative maps */
 	/** @brief Map to associate a type tag with the manager settings it points to in the table it was sourced from */
@@ -163,6 +232,7 @@ public:
     TMap<FGameplayTag /*Type tag*/, const UDataTable* /*Table*/> TagToTable;
 	/** @brief Map to associate a type tag with the rowname of the entry it was sourced from */
     TMap<FGameplayTag /*Type tag*/, FName /*Rowname*/> TagToRowname;
+	
 };
 
 

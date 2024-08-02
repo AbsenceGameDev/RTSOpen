@@ -29,7 +29,7 @@ public class PDRTSBase : ModuleRules
 			new string[]
 			{
 				"AIModule", "NavigationSystem", "CoreUObject", "Niagara",
-				"Engine", "Slate", "SlateCore", "GameplayTags", 
+				"Engine", "Slate", "SlateCore", "GameplayTags", "RenderCore", "RHI", 
 				"MassAIBehavior",  "MassCrowd", "AnimToTexture", "CommonUI"
 				// ... add private dependencies that you statically link with here ...	
 			}
