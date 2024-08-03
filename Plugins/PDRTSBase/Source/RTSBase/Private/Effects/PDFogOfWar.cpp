@@ -78,7 +78,7 @@ void FPDWorldData::InitializeFOWTexture()
 
 void FPDWorldData::DeinitializeFOWTexture()
 {
-	if (InitCount < 0)
+	if (InitCount <= 0)
 	{
 		return;
 	}
