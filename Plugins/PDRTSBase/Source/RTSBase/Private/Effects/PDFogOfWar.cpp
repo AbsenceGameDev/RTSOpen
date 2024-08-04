@@ -4,6 +4,7 @@
 #include "PDRTSCommon.h"
 #include "RHICommandList.h"
 #include "Rendering/Texture2DResource.h"
+#include "Serialization/ArchiveSerializedPropertyChain.h"
 
 
 void FPDWorldData::VisitedWorldLocation(const FPDVisitedWorldDatum& WorldLocation)
@@ -233,6 +234,60 @@ void FPDWorldData::UpdateTexture(bool bFreeInnerData)
             }
             delete RegionData;
         });
+}
+
+void FPDWorldData::CopyWorldFOWDataToFriendlyFormat(uint8* SourceTextureData, TArray<FColor>& TargetTextureData, int32 PixelCount)
+{
+	TargetTextureData.SetNumUninitialized(PixelCount);
+	
+	// Loop for each pixel, setting the pixels values from Color
+	for (uint32 i = 0; (i * 4) < PixelCount; i++)
+	{
+		const uint32 ColourStartIdx = i * 4;
+		TargetTextureData[i] = FColor{
+			SourceTextureData[ColourStartIdx + 0],
+			SourceTextureData[ColourStartIdx + 1],
+			SourceTextureData[ColourStartIdx + 2],
+			SourceTextureData[ColourStartIdx + 3]
+		};
+	}
+}
+
+void FPDWorldData::SerializeWorldFOWData(FBitArchive& Ar, uint8* SourceTextureData, int32 PixelCount)
+{
+	// PixelCount should most often be: FOWTextureTotalPixels 
+	// SourceTextureData should most often be: FOWTextureData 
+	
+	TArray<FColor> OutTextureData;
+	CopyWorldFOWDataToFriendlyFormat(SourceTextureData,OutTextureData, PixelCount);
+	OutTextureData.BulkSerialize(Ar);
+}
+
+void GetColoursFromArchive(FArchive& Ar, TArray<FColor>& A)
+{
+	// Iterate all properties, find our data
+
+	const FArchiveSerializedPropertyChain* PropertyChain = Ar.GetSerializedPropertyChain();
+	if (ensure(PropertyChain != nullptr))
+	{
+		
+		const int32 PropCount = PropertyChain->GetNumProperties();
+		for (int32 PropertyIdx = 0; PropertyIdx < PropCount; PropertyIdx++)
+		{
+			FProperty* CurrentProperty = PropertyChain->GetPropertyFromRoot(PropertyIdx);
+
+			// Check if we match an fcolor array without a valid name?
+			// Not sure, either this or if we can construct a phony property name upon serializing
+			// the array initially so we have something to match against 
+		}
+	}
+}
+
+TArray<FColor> FPDWorldData::DeserializeWorldFOWData(FBitArchive& Ar)
+{
+	TArray<FColor> TextureData;
+	GetColoursFromArchive(Ar,TextureData);
+	return TextureData;
 }
 
 UPDFogOfWarSubsystem::UPDFogOfWarSubsystem()

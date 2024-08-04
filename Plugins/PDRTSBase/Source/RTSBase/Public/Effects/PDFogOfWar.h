@@ -107,6 +107,17 @@ struct PDRTSBASE_API FPDWorldData
 	/** @brief Update Texture Object from Texture Data */
 	void UpdateTexture(bool bFreeInnerData = false);
 
+	/** @brief Copies the data from 'SourceTextureData' raw array, into a TArray 'TargetTextureData' */
+	static void CopyWorldFOWDataToFriendlyFormat(uint8* SourceTextureData, TArray<FColor>& TargetTextureData, int32 PixelCount);	
+	
+	/** @brief Serializes the FoW data into the referenced archive 'Ar'.
+	 * @details Calls 'CopyWorldFOWDataToFriendlyFormat' then calls BulkSerialize on the resulting array */
+	static void SerializeWorldFOWData(FBitArchive& Ar, uint8* SourceTextureData, int32 PixelCount);
+
+	/** @brief @todo / @inprogress Deserialize the FoW data from the referenced archive 'Ar'.
+	 * @details Iterates the serialized properties of 'Ar' to find a matching array property */
+    static TArray<FColor> DeserializeWorldFOWData(FBitArchive& Ar);	
+	
 	/** @brief Describes the world this data pertains to */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
 	FPDWorldDescriptor WorldDescriptor;
