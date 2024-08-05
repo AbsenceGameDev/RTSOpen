@@ -5,6 +5,7 @@
 #include "CoreMinimal.h"
 #include "GameplayTags.h"
 #include "PDRTSSharedHashGrid.h"
+#include "Serialization/BufferArchive.h"
 #include "PDFogOfWar.generated.h"
 
 class UTextureRenderTarget2D;
@@ -69,6 +70,24 @@ struct PDRTSBASE_API FPDWorldDescriptor
 	FVector2D Pivot;
 };
 
+class FPDPixelArchive : public FBufferArchive
+{
+public:
+
+	FPDPixelArchive(uint32 Command)
+	{
+		// make sure the command is at the start
+		*this << Command;
+	}
+
+	// helper to serialize FColor arrays a bit cleaner
+	FORCEINLINE FPDPixelArchive& operator<<(TArray<FColor>& Cols)
+	{
+		Cols.BulkSerialize(*this, false);
+		return *this;
+	}	
+};
+
 /** @brief A simple struct which is acting as a players world mappings */
 USTRUCT(Blueprintable)
 struct PDRTSBASE_API FPDWorldData
@@ -108,15 +127,16 @@ struct PDRTSBASE_API FPDWorldData
 	void UpdateTexture(bool bFreeInnerData = false);
 
 	/** @brief Copies the data from 'SourceTextureData' raw array, into a TArray 'TargetTextureData' */
-	static void CopyWorldFOWDataToFriendlyFormat(uint8* SourceTextureData, TArray<FColor>& TargetTextureData, int32 PixelCount);	
+	static void CopyWorldFOWDataToFriendlyFormat(uint8* SourceTextureData, TArray<FColor>& TargetTextureData, uint32 PixelCount);	
 	
 	/** @brief Serializes the FoW data into the referenced archive 'Ar'.
 	 * @details Calls 'CopyWorldFOWDataToFriendlyFormat' then calls BulkSerialize on the resulting array */
-	static void SerializeWorldFOWData(FBitArchive& Ar, uint8* SourceTextureData, int32 PixelCount);
+	static void SerializeWorldFOWData(FPDPixelArchive& Ar, uint8* SourceTextureData, uint32 PixelCount);
 
 	/** @brief @todo / @inprogress Deserialize the FoW data from the referenced archive 'Ar'.
 	 * @details Iterates the serialized properties of 'Ar' to find a matching array property */
-    static TArray<FColor> DeserializeWorldFOWData(FBitArchive& Ar);	
+	static TArray<FColor> DeserializeWorldFOWData(FPDPixelArchive& Ar);	
+	TArray<FColor> DeserializeWorldFOWData(FPDPixelArchive& Ar, const bool bUpdateCurrentlyDisplayedTextureData);	
 	
 	/** @brief Describes the world this data pertains to */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)

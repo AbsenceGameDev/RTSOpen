@@ -4,6 +4,8 @@
 #include "PDRTSCommon.h"
 #include "RHICommandList.h"
 #include "Rendering/Texture2DResource.h"
+
+#include "Serialization/BufferArchive.h"
 #include "Serialization/ArchiveSerializedPropertyChain.h"
 
 
@@ -90,10 +92,7 @@ void FPDWorldData::DeinitializeFOWTexture()
 	// Initialize Texture Data Array
 	delete [] FOWTextureData;
 	delete TextureRegion;
-
 }
-
-
 
 void FPDWorldData::FillMap(const bool bDiscovered) const
 {
@@ -236,7 +235,7 @@ void FPDWorldData::UpdateTexture(bool bFreeInnerData)
         });
 }
 
-void FPDWorldData::CopyWorldFOWDataToFriendlyFormat(uint8* SourceTextureData, TArray<FColor>& TargetTextureData, int32 PixelCount)
+void FPDWorldData::CopyWorldFOWDataToFriendlyFormat(uint8* SourceTextureData, TArray<FColor>& TargetTextureData, uint32 PixelCount)
 {
 	TargetTextureData.SetNumUninitialized(PixelCount);
 	
@@ -253,42 +252,68 @@ void FPDWorldData::CopyWorldFOWDataToFriendlyFormat(uint8* SourceTextureData, TA
 	}
 }
 
-void FPDWorldData::SerializeWorldFOWData(FBitArchive& Ar, uint8* SourceTextureData, int32 PixelCount)
+void FPDWorldData::SerializeWorldFOWData(FPDPixelArchive& Ar, uint8* SourceTextureData, uint32 PixelCount)
 {
 	// PixelCount should most often be: FOWTextureTotalPixels 
-	// SourceTextureData should most often be: FOWTextureData 
+	// SourceTextureData should most often be: FOWTextureData
 	
 	TArray<FColor> OutTextureData;
 	CopyWorldFOWDataToFriendlyFormat(SourceTextureData,OutTextureData, PixelCount);
-	OutTextureData.BulkSerialize(Ar);
+	Ar << OutTextureData; 
 }
 
-void GetColoursFromArchive(FArchive& Ar, TArray<FColor>& A)
+void GetColoursFromArchive(FPDPixelArchive& Ar, TArray<FColor>& OutPixels)
 {
-	// Iterate all properties, find our data
-
-	const FArchiveSerializedPropertyChain* PropertyChain = Ar.GetSerializedPropertyChain();
-	if (ensure(PropertyChain != nullptr))
+	const uint32 ColourCount = Ar.Num();
+	const uint32 PixelCount = ColourCount / 4; // 4 bytes per fcolor
+	OutPixels.SetNum(PixelCount);
+	
+	// Iterate all bytes, recompose our data
+	for (uint32 PixelIndex = 0; (PixelIndex * 4) < ColourCount; PixelIndex++)
 	{
-		
-		const int32 PropCount = PropertyChain->GetNumProperties();
-		for (int32 PropertyIdx = 0; PropertyIdx < PropCount; PropertyIdx++)
-		{
-			FProperty* CurrentProperty = PropertyChain->GetPropertyFromRoot(PropertyIdx);
-
-			// Check if we match an fcolor array without a valid name?
-			// Not sure, either this or if we can construct a phony property name upon serializing
-			// the array initially so we have something to match against 
-		}
-	}
+		const uint32 ColourByteIdx = PixelIndex * 4;
+		OutPixels[PixelIndex] = FColor{
+			Ar[ColourByteIdx + 0],
+			Ar[ColourByteIdx + 1],
+			Ar[ColourByteIdx + 2],
+			Ar[ColourByteIdx + 3]
+		};
+	}		
 }
 
-TArray<FColor> FPDWorldData::DeserializeWorldFOWData(FBitArchive& Ar)
+TArray<FColor> FPDWorldData::DeserializeWorldFOWData(FPDPixelArchive& Ar)
 {
 	TArray<FColor> TextureData;
 	GetColoursFromArchive(Ar,TextureData);
 	return TextureData;
 }
+
+TArray<FColor> FPDWorldData::DeserializeWorldFOWData(FPDPixelArchive& Ar, const bool bUpdateCurrentlyDisplayedTextureData)
+{
+	TArray<FColor> TextureData = DeserializeWorldFOWData(Ar);
+
+	if (bUpdateCurrentlyDisplayedTextureData)
+	{
+		const int32 PixelCount = TextureData.Num();
+		check(FOWTextureDataSize == PixelCount); // This should always be true
+		
+		// Iterate all bytes, overwrite our active colour data
+		for (uint32 PixelIndex = 0; (PixelIndex * 4) < FOWTextureDataSize; PixelIndex++)
+		{
+			const FColor Col = TextureData[PixelIndex];
+			
+			const uint32 ColourByteIdx = PixelIndex * 4;
+			FOWTextureData[ColourByteIdx + 0] = Col.R;
+			FOWTextureData[ColourByteIdx + 1] = Col.G;
+			FOWTextureData[ColourByteIdx + 2] = Col.B;
+			FOWTextureData[ColourByteIdx + 3] = Col.A;
+		}			
+	}
+	
+	return TextureData;
+}
+
+
 
 UPDFogOfWarSubsystem::UPDFogOfWarSubsystem()
 {
