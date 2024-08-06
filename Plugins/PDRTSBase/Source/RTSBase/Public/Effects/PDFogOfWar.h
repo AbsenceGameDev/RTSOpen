@@ -229,6 +229,10 @@ public:
     UFUNCTION(BlueprintNativeEvent, BlueprintCallable, Category = Camera)
     void SetCustomMode(FGameplayTag Tag);
 
+	/** @brief Boilerplate for unreals stat system, declares and returns a cycle stat for profiling purposes */
+	virtual TStatId GetStatId() const override;
+
+
 protected:
 	/** @brief Process all camera settings tables */
     void ProcessTables();

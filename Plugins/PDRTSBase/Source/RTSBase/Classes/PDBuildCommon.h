@@ -41,6 +41,8 @@ PDRTSBASE_API UE_DECLARE_GAMEPLAY_TAG_EXTERN(TAG_BUILD_ContextMenu_Builder_Exper
 /** Declaring the "BUILD.Actions." gameplay tags. to be defined in an object-file */
 PDRTSBASE_API UE_DECLARE_GAMEPLAY_TAG_EXTERN(TAG_BUILD_Actions_DestroyBuilding);
 PDRTSBASE_API UE_DECLARE_GAMEPLAY_TAG_EXTERN(TAG_MSG_Actions_CannotAffordAction);
+PDRTSBASE_API UE_DECLARE_GAMEPLAY_TAG_EXTERN(TAG_MSG_Actions_CannotPlaceBuilding_Encroachment);
+
 // TAG_AI_Type_ tags are implicitly counted as spawn actions when applied as a 'buildable action tag' in an entry in a 'FPDBuildable'-type of datatable
 
 /** Declaring the "BUILD.ActionContext." gameplay tags. to be defined in an object-file */

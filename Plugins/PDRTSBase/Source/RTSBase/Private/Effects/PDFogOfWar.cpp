@@ -415,6 +415,11 @@ void UPDFogOfWarSubsystem::SetCustomMode_Implementation(FGameplayTag Tag)
 }
 
 
+TStatId UPDFogOfWarSubsystem::GetStatId() const
+{
+	RETURN_QUICK_DECLARE_CYCLE_STAT(UPDFogOfWarSubsystem, STATGROUP_Tickables);
+}
+
 void UPDFogOfWarSubsystem::ProcessTables()
 {
 	const UPDFogOfWarSettingsSource* FogOfWarGlobalSettings = GetDefault<UPDFogOfWarSettingsSource>();

@@ -4,11 +4,11 @@
 #include "CoreMinimal.h"
 #include "PDBuildCommon.h"
 #include "PDRTSCommon.h"
-#include "Actors/GodHandPawn.h"
 #include "Actors/PDInteractActor.h"
 #include "AI/Mass/RTSOMassFragments.h"
 #include "Components/PDInventoryComponent.h"
 #include "Interfaces/PDRTSBuildableGhostInterface.h"
+#include "Interfaces/RTSOConversationInterface.h"
 #include "RTSOInteractableBuildingBase.generated.h"
 
 struct FRTSOLightInventoryFragment;
@@ -76,6 +76,7 @@ public:
 	/** @brief  Processes a spawn, load settings (and set state) based on being a ghost or not */
 	template<bool TIsGhost>
 	void ProcessSpawn();
+	
 	/** @brief If able, withdraws the recurring cost.
 	 * @param Bank (Optional player inv)
 	 * @param EntityInv (Optional calling entity)
@@ -91,6 +92,11 @@ public:
 	void OnBuildingDestroyed();
 	
 	/* IPDRTSBuildableGhostInterface Interface Start */
+	
+	/** @brief Call when we want to get a ghosts meshes. Used for encroachment/boundary checks */
+	virtual TArray<UStaticMeshComponent*> GetGhostMeshes_Implementation() override;
+	virtual void SetGhostAsEncroached_Implementation(bool bIsEncroached) override;
+	virtual bool GetGhostAsEncroached_Implementation() override;
 	virtual void OnSpawnedAsGhost_Implementation(const FGameplayTag& BuildableTag, bool bInIsPreviewGhost, bool bInRequiresWorkersToBuild) override;
 	virtual void OnSpawnedAsMain_Implementation(const FGameplayTag& BuildableTag)  override;
 	virtual void TransitionFromGhostToMain_Implementation() override;
@@ -146,6 +152,10 @@ private:
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Meta = (AllowPrivateAccess="true"))
 	UMaterialInstance* GhostMat = nullptr;
 
+	/** @brief Ghost material, gets set from data-asset */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Meta = (AllowPrivateAccess="true"))
+	UMaterialInstance* GhostMat_Encroached = nullptr;	
+
 	/** @brief What buildable tag spawned us, gets set when spawned */
 	UPROPERTY(VisibleInstanceOnly, BlueprintReadOnly, Meta = (AllowPrivateAccess="true"))
 	FGameplayTag InstigatorBuildableTag{};
@@ -154,10 +164,14 @@ private:
 	UPROPERTY(VisibleInstanceOnly, BlueprintReadOnly, Meta = (AllowPrivateAccess="true"))
 	bool bIsPreviewGhost = true; // Default to preview
 	
+	/** @return true if the ghost is encroaching another building */
+	UPROPERTY(VisibleInstanceOnly, BlueprintReadOnly, Meta = (AllowPrivateAccess="true"))
+	bool bIsEncroachedGhost = false; // Default to false
+	
 	/** @return Static name used as selector in BuildableCollisionSettings and GhostCollisionSettings */
 	static inline FName BoxcompName = "Boxcomp"; 
 	/** @return Static name used as selector in BuildableCollisionSettings and GhostCollisionSettings */
-	static inline FName MeshName = "Mesh"; 
+	static inline FName MeshName = "Mesh";
 };
 
 /** @brief RefreshStaleSettings<true>(), Calls RefreshStaleSettings_Ghost */

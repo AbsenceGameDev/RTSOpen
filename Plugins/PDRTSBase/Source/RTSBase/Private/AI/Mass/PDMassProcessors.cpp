@@ -552,7 +552,7 @@ void UPDOctreeProcessor::Execute(FMassEntityManager& EntityManager, FMassExecuti
 	// Clear previous buffer
 	RTSSubsystem->OctreeUserQuery.ClearQueryBuffer(EPDQueryGroups::QUERY_GROUP_MINIMAP);
 	RTSSubsystem->OctreeUserQuery.ClearQueryBuffer(EPDQueryGroups::QUERY_GROUP_HOVERSELECTION); // Hover Selection Group
-	BuilderSubsystem->OctreeBuildSystemEntityQuery.ClearQueryBuffer(EPDQueryGroups::QUERY_GROUP_BUILDABLE_ACTORS);
+	BuilderSubsystem->OctreeBuildSystemEntityQuery.ClearQueryBuffer(EPDQueryGroups::QUERY_GROUP_BUILDABLE_ACTORS); // @todo finish impl. making use of this query group
 
 	// Clear all tracked cells for now
 	BuilderSubsystem->WorldBuildActorOctree.FindAllElements(
@@ -676,6 +676,9 @@ void UPDOctreeProcessor::Execute(FMassEntityManager& EntityManager, FMassExecuti
 				const int32 SelectedOwnerID = ActorCompound.OwnerID;
 				for (const AActor* SelectedPlayersBuildable : BuildableActorArray)
 				{
+					// Below if-cond is a temporary WA @todo Sporadic bug: Resolve the data-race that might be caused this when removing a buildable from the world
+					if (SelectedPlayersBuildable == nullptr) { continue; }
+					
 					const FPDBuildable* Buildable = BuilderSubsystem->GetBuildableWithActionsFromClassStatic(
 						SelectedPlayersBuildable->GetClass());
 					if (Buildable == nullptr)

@@ -144,10 +144,10 @@ void AGodHandPawn::TrackUnitMovement()
 void AGodHandPawn::HoverTick(const float DeltaTime)
 {
 	// Update Octree query position for 'QUERY_GROUP_1'
-	UPDRTSBaseSubsystem* RTSSubSystem = UPDRTSBaseSubsystem::Get();
+	UPDRTSBaseSubsystem* RTSSubsystem = UPDRTSBaseSubsystem::Get();
 	const FVector& QueryLocation = CursorMesh->GetComponentLocation();
-	RTSSubSystem->OctreeUserQuery.UpdateQueryPosition(EPDQueryGroups::QUERY_GROUP_MINIMAP, QueryLocation);
-	RTSSubSystem->OctreeUserQuery.UpdateQueryPosition(EPDQueryGroups::QUERY_GROUP_HOVERSELECTION, QueryLocation);
+	RTSSubsystem->OctreeUserQuery.UpdateQueryPosition(EPDQueryGroups::QUERY_GROUP_MINIMAP, QueryLocation);
+	RTSSubsystem->OctreeUserQuery.UpdateQueryPosition(EPDQueryGroups::QUERY_GROUP_HOVERSELECTION, QueryLocation);
 	
 	AActor* ClosestActor = FindClosestInteractableActor();
 	// Overwrite HoveredActor if they are not the same
@@ -225,8 +225,9 @@ void AGodHandPawn::BuildableGhostTick(float DeltaTime)
 	const FVector& TrueLocation = Collision->GetComponentLocation();
 	const UPDHashGridSubsystem* HashGridSubsystem = UPDHashGridSubsystem::Get();
 	const FVector SteppedLocation = HashGridSubsystem->GetCellVector(TrueLocation);
+	const TSubclassOf<AActor> ActorClassToSpawn = CurrentBuildableData->ActorToSpawn;
 	
-	if (CurrentGhost == nullptr || CurrentGhost->GetClass() != CurrentBuildableData->ActorToSpawn)
+	if (CurrentGhost == nullptr || CurrentGhost->GetClass() != ActorClassToSpawn)
 	{
 		if (CurrentGhost != nullptr )
 		{
@@ -234,13 +235,46 @@ void AGodHandPawn::BuildableGhostTick(float DeltaTime)
 			CurrentGhost = nullptr;
 		}
 		
-		CurrentGhost = GetWorld()->SpawnActor(CurrentBuildableData->ActorToSpawn, &SteppedLocation);
+		CurrentGhost = GetWorld()->SpawnActor(ActorClassToSpawn, &SteppedLocation);
 		CurrentGhost->SetOwner(this);
 
-		if (CurrentGhost->GetClass()->ImplementsInterface(UPDRTSBuildableGhostInterface::StaticClass()))
+		if (ActorClassToSpawn->ImplementsInterface(UPDRTSBuildableGhostInterface::StaticClass()))
 		{
 			IPDRTSBuildableGhostInterface::Execute_OnSpawnedAsGhost(CurrentGhost, CurrentBuildableTag, true, false);
 		}
+	}
+
+	// Check for encroachment/overlap 
+	if (CurrentGhost->GetClass()->ImplementsInterface(UPDRTSBuildableGhostInterface::StaticClass()))
+	{
+		CurrentGhost->SetActorEnableCollision(true);
+		TArray<UStaticMeshComponent*> OverlapMeshes = IPDRTSBuildableGhostInterface::Execute_GetGhostMeshes(CurrentGhost);
+		
+		bool bIsEncroached = false;
+		for (UStaticMeshComponent* Mesh : OverlapMeshes)
+		{
+			Mesh->SetCollisionEnabled(ECollisionEnabled::QueryOnly);
+			TArray<AActor*> OverlappedActors;
+			Mesh->GetOverlappingActors(OverlappedActors);
+			Mesh->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+
+			// UE_LOG(PDLog_RTSO, Warning, TEXT("AGodHandPawn::TickGhost -- Encroachment -- Check for overlap"))
+			for (const AActor* OverlappedActor : OverlappedActors)
+			{
+				if (OverlappedActor == CurrentGhost) { continue; }
+				
+				UE_LOG(PDLog_RTSO, Warning, TEXT("AGodHandPawn::TickGhost -- Encroachment -- Comparing with found component"))
+				if (OverlappedActor->GetClass()->ImplementsInterface(UPDRTSBuildableGhostInterface::StaticClass()))
+				{
+					UE_LOG(PDLog_RTSO, Warning, TEXT("AGodHandPawn::TickGhost -- Encroachment -- Failed check, is overlapping actor"))
+					bIsEncroached = true;
+					break;
+				}
+			}
+		}
+	
+		IPDRTSBuildableGhostInterface::Execute_SetGhostAsEncroached(CurrentGhost, bIsEncroached);
+		CurrentGhost->SetActorEnableCollision(false);
 	}
 
 	// Previously hidden ghost unhidden
@@ -644,13 +678,34 @@ void AGodHandPawn::ProcessPlaceBuildable(ARTSOController* PC)
 {
 	PC->MarqueeSelection(EMarqueeSelectionEvent::ABORT);
 
+	ensure(CurrentGhost != nullptr);
+	if (CurrentGhost->GetClass()->ImplementsInterface(UPDRTSBuildableGhostInterface::StaticClass()) == false)
+	{
+		UE_LOG(PDLog_RTSO, Error, TEXT(
+			"\nAGodHandPawn::ProcessPlaceBuildable "
+			"\n-- Selected 'CurrentGhost' does not implement IPDRTSBuildableGhostInterface "
+			"\n-- Exiting function "))
+		return;
+	}
+
+	const bool bIsGhostEncroached = IPDRTSBuildableGhostInterface::Execute_GetGhostAsEncroached(CurrentGhost);
+	if (bIsGhostEncroached)
+	{
+		// @done send error notification via message subsystem?
+		// @todo Assign the given tag to the message datatable so this resolves to something
+		UPDUserMessageSubsystem::Get()->SendMessageToUser_Server(TAG_MSG_Actions_CannotPlaceBuilding_Encroachment, GetController<APlayerController>());
+		
+		return; // don't place buildings that are encroached
+	}
+	
+
 	const UPDBuilderSubsystemSettings* DeveloperSettings = GetDefault<UPDBuilderSubsystemSettings>();
 
 	const PD::Build::Behaviour::Cost     CostBehaviour     = DeveloperSettings->DefaultBuildSystemBehaviours.Cost;
 	const PD::Build::Behaviour::Progress ProgressBehaviour = DeveloperSettings->DefaultBuildSystemBehaviours.Progression;
 	
-	const bool NonImmediate_SpawnGhost  = CostBehaviour != PD::Build::Behaviour::Cost::EFree && ProgressBehaviour != PD::Build::Behaviour::Progress::EImmediate;
-	const bool Immediate_SpawnGhost     = (CostBehaviour != PD::Build::Behaviour::Cost::EFree && ProgressBehaviour == PD::Build::Behaviour::Progress::EImmediate)
+	const bool NonImmediate_SpawnGhost  = CostBehaviour   != PD::Build::Behaviour::Cost::EFree && ProgressBehaviour != PD::Build::Behaviour::Progress::EImmediate;
+	const bool Immediate_SpawnGhost     = (CostBehaviour  != PD::Build::Behaviour::Cost::EFree && ProgressBehaviour == PD::Build::Behaviour::Progress::EImmediate)
 	                                    || (CostBehaviour == PD::Build::Behaviour::Cost::EFree && ProgressBehaviour != PD::Build::Behaviour::Progress::EImmediate);
 	
 	const bool Immediate_SpawnBuildable = CostBehaviour == PD::Build::Behaviour::Cost::EFree && ProgressBehaviour == PD::Build::Behaviour::Progress::EImmediate;

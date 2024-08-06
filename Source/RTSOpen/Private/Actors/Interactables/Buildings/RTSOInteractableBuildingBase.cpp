@@ -322,6 +322,7 @@ void ARTSOInteractableBuildingBase::ProcessSpawn()
 	}
 }
 
+
 bool ARTSOInteractableBuildingBase::WithdrawRecurringCostFromBankOrEntity(UPDInventoryComponent* Bank, FRTSOLightInventoryFragment* EntityInv, const int32& ImmutableStage)
 {
 	bool bCanAfford = false;
@@ -476,6 +477,40 @@ void ARTSOInteractableBuildingBase::OnBuildingDestroyed_Implementation()
 		UE_LOG(PDLog_RTSO, Error, TEXT("ARTSOInteractableBuildingBase(%s)::ProcessIfWorkersNotRequired -- No valid owner -- AsGodhand == nullptr || PC == nullptr"), *GetName())
 		return;
 	}
+}
+
+
+TArray<UStaticMeshComponent*> ARTSOInteractableBuildingBase::GetGhostMeshes_Implementation()
+{
+	return TArray<UStaticMeshComponent*>{Mesh};
+}
+
+void ARTSOInteractableBuildingBase::SetGhostAsEncroached_Implementation(bool bIsEncroached)
+{
+	IPDRTSBuildableGhostInterface::SetGhostAsEncroached_Implementation(bIsEncroached);
+
+	bIsEncroachedGhost = bIsEncroached;
+
+	UMaterialInstance* SelectedMat = bIsEncroachedGhost ? GhostMat_Encroached : GhostMat;
+	const FString SelectedMatMember = bIsEncroachedGhost ? "GhostMat_Encroached" : "GhostMat";
+	
+	// Update material
+	if (SelectedMat == nullptr || SelectedMat->IsValidLowLevelFast() == false)
+	{
+		// Output error level log
+		UE_LOG(PDLog_RTSO, Error, TEXT("ARTSOInteractableBuildingBase::SetGhostAsEncroached -- Material Instance member '%s' is not set"), *SelectedMatMember)
+		return;
+	}
+
+	if (bIsPreviewGhost == false || Mesh->GetMaterial(0) == SelectedMat) { return; }
+
+	Mesh->SetMaterial(0, SelectedMat);
+	UE_LOG(PDLog_RTSO, Warning, TEXT("ARTSOInteractableBuildingBase::SetGhostAsEncroached -- Material updated to display member '%s'"), *SelectedMatMember)
+}
+
+bool ARTSOInteractableBuildingBase::GetGhostAsEncroached_Implementation()
+{
+	return bIsEncroachedGhost;
 }
 
 void ARTSOInteractableBuildingBase::OnSpawnedAsGhost_Implementation(const FGameplayTag& BuildableTag, bool bInIsPreviewGhost, bool bInRequiresWorkersToBuild)

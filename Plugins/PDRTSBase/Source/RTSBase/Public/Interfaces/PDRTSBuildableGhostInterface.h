@@ -29,6 +29,29 @@ public:
 	{
 	}
 
+	/** @brief Call when we want to set/unset a current ghost as red/non-placeable */
+	UFUNCTION(BlueprintNativeEvent, CallInEditor, Category = "Actor|Interface|Ghost")
+	void SetGhostAsEncroached(bool bIsEncroached);
+	virtual void SetGhostAsEncroached_Implementation(bool bIsEncroached)
+	{
+	}
+
+	/** @brief Call when we want to set/unset a current ghost as red/non-placeable */
+	UFUNCTION(BlueprintNativeEvent, CallInEditor, Category = "Actor|Interface|Ghost")
+	bool GetGhostAsEncroached();
+	virtual bool GetGhostAsEncroached_Implementation()
+	{
+		return false;
+	}	
+
+	/** @brief Call when we want to get a ghosts meshes. Used for encroachment/boundary checks */
+	UFUNCTION(BlueprintNativeEvent, CallInEditor, Category = "Actor|Interface|Ghost")
+	TArray<UStaticMeshComponent*> GetGhostMeshes();
+	virtual TArray<UStaticMeshComponent*> GetGhostMeshes_Implementation()
+	{
+		return TArray<UStaticMeshComponent*>{};
+	}
+
 	/** @brief Call when we want to spawn a buildable as a completed building */
 	UFUNCTION(BlueprintNativeEvent, CallInEditor, Category = "Actor|Interface|Ghost")
 	void OnSpawnedAsMain(const FGameplayTag& BuildableTag);
