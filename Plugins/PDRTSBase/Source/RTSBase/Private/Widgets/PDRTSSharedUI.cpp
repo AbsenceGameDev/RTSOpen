@@ -917,7 +917,11 @@ void UPDBuildingActionsWidgetBase::SelectActionContext(const FGameplayTag& NewSe
 
 		//
 		// Make selector visible if we have at-least one buildable action visible
-		if (Actions->GetListItems().IsEmpty() == false) { CountSelector->SetVisibility(ESlateVisibility::Visible); }
+		if (Actions->GetListItems().IsEmpty() == false)
+		{
+			CountSelector->ApplySettings(1, 250); // @todo replace hardocoded values here 
+			CountSelector->SetVisibility(ESlateVisibility::Visible);
+		}
 		
 		break;
 	}
@@ -1097,6 +1101,9 @@ void UPDBuildingActionsWidgetBase::UpdateSelectedAction(const FGameplayTag& Requ
 			MASK_BYTE(CountSelector->SelectedCount, 2),
 			MASK_BYTE(CountSelector->SelectedCount, 3)
 		};
+
+		UE_LOG(PDLog_RTSBase, Warning, TEXT("UPDBuildingActionsWidgetBase::UpdateSelectedAction -- Selected Count: %i"), CountSelector->SelectedCount);
+
 		
 		IPDRTSBuilderInterface::Execute_SelectActionMenuEntry(CachedOwner, SelectedActionMode, FinalTagSelection, Payload);
 	}	

@@ -1302,15 +1302,22 @@ void AGodHandPawn::SelectActionMenuEntry_Implementation(ERTSBuildableActionMenuM
 			// TAG_AI_Type_ type tags are implicitly counted as spawn actions when applied as a 'buildable action tag' in an entry in a 'FPDBuildable' datatable
 			if (ActionTag.MatchesTag(TAG_AI_Type))
 			{
+				const ARTSOController* PC = GetController<ARTSOController>();
+				if (PC == nullptr)
+				{
+					//@todo error message here
+					return;
+				}
+				
 				// Check if we can match it against a type in our subsystem
 				const bool bIsMatchedAgainst = BuilderSubsystem->GrantedBuildContexts_WorkerTag.Contains(ActionTag);
 				if (bIsMatchedAgainst == false) { return; }
 
 				// done 0. default to a single spawn if we have no payload instructing us how many we should spawn 
 				uint32 SpawnCount = Payload.IsValidIndex(3) ? RESTORE_BYTE(Payload, 0) | RESTORE_BYTE(Payload, 1) | RESTORE_BYTE(Payload, 2) | RESTORE_BYTE(Payload, 3) : 1;
-
+				
 				// @DONE 0. Ensure we afford the action
-				if (InventoryComponent->CanAfford((*FoundActionData)->ActionCost))
+				if (InventoryComponent->CanAfford((*FoundActionData)->ActionCost), SpawnCount)
 				{
 					// @DONE 1. Need to select a entity config and use it to spawn
 					// @DONE 2. Will need some mapping between unit-type tags and their entity configs, multiple unit-type tags may share the same configs
@@ -1325,21 +1332,16 @@ void AGodHandPawn::SelectActionMenuEntry_Implementation(ERTSBuildableActionMenuM
 				
 
 					TMap<const FMassEntityTemplateID, ARTSOBaseGM::FEntityCompoundTuple> EntitiesToSpawn{};
+
 					// Gather entities to spawn
+					FRTSSavedWorldUnits ConstructedEntityData{};
+					ConstructedEntityData.EntityUnitTag = ActionTag;
+					ConstructedEntityData.OwnerID = IPDRTSBuilderInterface::Execute_GetBuilderID(this);
+					
+					// @todo need to offset the actor location, right now it spawns in the middle of it
+					ConstructedEntityData.Location = PC->GetBuildableActionsWidget()->CurrentWorldActor->GetActorLocation();
+					for (uint32 SpawnIdx = 0; SpawnIdx < SpawnCount; SpawnIdx++)
 					{
-						const ARTSOController* PC = GetController<ARTSOController>();
-						if (PC == nullptr)
-						{
-							//@todo error message here
-							return;
-						}
-						
-						FRTSSavedWorldUnits ConstructedEntityData{};
-						ConstructedEntityData.EntityUnitTag = ActionTag;
-						ConstructedEntityData.OwnerID = IPDRTSBuilderInterface::Execute_GetBuilderID(this);
-						
-						// @todo need to offset the actor location, right now it spawns in the middle of it
-						ConstructedEntityData.Location = PC->GetBuildableActionsWidget()->CurrentWorldActor->GetActorLocation();
 						ARTSOBaseGM::GatherEntityToSpawn(*GetWorld(), ConstructedEntityData, EntitiesToSpawn, RTSSubsystem, SpawnerSystem);
 					}
 

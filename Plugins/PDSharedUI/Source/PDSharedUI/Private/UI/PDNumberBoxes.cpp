@@ -2,6 +2,7 @@
 
 #include "UI/PDNumberBoxes.h"
 
+#include "PDUIBaseDefinitions.h"
 #include "Components/Button.h"
 #include "Components/EditableTextBox.h"
 #include "Components/Slider.h"
@@ -86,6 +87,8 @@ void UPDRangedIncrementBox::SetupDelegates()
 
 void UPDRangedIncrementBox::ValidateNewValue(int32 InCount)
 {
+	UE_LOG(PDLog_SharedUI, VeryVerbose, TEXT("UPDRangedIncrementBox::ValidateNewValue -- InCount: %i "), InCount);
+
 	SelectedCount = FMath::Clamp(InCount, MinimumCount, MaximumCount);
 	const FText NewText = FText::FromString(FString::FromInt(SelectedCount));
 
@@ -112,18 +115,24 @@ void UPDRangedSelector::ApplySettings(int32 InMinimumCount, int32 InMaximumCount
 	MinimumCount = InMinimumCount;
 	MaximumCount = FMath::Max(MinimumCount, InMaximumCount); // don't allow Max to be below Min
 
+	RangedSliderTextBlock->SetVisibility(ESlateVisibility::Hidden);
 	RangedSlider->SetVisibility(ESlateVisibility::Hidden);
 	RangedNumberBox->SetVisibility(ESlateVisibility::Hidden);
 	RangedIncrementBox->SetVisibility(ESlateVisibility::Hidden);
 
+	// @todo remember last used value?
 	switch (GetDefault<UPDSharedUISettings>()->UICountTypeSelector)
 	{
 	case EPDSharedUICountTypeSelector::ERangedSlider:
 		RangedSlider->OnValueChanged.AddDynamic(this, &UPDRangedSelector::OnSliderValueChanged);
+
 		RangedSlider->SetStepSize(1.0f);
+		RangedSliderTextBlock->SetText(FText::FromString("1"));
+
 		RangedSlider->SetMinValue(MinimumCount);
 		RangedSlider->SetMaxValue(MaximumCount);
 		RangedSlider->SetVisibility(ESlateVisibility::Visible);
+		RangedSliderTextBlock->SetVisibility(ESlateVisibility::Visible);
 		break;
 	case EPDSharedUICountTypeSelector::ERangedEditableNumber:
 		RangedNumberBox->SetupDelegates();
@@ -163,6 +172,7 @@ void UPDRangedSelector::OnRangeUpdated(int32 NewMin, int32 NewMax)
 void UPDRangedSelector::OnSliderValueChanged(float NewValue)
 {
 	OnNumberBoxChanged(static_cast<int32>(NewValue + 0.5f));
+	RangedSliderTextBlock->SetText(FText::FromString(FString::FromInt(SelectedCount))); 
 }
 
 void UPDRangedSelector::OnNumberBoxChanged(int32 NewValue)

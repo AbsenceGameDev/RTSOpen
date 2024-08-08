@@ -73,11 +73,11 @@ public:
 	void OnDecrement();	
 
 	/** @brief Range */
-	UPROPERTY(BlueprintReadWrite, Meta=(ExposeOnSpawn))
+	UPROPERTY(BlueprintReadWrite, FieldNotify, Meta=(ExposeOnSpawn))
 	int32 MinimumCount = 0;	
-	UPROPERTY(BlueprintReadWrite, Meta=(ExposeOnSpawn))
+	UPROPERTY(BlueprintReadWrite, FieldNotify, Meta=(ExposeOnSpawn))
 	int32 MaximumCount = 0; 	
-	UPROPERTY(VisibleInstanceOnly, BlueprintReadOnly)
+	UPROPERTY(VisibleInstanceOnly, FieldNotify, BlueprintReadOnly)
 	int32 SelectedCount = 0; 	
 	
 	/** @brief Hitbox, what our mouse events actually interacts with to increment the value */
@@ -111,15 +111,16 @@ enum class EPDSharedUICountTypeSelector : uint8
 	ERangedIncrementBox,
 };
 
-UCLASS()
+/** @brief Default grid data */
+UCLASS(Config = "Game", DefaultConfig)
 class PDSHAREDUI_API UPDSharedUISettings : public UDeveloperSettings
 {
 	GENERATED_BODY()
 
 public:
 
-	UPROPERTY()
-	EPDSharedUICountTypeSelector UICountTypeSelector = EPDSharedUICountTypeSelector::ERangedIncrementBox;
+	UPROPERTY(Config, EditAnywhere, Category = "SharedUI")
+	EPDSharedUICountTypeSelector UICountTypeSelector = EPDSharedUICountTypeSelector::ERangedSlider;
 };
 
 UCLASS()
@@ -153,14 +154,18 @@ public:
 	// @done 3. Number box with '-' and '+' buttons to increase/decrease, clamped to a valid range
 
 	/** @brief Range: Min */
-	UPROPERTY(BlueprintReadWrite, Meta=(ExposeOnSpawn))
+	UPROPERTY(BlueprintReadWrite, FieldNotify, Meta=(ExposeOnSpawn))
 	int32 MinimumCount = 0;	
 	/** @brief Range: Max */
-	UPROPERTY(BlueprintReadWrite, Meta=(ExposeOnSpawn))
+	UPROPERTY(BlueprintReadWrite, FieldNotify, Meta=(ExposeOnSpawn))
 	int32 MaximumCount = 0;
 	/** @brief  The value selected by the number box*/
-	UPROPERTY(BlueprintReadWrite, Meta=(ExposeOnSpawn))
+	UPROPERTY(BlueprintReadWrite, FieldNotify, Meta=(ExposeOnSpawn))
 	int32 SelectedCount = 0;
+
+	/** @brief Slider Text representation */
+	UPROPERTY(BlueprintReadWrite, Meta=(BindWidget))
+	class UTextBlock* RangedSliderTextBlock = nullptr;	
 	
 	/** @brief Ranged (Clamped) Slider */
 	UPROPERTY(BlueprintReadWrite, Meta=(BindWidget, ExposeOnSpawn))

@@ -102,16 +102,21 @@ bool UPDInventoryComponent::IsAtLastAvailableStack() const
 
 bool UPDInventoryComponent::CanAfford(const TMap<FGameplayTag, int32> RequestedItems)
 {
+	return CanAfford(RequestedItems, 1);
+}
+
+bool UPDInventoryComponent::CanAfford(const TMap<FGameplayTag, int32> RequestedItems, int32 CountMultiplier)
+{
 	for (const TTuple<FGameplayTag, int32>& ItemRequest : RequestedItems)
 	{
 		const FPDItemNetDatum* FoundItem = ItemList.Items.FindByKey(ItemRequest.Key);
-		if (FoundItem == nullptr || FoundItem->TotalItemCount < ItemRequest.Value)
+		if (FoundItem == nullptr || FoundItem->TotalItemCount < (ItemRequest.Value * CountMultiplier))
 		{
 			return false;
 		}
 	}
 
-	return true;
+	return true;	
 }
 
 

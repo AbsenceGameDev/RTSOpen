@@ -59,6 +59,10 @@ public:
 	/** @brief Checks if can afford to use the requested items */
 	bool CanAfford(const TMap<FGameplayTag, int32> RequestedItems);
 
+	/** @brief Checks if can afford to use the requested items */
+	bool CanAfford(const TMap<FGameplayTag, int32> RequestedItems, int32 CountMultiplier);
+	
+
 public:
 
 	/** @brief Is in cubic centimetres, if 'Volume.Max' is INDEX_NONE (-1) or below, then the volume is unlimited */

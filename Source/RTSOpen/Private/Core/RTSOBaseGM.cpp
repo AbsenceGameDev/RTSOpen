@@ -1099,7 +1099,7 @@ void ARTSOBaseGM::GatherEntityToSpawn(
 	const FPDBuildWorker* Unit = UPDBuilderSubsystem::GetWorkerDataStatic(EntityData.EntityUnitTag);
 	if (Unit == nullptr)
 	{
-		UE_LOG(PDLog_RTSO, Error, TEXT("ARTSOBaseGM::LoadEntities -- Found no worker data for worker of type :%s"), *EntityData.EntityUnitTag.GetTagName().ToString())
+		UE_LOG(PDLog_RTSO, Error, TEXT("ARTSOBaseGM::GatherEntityToSpawn -- Found no worker data for worker of type :%s"), *EntityData.EntityUnitTag.GetTagName().ToString())
 		return;
 	}
 						
@@ -1111,8 +1111,8 @@ void ARTSOBaseGM::GatherEntityToSpawn(
 	const FMassArchetypeHandle& Archetype = SpawnerSystem->GetMassEntityTemplate(Template.GetTemplateID())->GetArchetype();
 	RTSSubsystem->AssociateArchetypeWithConfigAsset(Archetype, Unit->MassEntityData->EntityConfig);
 
-	
-	if (EntityPool.Contains(Template.GetTemplateID()) == false)
+	const FMassEntityTemplateID TemplateID = Template.GetTemplateID();
+	if (EntityPool.Contains(TemplateID) == false)
 	{
 		FInnerEntityData TempDataArray;
 		TempDataArray.Emplace(&EntityData);
@@ -1122,7 +1122,7 @@ void ARTSOBaseGM::GatherEntityToSpawn(
 	}
 	else
 	{
-		FEntityCompoundTuple FoundEntityCompound = EntityPool.FindChecked(Template.GetTemplateID());
+		FEntityCompoundTuple& FoundEntityCompound = EntityPool.FindChecked(TemplateID);
 		FoundEntityCompound.Key += 1;
 		FoundEntityCompound.Value.Emplace(&EntityData);
 	}
