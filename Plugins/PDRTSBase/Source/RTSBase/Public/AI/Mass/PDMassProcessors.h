@@ -118,7 +118,7 @@ public:
 	/** @brief Process material instance data injection */
 	static bool ProcessMaterialInstanceData(
 		const FMassEntityHandle& EntityHandle,
-		const FMassRepresentationLODFragment& RepLOD,
+		// const FMassRepresentationLODFragment& RepLOD,
 		const FMassRepresentationFragment& Rep,
 		FMassInstancedStaticMeshInfo& ISMInfo,
 		FPDMFragment_RTSEntityBase* RTSEntityFragment);

@@ -31,6 +31,8 @@ public:
 
 	/** @brief Registers the unit handler for the world this exists in with the RTSSubsystem */
 	virtual void InitializeComponent() override;
+
+	virtual TArray<int32> AddInstances(const TArray<FTransform>& InstanceTransforms, bool bShouldReturnIndices, bool bWorldSpace) override;
 	
 	/** @brief Only calls Super. Reserved for later use */
 	virtual TArray<int32> GetInstancesOverlappingSphere(const FVector& Center, float Radius, bool bSphereInWorldSpace) const override;
@@ -104,6 +106,8 @@ public:
 
 	/** @brief Dummy target compound to return when calling 'GetEntityJob'  */
 	static inline FPDTargetCompound Dummy{};
+
+	bool bAddedNewInstanceCount = false;
 };
 
 /**

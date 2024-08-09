@@ -18,6 +18,27 @@ UPDRTSBaseUnit::UPDRTSBaseUnit(const FObjectInitializer& ObjectInitializer)
 void UPDRTSBaseUnit::InitializeComponent()
 {
 	Super::InitializeComponent();
+
+	// // @todo Resolve ISM instance materials not updating
+	// // @todo cont. -- MASS seems to override the value of NumCustomDataFloats at some point, ignoring the hijacked value below
+	if (bAddedNewInstanceCount == false)
+	{
+		bAddedNewInstanceCount = true;
+		NumCustomDataFloats += 2;
+	}
+}
+
+TArray<int32> UPDRTSBaseUnit::AddInstances(const TArray<FTransform>& InstanceTransforms, bool bShouldReturnIndices, bool bWorldSpace)
+{
+	// // @todo Resolve ISM instance materials not updating
+	// // @todo cont. -- MASS seems to override the value of NumCustomDataFloats at some point, ignoring the hijacked value below	
+	if (bAddedNewInstanceCount == false)
+	{
+		bAddedNewInstanceCount = true;
+		NumCustomDataFloats += 2;
+	}
+	
+	return Super::AddInstances(InstanceTransforms, bShouldReturnIndices, bWorldSpace);
 }
 
 TArray<int32> UPDRTSBaseUnit::GetInstancesOverlappingSphere(const FVector& Center, float Radius, bool bSphereInWorldSpace) const

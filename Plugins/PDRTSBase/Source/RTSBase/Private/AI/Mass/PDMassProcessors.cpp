@@ -209,7 +209,7 @@ bool UPDMProcessor_EntityCosmetics::ProcessVertexAnimation(
 
 bool UPDMProcessor_EntityCosmetics::ProcessMaterialInstanceData(
 	const FMassEntityHandle& EntityHandle,
-	const FMassRepresentationLODFragment& RepLOD,
+	// const FMassRepresentationLODFragment& RepLOD,
 	const FMassRepresentationFragment& Rep,
 	FMassInstancedStaticMeshInfo& ISMInfo,
 	FPDMFragment_RTSEntityBase* RTSEntityFragment)
@@ -226,14 +226,14 @@ bool UPDMProcessor_EntityCosmetics::ProcessMaterialInstanceData(
 		UE_LOG(PDLog_RTSBase, Warning, TEXT("UPDMProcessor_EntityCosmetics::ProcessMaterialInstanceData - RangeData INVALID"))
 		return false;
 	}
-
+	
 	const int32 EntityHashID = GetTypeHash(EntityHandle);
 	FMassISMCSharedData* FirstFoundInstance = nullptr;
 	for (const FMassStaticMeshInstanceVisualizationMeshDesc& Mesh : ISMInfo.GetDesc().Meshes)
 	{
 		const uint32 MeshDescHash = GetTypeHash(Mesh);
 		FMassISMCSharedData* Instance = Range->ISMCSharedDataPtr->Find(MeshDescHash);
-		if (Instance == nullptr || Instance->GetISMComponent() == nullptr || Instance->GetISMComponent()->IsValidInstance(EntityHashID) == false)
+		if (Instance == nullptr || Instance->GetISMComponent() == nullptr)
 		{
 			continue;
 		}
@@ -244,55 +244,24 @@ bool UPDMProcessor_EntityCosmetics::ProcessMaterialInstanceData(
 
 	if (FirstFoundInstance == nullptr)
 	{
+		UE_LOG(PDLog_RTSBase, Warning, TEXT("UPDMProcessor_EntityCosmetics::ProcessMaterialInstanceData -- FirstFoundInstance == nullptr -- %i"), EntityHandle.Index);
+
 		return false;
 	}
-	
-	double OpacityModifier;
-	double DilationModifier;
-	bool bLog = false;
-	switch (RTSEntityFragment->SelectionState)
-	{
-	case EPDEntitySelectionState::ENTITY_SELECTED:
-		if (RTSEntityFragment->bHasClearedSelection)
-		{
-			bLog = true;
 
-			RTSEntityFragment->bHasClearedSelection = false;
-			OpacityModifier  = 0.0;
-			DilationModifier = 1.0;
-			FirstFoundInstance->GetISMComponent()->SetCustomDataValue(EntityHashID,2, OpacityModifier);
-			FirstFoundInstance->GetISMComponent()->SetCustomDataValue(EntityHashID,3, DilationModifier);
-		}
-		break;
-	case EPDEntitySelectionState::ENTITY_NOTSELECTED:
-		// UE_LOG(PDLog_RTSBase, Warning, TEXT("UPDMProcessor_EntityCosmetics::ProcessMaterialInstanceData - EPDEntitySelectionState::ENTITY_NOTSELECTED"))
-		if (RTSEntityFragment->bHasClearedSelection == false)
-		{
-			bLog = true;
+	UInstancedStaticMeshComponent* RTSBaseUnitComponent = FirstFoundInstance->GetISMComponent();
+	const bool bIsSelected = RTSEntityFragment->SelectionState == EPDEntitySelectionState::ENTITY_SELECTED;
+	const bool bIsUnset = RTSEntityFragment->SelectionState == EPDEntitySelectionState::ENTITY_UNSET;
 
-			RTSEntityFragment->bHasClearedSelection = true;
-			OpacityModifier  = 1.0;
-			DilationModifier = 0.0;
-			FirstFoundInstance->GetISMComponent()->SetCustomDataValue(EntityHashID,2, OpacityModifier);
-			FirstFoundInstance->GetISMComponent()->SetCustomDataValue(EntityHashID,3, DilationModifier);					
-		}
-		break;
-	case EPDEntitySelectionState::ENTITY_UNSET:
-		// UE_LOG(PDLog_RTSBase, Warning, TEXT("UPDMProcessor_EntityCosmetics::ProcessMaterialInstanceData - EPDEntitySelectionState::ENTITY_UNSET"))
+	const double OpacityModifier = 1.0 * bIsSelected;
+	const double DilationModifier = 1.0 * (bIsSelected == false && bIsUnset == false);
 
-		break;
-	}
+	// // @todo Resolve ISM instance materials not updating -- MASS is confirmed to override the value of NumCustomDataFloats at some point, as it is ignoring the hijacked overloads where I am forcefully increasing the limit
+	// const int32 MaterialDataStartIdx = RTSBaseUnitComponent->NumCustomDataFloats - 2;
+	// RTSBaseUnitComponent->SetCustomDataValue(EntityHandle.Index,MaterialDataStartIdx, OpacityModifier);
+	// RTSBaseUnitComponent->SetCustomDataValue(EntityHandle.Index,MaterialDataStartIdx + 1, DilationModifier);
 	
-	if (bLog && FirstFoundInstance->GetISMComponent()->IsValidInstance(EntityHashID))
-	{
-		UE_LOG(PDLog_RTSBase, Warning, TEXT("UPDMProcessor_EntityCosmetics::ProcessMaterialInstanceData - VALID INSTANCE(%i)"), EntityHashID)
-	}
-	else if (bLog)
-	{
-		UE_LOG(PDLog_RTSBase, Warning, TEXT("UPDMProcessor_EntityCosmetics::ProcessMaterialInstanceData - INVALID INSTANCE(%i)"), EntityHashID)
-	}
-	
-	return bLog;
+	return true;
 }
 
 // Tag private member for safe access, usually avoid this
@@ -320,11 +289,11 @@ void UPDMProcessor_EntityCosmetics::Execute(FMassEntityManager& EntityManager, F
 			const FMassVelocityFragment& Velocity          = VelocityFragments.IsValidIndex(EntityIdx)       ? VelocityFragments[EntityIdx]       : FMassVelocityFragment(); ;
 			const FMassRepresentationFragment& Rep         = RepresentationFragments.IsValidIndex(EntityIdx) ? RepresentationFragments[EntityIdx] : FMassRepresentationFragment();
 			FPDMFragment_RTSEntityBase* RTSEntityFragment  = RTSEntityFragments.IsValidIndex(EntityIdx)      ? &RTSEntityFragments[EntityIdx]     : nullptr;
-			FPDMFragment_EntityAnimation* AnimationData    = EntityAnimationData.IsValidIndex(EntityIdx)     ? &EntityAnimationData[EntityIdx]     : nullptr;
+			FPDMFragment_EntityAnimation* AnimationData    = EntityAnimationData.IsValidIndex(EntityIdx)     ? &EntityAnimationData[EntityIdx]    : nullptr;
 			
-			const FMassRepresentationLODFragment& RepLOD = RepresentationLODFragments.IsValidIndex(EntityIdx) ? RepresentationLODFragments[EntityIdx] : FMassRepresentationLODFragment();
-			ProcessMaterialInstanceData(InContext.GetEntity(EntityIdx), RepLOD, Rep,MeshInfo[Rep.StaticMeshDescIndex], RTSEntityFragment);
+			// const FMassRepresentationLODFragment& RepLOD = RepresentationLODFragments.IsValidIndex(EntityIdx) ? RepresentationLODFragments[EntityIdx] : FMassRepresentationLODFragment();
 			ProcessVertexAnimation(EntityIdx, RepresentationLODFragments, Rep, RTSEntityFragment, AnimationData, Velocity, MeshInfo, MeshInfoInnerArray, this);
+			ProcessMaterialInstanceData(InContext.GetEntity(EntityIdx) /* , RepLOD */, Rep,MeshInfo[Rep.StaticMeshDescIndex], RTSEntityFragment);
 		}
 	});
 }
@@ -768,8 +737,6 @@ void UPDOctreeEntityObserver::ConfigureQueries()
 
 void UPDOctreeEntityObserver::Execute(FMassEntityManager& EntityManager, FMassExecutionContext& Context)
 {
-	UPDRTSBaseSubsystem* RTSSubSystem = UPDRTSBaseSubsystem::Get();
-	
 	EntityQuery.ForEachEntityChunk(EntityManager, Context,
 	[this](FMassExecutionContext& LambdaContext)
 	{
