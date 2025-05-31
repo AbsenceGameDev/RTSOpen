@@ -47,6 +47,32 @@ void ARTSOBaseGM::BeginPlay()
 	GI->bGMReady = true;
 }
 
+void ARTSOBaseGM::EndPlay(const EEndPlayReason::Type EndPlayReason)
+{
+	UPDRTSBaseSubsystem* RTSSubsystem = UPDRTSBaseSubsystem::Get();
+
+	TArray<TSharedPtr<FOctreeElementId2>> CellIDs;
+	RTSSubsystem->WorldEntityOctree.FindAllElements([&](const FPDEntityOctreeCell& EntityCell)
+	{
+		CellIDs.Add(EntityCell.SharedCellID);
+	});
+
+	for (TSharedPtr<FOctreeElementId2> CellIDPtr : CellIDs)
+	{
+		if (CellIDPtr.IsValid() == false) { continue; }
+
+		FOctreeElementId2 CellID = *CellIDPtr.Get();
+		if (RTSSubsystem->WorldEntityOctree.IsValidElementId(CellID) == false) {continue; }
+		
+		RTSSubsystem->WorldEntityOctree.RemoveElement(CellID);
+	}
+
+	RTSSubsystem->WorldToEntityHandler.Empty();
+	CellIDs.Empty();
+	
+	Super::EndPlay(EndPlayReason);
+}
+
 void ARTSOBaseGM::Logout(AController* Exiting)
 {
 	Super::Logout(Exiting);

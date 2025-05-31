@@ -506,7 +506,7 @@ struct FRTSGodhandState
 	 * @note C. In tick: rotate +-90 degree in yaw with interpolation
 	 * @note D. If rotating direction Positive, then pressing positive again then negative, , final two should cancel eachother out
 	 */
-	TDeque<int8> RotationDeque{};
+	TDeque<TPair<int8, double /*ActualRotationTarget*/>> RotationDeque{};
 
 	/** @brief Amount degrees left of rotation,
 	 * @note this has a tendency to 'slide' into an offset when tick is not reliable,

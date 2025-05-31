@@ -91,6 +91,9 @@ class RTSOPEN_API ARTSOBaseGM : public AGameModeBase
 public:
 	/** @brief  Creates a new savegame object and tells the GI that the GM is ready */
 	virtual void BeginPlay() override;
+
+	/** @brief Unload entities from the octree */
+	virtual void EndPlay(const EEndPlayReason::Type EndPlayReason) override;
 	
 	//
 	// Saving/loading management

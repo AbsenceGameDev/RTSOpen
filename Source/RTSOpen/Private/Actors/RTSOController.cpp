@@ -21,6 +21,7 @@
 #include "EnhancedInputComponent.h"
 #include "EnhancedInputSubsystems.h"
 
+#include "EulerTransform.h"
 #include "NativeGameplayTags.h"
 #include "Chaos/DebugDrawQueue.h"
 #include "Components/TileView.h"
@@ -848,27 +849,12 @@ void ARTSOController::DrawBoxAndTextChaos(const FVector& BoundsCenter, const FQu
 	constexpr int32 SeedOffset = 0x00a7b95; // just some random number with little significance, used to offset value so a seed based on the same hex colour code
 	static int32 StaticShift = 0x0; // just some random number with little significance, used to offset value so a seed based on the same hex colour code
 	StaticShift = (StaticShift + 0x1) % 0x7;
+	const int32 Seed = (LineColour.R < StaticShift) + (LineColour.G < StaticShift) + (LineColour.B < StaticShift) + (SeedOffset < StaticShift);
+	FVector TextOffset(0, 0, (DebugExtent.Z * 2));
+	FVector (BoundsCenter + TextOffset);
 	
-	Chaos::FDebugDrawQueue::GetInstance()
-		.DrawDebugBox(
-			BoundsCenter,
-			DebugExtent,
-			Rotation,
-			LineColour,
-			false,
-			20,
-			0,
-			5.0
-		);
-	Chaos::FDebugDrawQueue::GetInstance()
-		.DrawDebugString(
-			BoundsCenter + FVector(0, 0, (DebugExtent.Z * 2)),
-			DebugBoxTitle,
-			nullptr,
-			FColor::MakeRandomSeededColor((LineColour.R < StaticShift) + (LineColour.G < StaticShift) + (LineColour.B < StaticShift) + (SeedOffset < StaticShift)),
-			20,
-			true,
-			2);
+	Chaos::FDebugDrawQueue::GetInstance().DrawDebugBox(BoundsCenter, DebugExtent, Rotation, LineColour, false, 20, 0,5.0);
+	Chaos::FDebugDrawQueue::GetInstance().DrawDebugString(BoundsCenter + TextOffset, DebugBoxTitle,nullptr, FColor::MakeRandomSeededColor(Seed),20,true,2);
 
 #endif // CHAOS_DEBUG_DRAW
 }
@@ -928,7 +914,7 @@ void ARTSOController::GetEntitiesOrActorsInMarqueeSelection()
 	GetHitResultAtScreenPosition(CurrentMousePositionMarquee, ECC_Visibility, Params, LatestEndHitResult);
 	
 	// // @todo Finish function below: Adjusts bounds in case on of our tracers hit something in-between in the foreground 
-	// AdjustMarqueeHitResultsToMinimumHeight(StartHitResult, CenterHitResult, EndHitResult);
+	AdjustMarqueeHitResultsToMinimumHeight(LatestStartHitResult, LatestCenterHitResult, LatestEndHitResult);
 	
 	FMinimalViewInfo OutResult;
 	CalcCamera(GetWorld()->GetDeltaSeconds(), OutResult);
@@ -963,16 +949,12 @@ void ARTSOController::GetEntitiesOrActorsInMarqueeSelection()
 	MarqueeWorldBox.GetCenterAndExtents(BoundsCenter, Extent);
 
 	OnSelectionChange(true);
-	FBoxCenterAndExtent QueryBounds = FBoxCenterAndExtent(BoundsCenter, Extent);
-	QueryBounds.Center.W = QueryBounds.Extent.W = 0;
 	
 	TMap<int32, FMassEntityHandle> Handles;
+	FBoxCenterAndExtent QueryBounds = FBoxCenterAndExtent(BoundsCenter, Extent);
 	WorldOctree.FindElementsWithBoundsTest(QueryBounds, [&](const FPDEntityOctreeCell& Cell)
 	{
-		if (Cell.EntityHandle.Index == 0 || EntityManager->IsEntityValid(Cell.EntityHandle) == false)
-		{
-			return;
-		}
+		if (Cell.EntityHandle.Index == 0 || EntityManager->IsEntityValid(Cell.EntityHandle) == false) { return; }
 
 		// Don't allow selecting/handling entities we do not own
 		FPDMFragment_RTSEntityBase* EntityBaseFrag = EntityManager->GetFragmentDataPtr<FPDMFragment_RTSEntityBase>(Cell.EntityHandle);
@@ -984,13 +966,11 @@ void ARTSOController::GetEntitiesOrActorsInMarqueeSelection()
 		Handles.Emplace(Cell.EntityHandle.Index, Cell.EntityHandle);
 	});
 
-	//
 	CurrentSelectionID = INDEX_NONE;
 	if (Handles.IsEmpty() == false)
 	{
 		CurrentSelectionID = GeneratedGroupID();
 		UE_LOG(PDLog_RTSO, Warning, TEXT("ARTSOController::GetEntitiesOrActorsInMarqueeSelection : (Head) Generated ID : %i"), CurrentSelectionID);
-
 		MarqueeSelectedHandles.FindOrAdd(CurrentSelectionID, std::move(Handles));
 	}
 	OnSelectionChange(false);
@@ -998,13 +978,20 @@ void ARTSOController::GetEntitiesOrActorsInMarqueeSelection()
 	
 #if CHAOS_DEBUG_DRAW
 	if (UPDOctreeProcessor::CVarDrawCells.GetValueOnAnyThread() == false) { return; }
+	UE_LOG(PDLog_RTSO, Warning, TEXT("ARTSOController::GetEntitiesOrActorsInMarqueeSelection : VISUALIZING SELECTION"));
 
 	// Chaos debug draws on an async call
 	const FVector DebugExtent = FVector(25.0);
 	DrawBoxAndTextChaos(LatestStartHitResult.Location, QueryBounds.Extent.ToOrientationQuat(), DebugExtent, FString("StartSelection"));
 	DrawBoxAndTextChaos(LatestCenterHitResult.Location, QueryBounds.Extent.ToOrientationQuat(), DebugExtent, FString("CenterSelection"));
 	DrawBoxAndTextChaos(LatestEndHitResult.Location, QueryBounds.Extent.ToOrientationQuat(), DebugExtent, FString("EndSelection"));
-	DrawBoxAndTextChaos(FVector(QueryBounds.Center), FQuat(0) , FVector(QueryBounds.Extent), FString("MarqueeSelection"), FColor::Yellow);
+
+	DrawBoxAndTextChaos(
+		FVector(QueryBounds.Center),
+		FQuat(0),
+		FVector(QueryBounds.Extent),
+		FString("MarqueeSelection"),
+		FColor::Yellow);
 	
 #endif
 }

@@ -172,40 +172,34 @@ void AGodHandPawn::RotationTick(float& DeltaTime)
 {
 	// Not currently in rotation
 	if (InstanceState.CurrentRotationLeft <= 0.0) { return; }
-
+	
 	// Current queued rotation direction && Modify the delta-time with the turn rate modifier
-	const int32 Direction = InstanceState.RotationDeque.First();
+	constexpr double RotationStep = 90.0;
+	const auto&[Direction, Target] = InstanceState.RotationDeque.First();
 	DeltaTime *= InstanceSettings.RotationRateModifier;
 
-	// Calculate delta yaw
-	const double DeltaYaw = FMath::Clamp(DeltaTime / (InstanceState.CurrentRotationLeft / 90.0), 0.0, 2.0);
+	// Delta yaw value will grow DeltaTime with accelerating approach: DeltaYaw = DeltaTime / (RotationLeft / RotationStep) 
+	const double DeltaYaw = FMath::Clamp(DeltaTime / (InstanceState.CurrentRotationLeft / RotationStep), 0.0, 2.0);
 	InstanceState.CurrentRotationLeft -= DeltaYaw;
 
+	UE_LOG(PDLog_RTSO, VeryVerbose, TEXT("AGodHandPawn::RotationTick - CurrentRotationLeft(%lf)"), InstanceState.CurrentRotationLeft)
 	// Handle queued rotation finished
-	if (InstanceState.CurrentRotationLeft < 0)
+	if (InstanceState.CurrentRotationLeft < UE_SMALL_NUMBER)
 	{
-		UE_LOG(PDLog_RTSO, Warning, TEXT("AGodHandPawn::RotationTick - Rotation in queue finished"))
+		UE_LOG(PDLog_RTSO, VeryVerbose, TEXT("AGodHandPawn::RotationTick - Rotation in queue finished"))
 
-		AddActorLocalRotation(FRotator(0, DeltaYaw + InstanceState.CurrentRotationLeft, 0));
-		
-		// Is yaw near west/east/north/south but not quite there due to tick inconsistencies? Adjust here if needed
-		constexpr double RotationStep = 90.0;
-		const double Ratio = GetActorRotation().Yaw / RotationStep;
-		const double RemainderAsDouble = static_cast<double>(static_cast<int32>(Ratio)) - Ratio;
-		if (FMath::IsNearlyZero(RemainderAsDouble) == false)
-		{
-			const float FinalAdjustment = RemainderAsDouble < 0 ? (RemainderAsDouble * RotationStep) : -1 * (RotationStep - (RemainderAsDouble * RotationStep));
-			UE_LOG(PDLog_RTSO, Warning, TEXT("AGodHandPawn::RotationTick - Final adjustment: %lf"), FinalAdjustment)
-			AddActorLocalRotation(FRotator(0, FinalAdjustment, 0));
-		}
+		// Is yaw near west/east/north/south but not quite there due to tick inconsistencies? Snap it to target
+		FRotator RotationCopy = GetActorRotation();
+		RotationCopy.Yaw = Target;
+		SetActorRotation(RotationCopy);
 		
 		InstanceState.RotationDeque.PopFirst();
 		InstanceState.CurrentRotationLeft = InstanceState.RotationDeque.IsEmpty() ? -1.0 : 90.0;
-		InstanceState.bIsInRotation = false;
-
+		InstanceState.bIsInRotation = InstanceState.RotationDeque.IsEmpty() == false;
 		return;
 	}
 	
+	UE_LOG(PDLog_RTSO, VeryVerbose, TEXT("AGodHandPawn::RotationTick - Local adjustment: {Pitch:0, Yaw:%lf, Roll:0}"), DeltaYaw * Direction)
 	AddActorLocalRotation(FRotator(0, DeltaYaw * Direction, 0));
 }
 
@@ -436,25 +430,27 @@ void AGodHandPawn::ActionMagnify_Implementation(const FInputActionValue& Value)
 		return; 
 	}
 	
-	
-	
 	InstanceState.MagnificationStrength = ImmutableMoveInput;
 	UpdateMagnification();
 }
 
 void AGodHandPawn::ActionRotate_Implementation(const FInputActionValue& Value)
 {
+	constexpr int32 MaxQueuedRotations = 3;
+	
 	const float ImmutableMoveInput = Value.Get<float>(); // rotate yaw
 	const int8 Direction = ImmutableMoveInput > 0 ? 1 : -1;
 
 	// If more than one rotation in queue and the new rotation opposes the latest previous rotation, just pop away the last rotation
-	if (InstanceState.RotationDeque.Num() > 1 && (InstanceState.RotationDeque.Last() + Direction) == 0)
+	if (InstanceState.RotationDeque.Num() > 1 && (InstanceState.RotationDeque.Last().Key + Direction) == 0)
 	{
 		InstanceState.RotationDeque.PopLast();
 	}
-	else if (InstanceState.RotationDeque.Num() < 2)
+	else if (InstanceState.RotationDeque.Num() < MaxQueuedRotations)
 	{
-		InstanceState.RotationDeque.EmplaceLast(Direction);
+		const bool bIsEmpty = InstanceState.RotationDeque.IsEmpty();
+		const double Step = bIsEmpty ? GetActorRotation().Yaw + (90 * Direction) : 90 * Direction;
+		InstanceState.RotationDeque.EmplaceLast(TPair<int8, double> {Direction, bIsEmpty ? Step : InstanceState.RotationDeque.Last().Value + Step});
 	}
 
 	if (InstanceState.bIsInRotation == false)

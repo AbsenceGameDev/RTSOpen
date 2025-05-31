@@ -706,9 +706,7 @@ void UPDOctreeProcessor::Execute(FMassEntityManager& EntityManager, FMassExecuti
 			BuilderSubsystem->ResumeMutationOfBuildableTrackingData();
 		}
 		);
-
 	
-
 	DebugDrawCells();
 }
 
