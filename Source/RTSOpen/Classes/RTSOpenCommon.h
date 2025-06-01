@@ -5,6 +5,7 @@
 #include "PDInteractCommon.h"
 #include "Net/PDItemNetDatum.h"
 
+#include "Math/Range.h"
 #include "GameplayTagContainer.h"
 #include "Blueprint/UserWidget.h"
 #include "GameFramework/SaveGame.h"
@@ -516,6 +517,463 @@ struct FRTSGodhandState
 	/** @brief Flag used to avoid overwriting the rotation states for a active rotation */
 	bool bIsInRotation = false;
 };
+
+//
+// Move everything below this to a file called RTSOpenSettingsCommon
+
+/** @brief Value types we should allow for settings  */
+UENUM()
+enum class ERTSOSettingsType : uint8
+{
+	Boolean, // 'bool' or 'uint8 : 1'
+	FloatSelector,   // 'double' or 'float'
+	FloatSlider,   // 'double' or 'float'
+	IntegerSelector, // 'int32' or 'int64'
+	IntegerSlider, // 'int32' or 'int64'
+	Vector2,  // 'FVector2D' 
+	Vector3,  // 'FVector'
+	Colour,  // 'FColor'
+	String,  // 'FString'
+	EnumAsByte, // 'Byte'
+	Key,     // 'FKey'
+};
+
+UENUM()
+enum class ERTSOResolutionMode : uint8
+{
+	Fullscreen,
+	Windowed,
+	Borderless,
+};
+
+USTRUCT(Blueprintable)
+struct FRTSOSettingsKeyData
+{
+	GENERATED_BODY()
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	FKey Main_KeyBoardMouse;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	FKey Alt_KeyBoardMouse;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	FKey Main_GenericGamepad;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	FKey Alt_GenericGamepad;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	FKey Main_DS45;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	FKey Alt_DS45;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	FKey Main_XSX;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	FKey Alt_XSX;	
+};
+
+UCLASS(Blueprintable)
+class URTSOSettingsQualityTextLabelSettings : public UDeveloperSettings 
+{
+	GENERATED_BODY()
+public:
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	FText LowQuality;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	FText MidQuality;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	FText HighQuality;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	FText EpicQuality;
+};
+
+USTRUCT(Blueprintable) struct FRTSOIntegerRange { GENERATED_BODY()  UPROPERTY(EditAnywhere, BlueprintReadWrite) int32 Min = {0}; UPROPERTY(EditAnywhere, BlueprintReadWrite) int32 Max = {0};};
+USTRUCT(Blueprintable) struct FRTSOFloatRange { GENERATED_BODY()  UPROPERTY(EditAnywhere, BlueprintReadWrite) double Min = {0}; UPROPERTY(EditAnywhere, BlueprintReadWrite) double  Max = {0};};
+USTRUCT(Blueprintable) struct FRTSOVec2Range { GENERATED_BODY()  UPROPERTY(EditAnywhere, BlueprintReadWrite) FVector2D Min{0}; UPROPERTY(EditAnywhere, BlueprintReadWrite) FVector2D Max{0};};
+USTRUCT(Blueprintable) struct FRTSOVec3Range { GENERATED_BODY()  UPROPERTY(EditAnywhere, BlueprintReadWrite) FVector Min{0}; UPROPERTY(EditAnywhere, BlueprintReadWrite) FVector Max{0};};
+USTRUCT(Blueprintable) struct FRTSOColourRange { GENERATED_BODY()  UPROPERTY(EditAnywhere, BlueprintReadWrite) FColor Min{0}; UPROPERTY(EditAnywhere, BlueprintReadWrite) FColor Max{0};};
+USTRUCT(Blueprintable) struct FRTSOEnumRange { GENERATED_BODY()  UPROPERTY(EditAnywhere, BlueprintReadWrite) uint8 Min = {0}; UPROPERTY(EditAnywhere, BlueprintReadWrite) uint8 Max = {0};};
+
+template<typename TType>
+using FRTSOMinMax = TTuple<TType, TType>;
+
+USTRUCT(Blueprintable)
+struct FRTSOSettingsDataSelector
+{
+	GENERATED_BODY()
+
+	FRTSOSettingsDataSelector() {}
+
+	template<typename TValueType>
+	FRTSOSettingsDataSelector(ERTSOSettingsType InValueType, TValueType ActualValue, FRTSOMinMax<TValueType> MinMaxRange = {}, TArray<TValueType> PotentialList = {})
+	{
+		ValueType = InValueType;
+		if constexpr (TIsDerivedFrom<TValueType, bool>::Value)
+		{
+			AsBool = ActualValue;
+		}
+		else if constexpr (TIsDerivedFrom<TValueType, double>::Value)
+		{
+			AsDouble = ActualValue;
+			DoubleRange.Min = MinMaxRange.Key;
+			DoubleRange.Max = MinMaxRange.Value;
+			DoubleList = PotentialList;
+		}
+		else if constexpr (TIsDerivedFrom<TValueType, float>::Value)
+		{
+			AsDouble = ActualValue;
+			DoubleRange.Min = MinMaxRange.Key;
+			DoubleRange.Max = MinMaxRange.Value;
+			DoubleList = PotentialList;
+		}
+		else if constexpr (TIsDerivedFrom<TValueType, int32>::Value)
+		{
+			AsInteger = ActualValue;
+			IntegerRange.Min = MinMaxRange.Key;
+			IntegerRange.Max = MinMaxRange.Value;
+			IntegerList = PotentialList;
+		}		
+		else if constexpr (TIsDerivedFrom<TValueType, FVector2D>::Value)
+		{
+			AsVector2 = ActualValue;
+			if (MinMaxRange.IsEmpty() == false)
+			{
+				Vector2Range.Min = MinMaxRange.Key;
+				Vector2Range.Max = MinMaxRange.Value;
+			}
+		}
+		else if constexpr (TIsDerivedFrom<TValueType, FVector>::Value)
+		{
+			AsVector3 = ActualValue;
+			Vector3Range.Min = MinMaxRange.Key;
+			Vector3Range.Max = MinMaxRange.Value;
+		}
+		else if constexpr (TIsDerivedFrom<TValueType, FColor>::Value)
+		{
+			AsColour = ActualValue;
+			ColourRange.Min = MinMaxRange.Key;
+			ColourRange.Max = MinMaxRange.Value;
+		}
+		else if constexpr (TIsDerivedFrom<TValueType, FString>::Value)
+		{
+			AsString = ActualValue;
+			StringList = PotentialList;
+		}
+		else if constexpr (TIsDerivedFrom<TValueType, uint8>::Value)
+		{
+			AsEnumByte = ActualValue;
+			EnumRange.Min = MinMaxRange.Key;
+			EnumRange.Max = MinMaxRange.Value;
+			EnumList = PotentialList;
+		}
+		else if constexpr (TIsDerivedFrom<TValueType, FRTSOSettingsKeyData>::Value) { AsKey = ActualValue; }
+	}
+
+	template<typename TValueType>
+	TValueType& GetRef()
+	{
+		if constexpr (TIsDerivedFrom<TValueType, bool>::Value) { return AsBool; }
+		else if constexpr (TIsDerivedFrom<TValueType, double>::Value) { return AsDouble; }
+		else if constexpr (TIsDerivedFrom<TValueType, float>::Value) { return AsDouble; }
+		else if constexpr (TIsDerivedFrom<TValueType, int32>::Value) { return AsInteger; }		
+		else if constexpr (TIsDerivedFrom<TValueType, FVector2D>::Value) { return AsVector2; }
+		else if constexpr (TIsDerivedFrom<TValueType, FVector>::Value) { return AsVector3; }
+		else if constexpr (TIsDerivedFrom<TValueType, FColor>::Value) { return AsColour; }
+		else if constexpr (TIsDerivedFrom<TValueType, FString>::Value) { return AsString; }
+		else if constexpr (TIsDerivedFrom<TValueType, uint8>::Value) { return AsEnumByte; }
+		else if constexpr (TIsDerivedFrom<TValueType, FRTSOSettingsKeyData>::Value) { return AsKey; }
+		else { static TValueType Dummy; return Dummy; }
+	}
+	
+	void* GetRawAdress()
+	{
+		switch (ValueType)
+		{
+		case ERTSOSettingsType::Boolean: return &AsBool;
+		case ERTSOSettingsType::FloatSelector: return &AsDouble;
+		case ERTSOSettingsType::FloatSlider: return &AsDouble;
+		case ERTSOSettingsType::IntegerSelector: return &AsInteger;
+		case ERTSOSettingsType::IntegerSlider: return &AsInteger;
+		case ERTSOSettingsType::Vector2: return &AsVector2;
+		case ERTSOSettingsType::Vector3: return &AsVector3;
+		case ERTSOSettingsType::Colour: return &AsColour;
+		case ERTSOSettingsType::String: return &AsString;
+		case ERTSOSettingsType::EnumAsByte: return &AsEnumByte;
+		case ERTSOSettingsType::Key: return &AsKey;
+		default: return nullptr;
+		}
+	}
+	
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	ERTSOSettingsType ValueType = ERTSOSettingsType::Boolean;
+	
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Meta = (EditCondition="ValueType==ERTSOSettingsType::Boolean", EditConditionHides))
+	bool AsBool;
+	
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Meta = (EditCondition="ValueType==ERTSOSettingsType::Double",EditConditionHides))
+	double AsDouble;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Meta = (EditCondition="ValueType==ERTSOSettingsType::Double", EditConditionHides))
+	FRTSOFloatRange DoubleRange;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Meta = (EditCondition="ValueType==ERTSOSettingsType::Double", EditConditionHides))
+	TArray<double> DoubleList;
+	
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Meta = (EditCondition="ValueType==ERTSOSettingsType::Integer",EditConditionHides))
+	int32 AsInteger;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Meta = (EditCondition="ValueType==ERTSOSettingsType::Integer", EditConditionHides))
+	FRTSOIntegerRange IntegerRange;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Meta = (EditCondition="ValueType==ERTSOSettingsType::Integer", EditConditionHides))
+	TArray<int32> IntegerList;
+	
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Meta = (EditCondition="ValueType==ERTSOSettingsType::Vector2",EditConditionHides))
+	FVector2D AsVector2;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Meta = (EditCondition="ValueType==ERTSOSettingsType::Vector2", EditConditionHides))
+	FRTSOVec2Range Vector2Range;
+	
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Meta = (EditCondition="ValueType==ERTSOSettingsType::Vector3",EditConditionHides))
+	FVector AsVector3;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Meta = (EditCondition="ValueType==ERTSOSettingsType::Vector3", EditConditionHides))
+	FRTSOVec3Range Vector3Range;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Meta = (EditCondition="ValueType==ERTSOSettingsType::Colour",EditConditionHides))
+	FColor AsColour;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Meta = (EditCondition="ValueType==ERTSOSettingsType::Colour", EditConditionHides))
+	FRTSOColourRange ColourRange;	
+	
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Meta = (EditCondition="ValueType==ERTSOSettingsType::String",EditConditionHides))
+	FString AsString;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Meta = (EditCondition="ValueType==ERTSOSettingsType::String",EditConditionHides))
+	TArray<FString> StringList;
+	
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Meta = (EditCondition="ValueType==EERTSOSettingsType::EnumAsByte",EditConditionHides))
+	uint8 AsEnumByte;	
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Meta = (EditCondition="ValueType==ERTSOSettingsType::EnumAsByte", EditConditionHides))
+	FRTSOEnumRange EnumRange;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Meta = (EditCondition="ValueType==ERTSOSettingsType::String",EditConditionHides))
+	TArray<uint8> EnumList;	
+	
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Meta = (EditCondition="ValueType==EERTSOSettingsType::Key",EditConditionHides))
+	FRTSOSettingsKeyData AsKey;
+};
+
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FRTSOSettingsDataDelegate, FRTSOSettingsDataSelector, SettingsDataSelector);
+
+/** @brief Settings data struct for game settings we want to display in the settings menu */
+USTRUCT(Blueprintable)
+struct FRTSOSettingsData
+{
+	GENERATED_BODY()
+public:
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	FGameplayTag SettingTag;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	FRTSOSettingsDataSelector ValueSelector;
+	
+	// todo write function to allow binding funcitons from BP as-well, will need to ue an alternate delegate type then and not 'FRTSOSettingsDataDelegate'
+	UPROPERTY(BlueprintAssignable)
+	FRTSOSettingsDataDelegate OnValueUpdated;
+};
+
+namespace PD::Settings
+{
+	namespace Gameplay::Camera
+	{
+		UE_DECLARE_GAMEPLAY_TAG_EXTERN(TAG_Camera_RotationRateModifier) // (Slider, Limit to range [40, 100])
+		UE_DECLARE_GAMEPLAY_TAG_EXTERN(TAG_Camera_TargetInterpSpeed) // (Slider, Limit to range [1, 10])
+		UE_DECLARE_GAMEPLAY_TAG_EXTERN(TAG_Camera_ScrollSpeed) // (Slider, Limit to range [1, 10])
+		UE_DECLARE_GAMEPLAY_TAG_EXTERN(TAG_Camera_DoF) // - Depth of Field (Slider)
+		UE_DECLARE_GAMEPLAY_TAG_EXTERN(TAG_Camera_FoV) // - Field of View (Slider)
+	}
+	namespace Gameplay::ActionLog
+	{
+		UE_DECLARE_GAMEPLAY_TAG_EXTERN(TAG_ActionLog_Show) // Checkbox
+		UE_DECLARE_GAMEPLAY_TAG_EXTERN(TAG_ActionLog_ColorHightlight0) // FColor picker needed
+		UE_DECLARE_GAMEPLAY_TAG_EXTERN(TAG_ActionLog_ColorHightlight1) // FColor picker needed
+	}
+	namespace Gameplay::Difficulty
+	{
+		UE_DECLARE_GAMEPLAY_TAG_EXTERN(TAG_Difficulty_Combat) // - Combat difficulty (AI Behaviour, Overall damage, NO health increased)
+		UE_DECLARE_GAMEPLAY_TAG_EXTERN(TAG_Difficulty_World) // - World difficulty (FogOfWar, Puzzles?, Resource costs)
+		// NOTE: Difficulty modifiers should affect AI behavior and overall damage, but never increase AI or player health.
+		// NOTE: We want to avoid bullet sponges. Make the player die fast but the enemies die faster.
+		// NOTE: Difficulty modifiers should also affect things such a fog of war clearing distance and such.		
+	}
+
+	
+	namespace Video::Display
+	{
+		UE_DECLARE_GAMEPLAY_TAG_EXTERN(TAG_Display_Mode) // Mode (List of options (Windowed, Borderless, Fullscreen))
+		UE_DECLARE_GAMEPLAY_TAG_EXTERN(TAG_Display_Resolution) // Resolution (List of available resolutions)
+		UE_DECLARE_GAMEPLAY_TAG_EXTERN(TAG_Display_FPSLimit) // FPS Limit (30, 60, 120, 144)
+		UE_DECLARE_GAMEPLAY_TAG_EXTERN(TAG_Display_VSyncEnabled) // V-Sync (Checkbox)
+		UE_DECLARE_GAMEPLAY_TAG_EXTERN(TAG_Display_Gamma) // Gamma (Slider)
+		UE_DECLARE_GAMEPLAY_TAG_EXTERN(TAG_Display_AntiAliasing) // - Anti-aliasing (List of AA options)
+	}
+	namespace Video::Effects
+	{
+		UE_DECLARE_GAMEPLAY_TAG_EXTERN(TAG_Effects_AmbientOcclusion) // - Ambient Occlusion (CheckBox)
+		UE_DECLARE_GAMEPLAY_TAG_EXTERN(TAG_Effects_MotionBlur) // - Motion Blur (CheckBox)
+		UE_DECLARE_GAMEPLAY_TAG_EXTERN(TAG_Effects_FilmGrain) // - Film Grain (CheckBox)
+	}
+	namespace Video::Graphics
+	{
+		UE_DECLARE_GAMEPLAY_TAG_EXTERN(TAG_Graphics_TextureQuality) // Texture quality (List of Quality options)
+		UE_DECLARE_GAMEPLAY_TAG_EXTERN(TAG_Graphics_ShadowQuality) // Shadow quality (List of Quality options)
+		UE_DECLARE_GAMEPLAY_TAG_EXTERN(TAG_Graphics_ReflectionQuality) // Reflection quality ? (List of Quality options)
+		UE_DECLARE_GAMEPLAY_TAG_EXTERN(TAG_Graphics_ParticleEffect) // Particle Effect Quality (List of Quality options)
+		UE_DECLARE_GAMEPLAY_TAG_EXTERN(TAG_Graphics_MeshQuality) // Mesh Quality (List of Quality options)
+		UE_DECLARE_GAMEPLAY_TAG_EXTERN(TAG_Graphics_AnimationQuality) // Animation Quality (List of Quality options)
+		UE_DECLARE_GAMEPLAY_TAG_EXTERN(TAG_Graphics_PostProcessQuality) // Post process Quality (List of Quality options)
+		UE_DECLARE_GAMEPLAY_TAG_EXTERN(TAG_Graphics_ViewDistance) // View Distance (List of Quality options)
+	}
+	
+	namespace Audio
+	{
+		UE_DECLARE_GAMEPLAY_TAG_EXTERN(TAG_Audio_MasterVolume) // . Master Volume (Slider)
+		UE_DECLARE_GAMEPLAY_TAG_EXTERN(TAG_Audio_SFXVolume)    // - SFX volume (Slider)
+		UE_DECLARE_GAMEPLAY_TAG_EXTERN(TAG_Audio_MusicVolume)  // - Music Volume (Slider)
+		UE_DECLARE_GAMEPLAY_TAG_EXTERN(TAG_Audio_AmbientVolume)  // - Ambient Volume (Slider)
+		UE_DECLARE_GAMEPLAY_TAG_EXTERN(TAG_Audio_VoiceVolume)  // - Voice volume (Slider)
+		UE_DECLARE_GAMEPLAY_TAG_EXTERN(TAG_Audio_Subtitles)    // -- Subtitles (List of available language options)		
+	}
+
+	namespace Controls::Game
+	{
+		UE_DECLARE_GAMEPLAY_TAG_EXTERN(TAG_Controls_MoveForward) //  - Discrete Key selector, with two alts for each input type (explicit tags for each alt is not needed)
+		UE_DECLARE_GAMEPLAY_TAG_EXTERN(TAG_Controls_MoveBackward) //  - Discrete Key selector, with two alts for each input type (explicit tags for each alt is not needed)
+		UE_DECLARE_GAMEPLAY_TAG_EXTERN(TAG_Controls_MoveLeftward) //  - Discrete Key selector, with two alts for each input type (explicit tags for each alt is not needed)
+		UE_DECLARE_GAMEPLAY_TAG_EXTERN(TAG_Controls_MoveRightward) //  - Discrete Key selector, with two alts for each input type (explicit tags for each alt is not needed)
+		UE_DECLARE_GAMEPLAY_TAG_EXTERN(TAG_Controls_RotateLeft) //  - Discrete Key selector, with two alts for each input type (explicit tags for each alt is not needed)
+		UE_DECLARE_GAMEPLAY_TAG_EXTERN(TAG_Controls_RotateRight) //  - Discrete Key selector, with two alts for each input type (explicit tags for each alt is not needed)
+		UE_DECLARE_GAMEPLAY_TAG_EXTERN(TAG_Controls_Interact) //  - Discrete Key selector, with two alts for each input type (explicit tags for each alt is not needed)
+		UE_DECLARE_GAMEPLAY_TAG_EXTERN(TAG_Controls_PauseMenu) //  - Discrete Key selector, with two alts for each input type (explicit tags for each alt is not needed)
+		UE_DECLARE_GAMEPLAY_TAG_EXTERN(TAG_Controls_GameMenu) //  - Discrete Key selector, with two alts for each input type (explicit tags for each alt is not needed)
+		UE_DECLARE_GAMEPLAY_TAG_EXTERN(TAG_Controls_GameMenu_Inventory) //  - Discrete Key selector, with two alts for each input type (explicit tags for each alt is not needed)
+		UE_DECLARE_GAMEPLAY_TAG_EXTERN(TAG_Controls_GameMenu_Map) //  - Discrete Key selector, with two alts for each input type (explicit tags for each alt is not needed)
+		UE_DECLARE_GAMEPLAY_TAG_EXTERN(TAG_Controls_GameMenu_QuestLog) //  - Discrete Key selector, with two alts for each input type (explicit tags for each alt is not needed)
+		UE_DECLARE_GAMEPLAY_TAG_EXTERN(TAG_Controls_Zoom) //  - Analog key selector (or two buttoned key selector), with two alts for each input type (explicit tags for each alt is not needed)
+				
+	}
+	namespace Controls::UI
+	{
+		UE_DECLARE_GAMEPLAY_TAG_EXTERN(TAG_Controls_UI_AcceptOrEnter) // - Discrete Key selector, with two alts for each input type (explicit tags for each alt is not needed)
+		UE_DECLARE_GAMEPLAY_TAG_EXTERN(TAG_Controls_UI_CancelOrBack) // - Discrete Key selector, with two alts for each input type (explicit tags for each alt is not needed)
+		UE_DECLARE_GAMEPLAY_TAG_EXTERN(TAG_Controls_UI_NextTab) // - Discrete Key selector, with two alts for each input type (explicit tags for each alt is not needed)
+		UE_DECLARE_GAMEPLAY_TAG_EXTERN(TAG_Controls_UI_PreviousTab) // - Discrete Key selector, with two alts for each input type (explicit tags for each alt is not needed)
+		UE_DECLARE_GAMEPLAY_TAG_EXTERN(TAG_Controls_UI_InnerNextTab) // - Discrete Key selector, with two alts for each input type (explicit tags for each alt is not needed)
+		UE_DECLARE_GAMEPLAY_TAG_EXTERN(TAG_Controls_UI_InnerPreviousTab) // - Discrete Key selector, with two alts for each input type (explicit tags for each alt is not needed)
+		UE_DECLARE_GAMEPLAY_TAG_EXTERN(TAG_Controls_UI_NavigateUp) // - Discrete Key selector, with two alts for each input type (explicit tags for each alt is not needed)
+		UE_DECLARE_GAMEPLAY_TAG_EXTERN(TAG_Controls_UI_NavigateDown) // - Discrete Key selector, with two alts for each input type (explicit tags for each alt is not needed)
+		UE_DECLARE_GAMEPLAY_TAG_EXTERN(TAG_Controls_UI_NavigateLeft) // - Discrete Key selector, with two alts for each input type (explicit tags for each alt is not needed)
+		UE_DECLARE_GAMEPLAY_TAG_EXTERN(TAG_Controls_UI_NavigateRight) // - Discrete Key selector, with two alts for each input type (explicit tags for each alt is not needed)		
+	}
+	
+	namespace Interface
+	{
+		UE_DECLARE_GAMEPLAY_TAG_EXTERN(TAG_Interface_UIScaling) // - UIScaling slider (Range [0.5 , 4])
+		UE_DECLARE_GAMEPLAY_TAG_EXTERN(TAG_Interface_ShowObjectiveMarkers) // - UIScaling slider (Range [0.5 , 4])
+	}
+
+	enum class ERTSOSettingsGroups : uint8
+	{
+		Gameplay,
+		Video,
+		Audio,
+		Controls,
+		Interface,
+		Num,
+	};
+	
+	struct FSettingsDefaultsBase { ERTSOSettingsGroups TabName; };
+	struct FGameplaySettingsDefaults : FSettingsDefaultsBase
+	{
+		static TMap<FGameplayTag, FRTSOSettingsDataSelector> Camera;
+		static TMap<FGameplayTag, FRTSOSettingsDataSelector> ActionLog;
+		static TMap<FGameplayTag, FRTSOSettingsDataSelector> Difficulty;
+	};
+	struct FVideoSettingsDefaults : FSettingsDefaultsBase
+	{
+		static TMap<FGameplayTag, FRTSOSettingsDataSelector> Display;
+		static TMap<FGameplayTag, FRTSOSettingsDataSelector> Effects;
+		static TMap<FGameplayTag, FRTSOSettingsDataSelector> Graphics;
+	};
+	struct FAudioSettingsDefaults : FSettingsDefaultsBase
+	{
+		static TMap<FGameplayTag, FRTSOSettingsDataSelector> Base;
+	};
+	struct FControlsSettingsDefaults : FSettingsDefaultsBase
+	{
+		static TMap<FGameplayTag, FRTSOSettingsDataSelector> Game;
+		static TMap<FGameplayTag, FRTSOSettingsDataSelector> UI;
+	};	
+	struct FInterfaceSettingsDefaults : FSettingsDefaultsBase
+	{
+		static TMap<FGameplayTag, FRTSOSettingsDataSelector> Base;
+	};
+
+	struct FAllSettingsDefaults
+	{
+		TArray<ERTSOSettingsGroups> TopLevelSettingTypes
+		{
+			ERTSOSettingsGroups::Gameplay,
+			ERTSOSettingsGroups::Video,
+			ERTSOSettingsGroups::Audio,
+			ERTSOSettingsGroups::Controls,
+			ERTSOSettingsGroups::Interface,
+		};
+
+		static FName GetTabName(ERTSOSettingsGroups Selector)
+		{
+			switch (Selector)
+			{
+			case ERTSOSettingsGroups::Gameplay: return FName("Gameplay");
+			case ERTSOSettingsGroups::Video: return FName("Video");
+			case ERTSOSettingsGroups::Audio: return FName("Audio");
+			case ERTSOSettingsGroups::Controls: return FName("Controls");
+			case ERTSOSettingsGroups::Interface: return FName("Interface");
+			default: break;
+			}
+			return FName("");
+		}
+
+		FSettingsDefaultsBase* Get(ERTSOSettingsGroups Selector)
+		{
+			switch (Selector)
+			{
+			case ERTSOSettingsGroups::Gameplay: return &GameplayDefaults;
+			case ERTSOSettingsGroups::Video: return &VideoDefaults;
+			case ERTSOSettingsGroups::Audio: return &AudioDefaults;
+			case ERTSOSettingsGroups::Controls: return &ControlsDefaults;
+			case ERTSOSettingsGroups::Interface: return &InterfaceDefaults;
+			default: break;
+			}
+			return nullptr;
+		}
+
+		template<typename TOutValue>
+		TOutValue GetCast(ERTSOSettingsGroups Selector)
+		{
+			static_cast<TOutValue*>(Get(Selector));
+			if (Get(Selector) == nullptr)
+			{
+				TOutValue Dummy;
+				return Dummy;
+			}
+			
+			return static_cast<TOutValue*>(Get(Selector));
+		};
+		
+		FGameplaySettingsDefaults GameplayDefaults{ERTSOSettingsGroups::Gameplay};
+		FVideoSettingsDefaults VideoDefaults{ERTSOSettingsGroups::Video};
+		FAudioSettingsDefaults AudioDefaults{ERTSOSettingsGroups::Audio};
+		FControlsSettingsDefaults ControlsDefaults{ERTSOSettingsGroups::Controls};
+		FInterfaceSettingsDefaults InterfaceDefaults{ERTSOSettingsGroups::Interface};
+	};
+
+	inline FAllSettingsDefaults AllSettingsDefaults{};
+
+	constexpr double FloatUIMultiplier = 10000; 
+}
 
 /**
 Business Source License 1.1

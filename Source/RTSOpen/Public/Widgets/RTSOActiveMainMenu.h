@@ -6,10 +6,13 @@
 #include "CommonActivatableWidget.h"
 #include "CommonButtonBase.h"
 #include "PDRTSSharedUI.h"
+#include "RTSOpenCommon.h"
 #include "UI/PDButtons.h"
 #include "UI/PDDialogs.h"
 #include "RTSOActiveMainMenu.generated.h"
 
+class UHorizontalBox;
+class UCommonTabListWidgetBase;
 class UCommonTextBlock;
 
 /** @brief Save/load game delegate, used with the pop-up dialogs defined further down this file */
@@ -121,6 +124,123 @@ public:
 	/** @brief Unused for now, reserve for later use */
 	UPROPERTY()
 	class URTSOMainMenuBase* OwningStack = nullptr;	
+};
+
+
+/** @brief Game Menu - Settings Entry */
+UCLASS(Blueprintable)
+class URTSOMenuWidget_SettingsEntry : public UCommonActivatableWidget
+{
+	GENERATED_BODY()
+
+public:
+	virtual void NativePreConstruct() override;
+	virtual void NativeOnActivated() override;
+	
+	UPROPERTY(BlueprintReadWrite, Meta=(BindWidget))
+	UCommonTextBlock* SettingsEntryLabel = nullptr;
+
+	UPROPERTY(BlueprintReadWrite, Meta=(BindWidget))
+	UCommonTextBlock* SettingsEntryDescription = nullptr;
+	
+	UPROPERTY(BlueprintReadWrite, Meta=(BindWidget))
+	class UWidgetSwitcher* InputValueWidgetSwitcher;
+
+	UPROPERTY(BlueprintReadWrite, Meta=(BindWidget))
+	class UCheckBox* AsCheckBox = nullptr;
+
+	UPROPERTY(BlueprintReadWrite, Meta=(BindWidget))
+	class UPDRangedSelector* RangedSelector = nullptr;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	uint8 bIsCheckBox : 1;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	uint8 bIsRangedSelector : 1;
+};
+
+/** @brief Game Menu - Base Submenu*/
+UCLASS(Blueprintable)
+class URTSOMenuWidget_SettingsCategory : public UCommonActivatableWidget
+{
+	GENERATED_BODY()
+public:
+	virtual void NativeOnActivated() override;
+	virtual void NativePreConstruct() override;
+	void Refresh(TSubclassOf<URTSOMenuWidget_SettingsEntry> InEntryClass, FString InEntryCategoryName, const TMap<FGameplayTag, FRTSOSettingsDataSelector>& InEntriesData);
+	
+	UPROPERTY(BlueprintReadWrite, Meta=(BindWidget))
+	UCommonTextBlock* SettingsCategoryLabel = nullptr;
+
+	UPROPERTY(BlueprintReadWrite, Meta=(BindWidget))
+	UVerticalBox* ItemContentBox  = nullptr;
+
+
+	UPROPERTY()
+	TSubclassOf<URTSOMenuWidget_SettingsEntry> EntryClass;
+	UPROPERTY()
+	FString EntryCategoryName;
+	UPROPERTY()
+	TMap<FGameplayTag, FRTSOSettingsDataSelector> EntriesData;
+};
+
+/** @brief Game Menu - Base Menu*/
+UCLASS(Blueprintable)
+class URTSOMenuWidget_BaseMenu : public UCommonActivatableWidget
+{
+	GENERATED_BODY()
+
+public:
+	UPROPERTY(BlueprintReadWrite, Meta=(BindWidget))
+	UCommonTabListWidgetBase* SettingsSubmenuSelector = nullptr;
+
+	UPROPERTY(BlueprintReadWrite, Meta=(BindWidget))
+	UNamedSlot* InnerContent = nullptr;	
+};
+
+
+/** @brief Game Menu - Base Submenu*/
+UCLASS(Blueprintable)
+class URTSOMenuWidget_BaseSubmenu : public UCommonActivatableWidget
+{
+	GENERATED_BODY()
+
+public:
+	UPROPERTY(BlueprintReadWrite, Meta=(BindWidget))
+	UCanvas* BaseCanvas  = nullptr;	
+
+	UPROPERTY(BlueprintReadWrite, Meta=(BindWidget))
+	UHorizontalBox* ViewSplit  = nullptr;
+	UPROPERTY(BlueprintReadWrite, Meta=(BindWidget))
+	UBorder* ItemsBoxBorder = nullptr;
+	UPROPERTY(BlueprintReadWrite, Meta=(BindWidget))
+	UVerticalBox* ContentBox  = nullptr;
+	
+	UPROPERTY(BlueprintReadWrite, Meta=(BindWidget))
+	UBorder* SelectedItemDetailsBoxBorder = nullptr;
+};
+
+UCLASS(Blueprintable)
+class URTSOMenuWidget_Settings : public URTSOMenuWidget_BaseMenu
+{
+	GENERATED_BODY()
+
+public:
+	/** @brief 
+	 *  @note */
+	virtual void NativePreConstruct() override;
+	
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	TSubclassOf<UPDGenericButton> TabButtonClass;
+	
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	TSubclassOf<URTSOMenuWidget_BaseSubmenu> SubMenuClass;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	TSubclassOf<URTSOMenuWidget_SettingsCategory> SettingsCategoryClass;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	TSubclassOf<URTSOMenuWidget_SettingsEntry> SettingsEntryClass;
+
+	// UPROPERTY()
+	// TMap<FString, TMap<FGameplayTag, FRTSOSettingsDataSelector>> SettingsData;
 };
 
 /** @brief Game Start Menu base widget*/

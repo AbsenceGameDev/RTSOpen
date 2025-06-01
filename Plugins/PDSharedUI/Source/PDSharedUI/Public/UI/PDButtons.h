@@ -7,6 +7,7 @@
 #include "Subsystems/EngineSubsystem.h"
 
 #include "CommonActivatableWidget.h"
+#include "CommonButtonBase.h"
 #include "UObject/Interface.h"
 
 #include "PDButtons.generated.h"
@@ -21,7 +22,7 @@ class UUserWidget;
 
 /** @brief Stylable clickable button */
 UCLASS(Blueprintable)
-class PDSHAREDUI_API UPDGenericButton : public UUserWidget
+class PDSHAREDUI_API UPDGenericButton : public UCommonButtonBase
 {
 	GENERATED_BODY()
 

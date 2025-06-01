@@ -3,11 +3,19 @@
 
 #include "Widgets/RTSOActiveMainMenu.h"
 
+#include "SlateFwd.h"
+#include "CommonTabListWidgetBase.h"
+#include "Components/CheckBox.h"
 #include "Components/TextBlock.h"
+#include "Components/WidgetSwitcher.h"
+#include "Components/WidgetSwitcherSlot.h"
+
 #include "Core/RTSOBaseGM.h"
+#include "UI/PDNumberBoxes.h"
 #include "Widgets/CommonActivatableWidgetContainer.h"
 // #include "Components/CanvasPanel.h"
-// #include "Components/VerticalBox.h"
+#include "CommonTextBlock.h"
+#include "Components/VerticalBox.h"
 // #include "Components/TextBlock.h"
 // #include "Components/Image.h"
 
@@ -55,6 +63,220 @@ void URTSOMenuWidget_SaveGame::NativePreConstruct()
 	// InnerBox->AddChildToVerticalBox(Slot3);
 	// InnerBox->AddChildToVerticalBox(Slot4);
 	Super::NativePreConstruct();
+}
+
+void URTSOMenuWidget_SettingsEntry::NativePreConstruct()
+{
+	Super::NativePreConstruct();
+	
+	InputValueWidgetSwitcher->SetActiveWidgetIndex(bIsCheckBox);
+}
+
+void URTSOMenuWidget_SettingsEntry::NativeOnActivated()
+{
+	Super::NativeOnActivated();
+}
+
+void URTSOMenuWidget_SettingsCategory::NativeOnActivated()
+{
+	Super::NativeOnActivated();
+	Refresh(EntryClass, EntryCategoryName, EntriesData);
+}
+
+void URTSOMenuWidget_SettingsCategory::NativePreConstruct()
+{
+	Super::NativePreConstruct();
+	Refresh(EntryClass, EntryCategoryName, EntriesData);
+}
+
+void URTSOMenuWidget_SettingsCategory::Refresh(
+	TSubclassOf<URTSOMenuWidget_SettingsEntry> InEntryClass,
+	FString InEntryCategoryName, 
+	const TMap<FGameplayTag, FRTSOSettingsDataSelector>& InEntriesData)
+{
+	if (InEntryClass == nullptr)
+	{
+		return;
+	}
+	
+	EntryClass = InEntryClass;
+	EntryCategoryName = InEntryCategoryName;
+	EntriesData = InEntriesData;
+
+
+	SettingsCategoryLabel->SetText(FText::FromString(EntryCategoryName));
+
+	for (auto& [SettingsTag, DataSelector] : InEntriesData)
+	{
+		URTSOMenuWidget_SettingsEntry* SettingsEntry = CreateWidget<URTSOMenuWidget_SettingsEntry>(this, EntryClass);
+		SettingsEntry->SettingsEntryLabel->SetText(FText::FromString(FString("TODO!: ") + SettingsTag.ToString()));
+		SettingsEntry->SettingsEntryDescription->SetText(FText::FromString("TODO!"));
+
+		switch (DataSelector.ValueType)
+		{
+		case ERTSOSettingsType::Boolean:
+			if (SettingsEntry->AsCheckBox != nullptr && SettingsEntry->AsCheckBox->IsValidLowLevel())
+			{
+				SettingsEntry->bIsCheckBox = true;
+				SettingsEntry->AsCheckBox->SetCheckedState(DataSelector.AsBool ? ECheckBoxState::Checked : ECheckBoxState::Unchecked);
+			}
+			break;
+		case ERTSOSettingsType::FloatSelector:
+			if (SettingsEntry->RangedSelector != nullptr && SettingsEntry->RangedSelector->IsValidLowLevel())
+			{
+				SettingsEntry->RangedSelector->CountTypeSelector = EPDSharedUICountTypeSelector::ERangedIncrementBox;
+				SettingsEntry->RangedSelector->SelectedCount = DataSelector.AsDouble * PD::Settings::FloatUIMultiplier;
+				SettingsEntry->RangedSelector->ApplySettings(
+					DataSelector.DoubleRange.Min * PD::Settings::FloatUIMultiplier,
+					DataSelector.DoubleRange.Max * PD::Settings::FloatUIMultiplier);
+			}
+			
+			break;
+		case ERTSOSettingsType::FloatSlider:
+			if (SettingsEntry->RangedSelector != nullptr && SettingsEntry->RangedSelector->IsValidLowLevel())
+			{
+				SettingsEntry->RangedSelector->CountTypeSelector = EPDSharedUICountTypeSelector::ERangedSlider;
+				
+				SettingsEntry->RangedSelector->SelectedCount = DataSelector.AsDouble * PD::Settings::FloatUIMultiplier;
+				SettingsEntry->RangedSelector->ApplySettings(
+					DataSelector.DoubleRange.Min * PD::Settings::FloatUIMultiplier,
+					DataSelector.DoubleRange.Max * PD::Settings::FloatUIMultiplier);						
+			}
+			
+			break;
+		case ERTSOSettingsType::IntegerSelector:
+			if (SettingsEntry->RangedSelector != nullptr && SettingsEntry->RangedSelector->IsValidLowLevel())
+			{
+				SettingsEntry->RangedSelector->CountTypeSelector = EPDSharedUICountTypeSelector::ERangedIncrementBox;
+				SettingsEntry->RangedSelector->SelectedCount = DataSelector.AsInteger;
+				SettingsEntry->RangedSelector->ApplySettings(
+					DataSelector.IntegerRange.Min,
+					DataSelector.IntegerRange.Max);	
+			}
+			
+			break;
+		case ERTSOSettingsType::IntegerSlider:
+			if (SettingsEntry->RangedSelector != nullptr && SettingsEntry->RangedSelector->IsValidLowLevel())
+			{
+				SettingsEntry->RangedSelector->CountTypeSelector = EPDSharedUICountTypeSelector::ERangedSlider;
+				SettingsEntry->RangedSelector->SelectedCount = DataSelector.AsInteger;
+				SettingsEntry->RangedSelector->ApplySettings(
+					DataSelector.IntegerRange.Min,
+					DataSelector.IntegerRange.Max);					
+			}
+			
+			break;
+		case ERTSOSettingsType::Vector2:
+			if (SettingsEntry->RangedSelector != nullptr && SettingsEntry->RangedSelector->IsValidLowLevel())
+			{
+				SettingsEntry->RangedSelector->CountTypeSelector = EPDSharedUICountTypeSelector::ERangedSlider;
+			}
+			
+			break;
+		case ERTSOSettingsType::Vector3:
+			if (SettingsEntry->RangedSelector != nullptr && SettingsEntry->RangedSelector->IsValidLowLevel())
+			{
+				SettingsEntry->RangedSelector->CountTypeSelector = EPDSharedUICountTypeSelector::ERangedSlider;
+			}
+			
+			break;
+		case ERTSOSettingsType::Colour:
+			if (SettingsEntry->RangedSelector != nullptr && SettingsEntry->RangedSelector->IsValidLowLevel())
+			{
+				SettingsEntry->RangedSelector->CountTypeSelector = EPDSharedUICountTypeSelector::ERangedSlider;
+			}
+			
+			break;
+		case ERTSOSettingsType::String:
+			// TODO ;
+			break;
+		case ERTSOSettingsType::EnumAsByte:
+			if (SettingsEntry->RangedSelector != nullptr && SettingsEntry->RangedSelector->IsValidLowLevel())
+			{
+				SettingsEntry->RangedSelector->CountTypeSelector = EPDSharedUICountTypeSelector::ERangedIncrementBox;
+			}
+			
+			break;
+		case ERTSOSettingsType::Key:
+			// TODO
+			break;
+		}
+		
+
+		
+		ItemContentBox->AddChildToVerticalBox(SettingsEntry);
+	}	
+	
+}
+
+void URTSOMenuWidget_Settings::NativePreConstruct()
+{
+	Super::NativePreConstruct();
+
+	for (PD::Settings::ERTSOSettingsGroups TopLevelSetting : PD::Settings::AllSettingsDefaults.TopLevelSettingTypes)
+	{
+		PD::Settings::FSettingsDefaultsBase* SettingsDefaultsBase = PD::Settings::AllSettingsDefaults.Get(TopLevelSetting);
+		if (SettingsDefaultsBase == nullptr)
+		{
+			continue;
+		}
+
+		TMap<FString, TMap<FGameplayTag, FRTSOSettingsDataSelector>> SettingsCategories{};
+
+		switch (SettingsDefaultsBase->TabName)
+		{
+		case PD::Settings::ERTSOSettingsGroups::Gameplay:
+			{
+				PD::Settings::FGameplaySettingsDefaults* GameplayDefaults =
+				   static_cast<PD::Settings::FGameplaySettingsDefaults*>(SettingsDefaultsBase);
+				SettingsCategories.Add("Camera") = GameplayDefaults->Camera;
+				SettingsCategories.Add("Action Log") = GameplayDefaults->ActionLog;
+				SettingsCategories.Add("Difficulty") = GameplayDefaults->Difficulty;
+			}
+			break;
+		case PD::Settings::ERTSOSettingsGroups::Video:
+			{
+				PD::Settings::FVideoSettingsDefaults* VideoDefaults =
+					static_cast<PD::Settings::FVideoSettingsDefaults*>(SettingsDefaultsBase);
+				SettingsCategories.Add("Display") = VideoDefaults->Display;
+				SettingsCategories.Add("Effects") = VideoDefaults->Effects;
+				SettingsCategories.Add("Graphics") = VideoDefaults->Graphics;
+			}
+			break;
+		case PD::Settings::ERTSOSettingsGroups::Audio:
+			{
+				SettingsCategories.Add("Base") = static_cast<PD::Settings::FAudioSettingsDefaults*>(SettingsDefaultsBase)->Base;
+			}
+			break;
+		case PD::Settings::ERTSOSettingsGroups::Controls:
+			{
+				PD::Settings::FControlsSettingsDefaults* ControlsDefaults =
+					static_cast<PD::Settings::FControlsSettingsDefaults*>(SettingsDefaultsBase);
+				SettingsCategories.Add("Game") = ControlsDefaults->Game;
+				SettingsCategories.Add("UI") = ControlsDefaults->UI;
+			}
+			break;
+		case PD::Settings::ERTSOSettingsGroups::Interface:
+			{
+				SettingsCategories.Add("Base") = static_cast<PD::Settings::FInterfaceSettingsDefaults*>(SettingsDefaultsBase)->Base;
+			}
+			break;
+		case PD::Settings::ERTSOSettingsGroups::Num:
+			continue;
+		}
+
+		URTSOMenuWidget_BaseSubmenu* Submenu = CreateWidget<URTSOMenuWidget_BaseSubmenu>(this, SubMenuClass);
+
+		for (auto&[SettingsCategoryName, CategoryData] : SettingsCategories)
+		{
+			URTSOMenuWidget_SettingsCategory* SettingsCategory = CreateWidget<URTSOMenuWidget_SettingsCategory>(this, SettingsCategoryClass);
+			SettingsCategory->Refresh(SettingsEntryClass, SettingsCategoryName, CategoryData);
+			Submenu->ContentBox->AddChildToVerticalBox(SettingsCategory);
+		}
+		
+		SettingsSubmenuSelector->RegisterTab(PD::Settings::AllSettingsDefaults.GetTabName(TopLevelSetting), TabButtonClass, Submenu);
+	}
+
 }
 
 void URTSOMenuWidget::ClearDelegates() const

@@ -3,6 +3,7 @@
 #include "UI/PDNumberBoxes.h"
 
 #include "PDUIBaseDefinitions.h"
+#include "Components/Border.h"
 #include "Components/Button.h"
 #include "Components/EditableTextBox.h"
 #include "Components/Slider.h"
@@ -110,24 +111,58 @@ void UPDRangedIncrementBox::OnDecrement()
 	ValidateNewValue(--SelectedCount);
 }
 
+void UPDRangedSelector::NativePreConstruct()
+{
+	Super::NativePreConstruct();
+	ApplySettings(MinimumCount, MaximumCount);
+}
+
+void UPDRangedSelector::NativeDestruct()
+{
+	Super::NativeDestruct();
+
+	if (RangedSlider == nullptr || RangedSlider->IsValidLowLevelFast() == false
+		|| RangedNumberBox == nullptr || RangedNumberBox->IsValidLowLevelFast() == false
+		|| RangedIncrementBox == nullptr || RangedIncrementBox->IsValidLowLevelFast() == false)
+	{
+		return;
+	}
+
+	RangedSlider->OnValueChanged.Clear();
+	RangedNumberBox->OnValueChanged.Unbind();
+	RangedIncrementBox->OnValueChanged.Unbind();
+
+}
+
 void UPDRangedSelector::ApplySettings(int32 InMinimumCount, int32 InMaximumCount)
 {	
 	MinimumCount = InMinimumCount;
 	MaximumCount = FMath::Max(MinimumCount, InMaximumCount); // don't allow Max to be below Min
+
+	if (RangedSlider == nullptr || RangedSlider->IsValidLowLevelFast() == false
+		|| RangedNumberBox == nullptr || RangedNumberBox->IsValidLowLevelFast() == false
+		|| RangedIncrementBox == nullptr || RangedIncrementBox->IsValidLowLevelFast() == false)
+	{
+		return;
+	}
 
 	RangedSliderTextBlock->SetVisibility(ESlateVisibility::Hidden);
 	RangedSlider->SetVisibility(ESlateVisibility::Hidden);
 	RangedNumberBox->SetVisibility(ESlateVisibility::Hidden);
 	RangedIncrementBox->SetVisibility(ESlateVisibility::Hidden);
 
+	EPDSharedUICountTypeSelector SelectedCountType = bUseGlobalUICountTypeSelector 
+		? GetDefault<UPDSharedUISettings>()->UICountTypeSelector 
+		: CountTypeSelector;
+
 	// @todo remember last used value?
-	switch (GetDefault<UPDSharedUISettings>()->UICountTypeSelector)
+	switch (SelectedCountType)
 	{
 	case EPDSharedUICountTypeSelector::ERangedSlider:
 		RangedSlider->OnValueChanged.AddDynamic(this, &UPDRangedSelector::OnSliderValueChanged);
 
 		RangedSlider->SetStepSize(1.0f);
-		RangedSliderTextBlock->SetText(FText::FromString("1"));
+		RangedSliderTextBlock->SetText(FText::FromString(FString::FromInt(SelectedCount)));
 
 		RangedSlider->SetMinValue(MinimumCount);
 		RangedSlider->SetMaxValue(MaximumCount);
@@ -142,7 +177,7 @@ void UPDRangedSelector::ApplySettings(int32 InMinimumCount, int32 InMaximumCount
 		break;
 	case EPDSharedUICountTypeSelector::ERangedIncrementBox:
 		RangedIncrementBox->SetupDelegates();
-		RangedNumberBox->OnValueChanged.BindUObject(this, &UPDRangedSelector::OnNumberBoxChanged);
+		RangedIncrementBox->OnValueChanged.BindUObject(this, &UPDRangedSelector::OnNumberBoxChanged);
 		RangedIncrementBox->ApplySettings(MinimumCount, MaximumCount);
 		RangedIncrementBox->SetVisibility(ESlateVisibility::Visible);
 		break;
@@ -153,8 +188,12 @@ void UPDRangedSelector::OnRangeUpdated(int32 NewMin, int32 NewMax)
 {
 	MinimumCount = NewMin != INDEX_NONE ? NewMin : MinimumCount;
 	MaximumCount = NewMax != INDEX_NONE ? FMath::Max(MinimumCount, NewMax) : MaximumCount; // don't allow Max to be below Min
+
+	EPDSharedUICountTypeSelector SelectedCountType = bUseGlobalUICountTypeSelector 
+		? GetDefault<UPDSharedUISettings>()->UICountTypeSelector 
+		: CountTypeSelector;
 	
-	switch (GetDefault<UPDSharedUISettings>()->UICountTypeSelector)
+	switch (SelectedCountType)
 	{
 	case EPDSharedUICountTypeSelector::ERangedSlider:
 		RangedSlider->SetMinValue(MinimumCount);
@@ -171,7 +210,7 @@ void UPDRangedSelector::OnRangeUpdated(int32 NewMin, int32 NewMax)
 
 void UPDRangedSelector::OnSliderValueChanged(float NewValue)
 {
-	OnNumberBoxChanged(static_cast<int32>(NewValue + 0.5f));
+	OnNumberBoxChanged(static_cast<int32>(NewValue + 0.5f)); // Halving the speed of the slider
 	RangedSliderTextBlock->SetText(FText::FromString(FString::FromInt(SelectedCount))); 
 }
 

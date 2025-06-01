@@ -129,7 +129,10 @@ class PDSHAREDUI_API UPDRangedSelector : public UUserWidget
 	GENERATED_BODY()
 public:
 
-	// @todo need to bind our Min/Max values for our range efficiently somehow, meaning regular UMG bindings are out of the question 
+	// @todo need to bind our Min/Max values for our range efficiently somehow, meaning regular UMG bindings are out of the question
+
+	virtual void NativePreConstruct() override;
+	virtual void NativeDestruct() override;
 
 	UFUNCTION()
 	void ApplySettings(int32 InMinimumCount, int32 InMaximumCount);
@@ -154,10 +157,10 @@ public:
 	// @done 3. Number box with '-' and '+' buttons to increase/decrease, clamped to a valid range
 
 	/** @brief Range: Min */
-	UPROPERTY(BlueprintReadWrite, FieldNotify, Meta=(ExposeOnSpawn))
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, FieldNotify, Meta=(ExposeOnSpawn))
 	int32 MinimumCount = 0;	
 	/** @brief Range: Max */
-	UPROPERTY(BlueprintReadWrite, FieldNotify, Meta=(ExposeOnSpawn))
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, FieldNotify, Meta=(ExposeOnSpawn))
 	int32 MaximumCount = 0;
 	/** @brief  The value selected by the number box*/
 	UPROPERTY(BlueprintReadWrite, FieldNotify, Meta=(ExposeOnSpawn))
@@ -177,7 +180,13 @@ public:
 	
 	/** @brief Number box with controls */
 	UPROPERTY(BlueprintReadWrite, Meta=(BindWidget, ExposeOnSpawn))
-	class UPDRangedIncrementBox* RangedIncrementBox = nullptr;		
+	class UPDRangedIncrementBox* RangedIncrementBox = nullptr;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	bool bUseGlobalUICountTypeSelector = true;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Meta = (EditCondition="bUseGlobalUICountTypeSelector==false", EditConditionHides))
+	EPDSharedUICountTypeSelector CountTypeSelector;
 };
 
 /**
