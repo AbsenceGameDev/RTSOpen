@@ -234,6 +234,7 @@ public:
 	
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
 	TSubclassOf<URTSOMenuWidget_BaseSubmenu> SubMenuClass;
+	
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
 	TSubclassOf<URTSOMenuWidget_SettingsCategory> SettingsCategoryClass;
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
