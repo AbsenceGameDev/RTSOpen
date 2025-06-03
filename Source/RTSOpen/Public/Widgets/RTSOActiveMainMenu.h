@@ -5,6 +5,7 @@
 #include "CoreMinimal.h"
 #include "CommonActivatableWidget.h"
 #include "CommonButtonBase.h"
+#include "CommonTabListWidgetBase.h"
 #include "PDRTSSharedUI.h"
 #include "RTSOpenCommon.h"
 #include "UI/PDButtons.h"
@@ -173,8 +174,7 @@ public:
 
 	UPROPERTY(BlueprintReadWrite, Meta=(BindWidget))
 	UVerticalBox* ItemContentBox  = nullptr;
-
-
+	
 	UPROPERTY()
 	TSubclassOf<URTSOMenuWidget_SettingsEntry> EntryClass;
 	UPROPERTY()
@@ -189,12 +189,26 @@ class URTSOMenuWidget_BaseMenu : public UCommonActivatableWidget
 {
 	GENERATED_BODY()
 
+protected:
+	virtual void NativePreConstruct() override;
+	virtual void NativeOnActivated() override;
 public:
+	UFUNCTION()
+	void OnCategoryPressed(FName TabName);
+	
 	UPROPERTY(BlueprintReadWrite, Meta=(BindWidget))
-	UCommonTabListWidgetBase* SettingsSubmenuSelector = nullptr;
+	UCanvasPanel* BaseCanvasPanel  = nullptr;	
 
 	UPROPERTY(BlueprintReadWrite, Meta=(BindWidget))
-	UNamedSlot* InnerContent = nullptr;	
+	UBorder* MenuTitleBorder = nullptr;
+	UPROPERTY(BlueprintReadWrite, Meta=(BindWidget))
+	UCommonTextBlock* MenuTitleLabel = nullptr;
+
+	UPROPERTY(BlueprintReadWrite, Meta=(BindWidget))
+	UHorizontalBox* SubmenuSelector = nullptr;
+
+	UPROPERTY(BlueprintReadWrite, Meta=(BindWidget))
+	UNamedSlot* InnerContent = nullptr;
 };
 
 
@@ -206,17 +220,22 @@ class URTSOMenuWidget_BaseSubmenu : public UCommonActivatableWidget
 
 public:
 	UPROPERTY(BlueprintReadWrite, Meta=(BindWidget))
-	UCanvas* BaseCanvas  = nullptr;	
+	UCanvasPanel* BaseCanvasPanel  = nullptr;	
 
 	UPROPERTY(BlueprintReadWrite, Meta=(BindWidget))
 	UHorizontalBox* ViewSplit  = nullptr;
 	UPROPERTY(BlueprintReadWrite, Meta=(BindWidget))
-	UBorder* ItemsBoxBorder = nullptr;
+	UBorder* ContentBorder = nullptr;
 	UPROPERTY(BlueprintReadWrite, Meta=(BindWidget))
 	UVerticalBox* ContentBox  = nullptr;
 	
 	UPROPERTY(BlueprintReadWrite, Meta=(BindWidget))
-	UBorder* SelectedItemDetailsBoxBorder = nullptr;
+	UBorder* DetailsBorder = nullptr;
+	UPROPERTY(BlueprintReadWrite, Meta=(BindWidget))
+	UCommonTextBlock* DetailsLabel = nullptr;
+	UPROPERTY(BlueprintReadWrite, Meta=(BindWidget))
+	UCommonTextBlock* DetailsDescription = nullptr;
+
 };
 
 UCLASS(Blueprintable)
@@ -239,6 +258,9 @@ public:
 	TSubclassOf<URTSOMenuWidget_SettingsCategory> SettingsCategoryClass;
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
 	TSubclassOf<URTSOMenuWidget_SettingsEntry> SettingsEntryClass;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	int32 DefaultViewIdx = 0;
 
 	// UPROPERTY()
 	// TMap<FString, TMap<FGameplayTag, FRTSOSettingsDataSelector>> SettingsData;

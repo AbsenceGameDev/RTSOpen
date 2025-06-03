@@ -15,6 +15,8 @@
 #include "Widgets/CommonActivatableWidgetContainer.h"
 // #include "Components/CanvasPanel.h"
 #include "CommonTextBlock.h"
+#include "Components/HorizontalBox.h"
+#include "Components/NamedSlot.h"
 #include "Components/VerticalBox.h"
 // #include "Components/TextBlock.h"
 // #include "Components/Image.h"
@@ -209,9 +211,53 @@ void URTSOMenuWidget_SettingsCategory::Refresh(
 	
 }
 
+void URTSOMenuWidget_BaseMenu::NativeOnActivated()
+{
+	Super::NativeOnActivated();
+	// todo
+}
+
+void URTSOMenuWidget_BaseMenu::OnCategoryPressed(FName TabName)
+{
+	TArray<UWidget*> Children = SubmenuSelector->GetAllChildren();
+	for (UWidget* ChildWidget : Children)
+	{
+		UPDGenericButton* AsGenericButton = Cast<UPDGenericButton>(ChildWidget);
+		if (AsGenericButton == nullptr || AsGenericButton->IsValidLowLevelFast() == false)
+		{
+			continue;
+		}
+
+		if (TabName.Compare(FName(*AsGenericButton->TextBlock->GetText().ToString())) == false)
+		{
+			continue;
+		}
+		AsGenericButton->ChildWidget->SetVisibility(ESlateVisibility::Visible);
+		InnerContent->SetContent(AsGenericButton->ChildWidget);
+	}
+}
+
+void URTSOMenuWidget_BaseMenu::NativePreConstruct()
+{
+	Super::NativePreConstruct();
+	// todo
+}
+
 void URTSOMenuWidget_Settings::NativePreConstruct()
 {
 	Super::NativePreConstruct();
+
+	if (SubmenuSelector != nullptr && SubmenuSelector->IsValidLowLevelFast())
+	{
+		SubmenuSelector->ClearChildren();
+	}
+
+	if (SubMenuClass == nullptr || SettingsCategoryClass == nullptr || TabButtonClass == nullptr || SettingsEntryClass == nullptr
+		|| SubMenuClass->IsValidLowLevelFast() == false || SettingsCategoryClass->IsValidLowLevelFast() == false
+		|| TabButtonClass->IsValidLowLevelFast() == false || SettingsEntryClass->IsValidLowLevelFast() == false) 
+	{
+		return;
+	}
 
 	for (PD::Settings::ERTSOSettingsGroups TopLevelSetting : PD::Settings::AllSettingsDefaults.TopLevelSettingTypes)
 	{
@@ -265,16 +311,32 @@ void URTSOMenuWidget_Settings::NativePreConstruct()
 			continue;
 		}
 
-		URTSOMenuWidget_BaseSubmenu* Submenu = CreateWidget<URTSOMenuWidget_BaseSubmenu>(this, SubMenuClass);
 
+		URTSOMenuWidget_BaseSubmenu* Submenu = CreateWidget<URTSOMenuWidget_BaseSubmenu>(this, SubMenuClass);
 		for (auto&[SettingsCategoryName, CategoryData] : SettingsCategories)
 		{
 			URTSOMenuWidget_SettingsCategory* SettingsCategory = CreateWidget<URTSOMenuWidget_SettingsCategory>(this, SettingsCategoryClass);
 			SettingsCategory->Refresh(SettingsEntryClass, SettingsCategoryName, CategoryData);
 			Submenu->ContentBox->AddChildToVerticalBox(SettingsCategory);
 		}
-		
-		SettingsSubmenuSelector->RegisterTab(PD::Settings::AllSettingsDefaults.GetTabName(TopLevelSetting), TabButtonClass, Submenu);
+		Submenu->SetVisibility(ESlateVisibility::Collapsed);
+
+		UPDGenericButton* SubmenuCategoryButton = CreateWidget<UPDGenericButton>(this, TabButtonClass);
+		const FName TabName = PD::Settings::AllSettingsDefaults.GetTabName(TopLevelSetting);
+		SubmenuCategoryButton->TextBlock->SetText(FText::FromString(TabName.ToString()));
+		SubmenuCategoryButton->ChildWidget = Submenu;
+
+		SubmenuCategoryButton->OnClicked().AddLambda(
+			[&]()
+			{
+				OnCategoryPressed(TabName);
+			}); 
+
+		SubmenuSelector->AddChildToHorizontalBox(SubmenuCategoryButton);
+		if (SubmenuSelector->GetChildrenCount() == DefaultViewIdx + 1)
+		{
+			OnCategoryPressed(TabName); // Select the first 
+		}
 	}
 
 }

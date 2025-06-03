@@ -50,6 +50,10 @@ public:
 	/** @brief Target of the button press, add this class to the stack */
 	UPROPERTY(EditAnywhere, BlueprintReadOnly)
 	TSubclassOf<UCommonActivatableWidget> PotentialTargetWidgetClass = nullptr;
+
+	/** @brief Used as store for content widgets */
+	UPROPERTY()
+	UUserWidget* ChildWidget = nullptr;	
 	
 	/** @brief Unused for now, reserve for later use */
 	UPROPERTY()
