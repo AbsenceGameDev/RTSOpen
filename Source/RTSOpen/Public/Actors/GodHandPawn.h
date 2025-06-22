@@ -307,7 +307,7 @@ public:
 
 	
 	/** @brief Fallback comparison value for a closest distance search when the vector was not valid */
-	static inline constexpr double  InvalidDistance{UE_MAX_FLT * UE_MAX_FLT};
+	static inline constexpr double  InvalidDistance{UE_MAX_FLT * 2};
 	/** @brief Fallback comparison value for a closest distance search when the vector was not valid */
 	static inline const FVector InvalidVector{InvalidDistance};
 

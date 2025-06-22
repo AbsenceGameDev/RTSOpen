@@ -72,3 +72,15 @@ Plugins/*/Intermediate/*
 
 # Cache files for the editor to use
 DerivedDataCache/*
+
+# Workspace misc
+*.code-workspace
+*.DotSettings.user
+settings.json
+.vscode/*
+Content/*
+*ignore
+.idea/*
+.vsconfig
+desktop.ini
+/ExportedData/

@@ -1,0 +1,10 @@
+DONE:
+    ✔ Fix scaling issues in menu @done(25-06-22 05:51)
+    ✔ Fix menu settings being duplicated @done(25-06-22 05:51)
+    ✔ Fix 'invalid distance' float value overflow @done(25-06-22 05:51)
+
+
+TODO:
+    - Hook up settings buttons with their actual functional part
+    - Test settings buttons
+    - Get back to working on the mission/quest menu UI and game UI

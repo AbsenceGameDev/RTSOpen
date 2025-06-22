@@ -108,6 +108,8 @@ void URTSOMenuWidget_SettingsCategory::Refresh(
 
 	SettingsCategoryLabel->SetText(FText::FromString(EntryCategoryName));
 
+	ItemContentBox->ClearChildren();
+	
 	for (auto& [SettingsTag, DataSelector] : InEntriesData)
 	{
 		URTSOMenuWidget_SettingsEntry* SettingsEntry = CreateWidget<URTSOMenuWidget_SettingsEntry>(this, EntryClass);
