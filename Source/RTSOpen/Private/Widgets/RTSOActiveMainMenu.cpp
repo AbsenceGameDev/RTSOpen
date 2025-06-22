@@ -2,6 +2,7 @@
 
 
 #include "Widgets/RTSOActiveMainMenu.h"
+#include "Subsystems/RTSOSettingsSubsystem.h"
 
 #include "SlateFwd.h"
 #include "CommonTabListWidgetBase.h"
@@ -72,6 +73,18 @@ void URTSOMenuWidget_SettingsEntry::NativePreConstruct()
 	Super::NativePreConstruct();
 	
 	InputValueWidgetSwitcher->SetActiveWidgetIndex(bIsCheckBox);
+
+	if (bIsCheckBox)
+	{
+		TScriptDelegate InDelegate;
+		InDelegate.BindUFunction(this, TEXT("OnCheckBoxSet"));
+		AsCheckBox->OnCheckStateChanged.AddUnique(InDelegate);
+	}
+}
+
+void URTSOMenuWidget_SettingsEntry::OnCheckBoxSet(bool bNewState)
+{
+	OnCheckBoxStateChanged.Broadcast(bNewState);
 }
 
 void URTSOMenuWidget_SettingsEntry::NativeOnActivated()
@@ -109,11 +122,11 @@ void URTSOMenuWidget_SettingsCategory::Refresh(
 	SettingsCategoryLabel->SetText(FText::FromString(EntryCategoryName));
 
 	ItemContentBox->ClearChildren();
-	
+
 	for (auto& [SettingsTag, DataSelector] : InEntriesData)
 	{
 		URTSOMenuWidget_SettingsEntry* SettingsEntry = CreateWidget<URTSOMenuWidget_SettingsEntry>(this, EntryClass);
-		SettingsEntry->SettingsEntryLabel->SetText(FText::FromString(FString("TODO!: ") + SettingsTag.ToString()));
+		SettingsEntry->SettingsEntryLabel->SetText(FText::FromString(SettingsTag.ToString()));
 		SettingsEntry->SettingsEntryDescription->SetText(FText::FromString("TODO!"));
 
 		switch (DataSelector.ValueType)
@@ -123,6 +136,11 @@ void URTSOMenuWidget_SettingsCategory::Refresh(
 			{
 				SettingsEntry->bIsCheckBox = true;
 				SettingsEntry->AsCheckBox->SetCheckedState(DataSelector.AsBool ? ECheckBoxState::Checked : ECheckBoxState::Unchecked);
+				SettingsEntry->OnCheckBoxStateChanged.AddLambda(
+					[SettingsTag](bool bNewState) 
+					{
+						URTSOSettingsSubsystem::Get()->OnCheckBox(bNewState, SettingsTag);
+					});
 			}
 			break;
 		case ERTSOSettingsType::FloatSelector:
@@ -130,6 +148,11 @@ void URTSOMenuWidget_SettingsCategory::Refresh(
 			{
 				SettingsEntry->RangedSelector->CountTypeSelector = EPDSharedUICountTypeSelector::ERangedIncrementBox;
 				SettingsEntry->RangedSelector->SelectedCount = DataSelector.AsDouble * PD::Settings::FloatUIMultiplier;
+				SettingsEntry->RangedSelector->PostValueChanged.AddLambda(
+					[SettingsTag](int32 NewValue) 
+					{
+						URTSOSettingsSubsystem::Get()->OnFloat(static_cast<double>(NewValue) / PD::Settings::FloatUIMultiplier, SettingsTag);
+					});
 				SettingsEntry->RangedSelector->ApplySettings(
 					DataSelector.DoubleRange.Min * PD::Settings::FloatUIMultiplier,
 					DataSelector.DoubleRange.Max * PD::Settings::FloatUIMultiplier);
@@ -139,9 +162,13 @@ void URTSOMenuWidget_SettingsCategory::Refresh(
 		case ERTSOSettingsType::FloatSlider:
 			if (SettingsEntry->RangedSelector != nullptr && SettingsEntry->RangedSelector->IsValidLowLevel())
 			{
-				SettingsEntry->RangedSelector->CountTypeSelector = EPDSharedUICountTypeSelector::ERangedSlider;
-				
+				SettingsEntry->RangedSelector->CountTypeSelector = EPDSharedUICountTypeSelector::ERangedSlider;				
 				SettingsEntry->RangedSelector->SelectedCount = DataSelector.AsDouble * PD::Settings::FloatUIMultiplier;
+				SettingsEntry->RangedSelector->PostValueChanged.AddLambda(
+					[SettingsTag](int32 NewValue) 
+					{
+						URTSOSettingsSubsystem::Get()->OnFloat(static_cast<double>(NewValue) / PD::Settings::FloatUIMultiplier, SettingsTag);
+					});
 				SettingsEntry->RangedSelector->ApplySettings(
 					DataSelector.DoubleRange.Min * PD::Settings::FloatUIMultiplier,
 					DataSelector.DoubleRange.Max * PD::Settings::FloatUIMultiplier);						
@@ -153,6 +180,11 @@ void URTSOMenuWidget_SettingsCategory::Refresh(
 			{
 				SettingsEntry->RangedSelector->CountTypeSelector = EPDSharedUICountTypeSelector::ERangedIncrementBox;
 				SettingsEntry->RangedSelector->SelectedCount = DataSelector.AsInteger;
+				SettingsEntry->RangedSelector->PostValueChanged.AddLambda(
+					[SettingsTag](int32 NewValue) 
+					{
+						URTSOSettingsSubsystem::Get()->OnFloat(NewValue, SettingsTag);
+					});
 				SettingsEntry->RangedSelector->ApplySettings(
 					DataSelector.IntegerRange.Min,
 					DataSelector.IntegerRange.Max);	
@@ -164,6 +196,11 @@ void URTSOMenuWidget_SettingsCategory::Refresh(
 			{
 				SettingsEntry->RangedSelector->CountTypeSelector = EPDSharedUICountTypeSelector::ERangedSlider;
 				SettingsEntry->RangedSelector->SelectedCount = DataSelector.AsInteger;
+				SettingsEntry->RangedSelector->PostValueChanged.AddLambda(
+					[SettingsTag](int32 NewValue) 
+					{
+						URTSOSettingsSubsystem::Get()->OnFloat(NewValue, SettingsTag);
+					});
 				SettingsEntry->RangedSelector->ApplySettings(
 					DataSelector.IntegerRange.Min,
 					DataSelector.IntegerRange.Max);					
@@ -174,6 +211,7 @@ void URTSOMenuWidget_SettingsCategory::Refresh(
 			if (SettingsEntry->RangedSelector != nullptr && SettingsEntry->RangedSelector->IsValidLowLevel())
 			{
 				SettingsEntry->RangedSelector->CountTypeSelector = EPDSharedUICountTypeSelector::ERangedSlider;
+				// TODO
 			}
 			
 			break;
@@ -181,6 +219,7 @@ void URTSOMenuWidget_SettingsCategory::Refresh(
 			if (SettingsEntry->RangedSelector != nullptr && SettingsEntry->RangedSelector->IsValidLowLevel())
 			{
 				SettingsEntry->RangedSelector->CountTypeSelector = EPDSharedUICountTypeSelector::ERangedSlider;
+				// TODO
 			}
 			
 			break;
@@ -188,6 +227,7 @@ void URTSOMenuWidget_SettingsCategory::Refresh(
 			if (SettingsEntry->RangedSelector != nullptr && SettingsEntry->RangedSelector->IsValidLowLevel())
 			{
 				SettingsEntry->RangedSelector->CountTypeSelector = EPDSharedUICountTypeSelector::ERangedSlider;
+				// TODO
 			}
 			
 			break;
@@ -198,6 +238,14 @@ void URTSOMenuWidget_SettingsCategory::Refresh(
 			if (SettingsEntry->RangedSelector != nullptr && SettingsEntry->RangedSelector->IsValidLowLevel())
 			{
 				SettingsEntry->RangedSelector->CountTypeSelector = EPDSharedUICountTypeSelector::ERangedIncrementBox;
+
+				//
+				// TODO
+
+				// SettingsEntry->RangedSelector->PostValueChanged.AddUObject(URTSOSettingsSubsystem::Get(), &URTSOSettingsSubsystem::OnByte, SettingsTag);
+				// SettingsEntry->RangedSelector->ApplySettings(
+				// 	DataSelector.IntegerRange.Min,
+				// 	DataSelector.IntegerRange.Max);					
 			}
 			
 			break;

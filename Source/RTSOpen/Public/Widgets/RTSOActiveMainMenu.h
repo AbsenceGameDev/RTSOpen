@@ -127,7 +127,7 @@ public:
 	class URTSOMainMenuBase* OwningStack = nullptr;	
 };
 
-
+DECLARE_MULTICAST_DELEGATE_OneParam(FPDPostCheckBoxStateChanged, bool);
 /** @brief Game Menu - Settings Entry */
 UCLASS(Blueprintable)
 class URTSOMenuWidget_SettingsEntry : public UCommonActivatableWidget
@@ -135,28 +135,44 @@ class URTSOMenuWidget_SettingsEntry : public UCommonActivatableWidget
 	GENERATED_BODY()
 
 public:
+	/** @brief TODO */
 	virtual void NativePreConstruct() override;
+	/** @brief TODO */
 	virtual void NativeOnActivated() override;
+
+	/** @brief TODO */
+	UFUNCTION()
+	void OnCheckBoxSet(bool bNewState);
 	
+	/** @brief TODO */
 	UPROPERTY(BlueprintReadWrite, Meta=(BindWidget))
 	UCommonTextBlock* SettingsEntryLabel = nullptr;
 
+	/** @brief TODO */
 	UPROPERTY(BlueprintReadWrite, Meta=(BindWidget))
 	UCommonTextBlock* SettingsEntryDescription = nullptr;
 	
+	/** @brief TODO */
 	UPROPERTY(BlueprintReadWrite, Meta=(BindWidget))
 	class UWidgetSwitcher* InputValueWidgetSwitcher;
 
+	/** @brief TODO */
 	UPROPERTY(BlueprintReadWrite, Meta=(BindWidget))
 	class UCheckBox* AsCheckBox = nullptr;
 
+	/** @brief TODO */
 	UPROPERTY(BlueprintReadWrite, Meta=(BindWidget))
 	class UPDRangedSelector* RangedSelector = nullptr;
 
+	/** @brief TODO */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
 	uint8 bIsCheckBox : 1;
+	/** @brief TODO */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
 	uint8 bIsRangedSelector : 1;
+
+	/** @brief TODO */
+	FPDPostCheckBoxStateChanged OnCheckBoxStateChanged;
 };
 
 /** @brief Game Menu - Base Submenu*/
@@ -165,20 +181,28 @@ class URTSOMenuWidget_SettingsCategory : public UCommonActivatableWidget
 {
 	GENERATED_BODY()
 public:
+	/** @brief TODO */
 	virtual void NativeOnActivated() override;
+	/** @brief TODO */
 	virtual void NativePreConstruct() override;
+	/** @brief TODO */
 	void Refresh(TSubclassOf<URTSOMenuWidget_SettingsEntry> InEntryClass, FString InEntryCategoryName, const TMap<FGameplayTag, FRTSOSettingsDataSelector>& InEntriesData);
 	
+	/** @brief TODO */
 	UPROPERTY(BlueprintReadWrite, Meta=(BindWidget))
 	UCommonTextBlock* SettingsCategoryLabel = nullptr;
 
+	/** @brief TODO */
 	UPROPERTY(BlueprintReadWrite, Meta=(BindWidget))
 	UVerticalBox* ItemContentBox  = nullptr;
 	
+	/** @brief TODO */
 	UPROPERTY()
 	TSubclassOf<URTSOMenuWidget_SettingsEntry> EntryClass;
+	/** @brief TODO */
 	UPROPERTY()
 	FString EntryCategoryName;
+	/** @brief TODO */
 	UPROPERTY()
 	TMap<FGameplayTag, FRTSOSettingsDataSelector> EntriesData;
 };
@@ -190,23 +214,31 @@ class URTSOMenuWidget_BaseMenu : public UCommonActivatableWidget
 	GENERATED_BODY()
 
 protected:
+	/** @brief TODO */
 	virtual void NativePreConstruct() override;
+	/** @brief TODO */
 	virtual void NativeOnActivated() override;
 public:
+	/** @brief TODO */
 	UFUNCTION()
 	void OnCategoryPressed(FName TabName);
 	
+	/** @brief TODO */
 	UPROPERTY(BlueprintReadWrite, Meta=(BindWidget))
 	UCanvasPanel* BaseCanvasPanel  = nullptr;	
 
+	/** @brief TODO */
 	UPROPERTY(BlueprintReadWrite, Meta=(BindWidget))
 	UBorder* MenuTitleBorder = nullptr;
+	/** @brief TODO */
 	UPROPERTY(BlueprintReadWrite, Meta=(BindWidget))
 	UCommonTextBlock* MenuTitleLabel = nullptr;
 
+	/** @brief TODO */
 	UPROPERTY(BlueprintReadWrite, Meta=(BindWidget))
 	UHorizontalBox* SubmenuSelector = nullptr;
 
+	/** @brief TODO */
 	UPROPERTY(BlueprintReadWrite, Meta=(BindWidget))
 	UNamedSlot* InnerContent = nullptr;
 };
@@ -219,25 +251,33 @@ class URTSOMenuWidget_BaseSubmenu : public UCommonActivatableWidget
 	GENERATED_BODY()
 
 public:
+	/** @brief TODO */
 	UPROPERTY(BlueprintReadWrite, Meta=(BindWidget))
 	UCanvasPanel* BaseCanvasPanel  = nullptr;	
 
+	/** @brief TODO */
 	UPROPERTY(BlueprintReadWrite, Meta=(BindWidget))
 	UHorizontalBox* ViewSplit  = nullptr;
+	/** @brief TODO */
 	UPROPERTY(BlueprintReadWrite, Meta=(BindWidget))
 	UBorder* ContentBorder = nullptr;
+	/** @brief TODO */
 	UPROPERTY(BlueprintReadWrite, Meta=(BindWidget))
 	UVerticalBox* ContentBox  = nullptr;
 	
+	/** @brief TODO */
 	UPROPERTY(BlueprintReadWrite, Meta=(BindWidget))
 	UBorder* DetailsBorder = nullptr;
+	/** @brief TODO */
 	UPROPERTY(BlueprintReadWrite, Meta=(BindWidget))
 	UCommonTextBlock* DetailsLabel = nullptr;
+	/** @brief TODO */
 	UPROPERTY(BlueprintReadWrite, Meta=(BindWidget))
 	UCommonTextBlock* DetailsDescription = nullptr;
 
 };
 
+/** @brief TODO */
 UCLASS(Blueprintable)
 class URTSOMenuWidget_Settings : public URTSOMenuWidget_BaseMenu
 {
@@ -248,17 +288,22 @@ public:
 	 *  @note */
 	virtual void NativePreConstruct() override;
 	
+	/** @brief TODO */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
 	TSubclassOf<UPDGenericButton> TabButtonClass;
 	
+	/** @brief TODO */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
 	TSubclassOf<URTSOMenuWidget_BaseSubmenu> SubMenuClass;
 	
+	/** @brief TODO */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
 	TSubclassOf<URTSOMenuWidget_SettingsCategory> SettingsCategoryClass;
+	/** @brief TODO */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
 	TSubclassOf<URTSOMenuWidget_SettingsEntry> SettingsEntryClass;
 
+	/** @brief TODO */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
 	int32 DefaultViewIdx = 0;
 

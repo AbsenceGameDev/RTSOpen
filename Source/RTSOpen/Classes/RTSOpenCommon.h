@@ -970,8 +970,10 @@ namespace PD::Settings
 		FInterfaceSettingsDefaults InterfaceDefaults{ERTSOSettingsGroups::Interface};
 	};
 
+	/** @brief TODO */
 	inline FAllSettingsDefaults AllSettingsDefaults{};
 
+	/** @brief TODO */
 	constexpr double FloatUIMultiplier = 10000; 
 }
 

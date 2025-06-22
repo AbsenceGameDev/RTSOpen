@@ -159,7 +159,10 @@ void UPDRangedSelector::ApplySettings(int32 InMinimumCount, int32 InMaximumCount
 	switch (SelectedCountType)
 	{
 	case EPDSharedUICountTypeSelector::ERangedSlider:
-		RangedSlider->OnValueChanged.AddDynamic(this, &UPDRangedSelector::OnSliderValueChanged);
+		if (RangedSlider->OnValueChanged.Contains(this, STATIC_FUNCTION_FNAME(TEXT("UPDRangedSelector::OnSliderValueChanged"))) == false)
+		{
+			RangedSlider->OnValueChanged.AddDynamic(this, &UPDRangedSelector::OnSliderValueChanged);
+		}
 
 		RangedSlider->SetStepSize(1.0f);
 		RangedSliderTextBlock->SetText(FText::FromString(FString::FromInt(SelectedCount)));
@@ -217,6 +220,8 @@ void UPDRangedSelector::OnSliderValueChanged(float NewValue)
 void UPDRangedSelector::OnNumberBoxChanged(int32 NewValue)
 {
 	SelectedCount = NewValue;
+
+	PostValueChanged.Broadcast(SelectedCount);
 };
 
 

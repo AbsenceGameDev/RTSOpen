@@ -3,196 +3,49 @@
 #pragma once
 
 #include "CoreMinimal.h"
-#include "Blueprint/UserWidget.h"
+#include "GameplayTags.h"
+#include "GameFramework/GameUserSettings.h"
 #include "Subsystems/EngineSubsystem.h"
+#include "RTSOSettingsSubsystem.generated.h"
 
-#include "UObject/Interface.h"
-#include "PDNumberBoxes.generated.h"
+DECLARE_LOG_CATEGORY_CLASS(PDLog_SettingsHandler, Log, All);
 
-DECLARE_DELEGATE_OneParam(FPDOnIntValueChanged, int32);
-DECLARE_MULTICAST_DELEGATE_OneParam(FPDPostValueChanged, int32);
-
-//
-// Ranged number entry widgets, @todo create shared UI module in it's own plugin and move this in there 
+/**
+ * @brief  Loads custom tags that may have been added by a player/user
+*/
 UCLASS()
-class PDSHAREDUI_API UPDRangedNumberBox : public UUserWidget
-{
-	GENERATED_BODY()
-public:
-
-	UFUNCTION()
-	void ApplySettings(int32 InMinimumCount, int32 InMaximumCount)
-	{
-		MinimumCount = InMinimumCount;
-		MaximumCount = InMaximumCount;
-	};
-
-	UFUNCTION()
-	virtual void SetupDelegates();
-	
-	UFUNCTION()
-	void OnTextBoxCommitted(const FText& Text, ETextCommit::Type CommitMethod);
-	
-	/** @brief Range */
-	UPROPERTY(BlueprintReadWrite, Meta=(ExposeOnSpawn))
-	int32 MinimumCount = 0;	
-	UPROPERTY(BlueprintReadWrite, Meta=(ExposeOnSpawn))
-	int32 MaximumCount = 0;
-	UPROPERTY(VisibleInstanceOnly, BlueprintReadOnly)
-	int32 SelectedCount = 0;
-
-	FPDOnIntValueChanged OnValueChanged{};
-
-	/** @brief Validate number box */
-	UPROPERTY(BlueprintReadWrite, Meta=(BindWidget, ExposeOnSpawn))
-	class UEditableTextBox* ValidatedNumberBox = nullptr;
-};
-
-UCLASS()
-class PDSHAREDUI_API UPDRangedIncrementBox : public UUserWidget
-{
-	GENERATED_BODY()
-public:
-
-	UFUNCTION()
-	void ApplySettings(int32 InMinimumCount, int32 InMaximumCount)
-	{
-		MinimumCount = InMinimumCount;
-		MaximumCount = InMaximumCount;
-	};
-
-	UFUNCTION()
-	virtual void SetupDelegates();
-
-	UFUNCTION()
-	void ValidateNewValue(int32 InCount);
-	
-	UFUNCTION()
-	void OnIncrement();
-
-	UFUNCTION()
-	void OnDecrement();	
-
-	/** @brief Range */
-	UPROPERTY(BlueprintReadWrite, FieldNotify, Meta=(ExposeOnSpawn))
-	int32 MinimumCount = 0;	
-	UPROPERTY(BlueprintReadWrite, FieldNotify, Meta=(ExposeOnSpawn))
-	int32 MaximumCount = 0; 	
-	UPROPERTY(VisibleInstanceOnly, FieldNotify, BlueprintReadOnly)
-	int32 SelectedCount = 0; 	
-	
-	/** @brief Hitbox, what our mouse events actually interacts with to increment the value */
-	UPROPERTY(BlueprintReadWrite, Meta=(BindWidget))
-	class UButton* HitboxIncrement = nullptr;
-	UPROPERTY(BlueprintReadWrite, Meta=(BindWidget))
-	class UTextBlock* IncrementTextBlock = nullptr;
-	UPROPERTY(BlueprintReadWrite)
-	FText IncrementText = FText::FromString("+");
-	
-	/** @brief Hitbox, what our mouse events actually interacts with to decrement the value */
-	UPROPERTY(BlueprintReadWrite, Meta=(BindWidget))
-	class UButton* HitboxDecrement = nullptr;	
-	UPROPERTY(BlueprintReadWrite, Meta=(BindWidget))
-	class UTextBlock* DecrementTextBlock = nullptr;	
-	UPROPERTY(BlueprintReadWrite)
-	FText DecrementText = FText::FromString("-");
-	
-	/** @brief Number box with controls */
-	UPROPERTY(BlueprintReadWrite, Meta=(BindWidget, ExposeOnSpawn))
-	class UTextBlock* NumberTextBlock = nullptr;
-	
-	FPDOnIntValueChanged OnValueChanged{};	
-};
-
-UENUM()
-enum class EPDSharedUICountTypeSelector : uint8
-{
-	ERangedSlider,
-	ERangedEditableNumber,
-	ERangedIncrementBox,
-};
-
-/** @brief Default grid data */
-UCLASS(Config = "Game", DefaultConfig)
-class PDSHAREDUI_API UPDSharedUISettings : public UDeveloperSettings
+class RTSOPEN_API URTSOSettingsSubsystem : public UEngineSubsystem
 {
 	GENERATED_BODY()
 
 public:
-
-	UPROPERTY(Config, EditAnywhere, Category = "SharedUI")
-	EPDSharedUICountTypeSelector UICountTypeSelector = EPDSharedUICountTypeSelector::ERangedSlider;
-};
-
-UCLASS()
-class PDSHAREDUI_API UPDRangedSelector : public UUserWidget
-{
-	GENERATED_BODY()
-public:
-
-	// @todo need to bind our Min/Max values for our range efficiently somehow, meaning regular UMG bindings are out of the question
-
-	virtual void NativePreConstruct() override;
-	virtual void NativeDestruct() override;
-
-	UFUNCTION()
-	void ApplySettings(int32 InMinimumCount, int32 InMaximumCount);
-
-	/** @brief If Min or Max is set to INDEX_NONE, changes to said member will be ignored */
-	virtual void OnRangeUpdated(int32 NewMin = INDEX_NONE, int32 NewMax = INDEX_NONE);
-
-	/** @brief  Updates the SelectedCount with the new value
-	 * @note is bound to 'RangedSlider->OnValueChanged' */
-	UFUNCTION()
-	void OnSliderValueChanged(float NewValue);
-
-	/** @brief  Updates the SelectedCount with the new value
-	 * @note is bound to 'RangedNumberBox->OnValueChanged' */
-	UFUNCTION()
-	void OnNumberBoxChanged(int32 NewValue);
-
-	
-	// @done Make configurable to use, via developer settings (UPDSharedUISettings), to use either a:
-	// @done 1. Ranged slider
-	// @done 2. Number box with user input, then validation to clamp it to a valid range
-	// @done 3. Number box with '-' and '+' buttons to increase/decrease, clamped to a valid range
-
-	/** @brief Range: Min */
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, FieldNotify, Meta=(ExposeOnSpawn))
-	int32 MinimumCount = 0;	
-	/** @brief Range: Max */
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, FieldNotify, Meta=(ExposeOnSpawn))
-	int32 MaximumCount = 0;
-	/** @brief  The value selected by the number box*/
-	UPROPERTY(BlueprintReadWrite, FieldNotify, Meta=(ExposeOnSpawn))
-	int32 SelectedCount = 0;
-
-	/** @brief Slider Text representation */
-	UPROPERTY(BlueprintReadWrite, Meta=(BindWidget))
-	class UTextBlock* RangedSliderTextBlock = nullptr;	
-	
-	/** @brief Ranged (Clamped) Slider */
-	UPROPERTY(BlueprintReadWrite, Meta=(BindWidget, ExposeOnSpawn))
-	class USlider* RangedSlider = nullptr;
-
-	/** @brief Validate number box */
-	UPROPERTY(BlueprintReadWrite, Meta=(BindWidget, ExposeOnSpawn))
-	class UPDRangedNumberBox* RangedNumberBox = nullptr;
-	
-	/** @brief Number box with controls */
-	UPROPERTY(BlueprintReadWrite, Meta=(BindWidget, ExposeOnSpawn))
-	class UPDRangedIncrementBox* RangedIncrementBox = nullptr;
+	/** @brief Dispatches an initial reset of the value stack. as the inputmodifer that supplies it is always testrun by the engine when instantiating all input modifiers upon startup, causing it to have a bunch of garbage in it's stack upon a worlds begin-play */
+	virtual void Initialize(FSubsystemCollectionBase& Collection) override;
 
 	/** @brief TODO */
-	UPROPERTY(EditAnywhere, BlueprintReadWrite)
-	bool bUseGlobalUICountTypeSelector = true;
+   static URTSOSettingsSubsystem* Get();
 
 	/** @brief TODO */
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Meta = (EditCondition="bUseGlobalUICountTypeSelector==false", EditConditionHides))
-	EPDSharedUICountTypeSelector CountTypeSelector;
+   UFUNCTION() void OnCheckBox(bool bNewState, const FGameplayTag& SettingsName);
+	/** @brief TODO */
+   UFUNCTION() void OnFloat(float NewFloat, const FGameplayTag& SettingsName);
+	/** @brief TODO */
+   UFUNCTION() void OnInteger(int32 NewInteger, const FGameplayTag& SettingsName);
+	/** @brief TODO */
+   UFUNCTION() void OnByte(uint8 NewByte, const FGameplayTag& SettingsName);
+	/** @brief TODO */
+   UFUNCTION() void OnVector(FVector NewVector, const FGameplayTag& SettingsName);
 
 	/** @brief TODO */
-	FPDPostValueChanged PostValueChanged;
+   UPROPERTY() TMap<FGameplayTag, bool> CheckBoxStates;
+	/** @brief TODO */
+   UPROPERTY() TMap<FGameplayTag, double> DoubleStates;
+	/** @brief TODO */
+   UPROPERTY() TMap<FGameplayTag, int32> IntegerStates;
+	/** @brief TODO */
+   UPROPERTY() TMap<FGameplayTag, uint8> ByteStates;
+	/** @brief TODO */
+   UPROPERTY() TMap<FGameplayTag, FVector> VectorStates;
 };
 
 /**
