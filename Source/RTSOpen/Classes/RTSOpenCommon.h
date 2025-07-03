@@ -774,8 +774,21 @@ public:
 	FRTSOSettingsDataDelegate OnValueUpdated;
 };
 
+UENUM()
+enum class ERTSOSettings : uint8
+{
+	Gameplay = 0,
+	Video,
+	Audio,
+	Controls,
+	Interface,
+	Num,
+};
+
 namespace PD::Settings
 {
+	using ERTSOSettingsGroups = ERTSOSettings;
+
 	namespace Gameplay::Camera
 	{
 		UE_DECLARE_GAMEPLAY_TAG_EXTERN(TAG_Camera_RotationRateModifier) // (Slider, Limit to range [40, 100])
@@ -804,6 +817,7 @@ namespace PD::Settings
 	{
 		UE_DECLARE_GAMEPLAY_TAG_EXTERN(TAG_Display_Mode) // Mode (List of options (Windowed, Borderless, Fullscreen))
 		UE_DECLARE_GAMEPLAY_TAG_EXTERN(TAG_Display_Resolution) // Resolution (List of available resolutions)
+		UE_DECLARE_GAMEPLAY_TAG_EXTERN(TAG_Display_ResolutionScale) // ResolutionScale (Set resolution scale)
 		UE_DECLARE_GAMEPLAY_TAG_EXTERN(TAG_Display_FPSLimit) // FPS Limit (30, 60, 120, 144)
 		UE_DECLARE_GAMEPLAY_TAG_EXTERN(TAG_Display_VSyncEnabled) // V-Sync (Checkbox)
 		UE_DECLARE_GAMEPLAY_TAG_EXTERN(TAG_Display_Gamma) // Gamma (Slider)
@@ -820,9 +834,10 @@ namespace PD::Settings
 		UE_DECLARE_GAMEPLAY_TAG_EXTERN(TAG_Graphics_TextureQuality) // Texture quality (List of Quality options)
 		UE_DECLARE_GAMEPLAY_TAG_EXTERN(TAG_Graphics_ShadowQuality) // Shadow quality (List of Quality options)
 		UE_DECLARE_GAMEPLAY_TAG_EXTERN(TAG_Graphics_ReflectionQuality) // Reflection quality ? (List of Quality options)
+		UE_DECLARE_GAMEPLAY_TAG_EXTERN(TAG_Graphics_GIQuality) // Foliage Quality (List of Quality options)
 		UE_DECLARE_GAMEPLAY_TAG_EXTERN(TAG_Graphics_ParticleEffect) // Particle Effect Quality (List of Quality options)
-		UE_DECLARE_GAMEPLAY_TAG_EXTERN(TAG_Graphics_MeshQuality) // Mesh Quality (List of Quality options)
-		UE_DECLARE_GAMEPLAY_TAG_EXTERN(TAG_Graphics_AnimationQuality) // Animation Quality (List of Quality options)
+		UE_DECLARE_GAMEPLAY_TAG_EXTERN(TAG_Graphics_FoliageQuality) // Foliage Quality (List of Quality options)
+		UE_DECLARE_GAMEPLAY_TAG_EXTERN(TAG_Graphics_ResolutionQuality) // Animation Quality (List of Quality options)
 		UE_DECLARE_GAMEPLAY_TAG_EXTERN(TAG_Graphics_PostProcessQuality) // Post process Quality (List of Quality options)
 		UE_DECLARE_GAMEPLAY_TAG_EXTERN(TAG_Graphics_ViewDistance) // View Distance (List of Quality options)
 	}
@@ -873,18 +888,8 @@ namespace PD::Settings
 		UE_DECLARE_GAMEPLAY_TAG_EXTERN(TAG_Interface_UIScaling) // - UIScaling slider (Range [0.5 , 4])
 		UE_DECLARE_GAMEPLAY_TAG_EXTERN(TAG_Interface_ShowObjectiveMarkers) // - UIScaling slider (Range [0.5 , 4])
 	}
-
-	enum class ERTSOSettingsGroups : uint8
-	{
-		Gameplay,
-		Video,
-		Audio,
-		Controls,
-		Interface,
-		Num,
-	};
 	
-	struct FSettingsDefaultsBase { ERTSOSettingsGroups TabName; };
+	struct FSettingsDefaultsBase { ERTSOSettingsGroups SettingsGroup; };
 	struct FGameplaySettingsDefaults : FSettingsDefaultsBase
 	{
 		static TMap<FGameplayTag, FRTSOSettingsDataSelector> Camera;
@@ -913,7 +918,7 @@ namespace PD::Settings
 
 	struct FAllSettingsDefaults
 	{
-		TArray<ERTSOSettingsGroups> TopLevelSettingTypes
+		static inline TArray<ERTSOSettingsGroups> TopLevelSettingTypes
 		{
 			ERTSOSettingsGroups::Gameplay,
 			ERTSOSettingsGroups::Video,
@@ -924,56 +929,30 @@ namespace PD::Settings
 
 		static FName GetTabName(ERTSOSettingsGroups Selector)
 		{
+			static FName GameplayLabel(*FString("Gameplay"));
+			static FName VideoLabel(*FString("Video"));
+			static FName AudioLabel(*FString("Audio"));
+			static FName ControlsLabel(*FString("Controls"));
+			static FName InterfaceLabel(*FString("Interface"));
 			switch (Selector)
 			{
-			case ERTSOSettingsGroups::Gameplay: return FName("Gameplay");
-			case ERTSOSettingsGroups::Video: return FName("Video");
-			case ERTSOSettingsGroups::Audio: return FName("Audio");
-			case ERTSOSettingsGroups::Controls: return FName("Controls");
-			case ERTSOSettingsGroups::Interface: return FName("Interface");
+			case ERTSOSettingsGroups::Gameplay: return GameplayLabel;
+			case ERTSOSettingsGroups::Video: return VideoLabel;
+			case ERTSOSettingsGroups::Audio: return AudioLabel;
+			case ERTSOSettingsGroups::Controls: return ControlsLabel;
+			case ERTSOSettingsGroups::Interface: return InterfaceLabel;
 			default: break;
 			}
 			return FName("");
 		}
 
-		FSettingsDefaultsBase* Get(ERTSOSettingsGroups Selector)
-		{
-			switch (Selector)
-			{
-			case ERTSOSettingsGroups::Gameplay: return &GameplayDefaults;
-			case ERTSOSettingsGroups::Video: return &VideoDefaults;
-			case ERTSOSettingsGroups::Audio: return &AudioDefaults;
-			case ERTSOSettingsGroups::Controls: return &ControlsDefaults;
-			case ERTSOSettingsGroups::Interface: return &InterfaceDefaults;
-			default: break;
-			}
-			return nullptr;
-		}
-
-		template<typename TOutValue>
-		TOutValue GetCast(ERTSOSettingsGroups Selector)
-		{
-			static_cast<TOutValue*>(Get(Selector));
-			if (Get(Selector) == nullptr)
-			{
-				TOutValue Dummy;
-				return Dummy;
-			}
-			
-			return static_cast<TOutValue*>(Get(Selector));
-		};
-		
-		FGameplaySettingsDefaults GameplayDefaults{ERTSOSettingsGroups::Gameplay};
-		FVideoSettingsDefaults VideoDefaults{ERTSOSettingsGroups::Video};
-		FAudioSettingsDefaults AudioDefaults{ERTSOSettingsGroups::Audio};
-		FControlsSettingsDefaults ControlsDefaults{ERTSOSettingsGroups::Controls};
-		FInterfaceSettingsDefaults InterfaceDefaults{ERTSOSettingsGroups::Interface};
 	};
 
 	/** @brief TODO */
-	inline FAllSettingsDefaults AllSettingsDefaults{};
 
-	/** @brief TODO */
+	static inline TArray<FString> QualityDefaultStrings{"Low", "Medium", "High", "Epic"};
+	static inline TArray<FString> DifficultyDefaultStrings{"Neophyte", "Acolyte", "Adept", "Challenger", "Conduit"};
+
 	constexpr double FloatUIMultiplier = 10000; 
 }
 

@@ -9,6 +9,7 @@
 #include "Components/Border.h"
 #include "Components/Button.h"
 #include "Components/TileView.h"
+#include "Components/Slider.h"
 #include "Interfaces/PDRTSBuilderInterface.h"
 
 #include "Components/EditableTextBox.h"
@@ -919,7 +920,13 @@ void UPDBuildingActionsWidgetBase::SelectActionContext(const FGameplayTag& NewSe
 		// Make selector visible if we have at-least one buildable action visible
 		if (Actions->GetListItems().IsEmpty() == false)
 		{
-			CountSelector->ApplySettings(1, 250); // @todo replace hardocoded values here 
+			// @todo replace hardocoded values here 
+			CountSelector->ApplySettings(FPDRangedSliderSettings{
+					1,
+					250,
+					1.0, 
+					1.0});
+			CountSelector->RangedSlider->SetValue(1);		
 			CountSelector->SetVisibility(ESlateVisibility::Visible);
 		}
 		

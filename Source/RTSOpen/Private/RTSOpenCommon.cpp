@@ -47,6 +47,7 @@ namespace PD::Settings
 	{
 		UE_DEFINE_GAMEPLAY_TAG(TAG_Display_Mode, "Settings.Video.Display.Mode") // Mode (List of options (Windowed, Borderless, Fullscreen))
 		UE_DEFINE_GAMEPLAY_TAG(TAG_Display_Resolution, "Settings.Video.Display.Resolution") // Resolution (List of available resolutions)
+		UE_DEFINE_GAMEPLAY_TAG(TAG_Display_ResolutionScale, "Settings.Video.Display.ResolutionScale") // Resolution (List of available resolutions)
 		UE_DEFINE_GAMEPLAY_TAG(TAG_Display_FPSLimit, "Settings.Video.Display.FPSLimit") // FPS Limit (30, 60, 120, 144)
 		UE_DEFINE_GAMEPLAY_TAG(TAG_Display_VSyncEnabled, "Settings.Video.Display.VSync") // V-Sync (Checkbox)
 		UE_DEFINE_GAMEPLAY_TAG(TAG_Display_Gamma, "Settings.Video.Display.Gamma") // Gamma (Slider)
@@ -65,9 +66,10 @@ namespace PD::Settings
 		UE_DEFINE_GAMEPLAY_TAG(TAG_Graphics_TextureQuality, "Settings.Video.Graphics.TextureQuality") // Texture quality (List of Quality options)
 		UE_DEFINE_GAMEPLAY_TAG(TAG_Graphics_ShadowQuality, "Settings.Video.Graphics.ShadowQuality") // Shadow quality (List of Quality options)
 		UE_DEFINE_GAMEPLAY_TAG(TAG_Graphics_ReflectionQuality, "Settings.Video.Graphics.ReflectionQuality") // Reflection quality ? (List of Quality options)
+		UE_DEFINE_GAMEPLAY_TAG(TAG_Graphics_GIQuality, "Settings.Video.Graphics.GIQuality") // Global Illumination quality ? (List of Quality options)
 		UE_DEFINE_GAMEPLAY_TAG(TAG_Graphics_ParticleEffect, "Settings.Video.Graphics.ParticleQuality") // Particle Effect Quality (List of Quality options)
-		UE_DEFINE_GAMEPLAY_TAG(TAG_Graphics_MeshQuality, "Settings.Video.Graphics.MeshQuality") // Mesh Quality (List of Quality options)
-		UE_DEFINE_GAMEPLAY_TAG(TAG_Graphics_AnimationQuality, "Settings.Video.Graphics.AnimationQuality") // Animation Quality (List of Quality options)
+		UE_DEFINE_GAMEPLAY_TAG(TAG_Graphics_FoliageQuality, "Settings.Video.Graphics.FoliageQuality") // Mesh Quality (List of Quality options)
+		UE_DEFINE_GAMEPLAY_TAG(TAG_Graphics_ResolutionQuality, "Settings.Video.Graphics.ResolutionQuality") // Animation Quality (List of Quality options)
 		UE_DEFINE_GAMEPLAY_TAG(TAG_Graphics_PostProcessQuality, "Settings.Video.Graphics.PostProcessQuality") // Post process Quality (List of Quality options)
 		UE_DEFINE_GAMEPLAY_TAG(TAG_Graphics_ViewDistance, "Settings.Video.Graphics.ViewDistance") // View Distance (List of Quality options)
 	}
@@ -119,19 +121,16 @@ namespace PD::Settings
 		UE_DEFINE_GAMEPLAY_TAG(TAG_Interface_ShowObjectiveMarkers, "Settings.Interface.ShowObjectiveMarkers") // - CheckBox
 	}
 
-	static TArray<FString> QualityDefaultStrings{"Low", "Medium", "High", "Epic"};
-	static TArray<FString> DifficultyDefaultStrings{"Neophyte", "Acolyte", "Adept", "Challenger", "Conduit"};
-
 	//
 	// Gameplay
 	using Entry = TTuple<FGameplayTag, FRTSOSettingsDataSelector>;
 	TMap<FGameplayTag, FRTSOSettingsDataSelector> FGameplaySettingsDefaults::Camera =
 		{
-			Entry{Gameplay::Camera::TAG_Camera_RotationRateModifier, FRTSOSettingsDataSelector{ERTSOSettingsType::FloatSlider, 40.0, FRTSOMinMax<double>{40, 100}}},
-			Entry{Gameplay::Camera::TAG_Camera_TargetInterpSpeed, FRTSOSettingsDataSelector{ERTSOSettingsType::FloatSlider, 2.0, FRTSOMinMax<double>{1, 10}}},
-			Entry{Gameplay::Camera::TAG_Camera_ScrollSpeed, FRTSOSettingsDataSelector{ERTSOSettingsType::FloatSlider, 2.0, FRTSOMinMax<double>{1, 10}}},
-			Entry{Gameplay::Camera::TAG_Camera_DoF, FRTSOSettingsDataSelector{ERTSOSettingsType::FloatSlider, 2.0, FRTSOMinMax<double>{1, 10}}},
-			Entry{Gameplay::Camera::TAG_Camera_FoV, FRTSOSettingsDataSelector{ERTSOSettingsType::FloatSlider, 2.0, FRTSOMinMax<double>{1, 10}}}
+			Entry{Gameplay::Camera::TAG_Camera_RotationRateModifier, FRTSOSettingsDataSelector{ERTSOSettingsType::FloatSlider, 40.0 * FloatUIMultiplier, FRTSOMinMax<double>{40 * FloatUIMultiplier, 100 * FloatUIMultiplier}}},
+			Entry{Gameplay::Camera::TAG_Camera_TargetInterpSpeed, FRTSOSettingsDataSelector{ERTSOSettingsType::FloatSlider, 2.0 * FloatUIMultiplier, FRTSOMinMax<double>{FloatUIMultiplier, 10 * FloatUIMultiplier}}},
+			Entry{Gameplay::Camera::TAG_Camera_ScrollSpeed, FRTSOSettingsDataSelector{ERTSOSettingsType::FloatSlider, 2.0 * FloatUIMultiplier , FRTSOMinMax<double>{FloatUIMultiplier, 10 * FloatUIMultiplier}}},
+			Entry{Gameplay::Camera::TAG_Camera_DoF, FRTSOSettingsDataSelector{ERTSOSettingsType::FloatSlider, 2.0 * FloatUIMultiplier, FRTSOMinMax<double>{FloatUIMultiplier, 10 * FloatUIMultiplier}}},
+			Entry{Gameplay::Camera::TAG_Camera_FoV, FRTSOSettingsDataSelector{ERTSOSettingsType::IntegerSlider, 90, FRTSOMinMax<int32>{0, 180}}}
 		};
 
 	TMap<FGameplayTag, FRTSOSettingsDataSelector> FGameplaySettingsDefaults::ActionLog =
@@ -151,10 +150,11 @@ namespace PD::Settings
 	// Video
 	TMap<FGameplayTag, FRTSOSettingsDataSelector> FVideoSettingsDefaults::Display =
 		{
-			Entry{Video::Display::TAG_Display_Gamma, FRTSOSettingsDataSelector{ERTSOSettingsType::FloatSlider, 0.5, FRTSOMinMax<double>{0, 1}}},
+			Entry{Video::Display::TAG_Display_Gamma, FRTSOSettingsDataSelector{ERTSOSettingsType::IntegerSlider, 50, FRTSOMinMax<int32>{0, 100}}},
 			Entry{Video::Display::TAG_Display_Mode, FRTSOSettingsDataSelector{ERTSOSettingsType::EnumAsByte, ERTSOResolutionMode::Windowed}},
 			Entry{Video::Display::TAG_Display_Resolution, FRTSOSettingsDataSelector{ERTSOSettingsType::IntegerSelector, 60, FRTSOMinMax<int32>{1920, 1080}}},
-			Entry{Video::Display::TAG_Display_AntiAliasing, FRTSOSettingsDataSelector{ERTSOSettingsType::IntegerSelector, 4, FRTSOMinMax<int32>{}, TArray{0, 1, 2, 4, 8, 16}}},
+			Entry{Video::Display::TAG_Display_ResolutionScale, FRTSOSettingsDataSelector{ERTSOSettingsType::IntegerSlider, 100, FRTSOMinMax<int32>{10, 100}}},
+			Entry{Video::Display::TAG_Display_AntiAliasing, FRTSOSettingsDataSelector{ERTSOSettingsType::IntegerSelector, 4, FRTSOMinMax<int32>{}, TArray{0, 1, 2, 3, 4, 5, 6}}},
 			Entry{Video::Display::TAG_Display_VSyncEnabled, FRTSOSettingsDataSelector{ERTSOSettingsType::Boolean, false}},
 			Entry{Video::Display::TAG_Display_FPSLimit, FRTSOSettingsDataSelector{ERTSOSettingsType::IntegerSelector, 60, FRTSOMinMax<int32>{}, TArray{0, 30, 60, 120, 144}}},
 		};
@@ -171,9 +171,10 @@ namespace PD::Settings
 			Entry{Video::Graphics::TAG_Graphics_TextureQuality, FRTSOSettingsDataSelector{ERTSOSettingsType::String, QualityDefaultStrings[0], FRTSOMinMax<FString>{}, QualityDefaultStrings}},
 			Entry{Video::Graphics::TAG_Graphics_ShadowQuality, FRTSOSettingsDataSelector{ERTSOSettingsType::String, QualityDefaultStrings[0], FRTSOMinMax<FString>{}, QualityDefaultStrings}},
 			Entry{Video::Graphics::TAG_Graphics_ReflectionQuality, FRTSOSettingsDataSelector{ERTSOSettingsType::String, QualityDefaultStrings[0], FRTSOMinMax<FString>{}, QualityDefaultStrings}},
+			Entry{Video::Graphics::TAG_Graphics_GIQuality, FRTSOSettingsDataSelector{ERTSOSettingsType::String, QualityDefaultStrings[0], FRTSOMinMax<FString>{}, QualityDefaultStrings}},
 			Entry{Video::Graphics::TAG_Graphics_ParticleEffect, FRTSOSettingsDataSelector{ERTSOSettingsType::String, QualityDefaultStrings[0], FRTSOMinMax<FString>{}, QualityDefaultStrings}},
-			Entry{Video::Graphics::TAG_Graphics_MeshQuality, FRTSOSettingsDataSelector{ERTSOSettingsType::String, QualityDefaultStrings[0], FRTSOMinMax<FString>{}, QualityDefaultStrings}},
-			Entry{Video::Graphics::TAG_Graphics_AnimationQuality, FRTSOSettingsDataSelector{ERTSOSettingsType::String, QualityDefaultStrings[0], FRTSOMinMax<FString>{}, QualityDefaultStrings}},
+			Entry{Video::Graphics::TAG_Graphics_FoliageQuality, FRTSOSettingsDataSelector{ERTSOSettingsType::String, QualityDefaultStrings[0], FRTSOMinMax<FString>{}, QualityDefaultStrings}},
+			Entry{Video::Graphics::TAG_Graphics_ResolutionQuality, FRTSOSettingsDataSelector{ERTSOSettingsType::String, QualityDefaultStrings[0], FRTSOMinMax<FString>{}, QualityDefaultStrings}},
 			Entry{Video::Graphics::TAG_Graphics_PostProcessQuality, FRTSOSettingsDataSelector{ERTSOSettingsType::String, QualityDefaultStrings[0], FRTSOMinMax<FString>{}, QualityDefaultStrings}},
 			Entry{Video::Graphics::TAG_Graphics_ViewDistance, FRTSOSettingsDataSelector{ERTSOSettingsType::String, QualityDefaultStrings[0], FRTSOMinMax<FString>{}, QualityDefaultStrings}},
 		};
@@ -182,11 +183,11 @@ namespace PD::Settings
 	// Audio
 	TMap<FGameplayTag, FRTSOSettingsDataSelector> FAudioSettingsDefaults::Base =
 		{
-			Entry{Audio::TAG_Audio_MasterVolume, FRTSOSettingsDataSelector{ERTSOSettingsType::FloatSlider, 70.0, FRTSOMinMax<double>{0, 100}}},
-			Entry{Audio::TAG_Audio_MusicVolume, FRTSOSettingsDataSelector{ERTSOSettingsType::FloatSlider, 70.0, FRTSOMinMax<double>{0, 100}}},
-			Entry{Audio::TAG_Audio_AmbientVolume, FRTSOSettingsDataSelector{ERTSOSettingsType::FloatSlider, 70.0, FRTSOMinMax<double>{0, 100}}},
-			Entry{Audio::TAG_Audio_VoiceVolume, FRTSOSettingsDataSelector{ERTSOSettingsType::FloatSlider, 70.0, FRTSOMinMax<double>{0, 100}}},
-			Entry{Audio::TAG_Audio_SFXVolume, FRTSOSettingsDataSelector{ERTSOSettingsType::FloatSlider, 70.0, FRTSOMinMax<double>{0, 100}}},
+			Entry{Audio::TAG_Audio_MasterVolume, FRTSOSettingsDataSelector{ERTSOSettingsType::FloatSlider, 70.0 * FloatUIMultiplier, FRTSOMinMax<double>{0, 100 * FloatUIMultiplier}}},
+			Entry{Audio::TAG_Audio_MusicVolume, FRTSOSettingsDataSelector{ERTSOSettingsType::FloatSlider, 70.0 * FloatUIMultiplier, FRTSOMinMax<double>{0, 100 * FloatUIMultiplier}}},
+			Entry{Audio::TAG_Audio_AmbientVolume, FRTSOSettingsDataSelector{ERTSOSettingsType::FloatSlider, 70.0 * FloatUIMultiplier, FRTSOMinMax<double>{0, 100 * FloatUIMultiplier}}},
+			Entry{Audio::TAG_Audio_VoiceVolume, FRTSOSettingsDataSelector{ERTSOSettingsType::FloatSlider, 70.0 * FloatUIMultiplier, FRTSOMinMax<double>{0, 100 * FloatUIMultiplier}}},
+			Entry{Audio::TAG_Audio_SFXVolume, FRTSOSettingsDataSelector{ERTSOSettingsType::FloatSlider, 70.0 * FloatUIMultiplier, FRTSOMinMax<double>{0, 100 * FloatUIMultiplier}}},
 			Entry{Audio::TAG_Audio_Subtitles, FRTSOSettingsDataSelector{ERTSOSettingsType::Boolean, true}},
 		};	
 
@@ -226,7 +227,7 @@ namespace PD::Settings
 	// Interface
 	TMap<FGameplayTag, FRTSOSettingsDataSelector> FInterfaceSettingsDefaults::Base =
 		{
-			Entry{Interface::TAG_Interface_UIScaling, FRTSOSettingsDataSelector{ERTSOSettingsType::FloatSlider, 1.0, FRTSOMinMax<double>{0.5, 4}}},
+			Entry{Interface::TAG_Interface_UIScaling, FRTSOSettingsDataSelector{ERTSOSettingsType::FloatSlider,  FloatUIMultiplier, FRTSOMinMax<double>{0.5 * FloatUIMultiplier, 4 * FloatUIMultiplier}}},
 			Entry{Interface::TAG_Interface_ShowObjectiveMarkers, FRTSOSettingsDataSelector{ERTSOSettingsType::Boolean, true}},
 		};
 	

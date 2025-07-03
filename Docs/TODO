@@ -7,6 +7,70 @@
     ✔ Hook up settings buttons with their actual functional part @done(25-06-22 21:10)
     ✔ Test settings buttons @done(25-06-22 21:10)
 
+
+
+    // PUSH TO DEPOT LATER TODAY
+3rd July - 1st commit, 2025:
+    ✔ Fix vanished settings category buttons @done(25-07-03 07:35)
+    ✔ Fix assertions being hit when binding delegates @done(25-07-03 07:35)
+    ✔ Fix incorrect category settings list bugs @done(25-07-03 07:35)
+    ✔ Remove unwanted border @done(25-07-03 07:35)
+    ✔ Fix slider interaction not working (turns out the click areas was being clipped by too small sizebox) @done(25-07-03 22:49)
+    ✔ Clean up settings value and widget logic @done(25-07-03 22:50)
+    ✔ Add foliage scalability options @done(25-07-03 22:53)
+    ✔ Prepare list of console commands that are needed to apply certain settings @done(25-07-03 22:54)
+
 TODO:
-    - Fix slider interaction not working
-    - Get back to working on the mission/quest menu UI and game UI
+    - Finish implementing 'SRTSOStringSelector' so it may be used for string based settings in the settings menu 
+    - Translate selected string values to quality/value options for our settings
+    - Set up logic to translate our Gameplay and UI settings to actaul changes for our gameplay states 
+    - Implement Save/Load logic for settings, 
+    - Set up a save dialog in case the user changes a setting but forgets to save, to give them a chance to save the game
+    
+TODO - After polishing existing systems:
+    - Finish implementation of the mission/quest system
+        - Finish Mission Menu (Partially done)
+        - Finish Mission Editor (Partially done, in 'PDOpen' repo)
+        - Finish implementing tag loader softlock protection 
+            - Provide missing tags to players based on certain conditions (IN PROGRESS)
+        - Test Test Test (And Fix Fix Fix)
+
+    - Finish implementation of the save editor system
+        - Save editor UI (Functionally Done, but have some serious scaling/layout issues)
+        - Save Editor Logic (Functionally Done, needs to be throughly tested)
+
+    - Finish Mass AI implementation
+        - Player MassUnits, Partially done
+            - MassUnit pinging system (DONE, NEED TESTING)
+            - MassUnit builder logic (DONE, NEEDS EXPANDING WITH CONTENT)
+                - MassUnit cooperative building logic (DONE, NEEDS TESTING)
+                - MassUnit Stage-wise building logic (DONE, NEEDS TESTING FOR THE AUTO STAGE PROGRESSION vs. MANUAL STAGE PROGRESSION)
+                ✔ MassUnit interaction system (DONE, PARTIALLY TESTED with items and Mission/Conversation actors) 
+                ✔ MassUnit Item system (DONE, TESTED) 
+            - MassUnit navigation algorithm, 'Weighted A*'  (NOT STARTED)
+                - TODO: Weights to account for {Impassable areas, physical materials, strategic layout}
+            - 
+
+    - Fix threading issues in 'Mass'
+    - Expand build system
+        ✔ Ghost system 
+        - Selection system (Store/Load modules)
+
+    - Finish implementing team logic (Partially done)
+        - Players can be in different teams (DONE, not tested)
+        - Team UI menu (Not started)
+
+    - Set up multiplayer (NOT STARTED)
+        - Local multiplayer (NOT STARTED)
+        - Online Multiplayer (NOT STARTED)
+        - Team UI menu (NOT STARTED)
+        
+
+    - Set up more dialog trees and missions
+    - Set up difficulty system
+
+
+    - Finish implementation of Branching-Spline Level Editor Tool, then port to RTSOpen (Mostly done, in 'Ivarr' repo)
+
+    - Start making chinchilla/rodent based levels (for the actual game)
+''''

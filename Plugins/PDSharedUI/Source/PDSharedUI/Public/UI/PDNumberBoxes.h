@@ -12,6 +12,17 @@
 DECLARE_DELEGATE_OneParam(FPDOnIntValueChanged, int32);
 DECLARE_MULTICAST_DELEGATE_OneParam(FPDPostValueChanged, int32);
 
+USTRUCT(Blueprintable)
+struct PDSHAREDUI_API FPDRangedSliderSettings
+{
+	GENERATED_BODY()
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite) int32 MinimumCount = 0; 
+	UPROPERTY(EditAnywhere, BlueprintReadWrite) int32 MaximumCount = 0;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite) double FloatUIMultiplier = 1.0;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite) double StepSize = 1.0;
+};
+
 //
 // Ranged number entry widgets, @todo create shared UI module in it's own plugin and move this in there 
 UCLASS()
@@ -136,7 +147,7 @@ public:
 	virtual void NativeDestruct() override;
 
 	UFUNCTION()
-	void ApplySettings(int32 InMinimumCount, int32 InMaximumCount);
+	void ApplySettings(FPDRangedSliderSettings InSliderSettings);
 
 	/** @brief If Min or Max is set to INDEX_NONE, changes to said member will be ignored */
 	virtual void OnRangeUpdated(int32 NewMin = INDEX_NONE, int32 NewMax = INDEX_NONE);
@@ -166,6 +177,10 @@ public:
 	/** @brief  The value selected by the number box*/
 	UPROPERTY(BlueprintReadWrite, FieldNotify, Meta=(ExposeOnSpawn))
 	int32 SelectedCount = 0;
+
+	/** @brief TODO: Slider Settings */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	FPDRangedSliderSettings SliderSettings;
 
 	/** @brief Slider Text representation */
 	UPROPERTY(BlueprintReadWrite, Meta=(BindWidget))

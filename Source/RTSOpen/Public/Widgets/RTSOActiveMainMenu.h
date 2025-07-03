@@ -37,6 +37,9 @@ class URTSOMenuButton : public UPDGenericButton
 
 public:
 	/* Reserved */
+
+	UPROPERTY()
+	FName ButtonName;
 };
 
 /** @brief Game Menu - Save dialog
@@ -219,9 +222,6 @@ protected:
 	/** @brief TODO */
 	virtual void NativeOnActivated() override;
 public:
-	/** @brief TODO */
-	UFUNCTION()
-	void OnCategoryPressed(FName TabName);
 	
 	/** @brief TODO */
 	UPROPERTY(BlueprintReadWrite, Meta=(BindWidget))
@@ -286,7 +286,20 @@ class URTSOMenuWidget_Settings : public URTSOMenuWidget_BaseMenu
 public:
 	/** @brief 
 	 *  @note */
+	virtual void NativeConstruct() override;
 	virtual void NativePreConstruct() override;
+	virtual void NativeOnActivated() override;
+	virtual void Refresh();
+	
+	UCommonActivatableWidget* SpawnSettingsSubMenu(PD::Settings::ERTSOSettingsGroups TopLevelSetting);
+	UCommonActivatableWidget* SpawnSettingsCategories(TMap<FString, TMap<FGameplayTag, FRTSOSettingsDataSelector>>& SettingsCategories);
+	
+	UFUNCTION() void OnCategoryPressed_Gameplay();
+	UFUNCTION() void OnCategoryPressed_Video();	
+	UFUNCTION() void OnCategoryPressed_Audio();	
+	UFUNCTION() void OnCategoryPressed_Controls();	
+	UFUNCTION() void OnCategoryPressed_Interface();		
+
 	
 	/** @brief TODO */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
@@ -305,7 +318,9 @@ public:
 
 	/** @brief TODO */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
-	int32 DefaultViewIdx = 0;
+	ERTSOSettings DefaultView = ERTSOSettings::Gameplay;
+
+
 
 	// UPROPERTY()
 	// TMap<FString, TMap<FGameplayTag, FRTSOSettingsDataSelector>> SettingsData;

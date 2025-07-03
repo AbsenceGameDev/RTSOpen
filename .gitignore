@@ -78,7 +78,6 @@ DerivedDataCache/*
 *.DotSettings.user
 settings.json
 .vscode/*
-Content/*
 *ignore
 .idea/*
 .vsconfig

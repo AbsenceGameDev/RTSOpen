@@ -37,6 +37,11 @@ struct TAccessorTypeHandler { typedef TAccessorValue(TAccessorType::*TType); };
 
 void UPDRangedNumberBox::SetupDelegates()
 {
+	if (ValidatedNumberBox->OnTextCommitted.IsBound())
+	{
+		ValidatedNumberBox->OnTextCommitted.Clear();
+	}
+
 	ValidatedNumberBox->OnTextCommitted.AddDynamic(this, &UPDRangedNumberBox::OnTextBoxCommitted);
 }
 
@@ -82,6 +87,9 @@ void UPDRangedIncrementBox::SetupDelegates()
 	IncrementTextBlock->SetText(IncrementText);
 	DecrementTextBlock->SetText(DecrementText);
 	
+	if (HitboxIncrement->OnPressed.IsBound()){HitboxIncrement->OnPressed.Clear();}
+	if (HitboxDecrement->OnPressed.IsBound()){HitboxDecrement->OnPressed.Clear();}
+
 	HitboxIncrement->OnPressed.AddDynamic(this, &UPDRangedIncrementBox::OnIncrement);
 	HitboxDecrement->OnPressed.AddDynamic(this, &UPDRangedIncrementBox::OnDecrement);
 }
@@ -114,7 +122,7 @@ void UPDRangedIncrementBox::OnDecrement()
 void UPDRangedSelector::NativePreConstruct()
 {
 	Super::NativePreConstruct();
-	ApplySettings(MinimumCount, MaximumCount);
+	ApplySettings(SliderSettings);
 }
 
 void UPDRangedSelector::NativeDestruct()
@@ -131,13 +139,13 @@ void UPDRangedSelector::NativeDestruct()
 	RangedSlider->OnValueChanged.Clear();
 	RangedNumberBox->OnValueChanged.Unbind();
 	RangedIncrementBox->OnValueChanged.Unbind();
-
 }
 
-void UPDRangedSelector::ApplySettings(int32 InMinimumCount, int32 InMaximumCount)
+void UPDRangedSelector::ApplySettings(FPDRangedSliderSettings InSliderSettings)
 {	
-	MinimumCount = InMinimumCount;
-	MaximumCount = FMath::Max(MinimumCount, InMaximumCount); // don't allow Max to be below Min
+	SliderSettings = InSliderSettings;
+	MinimumCount = FMath::Min(SliderSettings.MinimumCount, SliderSettings.MaximumCount); 
+	MaximumCount = FMath::Max(SliderSettings.MinimumCount, SliderSettings.MaximumCount); 
 
 	if (RangedSlider == nullptr || RangedSlider->IsValidLowLevelFast() == false
 		|| RangedNumberBox == nullptr || RangedNumberBox->IsValidLowLevelFast() == false
@@ -164,23 +172,32 @@ void UPDRangedSelector::ApplySettings(int32 InMinimumCount, int32 InMaximumCount
 			RangedSlider->OnValueChanged.AddDynamic(this, &UPDRangedSelector::OnSliderValueChanged);
 		}
 
-		RangedSlider->SetStepSize(1.0f);
-		RangedSliderTextBlock->SetText(FText::FromString(FString::FromInt(SelectedCount)));
+		RangedSlider->SetStepSize(SliderSettings.StepSize);
+		RangedSliderTextBlock->SetText(FText::AsCultureInvariant(FString::Printf(TEXT("%lf"), static_cast<double>(SelectedCount) / SliderSettings.FloatUIMultiplier)));
 
 		RangedSlider->SetMinValue(MinimumCount);
 		RangedSlider->SetMaxValue(MaximumCount);
+		
 		RangedSlider->SetVisibility(ESlateVisibility::Visible);
 		RangedSliderTextBlock->SetVisibility(ESlateVisibility::Visible);
 		break;
 	case EPDSharedUICountTypeSelector::ERangedEditableNumber:
 		RangedNumberBox->SetupDelegates();
-		RangedNumberBox->OnValueChanged.BindUObject(this, &UPDRangedSelector::OnNumberBoxChanged);
+
+		if (RangedNumberBox->OnValueChanged.IsBoundToObject(this) == false)
+		{
+			RangedNumberBox->OnValueChanged.BindUObject(this, &UPDRangedSelector::OnNumberBoxChanged);
+		}
 		RangedNumberBox->ApplySettings(MinimumCount, MaximumCount);
 		RangedNumberBox->SetVisibility(ESlateVisibility::Visible);
 		break;
 	case EPDSharedUICountTypeSelector::ERangedIncrementBox:
 		RangedIncrementBox->SetupDelegates();
-		RangedIncrementBox->OnValueChanged.BindUObject(this, &UPDRangedSelector::OnNumberBoxChanged);
+
+		if (RangedIncrementBox->OnValueChanged.IsBoundToObject(this) == false)
+		{
+			RangedIncrementBox->OnValueChanged.BindUObject(this, &UPDRangedSelector::OnNumberBoxChanged);
+		}
 		RangedIncrementBox->ApplySettings(MinimumCount, MaximumCount);
 		RangedIncrementBox->SetVisibility(ESlateVisibility::Visible);
 		break;
@@ -214,7 +231,7 @@ void UPDRangedSelector::OnRangeUpdated(int32 NewMin, int32 NewMax)
 void UPDRangedSelector::OnSliderValueChanged(float NewValue)
 {
 	OnNumberBoxChanged(static_cast<int32>(NewValue + 0.5f)); // Halving the speed of the slider
-	RangedSliderTextBlock->SetText(FText::FromString(FString::FromInt(SelectedCount))); 
+	RangedSliderTextBlock->SetText(FText::FromString(FString::Printf(TEXT("%f"), SelectedCount / SliderSettings.FloatUIMultiplier))); 
 }
 
 void UPDRangedSelector::OnNumberBoxChanged(int32 NewValue)

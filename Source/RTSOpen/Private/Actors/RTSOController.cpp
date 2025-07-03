@@ -21,6 +21,9 @@
 #include "EnhancedInputComponent.h"
 #include "EnhancedInputSubsystems.h"
 
+#include "Widgets/CommonActivatableWidgetContainer.h"
+
+
 #include "EulerTransform.h"
 #include "NativeGameplayTags.h"
 #include "Chaos/DebugDrawQueue.h"
@@ -488,6 +491,7 @@ void ARTSOController::ActionToggleMainMenu_Implementation(const FInputActionValu
 		MainMenuWidget->AddToViewport();
 	    MainMenuWidget->ActivateWidget();
 		MainMenuWidget->BindButtonDelegates(this);
+
 		return;
 	}
 
@@ -497,6 +501,24 @@ void ARTSOController::ActionToggleMainMenu_Implementation(const FInputActionValu
 		CloseSaveEditor();
 		return;
 	}	
+
+	const TArray<UCommonActivatableWidget*> WidgetStackContent = MainMenuWidget->WidgetStack->GetWidgetList();
+	UCommonActivatableWidget* WidgetToRemove = nullptr;
+	for (UCommonActivatableWidget* ContentElement : WidgetStackContent)
+	{
+		if (ContentElement->IsA<URTSOMenuWidget_Settings>())
+		{
+			UE_LOG(PDLog_RTSO, Warning, TEXT("%s -- Removing settings menu from parent/viewport"), *BuildString);
+			WidgetToRemove = ContentElement;
+			break;
+		}
+	}	
+
+	if (WidgetToRemove != nullptr)
+	{
+		MainMenuWidget->WidgetStack->RemoveWidget(*WidgetToRemove);
+		return;
+	}
 	
 	
 	UE_LOG(PDLog_RTSO, Warning, TEXT("%s -- Removing widget from parent/viewport"), *BuildString);
