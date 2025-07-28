@@ -48,6 +48,17 @@ public:
    UPROPERTY() TMap<FGameplayTag, FVector> VectorStates;
 };
 
+
+UCLASS(Config = "Game", DefaultConfig)
+class RTSOPEN_API URTSOSettingsDeveloperSettings : public UDeveloperSettings
+{
+   GENERATED_BODY()
+public:
+	UPROPERTY(Config, EditAnywhere)
+	FName SettingsStringTablePath = ("/Game/Localized/StringTables/ST_Settings.ST_Settings");   
+};
+
+
 /**
 Business Source License 1.1
 

@@ -5,6 +5,71 @@
 #include "Animation/WidgetAnimation.h"
 #include "Kismet/KismetSystemLibrary.h"
 
+TArray<TSharedPtr<FString>> FPDSettingStatics::GenerateQualityStringPtrArray()
+{
+	TArray<TSharedPtr<FString>> StringSource;
+		
+	const URTSOSettingsQualityTextLabelSettings* SettingsQualityTextLabelSettings = GetDefault<URTSOSettingsQualityTextLabelSettings>();
+	StringSource.Emplace(MakeShared<FString>(SettingsQualityTextLabelSettings->LowQuality.ToString()));
+	StringSource.Emplace(MakeShared<FString>(SettingsQualityTextLabelSettings->MidQuality.ToString()));
+	StringSource.Emplace(MakeShared<FString>(SettingsQualityTextLabelSettings->HighQuality.ToString()));
+	StringSource.Emplace(MakeShared<FString>(SettingsQualityTextLabelSettings->EpicQuality.ToString()));
+	return StringSource;
+}
+
+TArray<TSharedPtr<FString>> FPDSettingStatics::GenerateStringPtrArrayFromDataSelector(const FRTSOSettingsDataSelector& DataSelector)
+{
+	TArray<TSharedPtr<FString>> StringSource;
+	
+	switch(DataSelector.ValueType)
+	{
+	case ERTSOSettingsType::FloatSelector:   // 'double' or 'float'
+	case ERTSOSettingsType::FloatSlider:   // 'double' or 'float'
+		{
+			TArray<double> DoubleList = DataSelector.GetOptionsList<double>();
+			for (double Entry : DoubleList)
+			{
+				const FString EntryString = FString::Printf(TEXT("%lf"), Entry);
+				StringSource.Emplace(MakeShared<FString>(EntryString));
+			}
+		}
+		break;
+	case ERTSOSettingsType::IntegerSelector: // 'int32' or 'int64'
+	case ERTSOSettingsType::IntegerSlider: // 'int32' or 'int64'
+		{
+			TArray<int32> IntList = DataSelector.GetOptionsList<int32>();
+			for (int32 Entry : IntList)
+			{
+				const FString EntryString = FString::Printf(TEXT("%i"), Entry);
+				StringSource.Emplace(MakeShared<FString>(EntryString));
+			}
+		}
+		break;
+	case ERTSOSettingsType::String:  // 'FString'
+		{
+			TArray<FString> StringList = DataSelector.GetOptionsList<FString>();
+			for (const FString& Entry : StringList)
+			{
+				// TODO: FIX CRASH HERE
+				StringSource.Emplace(MakeShared<FString>(Entry));
+			}
+		}
+		break;
+	case ERTSOSettingsType::EnumAsByte: // 'Byte' // TODO Need to bind the enums to a string table, need to store some metadat about settings related enums specifically
+		{
+			TArray<uint8> ByteList = DataSelector.GetOptionsList<uint8>();
+			for (uint8 Entry : ByteList)
+			{
+				const FString EntryString = FString::Printf(TEXT("BYTE: %i"), Entry);
+				StringSource.Emplace(MakeShared<FString>(EntryString));
+			}			
+		}
+		break;
+	}
+
+	return StringSource;
+}
+
 void UPDTransitionWidget::StartTransition_Implementation()
 {
 	PlayAnimation(TransitionAnimation);

@@ -1,28 +1,86 @@
 ﻿/* @author: Ario Amin @ Permafrost Development. @copyright: Full BSL(1.1) License included at bottom of the file  */
-#include "../../../Public/Widgets/Slate/SRTSOSettingsStringSelector.h"
+#include "Widgets/Slate/SRTSOSettingsStringSelector.h"
+
+// #include "Widgets/SBoxPanel.h"
+// #include "Widgets/Input/SButton.h"
+// #include "Widgets/Input/SComboButton.h"
+// #include "Widgets/Input/SNumericEntryBox.h"
+// #include "Widgets/Input/SVectorInputBox.h"
+// #include "Widgets/Text/STextBlock.h"
+// #include "Widgets/Images/SImage.h"
+// #include "Widgets/Layout/SBorder.h"
+// #include "Widgets/Layout/SBox.h"
+// #include "Widgets/Layout/SSplitter.h"
+#include "Widgets/Views/SListView.h"
+// #include "Styling/AppStyle.h"
+
+#define LOCTEXT_NAMESPACE "SettingsStringSelector"
+
+void SRTSOStringSelector::Construct(const FArguments& InArgs)
+{
+	// InArgs._OnUserClicked;
+	// InArgs._OnUserScrolled;
+
+   OptionsArray = InArgs._OptionsArray;
+   UpdateOptions(OptionsArray);
+}
+
+void SRTSOStringSelector::UpdateOptions(TArray<TSharedPtr<FString>>* InOptionsArray)
+{
+   if (InOptionsArray == nullptr)
+   {
+      return;
+   }
+   OptionsArray = InOptionsArray;
 
 
-#define LOCTEXT_NAMESPACE "SRTSOSettingsStringSelector"
+	const URTSStringSelectorDeveloperSettings* SelectorDeveloperSettings = GetDefault<URTSStringSelectorDeveloperSettings>();
+
+   // 
+	// TODO - finish up
+   ChildSlot
+   .HAlign(HAlign_Center)
+   .VAlign(VAlign_Fill)
+   [
+      SNew(SScrollBox)
+      + SScrollBox::Slot()
+      [
+         SNew(SListView<TSharedPtr<FString>>)
+         .ListItemsSource(OptionsArray)
+         .OnGenerateRow(this, &SRTSOStringSelector::MakeListViewWidget_SettingOptionsSelector)
+         .OnSelectionChanged(this, &SRTSOStringSelector::OnOptionSelected_SettingOptionsSelector)
+         .SelectionMode(ESelectionMode::None)
+      ]
+   ];   
+}
+
+TSharedRef<ITableRow> SRTSOStringSelector::MakeListViewWidget_SettingOptionsSelector(TSharedPtr<FString> InItem, const TSharedRef<STableViewBase>& OwnerTable) const
+{
+   check(InItem.Get() != nullptr)
+	const URTSStringSelectorDeveloperSettings* SelectorDeveloperSettings = GetDefault<URTSStringSelectorDeveloperSettings>();
+
+   return SNew(STableRow<TSharedPtr<FString>>, OwnerTable)
+   [
+      SNew(SHorizontalBox)
+      + SHorizontalBox::Slot()
+      [
+         SNew(SBorder)
+         .Padding(FMargin{2.0f, 5.0f})
+         .Content()
+         [
+            SNew(STextBlock)
+            .Text(FText::FromString(*InItem))
+            .Font(SelectorDeveloperSettings->DefaultFont) 
+         ]
+      ]
+   ];
+}
 
 
-// void SRTSOStringSelector::Construct(const FArguments& InArgs)
-// {
-// 	// InArgs._OnUserClicked;
-// 	// InArgs._OnUserScrolled;
-// }
-
-
-// TSharedRef<ITableRow> SRTSOStringSelector::MakeListViewWidget_SettingOptionsSelector(TSharedPtr<FString> InItem, const TSharedRef<STableViewBase>& OwnerTable) const
-// {
-// 	// TODO
-	
-// }
-// void SRTSOStringSelector::OnOptionSelected_SettingOptionsSelector(TSharedPtr<FString> InItem, ESelectInfo::Type InSelectInfo)
-// {
-// 	// TODO
-// }
-
-
+void SRTSOStringSelector::OnOptionSelected_SettingOptionsSelector(TSharedPtr<FString> InItem, ESelectInfo::Type InSelectInfo)
+{
+	// TODO
+}
 
 #undef LOCTEXT_NAMESPACE
 

@@ -3,6 +3,7 @@
 
 #include "Widgets/RTSOActiveMainMenu.h"
 #include "Subsystems/RTSOSettingsSubsystem.h"
+#include "Widgets/Slate/SRTSOSettingsStringSelector.h"
 
 #include "SlateFwd.h"
 #include "CommonTabListWidgetBase.h"
@@ -70,11 +71,37 @@ void URTSOMenuWidget_SaveGame::NativePreConstruct()
 	Super::NativePreConstruct();
 }
 
+TSharedRef<SWidget> URTSOStringSelectorBox::RebuildWidget()
+{
+	SlateWidget = SNew(SRTSOStringSelector);
+	return SlateWidget.ToSharedRef();
+}
+void URTSOStringSelectorBox::ReleaseSlateResources(bool bReleaseChildren)
+{
+	SlateWidget.Reset();
+	Super::ReleaseSlateResources(bReleaseChildren);
+}
+
+void URTSOStringSelectorBox::Refresh()
+{
+	if (SlateWidget != nullptr && DataPtr != nullptr && DataPtr->GeneratedStringOptions.IsEmpty() == false)
+	{
+		SlateWidget->UpdateOptions(&DataPtr->GeneratedStringOptions);
+	}
+}
+
+void URTSOStringSelector::Refresh()
+{
+	SelectedStringValue->SetText(FText::AsCultureInvariant(Data.SelectedString));
+	SelectorBox->DataPtr = &Data;
+	SelectorBox->Refresh();
+}
+
 void URTSOMenuWidget_SettingsEntry::NativePreConstruct()
 {
 	Super::NativePreConstruct();
 	
-	InputValueWidgetSwitcher->SetActiveWidgetIndex(bIsCheckBox);
+	InputValueWidgetSwitcher->SetActiveWidgetIndex(WidgetSwitcherIndex);
 
 	if (bIsCheckBox)
 	{
@@ -128,23 +155,17 @@ void URTSOMenuWidget_SettingsCategory::Refresh(
 	for (auto& [SettingsTag, DataSelector] : InEntriesData)
 	{
 		URTSOMenuWidget_SettingsEntry* SettingsEntry = CreateWidget<URTSOMenuWidget_SettingsEntry>(this, EntryClass);
-		SettingsEntry->SettingsEntryLabel->SetText(FText::FromString(SettingsTag.ToString()));
-		SettingsEntry->SettingsEntryDescription->SetText(FText::FromString("TODO!"));
+		const URTSOSettingsDeveloperSettings* ImmutableSettingsDevSettings = GetDefault<URTSOSettingsDeveloperSettings>();
 
+		FText SettingsLabelText = FText::FromStringTable(ImmutableSettingsDevSettings->SettingsStringTablePath, SettingsTag.ToString());
+		FText SettingsDescrText = FText::FromStringTable(ImmutableSettingsDevSettings->SettingsStringTablePath, FString::Printf(TEXT("%s_Description"), *SettingsTag.ToString()));
+
+		SettingsEntry->SettingsEntryLabel->SetText(SettingsLabelText);
+		SettingsEntry->SettingsEntryDescription->SetText(SettingsDescrText);
+
+		SettingsEntry->WidgetSwitcherIndex = 0;
 		switch (DataSelector.ValueType)
 		{
-		case ERTSOSettingsType::Boolean:
-			if (SettingsEntry->AsCheckBox != nullptr && SettingsEntry->AsCheckBox->IsValidLowLevel())
-			{
-				SettingsEntry->bIsCheckBox = true;
-				SettingsEntry->AsCheckBox->SetCheckedState(DataSelector.AsBool ? ECheckBoxState::Checked : ECheckBoxState::Unchecked);
-				SettingsEntry->OnCheckBoxStateChanged.AddLambda(
-					[SettingsTag](bool bNewState) 
-					{
-						URTSOSettingsSubsystem::Get()->OnCheckBox(bNewState, SettingsTag);
-					});
-			}
-			break;
 		case ERTSOSettingsType::FloatSelector:
 			if (SettingsEntry->RangedSelector != nullptr && SettingsEntry->RangedSelector->IsValidLowLevel())
 			{
@@ -216,7 +237,7 @@ void URTSOMenuWidget_SettingsCategory::Refresh(
 					DataSelector.IntegerRange.Min,
 					DataSelector.IntegerRange.Max,
 					1.0, 
-					1.0});						
+					1.0});
 			}
 			
 			break;
@@ -244,29 +265,29 @@ void URTSOMenuWidget_SettingsCategory::Refresh(
 			}
 			
 			break;
-		case ERTSOSettingsType::String:
-			// TODO ;
-
+		case ERTSOSettingsType::Boolean:
+			if (SettingsEntry->AsCheckBox != nullptr && SettingsEntry->AsCheckBox->IsValidLowLevel())
 			{
-				const int32 QualityLevel = PD::Settings::QualityDefaultStrings.Find(DataSelector.AsString);
-				// TODO // SettingsEntry->___TODO___SET_UP_STRING_SELECTOR_WIDGET;
+				SettingsEntry->WidgetSwitcherIndex = 1;
+				SettingsEntry->bIsCheckBox = true;
+				SettingsEntry->AsCheckBox->SetCheckedState(DataSelector.AsBool ? ECheckBoxState::Checked : ECheckBoxState::Unchecked);
+				SettingsEntry->OnCheckBoxStateChanged.AddLambda(
+					[SettingsTag](bool bNewState) 
+					{
+						URTSOSettingsSubsystem::Get()->OnCheckBox(bNewState, SettingsTag);
+					});
 			}
-			
 			break;
+		case ERTSOSettingsType::String:
 		case ERTSOSettingsType::EnumAsByte:
-			if (SettingsEntry->RangedSelector != nullptr && SettingsEntry->RangedSelector->IsValidLowLevel())
+			if(SettingsEntry->AsStringSelector != nullptr && SettingsEntry->AsStringSelector->IsValidLowLevel())
 			{
-				SettingsEntry->RangedSelector->CountTypeSelector = EPDSharedUICountTypeSelector::ERangedIncrementBox;
+				SettingsEntry->WidgetSwitcherIndex = 2;
+				SettingsEntry->AsStringSelector->Data.SelectedString = DataSelector.AsString;
 
-				//
-				// TODO
-
-				// SettingsEntry->RangedSelector->PostValueChanged.AddUObject(URTSOSettingsSubsystem::Get(), &URTSOSettingsSubsystem::OnByte, SettingsTag);
-				// SettingsEntry->RangedSelector->ApplySettings(
-				// 	DataSelector.IntegerRange.Min,
-				// 	DataSelector.IntegerRange.Max);					
-			}
-			
+				SettingsEntry->AsStringSelector->Data.GeneratedStringOptions = FPDSettingStatics::GenerateStringPtrArrayFromDataSelector(DataSelector);
+				SettingsEntry->AsStringSelector->Refresh();
+			}			
 			break;
 		case ERTSOSettingsType::Key:
 			// TODO

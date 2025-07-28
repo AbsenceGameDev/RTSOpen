@@ -76,7 +76,7 @@ void URTSOMainMenuBase::SetupInnerMenuDelegates(const URTSOMenuWidget* OuterMenu
 
 void URTSOMainMenuBase::SettingsTargetWidget()
 {
-	if (ActiveMenuInstance == nullptr) { return;; }
+	if (ActiveMenuInstance == nullptr) { return; }
 	WidgetStack->AddWidget(ActiveMenuInstance->SettingsButton->PotentialTargetWidgetClass);
 }
 

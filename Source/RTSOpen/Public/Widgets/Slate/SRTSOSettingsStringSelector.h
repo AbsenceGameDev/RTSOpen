@@ -3,29 +3,62 @@
 #pragma once
 
 #include "CoreMinimal.h"
+#include "RTSOpenCommon.h"
+#include "Widgets/SCompoundWidget.h"
+#include "GameFramework/GameUserSettings.h"
+#include "SRTSOSettingsStringSelector.generated.h"
+
+/** @brief */
+class RTSOPEN_API SRTSOStringSelector : public SCompoundWidget
+{
+public:
+	SLATE_BEGIN_ARGS(SRTSOStringSelector) 
+      : _OptionsArray() {}
+		SLATE_ARGUMENT(TArray<TSharedPtr<FString>>*, OptionsArray)
+	SLATE_END_ARGS()
+
+	/** @brief */
+	void Construct(const FArguments& InArgs);
+
+	/** @brief */
+	void UpdateOptions(TArray<TSharedPtr<FString>>* InOptionsArray);
+
+	/** @brief */
+	TSharedRef<ITableRow> MakeListViewWidget_SettingOptionsSelector(TSharedPtr<FString> InItem, const TSharedRef<STableViewBase>& OwnerTable) const;
+	/** @brief */
+	void OnOptionSelected_SettingOptionsSelector(TSharedPtr<FString> InItem, ESelectInfo::Type InSelectInfo);
+
+	/** @brief */
+	TArray<TSharedPtr<FString>>* OptionsArray;
+};
 
 
+UCLASS(Config = "Game", DefaultConfig)
+class RTSOPEN_API URTSStringSelectorDeveloperSettings : public UDeveloperSettings
+{
+   GENERATED_BODY()
 
-// /** @brief */
-// class RTSOPEN_API SRTSOStringSelector : public SCompoundWidget
+public:
+   UPROPERTY(Config, EditAnywhere, Category = "String Selector")
+   FSlateFontInfo DefaultFont;
+
+};
+
+// UCLASS(Config = "Game", DefaultConfig)
+// class RTSOPEN_API URTSActionLogDefaultDeveloperSettings : public UDeveloperSettings
 // {
 // public:
-// 	SLATE_BEGIN_ARGS(SRTSOStringSelector) {}
-// 		SLATE_EVENT(FOnUserScrolled, OnUserScrolled)
-// 		SLATE_EVENT(FOnClicked, OnUserClicked)
-// 	SLATE_END_ARGS()
+// 	GENERATED_BODY()
 
-// 	/** @brief */
-// 	void Construct(const FArguments& InArgs);
+// 	/** @brief Build Contexts (categories) table soft objects */
+// 	UPROPERTY(Config, EditAnywhere, Category = "Action Log Subsystem", Meta = (RequiredAssetDataTags="RowStructure=/Script/RTSOpen.RTSActionLogStyleCompound"))
+// 	TArray<TSoftObjectPtr<UDataTable>> ActionLogStyleTables;
 
-// 	/** @brief */
-// 	TSharedRef<ITableRow> MakeListViewWidget_SettingOptionsSelector(TSharedPtr<FString> InItem, const TSharedRef<STableViewBase>& OwnerTable) const;
-// 	/** @brief */
-// 	void OnOptionSelected_SettingOptionsSelector(TSharedPtr<FString> InItem, ESelectInfo::Type InSelectInfo);
+// 	/** @brief Build Contexts (categories) table soft objects */
+// 	UPROPERTY(Config, EditAnywhere, Category = "Action Log Subsystem")
+// 	bool bShowActionLogTimestamps = true;	
+// };
 
-// 	/** @brief */
-// 	TArray<TSharedPtr<FString>>* OptionsArray;
-// }
 
 
 /**

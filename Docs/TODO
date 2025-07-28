@@ -20,9 +20,18 @@
     ✔ Add foliage scalability options @done(25-07-03 22:53)
     ✔ Prepare list of console commands that are needed to apply certain settings @done(25-07-03 22:54)
 
+July 28th 2025 - Commit#0 :
+    - Set up precommit message script, to generate the date and the commit count 
+    - In progress 'SRTSOStringSelector' and the settings menu. 
+        - String tables filled out. 
+        - Crashes resolved 
+        - List retrieval set up for enum and string based settings
+        - Uwidget classes to intefrace with slate in place
+        - New developer settings class for the game settings, storing the stringtable path in there for now
+        - Other supporting changes 
+
 TODO:
-    - Finish implementing 'SRTSOStringSelector' so it may be used for string based settings in the settings menu 
-    - Translate selected string values to quality/value options for our settings
+
     - Set up logic to translate our Gameplay and UI settings to actaul changes for our gameplay states 
     - Implement Save/Load logic for settings, 
     - Set up a save dialog in case the user changes a setting but forgets to save, to give them a chance to save the game

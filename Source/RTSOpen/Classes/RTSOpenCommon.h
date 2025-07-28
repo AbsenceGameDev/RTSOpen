@@ -587,6 +587,15 @@ public:
 	FText EpicQuality;
 };
 
+USTRUCT()
+struct RTSOPEN_API FPDSettingStatics
+{
+	GENERATED_BODY()
+	
+	static TArray<TSharedPtr<FString>> GenerateQualityStringPtrArray();
+	static TArray<TSharedPtr<FString>> GenerateStringPtrArrayFromDataSelector(const FRTSOSettingsDataSelector& DataSelector);
+};
+
 USTRUCT(Blueprintable) struct FRTSOIntegerRange { GENERATED_BODY()  UPROPERTY(EditAnywhere, BlueprintReadWrite) int32 Min = {0}; UPROPERTY(EditAnywhere, BlueprintReadWrite) int32 Max = {0};};
 USTRUCT(Blueprintable) struct FRTSOFloatRange { GENERATED_BODY()  UPROPERTY(EditAnywhere, BlueprintReadWrite) double Min = {0}; UPROPERTY(EditAnywhere, BlueprintReadWrite) double  Max = {0};};
 USTRUCT(Blueprintable) struct FRTSOVec2Range { GENERATED_BODY()  UPROPERTY(EditAnywhere, BlueprintReadWrite) FVector2D Min{0}; UPROPERTY(EditAnywhere, BlueprintReadWrite) FVector2D Max{0};};
@@ -684,6 +693,17 @@ struct FRTSOSettingsDataSelector
 		else if constexpr (TIsDerivedFrom<TValueType, FRTSOSettingsKeyData>::Value) { return AsKey; }
 		else { static TValueType Dummy; return Dummy; }
 	}
+
+
+	template<typename TValueType>
+	const TArray<TValueType>& GetOptionsList() const
+	{
+		if constexpr (TIsDerivedFrom<TValueType, double>::Value) { return DoubleList; }
+		else if constexpr (TIsDerivedFrom<TValueType, int32>::Value) { return IntegerList; }		
+		else if constexpr (TIsDerivedFrom<TValueType, FString>::Value) { return StringList; }
+		else if constexpr (TIsDerivedFrom<TValueType, uint8>::Value) { return EnumList; }
+		else { static TArray<TValueType> Dummy; return Dummy; }
+	}	
 	
 	void* GetRawAdress()
 	{

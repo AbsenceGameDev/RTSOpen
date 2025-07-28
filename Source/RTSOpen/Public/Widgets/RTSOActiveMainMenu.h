@@ -130,6 +130,54 @@ public:
 	class URTSOMainMenuBase* OwningStack = nullptr;	
 };
 
+
+/** @brief Game Menu - Settings Entry */
+
+USTRUCT(Blueprintable)
+struct FRTSOStringSelectorData
+{
+	GENERATED_BODY()
+public:
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	FString SelectedString;
+
+	TArray<TSharedPtr<FString>> GeneratedStringOptions;
+};
+
+UCLASS()
+class URTSOStringSelectorBox : public UWidget
+{
+	GENERATED_BODY()
+
+public:
+	virtual TSharedRef<SWidget> RebuildWidget() override;
+	virtual void ReleaseSlateResources(bool bReleaseChildren) override;
+	virtual void Refresh();
+
+	TSharedPtr<class SRTSOStringSelector> SlateWidget;
+	FRTSOStringSelectorData* DataPtr = nullptr;
+};
+
+UCLASS(Blueprintable)
+class URTSOStringSelector : public UCommonActivatableWidget
+{
+	GENERATED_BODY()
+
+public:
+	virtual void Refresh();
+
+	UPROPERTY(BlueprintReadWrite, Meta=(BindWidget))
+	class UCommonTextBlock* SelectedStringValue;
+
+	UPROPERTY(BlueprintReadWrite, Meta=(BindWidget))
+	URTSOStringSelectorBox* SelectorBox = nullptr;	
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	FRTSOStringSelectorData Data;	
+};
+
+
 DECLARE_MULTICAST_DELEGATE_OneParam(FPDPostCheckBoxStateChanged, bool);
 /** @brief Game Menu - Settings Entry */
 UCLASS(Blueprintable)
@@ -159,6 +207,9 @@ public:
 	UPROPERTY(BlueprintReadWrite, Meta=(BindWidget))
 	class UWidgetSwitcher* InputValueWidgetSwitcher;
 
+	UPROPERTY(BlueprintReadWrite, Meta=(BindWidget))
+	class URTSOStringSelector* AsStringSelector;	
+
 	/** @brief TODO */
 	UPROPERTY(BlueprintReadWrite, Meta=(BindWidget))
 	class UCheckBox* AsCheckBox = nullptr;
@@ -173,6 +224,9 @@ public:
 	/** @brief TODO */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
 	uint8 bIsRangedSelector : 1;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	uint8 WidgetSwitcherIndex = 0;
 
 	/** @brief TODO */
 	FPDPostCheckBoxStateChanged OnCheckBoxStateChanged;
