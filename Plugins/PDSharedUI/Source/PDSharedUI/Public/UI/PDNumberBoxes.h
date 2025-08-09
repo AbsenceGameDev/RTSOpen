@@ -32,11 +32,15 @@ class PDSHAREDUI_API UPDRangedNumberBox : public UUserWidget
 public:
 
 	UFUNCTION()
-	void ApplySettings(int32 InMinimumCount, int32 InMaximumCount)
+	void ApplySettings(int32 InSelectedCount, int32 InMinimumCount, int32 InMaximumCount)
 	{
 		MinimumCount = InMinimumCount;
 		MaximumCount = InMaximumCount;
+		ValidateNewValue(InSelectedCount);
 	};
+
+	UFUNCTION()
+	void ValidateNewValue(int32 InCount);	
 
 	UFUNCTION()
 	virtual void SetupDelegates();
@@ -64,12 +68,13 @@ class PDSHAREDUI_API UPDRangedIncrementBox : public UUserWidget
 {
 	GENERATED_BODY()
 public:
-
+	virtual void NativePreConstruct() override;
 	UFUNCTION()
-	void ApplySettings(int32 InMinimumCount, int32 InMaximumCount)
+	void ApplySettings(int32 InSelectedCount, int32 InMinimumCount, int32 InMaximumCount)
 	{
 		MinimumCount = InMinimumCount;
 		MaximumCount = InMaximumCount;
+		ValidateNewValue(InSelectedCount);
 	};
 
 	UFUNCTION()
@@ -91,7 +96,13 @@ public:
 	int32 MaximumCount = 0; 	
 	UPROPERTY(VisibleInstanceOnly, FieldNotify, BlueprintReadOnly)
 	int32 SelectedCount = 0; 	
-	
+
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Meta=(ExposeOnSpawn))
+	int32 ButtonTextFontSize = 72;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Meta=(ExposeOnSpawn))
+	int32 ValueTextFontSize = 72;
+
 	/** @brief Hitbox, what our mouse events actually interacts with to increment the value */
 	UPROPERTY(BlueprintReadWrite, Meta=(BindWidget))
 	class UButton* HitboxIncrement = nullptr;
@@ -205,6 +216,11 @@ public:
 	/** @brief TODO */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Meta = (EditCondition="bUseGlobalUICountTypeSelector==false", EditConditionHides))
 	EPDSharedUICountTypeSelector CountTypeSelector;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Meta = (EditCondition="CountTypeSelector==EPDSharedUICountTypeSelector::ERangedIncrementBox", EditConditionHides))
+	int32 ButtonTextFontSize = 72;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Meta = (EditCondition="CountTypeSelector==EPDSharedUICountTypeSelector::ERangedIncrementBox", EditConditionHides))
+	int32 ValueTextFontSize = 72;	
 
 	/** @brief TODO */
 	FPDPostValueChanged PostValueChanged;

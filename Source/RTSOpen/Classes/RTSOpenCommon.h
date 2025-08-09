@@ -536,6 +536,7 @@ enum class ERTSOSettingsType : uint8
 	String,  // 'FString'
 	EnumAsByte, // 'Byte'
 	Key,     // 'FKey'
+	None,     // 'N/A'
 };
 
 UENUM()
@@ -613,22 +614,16 @@ struct FRTSOSettingsDataSelector
 
 	FRTSOSettingsDataSelector() {}
 
-	template<typename TValueType>
-	FRTSOSettingsDataSelector(ERTSOSettingsType InValueType, TValueType ActualValue, FRTSOMinMax<TValueType> MinMaxRange = {}, TArray<TValueType> PotentialList = {})
+	template<typename TValueType, typename TSecondaryValueType = TValueType>
+	FRTSOSettingsDataSelector(ERTSOSettingsType InValueType, TValueType ActualValue, FRTSOMinMax<TValueType> MinMaxRange = {}, TArray<TValueType> PotentialList = {}, TArray<TSecondaryValueType> AssociatedList = {})
 	{
 		ValueType = InValueType;
+
 		if constexpr (TIsDerivedFrom<TValueType, bool>::Value)
 		{
 			AsBool = ActualValue;
 		}
-		else if constexpr (TIsDerivedFrom<TValueType, double>::Value)
-		{
-			AsDouble = ActualValue;
-			DoubleRange.Min = MinMaxRange.Key;
-			DoubleRange.Max = MinMaxRange.Value;
-			DoubleList = PotentialList;
-		}
-		else if constexpr (TIsDerivedFrom<TValueType, float>::Value)
+		else if constexpr (TIsDerivedFrom<TValueType, double>::Value || TIsDerivedFrom<TValueType, float>::Value)
 		{
 			AsDouble = ActualValue;
 			DoubleRange.Min = MinMaxRange.Key;
@@ -650,23 +645,36 @@ struct FRTSOSettingsDataSelector
 				Vector2Range.Min = MinMaxRange.Key;
 				Vector2Range.Max = MinMaxRange.Value;
 			}
+			Vector2dList = PotentialList;
 		}
 		else if constexpr (TIsDerivedFrom<TValueType, FVector>::Value)
 		{
 			AsVector3 = ActualValue;
 			Vector3Range.Min = MinMaxRange.Key;
 			Vector3Range.Max = MinMaxRange.Value;
+			Vector3dList = PotentialList;
 		}
 		else if constexpr (TIsDerivedFrom<TValueType, FColor>::Value)
 		{
 			AsColour = ActualValue;
 			ColourRange.Min = MinMaxRange.Key;
 			ColourRange.Max = MinMaxRange.Value;
+			ColourList = PotentialList;
 		}
 		else if constexpr (TIsDerivedFrom<TValueType, FString>::Value)
 		{
 			AsString = ActualValue;
 			StringList = PotentialList;
+			if constexpr (TIsDerivedFrom<TValueType, TSecondaryValueType>::Value == false)
+			{
+				AssociatedStringDataType = GetSettingsType<TSecondaryValueType>();
+				if constexpr (TIsDerivedFrom<TSecondaryValueType, double>::Value) { DoubleList = AssociatedList;}
+				else if constexpr (TIsDerivedFrom<TSecondaryValueType, int32>::Value) { IntegerList = AssociatedList;}
+				else if constexpr (TIsDerivedFrom<TSecondaryValueType, FVector2D>::Value) { Vector2dList = AssociatedList;}
+				else if constexpr (TIsDerivedFrom<TSecondaryValueType, FVector>::Value) { Vector3dList = AssociatedList;}
+				else if constexpr (TIsDerivedFrom<TSecondaryValueType, FColor>::Value) { ColourList = AssociatedList;}
+				else if constexpr (TIsDerivedFrom<TSecondaryValueType, uint8>::Value) { EnumList = AssociatedList;}
+			}
 		}
 		else if constexpr (TIsDerivedFrom<TValueType, uint8>::Value)
 		{
@@ -696,6 +704,22 @@ struct FRTSOSettingsDataSelector
 
 
 	template<typename TValueType>
+	static ERTSOSettingsType GetSettingsType()
+	{
+		if constexpr (TIsDerivedFrom<TValueType, bool>::Value) { return ERTSOSettingsType::Boolean; }
+		else if constexpr (TIsDerivedFrom<TValueType, double>::Value) { return ERTSOSettingsType::FloatSlider; }
+		else if constexpr (TIsDerivedFrom<TValueType, float>::Value) { return ERTSOSettingsType::FloatSlider; }
+		else if constexpr (TIsDerivedFrom<TValueType, int32>::Value) { return ERTSOSettingsType::IntegerSlider; }		
+		else if constexpr (TIsDerivedFrom<TValueType, FVector2D>::Value) { return ERTSOSettingsType::Vector2; }
+		else if constexpr (TIsDerivedFrom<TValueType, FVector>::Value) { return ERTSOSettingsType::Vector3; }
+		else if constexpr (TIsDerivedFrom<TValueType, FColor>::Value) { return ERTSOSettingsType::Colour; }
+		else if constexpr (TIsDerivedFrom<TValueType, FString>::Value) { return ERTSOSettingsType::String; }
+		else if constexpr (TIsDerivedFrom<TValueType, uint8>::Value) { return ERTSOSettingsType::EnumAsByte; }
+		else if constexpr (TIsDerivedFrom<TValueType, FRTSOSettingsKeyData>::Value) { return ERTSOSettingsType::Key; }
+		else { return ERTSOSettingsType::None; }
+	}
+
+	template<typename TValueType>
 	const TArray<TValueType>& GetOptionsList() const
 	{
 		if constexpr (TIsDerivedFrom<TValueType, double>::Value) { return DoubleList; }
@@ -704,6 +728,29 @@ struct FRTSOSettingsDataSelector
 		else if constexpr (TIsDerivedFrom<TValueType, uint8>::Value) { return EnumList; }
 		else { static TArray<TValueType> Dummy; return Dummy; }
 	}	
+
+	template<typename TValueType>
+	const TArray<TValueType>* GetAssociatedStringDataList() const
+	{
+		return static_cast<const TArray<TValueType>*>(GetAssociatedStringDataList()); 		
+	}		
+
+	void const* GetAssociatedStringDataList() const
+	{
+		switch (AssociatedStringDataType)
+		{
+		case ERTSOSettingsType::FloatSlider: return &DoubleList;
+		case ERTSOSettingsType::IntegerSlider: return &IntegerList;
+		case ERTSOSettingsType::Vector2: return &Vector2dList;
+		case ERTSOSettingsType::Vector3: return &Vector3dList;
+		case ERTSOSettingsType::Colour: return &ColourList;
+		case ERTSOSettingsType::String: return &StringList;
+		case ERTSOSettingsType::EnumAsByte: return &EnumList;
+		// case ERTSOSettingsType::Boolean: return nullptr;
+		// case ERTSOSettingsType::Key: return nullptr;
+		default: return nullptr;
+		}
+	}			
 	
 	void* GetRawAdress()
 	{
@@ -748,29 +795,37 @@ struct FRTSOSettingsDataSelector
 	FVector2D AsVector2;
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Meta = (EditCondition="ValueType==ERTSOSettingsType::Vector2", EditConditionHides))
 	FRTSOVec2Range Vector2Range;
-	
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Meta = (EditCondition="ValueType==ERTSOSettingsType::Integer", EditConditionHides))
+	TArray<FVector2D> Vector2dList;	
+
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Meta = (EditCondition="ValueType==ERTSOSettingsType::Vector3",EditConditionHides))
 	FVector AsVector3;
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Meta = (EditCondition="ValueType==ERTSOSettingsType::Vector3", EditConditionHides))
 	FRTSOVec3Range Vector3Range;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Meta = (EditCondition="ValueType==ERTSOSettingsType::Integer", EditConditionHides))
+	TArray<FVector> Vector3dList;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Meta = (EditCondition="ValueType==ERTSOSettingsType::Colour",EditConditionHides))
 	FColor AsColour;
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Meta = (EditCondition="ValueType==ERTSOSettingsType::Colour", EditConditionHides))
 	FRTSOColourRange ColourRange;	
-	
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Meta = (EditCondition="ValueType==ERTSOSettingsType::Integer", EditConditionHides))
+	TArray<FColor> ColourList;
+
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Meta = (EditCondition="ValueType==ERTSOSettingsType::String",EditConditionHides))
 	FString AsString;
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Meta = (EditCondition="ValueType==ERTSOSettingsType::String",EditConditionHides))
 	TArray<FString> StringList;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	ERTSOSettingsType AssociatedStringDataType = ERTSOSettingsType::None;
 	
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Meta = (EditCondition="ValueType==EERTSOSettingsType::EnumAsByte",EditConditionHides))
 	uint8 AsEnumByte;	
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Meta = (EditCondition="ValueType==ERTSOSettingsType::EnumAsByte", EditConditionHides))
 	FRTSOEnumRange EnumRange;
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Meta = (EditCondition="ValueType==ERTSOSettingsType::String",EditConditionHides))
-	TArray<uint8> EnumList;	
-	
+	TArray<uint8> EnumList;
+
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Meta = (EditCondition="ValueType==EERTSOSettingsType::Key",EditConditionHides))
 	FRTSOSettingsKeyData AsKey;
 };
@@ -972,6 +1027,20 @@ namespace PD::Settings
 
 	static inline TArray<FString> QualityDefaultStrings{"Low", "Medium", "High", "Epic"};
 	static inline TArray<FString> DifficultyDefaultStrings{"Neophyte", "Acolyte", "Adept", "Challenger", "Conduit"};
+
+	//
+	// MinMax when fstrings could be where we store another second list laong with it, so we can refer back to values
+	static inline TArray<FString> Resolution_Strings{
+		"{16:9}  : 2560x1440", "{16:9}  : 1920x1080", "{16:9}  : 1366x768", "{16:9}  : 1280x720",
+		"{16:10} : 1920x1200", "{16:10} : 1680x1050", "{16:10} : 1440x900", "{16:10} : 1280x800",
+		"{4:3}   : 1024x768",  "{4:3}   : 800x600",   "{4:3}   : 640x480"
+		};
+	static inline TArray<FVector2D> Resolution_Values{
+		/* 16:9  */ FVector2D{2560,1440}, FVector2D{1920,1080}, FVector2D{1366,768}, FVector2D{1280,720},
+		/* 16:10 */ FVector2D{1920,1200}, FVector2D{1680,1050}, FVector2D{1440,900}, FVector2D{1280,800},
+		/* 4:3   */ FVector2D{1024,768}, FVector2D{800,600}, FVector2D{640,480}
+		};
+
 
 	constexpr double FloatUIMultiplier = 10000; 
 }

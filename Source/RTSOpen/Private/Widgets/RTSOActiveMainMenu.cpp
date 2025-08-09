@@ -73,7 +73,15 @@ void URTSOMenuWidget_SaveGame::NativePreConstruct()
 
 TSharedRef<SWidget> URTSOStringSelectorBox::RebuildWidget()
 {
-	SlateWidget = SNew(SRTSOStringSelector);
+	SRTSOStringSelector::FArguments StringArgs;
+	StringArgs._Caller = Owner; 
+	StringArgs._OnStringValueSelected = OnStringSelected;
+
+	if (DataPtr != nullptr && DataPtr->GeneratedStringOptions.IsEmpty() == false)
+	{
+		StringArgs._OptionsArray = &DataPtr->GeneratedStringOptions;
+	}
+	SlateWidget = SArgumentNew(StringArgs, SRTSOStringSelector);
 	return SlateWidget.ToSharedRef();
 }
 void URTSOStringSelectorBox::ReleaseSlateResources(bool bReleaseChildren)
@@ -86,15 +94,34 @@ void URTSOStringSelectorBox::Refresh()
 {
 	if (SlateWidget != nullptr && DataPtr != nullptr && DataPtr->GeneratedStringOptions.IsEmpty() == false)
 	{
+		SlateWidget->OnStringValueSelected = OnStringSelected;
 		SlateWidget->UpdateOptions(&DataPtr->GeneratedStringOptions);
+	}
+}
+void URTSOStringSelectorBox::CloseExpandableArea()
+{
+	if (SlateWidget != nullptr)
+	{
+		SlateWidget->UpdateExpandableArea(false);
 	}
 }
 
 void URTSOStringSelector::Refresh()
 {
 	SelectedStringValue->SetText(FText::AsCultureInvariant(Data.SelectedString));
+	SelectorBox->Owner = this;
 	SelectorBox->DataPtr = &Data;
 	SelectorBox->Refresh();
+}
+
+void URTSOStringSelector::CloseExpandableArea()
+{
+	SelectorBox->CloseExpandableArea();
+}
+
+void URTSOStringSelector::SetOnStringSelected(const FOnStringValueSelected& Delegate)
+{
+	SelectorBox->OnStringSelected = Delegate;
 }
 
 void URTSOMenuWidget_SettingsEntry::NativePreConstruct()
@@ -147,7 +174,6 @@ void URTSOMenuWidget_SettingsCategory::Refresh(
 	EntryCategoryName = InEntryCategoryName;
 	EntriesData = InEntriesData;
 
-
 	SettingsCategoryLabel->SetText(FText::FromString(EntryCategoryName));
 
 	ItemContentBox->ClearChildren();
@@ -163,6 +189,8 @@ void URTSOMenuWidget_SettingsCategory::Refresh(
 		SettingsEntry->SettingsEntryLabel->SetText(SettingsLabelText);
 		SettingsEntry->SettingsEntryDescription->SetText(SettingsDescrText);
 
+		SettingsEntry->OwnerSubmenu = OwnerSubmenu;
+
 		SettingsEntry->WidgetSwitcherIndex = 0;
 		switch (DataSelector.ValueType)
 		{
@@ -170,17 +198,15 @@ void URTSOMenuWidget_SettingsCategory::Refresh(
 			if (SettingsEntry->RangedSelector != nullptr && SettingsEntry->RangedSelector->IsValidLowLevel())
 			{
 				SettingsEntry->RangedSelector->CountTypeSelector = EPDSharedUICountTypeSelector::ERangedIncrementBox;
-				SettingsEntry->RangedSelector->SelectedCount = DataSelector.AsDouble * PD::Settings::FloatUIMultiplier;
+				SettingsEntry->RangedSelector->SelectedCount = DataSelector.AsDouble;
 				SettingsEntry->RangedSelector->PostValueChanged.AddLambda(
 					[SettingsTag](int32 NewValue) 
 					{
 						URTSOSettingsSubsystem::Get()->OnFloat(static_cast<double>(NewValue) / PD::Settings::FloatUIMultiplier, SettingsTag);
 					});
-
-				
 				SettingsEntry->RangedSelector->ApplySettings(FPDRangedSliderSettings{
-					static_cast<int32>(DataSelector.DoubleRange.Min * PD::Settings::FloatUIMultiplier),
-					static_cast<int32>(DataSelector.DoubleRange.Max * PD::Settings::FloatUIMultiplier),
+					static_cast<int32>(DataSelector.DoubleRange.Min),
+					static_cast<int32>(DataSelector.DoubleRange.Max),
 					PD::Settings::FloatUIMultiplier, 
 					PD::Settings::FloatUIMultiplier / 10.0});
 			}
@@ -190,15 +216,15 @@ void URTSOMenuWidget_SettingsCategory::Refresh(
 			if (SettingsEntry->RangedSelector != nullptr && SettingsEntry->RangedSelector->IsValidLowLevel())
 			{
 				SettingsEntry->RangedSelector->CountTypeSelector = EPDSharedUICountTypeSelector::ERangedSlider;				
-				SettingsEntry->RangedSelector->SelectedCount = DataSelector.AsDouble * PD::Settings::FloatUIMultiplier;
+				SettingsEntry->RangedSelector->SelectedCount = DataSelector.AsDouble;
 				SettingsEntry->RangedSelector->PostValueChanged.AddLambda(
 					[SettingsTag](int32 NewValue) 
 					{
 						URTSOSettingsSubsystem::Get()->OnFloat(static_cast<double>(NewValue) / PD::Settings::FloatUIMultiplier, SettingsTag);
 					});
 				SettingsEntry->RangedSelector->ApplySettings(FPDRangedSliderSettings{
-					static_cast<int32>(DataSelector.DoubleRange.Min * PD::Settings::FloatUIMultiplier),
-					static_cast<int32>(DataSelector.DoubleRange.Max * PD::Settings::FloatUIMultiplier),
+					static_cast<int32>(DataSelector.DoubleRange.Min),
+					static_cast<int32>(DataSelector.DoubleRange.Max),
 					PD::Settings::FloatUIMultiplier, 
 					PD::Settings::FloatUIMultiplier / 10.0});			
 			}
@@ -214,7 +240,6 @@ void URTSOMenuWidget_SettingsCategory::Refresh(
 					{
 						URTSOSettingsSubsystem::Get()->OnInteger(NewValue, SettingsTag);
 					});
-
 				SettingsEntry->RangedSelector->ApplySettings(FPDRangedSliderSettings{
 					DataSelector.IntegerRange.Min,
 					DataSelector.IntegerRange.Max,
@@ -278,16 +303,55 @@ void URTSOMenuWidget_SettingsCategory::Refresh(
 					});
 			}
 			break;
-		case ERTSOSettingsType::String:
 		case ERTSOSettingsType::EnumAsByte:
+		case ERTSOSettingsType::String:
 			if(SettingsEntry->AsStringSelector != nullptr && SettingsEntry->AsStringSelector->IsValidLowLevel())
 			{
 				SettingsEntry->WidgetSwitcherIndex = 2;
 				SettingsEntry->AsStringSelector->Data.SelectedString = DataSelector.AsString;
 
 				SettingsEntry->AsStringSelector->Data.GeneratedStringOptions = FPDSettingStatics::GenerateStringPtrArrayFromDataSelector(DataSelector);
+			
+				// 
+				// TODO> Need to get the associated data and pass result to subsystem, let the subsystem decide what to do with it
+				// TODO> Move to actual function and bind to said function
+				SettingsEntry->AsStringSelector->SetOnStringSelected(FOnStringValueSelected::CreateLambda(
+				[DataSelector, SettingsTag](const FString& SelectedItem, UWidget* Caller)
+				{
+					URTSOStringSelector* AsStringSelector = Cast<URTSOStringSelector>(Caller);
+					const TArray<FString> StringList = DataSelector.StringList;
+					if (AsStringSelector == nullptr || StringList.Contains(SelectedItem) == false)
+					{
+						return;
+					}
+
+					const int32 SelectedItemIdx = StringList.IndexOfByKey(SelectedItem);
+
+					switch(DataSelector.AssociatedStringDataType)
+					{
+					case ERTSOSettingsType::FloatSlider: URTSOSettingsSubsystem::AttemptApplyDataSelectorOnString<double>(DataSelector, SelectedItemIdx, SettingsTag); break;
+					case ERTSOSettingsType::IntegerSlider: URTSOSettingsSubsystem::AttemptApplyDataSelectorOnString<int32>(DataSelector, SelectedItemIdx, SettingsTag); break;
+					case ERTSOSettingsType::Vector2: URTSOSettingsSubsystem::AttemptApplyDataSelectorOnString<FVector2D>(DataSelector, SelectedItemIdx, SettingsTag); break;
+					case ERTSOSettingsType::Vector3: URTSOSettingsSubsystem::AttemptApplyDataSelectorOnString<FVector>(DataSelector, SelectedItemIdx, SettingsTag); break;
+					case ERTSOSettingsType::Colour: URTSOSettingsSubsystem::AttemptApplyDataSelectorOnString<FColor>(DataSelector, SelectedItemIdx, SettingsTag); break;
+					case ERTSOSettingsType::EnumAsByte: URTSOSettingsSubsystem::AttemptApplyDataSelectorOnString<uint8>(DataSelector, SelectedItemIdx, SettingsTag); break;
+					case ERTSOSettingsType::String: URTSOSettingsSubsystem::AttemptApplyDataSelectorOnString<FString>(DataSelector, SelectedItemIdx, SettingsTag); break;
+					case ERTSOSettingsType::None:
+						URTSOSettingsSubsystem::Get()->OnString(SelectedItem, SettingsTag);
+					break; 
+					// case ERTSOSettingsType::Boolean: return;
+					// case ERTSOSettingsType::Key: return;
+					default: return;
+					}
+
+					AsStringSelector->Data.SelectedString = SelectedItem;
+					AsStringSelector->Refresh();
+					AsStringSelector->CloseExpandableArea();
+				}));
 				SettingsEntry->AsStringSelector->Refresh();
-			}			
+
+			}
+				
 			break;
 		case ERTSOSettingsType::Key:
 			// TODO
@@ -307,6 +371,34 @@ void URTSOMenuWidget_BaseMenu::NativeOnActivated()
 	// todo
 }
 
+void URTSOMenuWidget_BaseSubmenu::NativeOnActivated()
+{
+	Super::NativeOnActivated();
+
+	TArray<UWidget*> ContentBoxEntries = ContentBox->GetAllChildren();
+	for (UWidget* BoxEntry : ContentBoxEntries)
+	{
+		if (URTSOMenuWidget_SettingsCategory* SpawnedSettingsCategory = Cast<URTSOMenuWidget_SettingsCategory>(BoxEntry)
+			; SpawnedSettingsCategory != nullptr)
+		{
+			SpawnedSettingsCategory->OwnerSubmenu = this;
+			SpawnedSettingsCategory->Refresh(SpawnedSettingsCategory->EntryClass, SpawnedSettingsCategory->EntryCategoryName, SpawnedSettingsCategory->EntriesData);
+		}
+	}
+}
+
+void URTSOMenuWidget_Settings::SetTabContent(const FName& TabName, const TMap<FString, TMap<FGameplayTag, FRTSOSettingsDataSelector>>& SettingsCategories)
+{
+	UCommonActivatableWidget** ExistingSubMenu = SpawnedSubmenus.Find(TabName);
+	if (ExistingSubMenu == nullptr || (*ExistingSubMenu) == nullptr)
+	{
+		ExistingSubMenu = &SpawnedSubmenus.Add(TabName, SpawnSettingsCategories(SettingsCategories));
+	}
+
+	// (*ExistingSubMenu)->ActivateWidget();
+	InnerContent->SetContent(*ExistingSubMenu);
+}
+
 void URTSOMenuWidget_Settings::OnCategoryPressed_Gameplay()
 {
 	TMap<FString, TMap<FGameplayTag, FRTSOSettingsDataSelector>> SettingsCategories{};
@@ -316,7 +408,7 @@ void URTSOMenuWidget_Settings::OnCategoryPressed_Gameplay()
 
 	FName TabName = PD::Settings::FAllSettingsDefaults::GetTabName(PD::Settings::ERTSOSettingsGroups::Gameplay);	
 	MenuTitleLabel->SetText(FText::FromString(FString::Printf(TEXT("Settings - %s"), *TabName.ToString())));
-	InnerContent->SetContent(SpawnSettingsCategories(SettingsCategories));
+	SetTabContent(TabName, SettingsCategories);
 }
 
 void URTSOMenuWidget_Settings::OnCategoryPressed_Video()
@@ -328,7 +420,7 @@ void URTSOMenuWidget_Settings::OnCategoryPressed_Video()
 	
 	FName TabName = PD::Settings::FAllSettingsDefaults::GetTabName(PD::Settings::ERTSOSettingsGroups::Video);
 	MenuTitleLabel->SetText(FText::FromString(FString::Printf(TEXT("Settings - %s"), *TabName.ToString())));
-	InnerContent->SetContent(SpawnSettingsCategories(SettingsCategories));	
+	SetTabContent(TabName, SettingsCategories);
 }	
 void URTSOMenuWidget_Settings::OnCategoryPressed_Audio()
 {
@@ -337,9 +429,7 @@ void URTSOMenuWidget_Settings::OnCategoryPressed_Audio()
 	
 	FName TabName = PD::Settings::FAllSettingsDefaults::GetTabName(PD::Settings::ERTSOSettingsGroups::Audio);	
 	MenuTitleLabel->SetText(FText::FromString(FString::Printf(TEXT("Settings - %s"), *TabName.ToString())));
-	InnerContent->SetContent(SpawnSettingsCategories(SettingsCategories));		
-
-
+	SetTabContent(TabName, SettingsCategories);
 }	
 void URTSOMenuWidget_Settings::OnCategoryPressed_Controls()
 {
@@ -349,8 +439,7 @@ void URTSOMenuWidget_Settings::OnCategoryPressed_Controls()
 	
 	FName TabName = PD::Settings::FAllSettingsDefaults::GetTabName(PD::Settings::ERTSOSettingsGroups::Controls);	
 	MenuTitleLabel->SetText(FText::FromString(FString::Printf(TEXT("Settings - %s"), *TabName.ToString())));
-	InnerContent->SetContent(SpawnSettingsCategories(SettingsCategories));	
-
+	SetTabContent(TabName, SettingsCategories);
 }	
 void URTSOMenuWidget_Settings::OnCategoryPressed_Interface()
 {
@@ -359,10 +448,10 @@ void URTSOMenuWidget_Settings::OnCategoryPressed_Interface()
 	
 	FName TabName = PD::Settings::FAllSettingsDefaults::GetTabName(PD::Settings::ERTSOSettingsGroups::Interface);	
 	MenuTitleLabel->SetText(FText::FromString(FString::Printf(TEXT("Settings - %s"), *TabName.ToString())));
-	InnerContent->SetContent(SpawnSettingsCategories(SettingsCategories));		
+	SetTabContent(TabName, SettingsCategories);
 }	
 
-UCommonActivatableWidget* URTSOMenuWidget_Settings::SpawnSettingsCategories(TMap<FString, TMap<FGameplayTag, FRTSOSettingsDataSelector>>& SettingsCategories)
+UCommonActivatableWidget* URTSOMenuWidget_Settings::SpawnSettingsCategories(const TMap<FString, TMap<FGameplayTag, FRTSOSettingsDataSelector>>& SettingsCategories)
 {
 	URTSOMenuWidget_BaseSubmenu* Submenu = CreateWidget<URTSOMenuWidget_BaseSubmenu>(this, SubMenuClass);
 	for (auto&[SettingsCategoryName, CategoryData] : SettingsCategories)
@@ -371,6 +460,7 @@ UCommonActivatableWidget* URTSOMenuWidget_Settings::SpawnSettingsCategories(TMap
 		if (URTSOMenuWidget_SettingsCategory* SpawnedSettingsCategory = Cast<URTSOMenuWidget_SettingsCategory>(ContentSlot->Content)
 			; SpawnedSettingsCategory != nullptr)
 		{
+			SpawnedSettingsCategory->OwnerSubmenu = Submenu;
 			SpawnedSettingsCategory->Refresh(SettingsEntryClass, SettingsCategoryName, CategoryData);
 		}
 	}
@@ -388,6 +478,11 @@ void URTSOMenuWidget_Settings::NativeConstruct()
 {
 	Super::NativeConstruct();
 	Refresh();
+}
+void URTSOMenuWidget_Settings::NativeDestruct()
+{
+	SpawnedSubmenus.Empty();
+	Super::NativeDestruct();
 }
 void URTSOMenuWidget_Settings::NativePreConstruct()
 {
@@ -415,7 +510,6 @@ void URTSOMenuWidget_Settings::Refresh()
 
 	for (PD::Settings::ERTSOSettingsGroups TopLevelSetting : PD::Settings::FAllSettingsDefaults::TopLevelSettingTypes)
 	{
-
 		UHorizontalBoxSlot* CategorySlot = SubmenuSelector->AddChildToHorizontalBox(CreateWidget<UPDGenericButton>(this, TabButtonClass));
 		const FName TabName = PD::Settings::FAllSettingsDefaults::GetTabName(TopLevelSetting);
 
@@ -424,7 +518,6 @@ void URTSOMenuWidget_Settings::Refresh()
 		{
 			AsSpawnedChild->ButtonName = TabName;
 			AsSpawnedChild->TextBlock->SetText(FText::FromString(TabName.ToString()));
-			// AsSpawnedChild->ChildWidget = SpawnSettingsSubMenu(TopLevelSetting); // Unreal seesm to cache the widget and reusing it, need to figure this out
 
 			switch(TopLevelSetting)
 			{
@@ -453,59 +546,6 @@ void URTSOMenuWidget_Settings::Refresh()
 	}
 
 }
-
-UCommonActivatableWidget* URTSOMenuWidget_Settings::SpawnSettingsSubMenu(PD::Settings::ERTSOSettingsGroups TopLevelSetting)
-{
-	TMap<FString, TMap<FGameplayTag, FRTSOSettingsDataSelector>> SettingsCategories{};
-	switch (TopLevelSetting)
-	{
-	case PD::Settings::ERTSOSettingsGroups::Gameplay:
-		{
-			SettingsCategories.Add("Camera") = PD::Settings::FGameplaySettingsDefaults::Camera;
-			SettingsCategories.Add("Action Log") = PD::Settings::FGameplaySettingsDefaults::ActionLog;
-			SettingsCategories.Add("Difficulty") = PD::Settings::FGameplaySettingsDefaults::Difficulty;
-		}
-		break;
-	case PD::Settings::ERTSOSettingsGroups::Video:
-		{
-			SettingsCategories.Add("Display") = PD::Settings::FVideoSettingsDefaults::Display;
-			SettingsCategories.Add("Effects") = PD::Settings::FVideoSettingsDefaults::Effects;
-			SettingsCategories.Add("Graphics") = PD::Settings::FVideoSettingsDefaults::Graphics;
-		}
-		break;
-	case PD::Settings::ERTSOSettingsGroups::Audio:
-		{
-			SettingsCategories.Add("Base") = PD::Settings::FAudioSettingsDefaults::Base;
-		}
-		break;
-	case PD::Settings::ERTSOSettingsGroups::Controls:
-		{
-			SettingsCategories.Add("Game") = PD::Settings::FControlsSettingsDefaults::Game;
-			SettingsCategories.Add("UI") = PD::Settings::FControlsSettingsDefaults::UI;
-		}
-		break;
-	case PD::Settings::ERTSOSettingsGroups::Interface:
-		{
-			SettingsCategories.Add("Base") = PD::Settings::FInterfaceSettingsDefaults::Base;
-		}
-		break;
-	case PD::Settings::ERTSOSettingsGroups::Num:
-		return nullptr;
-	}
-	URTSOMenuWidget_BaseSubmenu* Submenu = CreateWidget<URTSOMenuWidget_BaseSubmenu>(this, SubMenuClass);
-	for (auto&[SettingsCategoryName, CategoryData] : SettingsCategories)
-	{
-		UVerticalBoxSlot* ContentSlot = Submenu->ContentBox->AddChildToVerticalBox(CreateWidget<URTSOMenuWidget_SettingsCategory>(this, SettingsCategoryClass));
-		if (URTSOMenuWidget_SettingsCategory* SpawnedSettingsCategory = Cast<URTSOMenuWidget_SettingsCategory>(ContentSlot->Content)
-			; SpawnedSettingsCategory != nullptr)
-		{
-			SpawnedSettingsCategory->Refresh(SettingsEntryClass, SettingsCategoryName, CategoryData);
-		}
-	}
-	Submenu->SetVisibility(ESlateVisibility::Collapsed);
-	return Submenu;
-}
-
 
 void URTSOMenuWidget::ClearDelegates() const
 {

@@ -8,17 +8,26 @@
 #include "GameFramework/GameUserSettings.h"
 #include "SRTSOSettingsStringSelector.generated.h"
 
+DECLARE_DELEGATE_TwoParams(FOnStringValueSelected, FString /*SelectedString*/, UWidget* /*Caller*/)
+
 /** @brief */
 class RTSOPEN_API SRTSOStringSelector : public SCompoundWidget
 {
 public:
 	SLATE_BEGIN_ARGS(SRTSOStringSelector) 
-      : _OptionsArray() {}
+      : _OptionsArray()
+      , _OnStringValueSelected(FOnStringValueSelected{}) 
+      , _Caller(nullptr) 
+      {}
 		SLATE_ARGUMENT(TArray<TSharedPtr<FString>>*, OptionsArray)
+		SLATE_ARGUMENT(FOnStringValueSelected, OnStringValueSelected)
+		SLATE_ARGUMENT(UWidget*, Caller)
 	SLATE_END_ARGS()
 
 	/** @brief */
 	void Construct(const FArguments& InArgs);
+	/** @brief */
+	void UpdateExpandableArea(bool bOpen);
 
 	/** @brief */
 	void UpdateOptions(TArray<TSharedPtr<FString>>* InOptionsArray);
@@ -29,7 +38,15 @@ public:
 	void OnOptionSelected_SettingOptionsSelector(TSharedPtr<FString> InItem, ESelectInfo::Type InSelectInfo);
 
 	/** @brief */
+   FOnStringValueSelected OnStringValueSelected;
+
+	/** @brief */
 	TArray<TSharedPtr<FString>>* OptionsArray;
+
+	/** @brief Cached pointer to the caller stringselector */
+   class UWidget* Caller = nullptr;
+
+   TSharedPtr<class SExpandableArea> ExpandableArea;  
 };
 
 

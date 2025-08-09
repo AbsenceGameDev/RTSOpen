@@ -10,6 +10,7 @@
 #include "RTSOpenCommon.h"
 #include "UI/PDButtons.h"
 #include "UI/PDDialogs.h"
+#include "Widgets/Slate/SRTSOSettingsStringSelector.h"
 #include "RTSOActiveMainMenu.generated.h"
 
 class UHorizontalBox;
@@ -154,9 +155,15 @@ public:
 	virtual TSharedRef<SWidget> RebuildWidget() override;
 	virtual void ReleaseSlateResources(bool bReleaseChildren) override;
 	virtual void Refresh();
+	virtual void CloseExpandableArea();
 
 	TSharedPtr<class SRTSOStringSelector> SlateWidget;
 	FRTSOStringSelectorData* DataPtr = nullptr;
+
+	UPROPERTY()
+	UWidget* Owner = nullptr; 
+
+	FOnStringValueSelected OnStringSelected;
 };
 
 UCLASS(Blueprintable)
@@ -166,6 +173,7 @@ class URTSOStringSelector : public UCommonActivatableWidget
 
 public:
 	virtual void Refresh();
+	virtual void CloseExpandableArea();
 
 	UPROPERTY(BlueprintReadWrite, Meta=(BindWidget))
 	class UCommonTextBlock* SelectedStringValue;
@@ -174,7 +182,9 @@ public:
 	URTSOStringSelectorBox* SelectorBox = nullptr;	
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
-	FRTSOStringSelectorData Data;	
+	FRTSOStringSelectorData Data;
+
+	void SetOnStringSelected(const FOnStringValueSelected& Delegate);
 };
 
 
@@ -228,6 +238,9 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
 	uint8 WidgetSwitcherIndex = 0;
 
+	UPROPERTY()
+	class URTSOMenuWidget_BaseSubmenu* OwnerSubmenu = nullptr;
+
 	/** @brief TODO */
 	FPDPostCheckBoxStateChanged OnCheckBoxStateChanged;
 };
@@ -262,6 +275,9 @@ public:
 	/** @brief TODO */
 	UPROPERTY()
 	TMap<FGameplayTag, FRTSOSettingsDataSelector> EntriesData;
+
+	UPROPERTY()
+	class URTSOMenuWidget_BaseSubmenu* OwnerSubmenu = nullptr;  	
 };
 
 /** @brief Game Menu - Base Menu*/
@@ -275,6 +291,8 @@ protected:
 	virtual void NativePreConstruct() override;
 	/** @brief TODO */
 	virtual void NativeOnActivated() override;
+	/** @brief TODO */
+	// virtual TOptional<FUIInputConfig> GetDesiredInputConfig() const;
 public:
 	
 	/** @brief TODO */
@@ -295,6 +313,7 @@ public:
 	/** @brief TODO */
 	UPROPERTY(BlueprintReadWrite, Meta=(BindWidget))
 	UNamedSlot* InnerContent = nullptr;
+
 };
 
 
@@ -303,6 +322,8 @@ UCLASS(Blueprintable)
 class URTSOMenuWidget_BaseSubmenu : public UCommonActivatableWidget
 {
 	GENERATED_BODY()
+
+	virtual void NativeOnActivated() override;
 
 public:
 	/** @brief TODO */
@@ -341,13 +362,14 @@ public:
 	/** @brief 
 	 *  @note */
 	virtual void NativeConstruct() override;
+	virtual void NativeDestruct() override;
 	virtual void NativePreConstruct() override;
 	virtual void NativeOnActivated() override;
 	virtual void Refresh();
 	
-	UCommonActivatableWidget* SpawnSettingsSubMenu(PD::Settings::ERTSOSettingsGroups TopLevelSetting);
-	UCommonActivatableWidget* SpawnSettingsCategories(TMap<FString, TMap<FGameplayTag, FRTSOSettingsDataSelector>>& SettingsCategories);
+	UCommonActivatableWidget* SpawnSettingsCategories(const TMap<FString, TMap<FGameplayTag, FRTSOSettingsDataSelector>>& SettingsCategories);
 	
+	FORCEINLINE void SetTabContent(const FName& TabName, const TMap<FString, TMap<FGameplayTag, FRTSOSettingsDataSelector>>& SettingsCategories);
 	UFUNCTION() void OnCategoryPressed_Gameplay();
 	UFUNCTION() void OnCategoryPressed_Video();	
 	UFUNCTION() void OnCategoryPressed_Audio();	
@@ -373,6 +395,9 @@ public:
 	/** @brief TODO */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
 	ERTSOSettings DefaultView = ERTSOSettings::Gameplay;
+
+	UPROPERTY()
+	TMap<FName, UCommonActivatableWidget*> SpawnedSubmenus;
 
 
 

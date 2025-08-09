@@ -13,31 +13,68 @@ URTSOSettingsSubsystem* URTSOSettingsSubsystem::Get()
 {
    return GEngine != nullptr ? GEngine->GetEngineSubsystem<URTSOSettingsSubsystem>() : nullptr;
 }
-void URTSOSettingsSubsystem::OnCheckBox(bool bNewState, const FGameplayTag &SettingsName)
+void URTSOSettingsSubsystem::OnCheckBox(bool bNewState, const FGameplayTag &SettingsTag)
 {
-   UE_LOG(PDLog_SettingsHandler, Warning, TEXT("URTSOSettingsSubsystem::OnCheckBox"))
-   CheckBoxStates.FindOrAdd(SettingsName, bNewState);
+   UE_LOG(PDLog_SettingsHandler, Warning, TEXT("URTSOSettingsSubsystem::OnCheckBox(%s)"), *SettingsTag.ToString())
+   CheckBoxStates.FindOrAdd(SettingsTag, bNewState);
 }
-void URTSOSettingsSubsystem::OnFloat(float NewFloat, const FGameplayTag &SettingsName)
+void URTSOSettingsSubsystem::OnFloat(float NewFloat, const FGameplayTag &SettingsTag)
 {
-   UE_LOG(PDLog_SettingsHandler, Warning, TEXT("URTSOSettingsSubsystem::OnFloat"))
-   DoubleStates.FindOrAdd(SettingsName, NewFloat);   
+   UE_LOG(PDLog_SettingsHandler, Warning, TEXT("URTSOSettingsSubsystem::OnFloat(%s)"), *SettingsTag.ToString())
+   DoubleStates.FindOrAdd(SettingsTag, NewFloat);   
 }
-void URTSOSettingsSubsystem::OnInteger(int32 NewInteger, const FGameplayTag &SettingsName)
+void URTSOSettingsSubsystem::OnInteger(int32 NewInteger, const FGameplayTag &SettingsTag)
 {
-   UE_LOG(PDLog_SettingsHandler, Warning, TEXT("URTSOSettingsSubsystem::OnInteger"))
-   IntegerStates.FindOrAdd(SettingsName, NewInteger);
+   UE_LOG(PDLog_SettingsHandler, Warning, TEXT("URTSOSettingsSubsystem::OnInteger(%s)"), *SettingsTag.ToString())
+   IntegerStates.FindOrAdd(SettingsTag, NewInteger);
 }
-void URTSOSettingsSubsystem::OnByte(uint8 NewByte, const FGameplayTag &SettingsName)
+void URTSOSettingsSubsystem::OnByte(uint8 NewByte, const FGameplayTag &SettingsTag)
 {
-   UE_LOG(PDLog_SettingsHandler, Warning, TEXT("URTSOSettingsSubsystem::OnByte"))
-   ByteStates.FindOrAdd(SettingsName, NewByte);   
+   UE_LOG(PDLog_SettingsHandler, Warning, TEXT("URTSOSettingsSubsystem::OnByte(%s)"), *SettingsTag.ToString())
+   ByteStates.FindOrAdd(SettingsTag, NewByte);   
 }
-void URTSOSettingsSubsystem::OnVector(FVector NewVector, const FGameplayTag &SettingsName)
+void URTSOSettingsSubsystem::OnString(FString NewString, const FGameplayTag& SettingsTag)
 {
-   UE_LOG(PDLog_SettingsHandler, Warning, TEXT("URTSOSettingsSubsystem::OnVector"))
-   VectorStates.FindOrAdd(SettingsName, NewVector);   
+   UE_LOG(PDLog_SettingsHandler, Warning, TEXT("URTSOSettingsSubssytem::OnString(%s)"), *SettingsTag.ToString())
+   StringStates.FindOrAdd(SettingsTag, NewString);
 }
+
+void URTSOSettingsSubsystem::OnVector(FVector NewVector, const FGameplayTag& SettingsTag)
+{
+   UE_LOG(PDLog_SettingsHandler, Warning, TEXT("URTSOSettingsSubsystem::OnVector(%s)"), *SettingsTag.ToString())
+   VectorStates.FindOrAdd(SettingsTag, NewVector);   
+}
+void URTSOSettingsSubsystem::OnVector2D(FVector2D NewVector2d, const FGameplayTag& SettingsTag)
+{
+   UE_LOG(PDLog_SettingsHandler, Warning, TEXT("URTSOSettingsSubsystem::OnVector2D(%s)"), *SettingsTag.ToString())
+   Vector2dStates.FindOrAdd(SettingsTag, NewVector2d);   
+}
+void URTSOSettingsSubsystem::OnColour(FColor NewColour, const FGameplayTag& SettingsTag)
+{
+   UE_LOG(PDLog_SettingsHandler, Warning, TEXT("URTSOSettingsSubsystem::OnColour(%s)"), *SettingsTag.ToString())
+   ColourStates.FindOrAdd(SettingsTag, NewColour);   
+}
+void URTSOSettingsSubsystem::OnKey(FRTSOInputKeyStore NewKeys, const FGameplayTag& SettingsTag)
+{
+   UE_LOG(PDLog_SettingsHandler, Warning, TEXT("URTSOSettingsSubsystem::OnKey(%s)"), *SettingsTag.ToString())
+   KeyStates.FindOrAdd(SettingsTag, NewKeys);   
+}
+
+void* URTSOSettingsSubsystem::GetData(const FGameplayTag& SettingsTag)
+{
+   if (CheckBoxStates.Contains(SettingsTag)) {return CheckBoxStates.Find(SettingsTag);}
+   if (DoubleStates.Contains(SettingsTag)) {return DoubleStates.Find(SettingsTag);}
+   if (IntegerStates.Contains(SettingsTag)) {return IntegerStates.Find(SettingsTag);}
+   if (ByteStates.Contains(SettingsTag)) {return ByteStates.Find(SettingsTag);}
+   if (VectorStates.Contains(SettingsTag)) {return VectorStates.Find(SettingsTag);}
+   if (Vector2dStates.Contains(SettingsTag)) {return Vector2dStates.Find(SettingsTag);}
+   if (ColourStates.Contains(SettingsTag)) {return ColourStates.Find(SettingsTag);}
+   if (KeyStates.Contains(SettingsTag)) {return KeyStates.Find(SettingsTag);}
+   if (StringStates.Contains(SettingsTag)) {return StringStates.Find(SettingsTag);}
+
+   return nullptr;
+}
+
 /**
 Business Source License 1.1
 

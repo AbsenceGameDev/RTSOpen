@@ -50,7 +50,6 @@ TArray<TSharedPtr<FString>> FPDSettingStatics::GenerateStringPtrArrayFromDataSel
 			TArray<FString> StringList = DataSelector.GetOptionsList<FString>();
 			for (const FString& Entry : StringList)
 			{
-				// TODO: FIX CRASH HERE
 				StringSource.Emplace(MakeShared<FString>(Entry));
 			}
 		}
@@ -62,7 +61,7 @@ TArray<TSharedPtr<FString>> FPDSettingStatics::GenerateStringPtrArrayFromDataSel
 			{
 				const FString EntryString = FString::Printf(TEXT("BYTE: %i"), Entry);
 				StringSource.Emplace(MakeShared<FString>(EntryString));
-			}			
+			}
 		}
 		break;
 	}
@@ -191,7 +190,7 @@ namespace PD::Settings
 	using Entry = TTuple<FGameplayTag, FRTSOSettingsDataSelector>;
 	TMap<FGameplayTag, FRTSOSettingsDataSelector> FGameplaySettingsDefaults::Camera =
 		{
-			Entry{Gameplay::Camera::TAG_Camera_RotationRateModifier, FRTSOSettingsDataSelector{ERTSOSettingsType::FloatSlider, 40.0 * FloatUIMultiplier, FRTSOMinMax<double>{40 * FloatUIMultiplier, 100 * FloatUIMultiplier}}},
+			Entry{Gameplay::Camera::TAG_Camera_RotationRateModifier, FRTSOSettingsDataSelector{ERTSOSettingsType::IntegerSlider, 40, FRTSOMinMax<int32>{40, 100}}},
 			Entry{Gameplay::Camera::TAG_Camera_TargetInterpSpeed, FRTSOSettingsDataSelector{ERTSOSettingsType::FloatSlider, 2.0 * FloatUIMultiplier, FRTSOMinMax<double>{FloatUIMultiplier, 10 * FloatUIMultiplier}}},
 			Entry{Gameplay::Camera::TAG_Camera_ScrollSpeed, FRTSOSettingsDataSelector{ERTSOSettingsType::FloatSlider, 2.0 * FloatUIMultiplier , FRTSOMinMax<double>{FloatUIMultiplier, 10 * FloatUIMultiplier}}},
 			Entry{Gameplay::Camera::TAG_Camera_DoF, FRTSOSettingsDataSelector{ERTSOSettingsType::FloatSlider, 2.0 * FloatUIMultiplier, FRTSOMinMax<double>{FloatUIMultiplier, 10 * FloatUIMultiplier}}},
@@ -217,11 +216,11 @@ namespace PD::Settings
 		{
 			Entry{Video::Display::TAG_Display_Gamma, FRTSOSettingsDataSelector{ERTSOSettingsType::IntegerSlider, 50, FRTSOMinMax<int32>{0, 100}}},
 			Entry{Video::Display::TAG_Display_Mode, FRTSOSettingsDataSelector{ERTSOSettingsType::EnumAsByte, ERTSOResolutionMode::Windowed}},
-			Entry{Video::Display::TAG_Display_Resolution, FRTSOSettingsDataSelector{ERTSOSettingsType::IntegerSelector, 60, FRTSOMinMax<int32>{1920, 1080}}},
+			Entry{Video::Display::TAG_Display_Resolution, FRTSOSettingsDataSelector{ERTSOSettingsType::String, Resolution_Strings[1], FRTSOMinMax<FString>{}, Resolution_Strings, Resolution_Values}},
 			Entry{Video::Display::TAG_Display_ResolutionScale, FRTSOSettingsDataSelector{ERTSOSettingsType::IntegerSlider, 100, FRTSOMinMax<int32>{10, 100}}},
 			Entry{Video::Display::TAG_Display_AntiAliasing, FRTSOSettingsDataSelector{ERTSOSettingsType::IntegerSelector, 4, FRTSOMinMax<int32>{}, TArray{0, 1, 2, 3, 4, 5, 6}}},
 			Entry{Video::Display::TAG_Display_VSyncEnabled, FRTSOSettingsDataSelector{ERTSOSettingsType::Boolean, false}},
-			Entry{Video::Display::TAG_Display_FPSLimit, FRTSOSettingsDataSelector{ERTSOSettingsType::IntegerSelector, 60, FRTSOMinMax<int32>{}, TArray{0, 30, 60, 120, 144}}},
+			Entry{Video::Display::TAG_Display_FPSLimit, FRTSOSettingsDataSelector{ERTSOSettingsType::String, FString("60"), FRTSOMinMax<FString>{}, TArray<FString>{"0", "30", "60", "120", "144"}, TArray{0, 30, 60, 120, 144}}},
 		};
 
 	TMap<FGameplayTag, FRTSOSettingsDataSelector> FVideoSettingsDefaults::Effects =

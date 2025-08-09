@@ -10,6 +10,16 @@
 
 DECLARE_LOG_CATEGORY_CLASS(PDLog_SettingsHandler, Log, All);
 
+USTRUCT(Blueprintable, BlueprintType)
+struct FRTSOInputKeyStore
+{
+   GENERATED_BODY()
+
+   UPROPERTY(BlueprintReadWrite, EditAnywhere) FKey KeyboardMouse;
+   UPROPERTY(BlueprintReadWrite, EditAnywhere) FKey Gamepad;
+   UPROPERTY(BlueprintReadWrite, EditAnywhere) FKey Other;
+};
+
 /**
  * @brief  Loads custom tags that may have been added by a player/user
 */
@@ -26,15 +36,52 @@ public:
    static URTSOSettingsSubsystem* Get();
 
 	/** @brief TODO */
-   UFUNCTION() void OnCheckBox(bool bNewState, const FGameplayTag& SettingsName);
+   UFUNCTION() void OnCheckBox(bool bNewState, const FGameplayTag& SettingsTag);
 	/** @brief TODO */
-   UFUNCTION() void OnFloat(float NewFloat, const FGameplayTag& SettingsName);
+   UFUNCTION() void OnFloat(float NewFloat, const FGameplayTag& SettingsTag);
 	/** @brief TODO */
-   UFUNCTION() void OnInteger(int32 NewInteger, const FGameplayTag& SettingsName);
+   UFUNCTION() void OnInteger(int32 NewInteger, const FGameplayTag& SettingsTag);
 	/** @brief TODO */
-   UFUNCTION() void OnByte(uint8 NewByte, const FGameplayTag& SettingsName);
+   UFUNCTION() void OnByte(uint8 NewByte, const FGameplayTag& SettingsTag);
 	/** @brief TODO */
-   UFUNCTION() void OnVector(FVector NewVector, const FGameplayTag& SettingsName);
+   UFUNCTION() void OnString(FString NewString, const FGameplayTag& SettingsTag);
+	/** @brief TODO */
+   UFUNCTION() void OnVector(FVector NewVector, const FGameplayTag& SettingsTag);
+	/** @brief TODO */
+   UFUNCTION() void OnVector2D(FVector2D NewVector2d, const FGameplayTag& SettingsTag);
+	/** @brief TODO */
+   UFUNCTION() void OnColour(FColor NewColour, const FGameplayTag& SettingsTag);
+	/** @brief TODO */
+   UFUNCTION() void OnKey(FRTSOInputKeyStore NewKeys, const FGameplayTag& SettingsTag);
+
+   /** @brief TODO */
+   template<typename TDataType>
+   void OnStringData(TDataType NewDatum, const FGameplayTag& SettingsTag)
+   {
+      if constexpr (TIsDerivedFrom<bool, TDataType>::Value){OnCheckBox(NewDatum, SettingsTag);}
+      else if constexpr (TIsDerivedFrom<double, TDataType>::Value){OnFloat(NewDatum, SettingsTag);}
+      else if constexpr (TIsDerivedFrom<int32, TDataType>::Value){OnInteger(NewDatum, SettingsTag);}
+      else if constexpr (TIsDerivedFrom<uint8, TDataType>::Value){OnByte(NewDatum, SettingsTag);}
+      else if constexpr (TIsDerivedFrom<FVector2D, TDataType>::Value){OnVector2D(NewDatum, SettingsTag);}
+      else if constexpr (TIsDerivedFrom<FVector, TDataType>::Value){OnVector(NewDatum, SettingsTag);}
+      else if constexpr (TIsDerivedFrom<FString, TDataType>::Value){OnString(NewDatum, SettingsTag);}
+   }
+
+   struct FRTSOSettingsDataSelector;
+   template<typename TDataType, typename TInDataSelectorType = FRTSOSettingsDataSelector>
+   static bool AttemptApplyDataSelectorOnString(const TInDataSelectorType& DataSelector, int32 SelectedItemIdx, const FGameplayTag& SettingsTag)
+   {
+      const TArray<TDataType>* DataListPtr = DataSelector.template GetAssociatedStringDataList<TDataType>();
+		if(DataListPtr && DataListPtr->IsValidIndex(SelectedItemIdx))
+      {
+   		const TDataType SelectedValue = (*DataListPtr)[SelectedItemIdx];
+         URTSOSettingsSubsystem::Get()->OnStringData<TDataType>(SelectedValue, SettingsTag);
+         return true;
+      }
+      return false;
+   }
+
+   void* GetData(const FGameplayTag& SettingsTag);
 
 	/** @brief TODO */
    UPROPERTY() TMap<FGameplayTag, bool> CheckBoxStates;
@@ -44,8 +91,16 @@ public:
    UPROPERTY() TMap<FGameplayTag, int32> IntegerStates;
 	/** @brief TODO */
    UPROPERTY() TMap<FGameplayTag, uint8> ByteStates;
+   /** @brief TODO */
+   UPROPERTY() TMap<FGameplayTag, FString> StringStates;
 	/** @brief TODO */
    UPROPERTY() TMap<FGameplayTag, FVector> VectorStates;
+   /** @brief TODO */
+   UPROPERTY() TMap<FGameplayTag, FVector2D> Vector2dStates;
+   /** @brief TODO */
+   UPROPERTY() TMap<FGameplayTag, FColor> ColourStates;
+   /** @brief <KBM, Gamepad, Other> */
+   UPROPERTY() TMap<FGameplayTag, FRTSOInputKeyStore> KeyStates;
 };
 
 

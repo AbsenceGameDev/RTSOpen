@@ -48,7 +48,7 @@ void UPDRangedNumberBox::SetupDelegates()
 // Unseemly matters, avert your gaze. Note: This is done because 'Text' is marked as deprecated and
 // will be moved into private access level at some point, I want to avoid a broke build when that happens
 using EditableTextType = TAccessorTypeHandler<UEditableTextBox, FText>; 
-template struct TTagPrivateMember<EditableTextType, &UEditableTextBox::Text>; // UHT complains as it does not realize this is a template 'tag', this is no normal access 
+template struct TTagPrivateMember<EditableTextType, &UEditableTextBox::Text>; // UHT complains as it does not realize this is a template 'tag', this is not a common way to access data 
 
 void UPDRangedNumberBox::OnTextBoxCommitted(const FText& Text, ETextCommit::Type CommitMethod)
 {
@@ -56,14 +56,18 @@ void UPDRangedNumberBox::OnTextBoxCommitted(const FText& Text, ETextCommit::Type
 	{
 	case ETextCommit::OnCleared:
 		return; // Exit function if we've just cleared the box
-	case ETextCommit::Default:
-	case ETextCommit::OnEnter:
-	case ETextCommit::OnUserMovedFocus:
+	default:
 		break; // In all other cases
 	}
 	
 	const int32 CommittedInt = FCString::Atoi(*Text.ToString());
-	SelectedCount = FMath::Clamp(CommittedInt, MinimumCount, MaximumCount);
+	ValidateNewValue(CommittedInt);
+}
+
+void UPDRangedNumberBox::ValidateNewValue(int32 InCount)
+{
+	UE_LOG(PDLog_SharedUI, VeryVerbose, TEXT("UPDRangedNumberBox::ValidateNewValue -- InCount: %i "), InCount);
+	SelectedCount = FMath::Clamp(InCount, MinimumCount, MaximumCount);
 	if (OnValueChanged.ExecuteIfBound(SelectedCount) == false)
 	{
 		// @todo log warning
@@ -82,11 +86,26 @@ void UPDRangedNumberBox::OnTextBoxCommitted(const FText& Text, ETextCommit::Type
 
 //
 // Ranged Incremental number box
+void UPDRangedIncrementBox::NativePreConstruct()
+{
+	Super::NativePreConstruct();
+	SetupDelegates();
+}
 void UPDRangedIncrementBox::SetupDelegates()
 {
 	IncrementTextBlock->SetText(IncrementText);
 	DecrementTextBlock->SetText(DecrementText);
+
+	FSlateFontInfo ModifiedIncButtonFont = IncrementTextBlock->GetFont();
+	FSlateFontInfo ModifiedDecButtonFont = DecrementTextBlock->GetFont();
+	FSlateFontInfo ModifiedValueFont = NumberTextBlock->GetFont();
+	ModifiedIncButtonFont.Size = ModifiedDecButtonFont.Size = ButtonTextFontSize;
+	ModifiedValueFont.Size = ValueTextFontSize;	
 	
+	IncrementTextBlock->SetFont(ModifiedIncButtonFont);
+	DecrementTextBlock->SetFont(ModifiedDecButtonFont);
+	NumberTextBlock->SetFont(ModifiedValueFont);
+
 	if (HitboxIncrement->OnPressed.IsBound()){HitboxIncrement->OnPressed.Clear();}
 	if (HitboxDecrement->OnPressed.IsBound()){HitboxDecrement->OnPressed.Clear();}
 
@@ -171,7 +190,8 @@ void UPDRangedSelector::ApplySettings(FPDRangedSliderSettings InSliderSettings)
 		{
 			RangedSlider->OnValueChanged.AddDynamic(this, &UPDRangedSelector::OnSliderValueChanged);
 		}
-
+		
+		RangedSlider->SetValue(SelectedCount);
 		RangedSlider->SetStepSize(SliderSettings.StepSize);
 		RangedSliderTextBlock->SetText(FText::AsCultureInvariant(FString::Printf(TEXT("%lf"), static_cast<double>(SelectedCount) / SliderSettings.FloatUIMultiplier)));
 
@@ -187,18 +207,21 @@ void UPDRangedSelector::ApplySettings(FPDRangedSliderSettings InSliderSettings)
 		if (RangedNumberBox->OnValueChanged.IsBoundToObject(this) == false)
 		{
 			RangedNumberBox->OnValueChanged.BindUObject(this, &UPDRangedSelector::OnNumberBoxChanged);
-		}
-		RangedNumberBox->ApplySettings(MinimumCount, MaximumCount);
+		};
+		RangedNumberBox->ApplySettings(SelectedCount, MinimumCount, MaximumCount);
 		RangedNumberBox->SetVisibility(ESlateVisibility::Visible);
 		break;
 	case EPDSharedUICountTypeSelector::ERangedIncrementBox:
+		RangedIncrementBox->ButtonTextFontSize = ButtonTextFontSize;
+		RangedIncrementBox->ValueTextFontSize = ValueTextFontSize;
 		RangedIncrementBox->SetupDelegates();
 
 		if (RangedIncrementBox->OnValueChanged.IsBoundToObject(this) == false)
 		{
 			RangedIncrementBox->OnValueChanged.BindUObject(this, &UPDRangedSelector::OnNumberBoxChanged);
 		}
-		RangedIncrementBox->ApplySettings(MinimumCount, MaximumCount);
+
+		RangedIncrementBox->ApplySettings(SelectedCount, MinimumCount, MaximumCount);
 		RangedIncrementBox->SetVisibility(ESlateVisibility::Visible);
 		break;
 	}
@@ -220,10 +243,10 @@ void UPDRangedSelector::OnRangeUpdated(int32 NewMin, int32 NewMax)
 		RangedSlider->SetMaxValue(MaximumCount);
 		break;
 	case EPDSharedUICountTypeSelector::ERangedEditableNumber:
-		RangedNumberBox->ApplySettings(MinimumCount, MaximumCount);
+		RangedNumberBox->ApplySettings(SelectedCount, MinimumCount, MaximumCount);
 		break;
 	case EPDSharedUICountTypeSelector::ERangedIncrementBox:
-		RangedIncrementBox->ApplySettings(MinimumCount, MaximumCount);
+		RangedIncrementBox->ApplySettings(SelectedCount, MinimumCount, MaximumCount);
 		break;
 	}
 }

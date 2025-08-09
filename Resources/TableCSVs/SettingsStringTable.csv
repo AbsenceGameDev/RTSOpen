@@ -18,7 +18,7 @@ Key,SourceString
 "Settings.Gameplay.Difficulty.Combat","Combat Difficulty"
 "Settings.Gameplay.Difficulty.Combat_Description","AI Behaviour"
 "Settings.Gameplay.Difficulty.World","World Difficulty"
-"Settings.Gameplay.Difficulty.World_Description","FogOfWar"
+"Settings.Gameplay.Difficulty.World_Description","FogOfWar"git 
 "Settings.Video.Display.Mode","Display Mode"
 "Settings.Video.Display.Mode_Description","TODO(Actual Description Needed)\r\nType: List of options [Windowed,Borderless,Fullscreen]"
 "Settings.Video.Display.Resolution","Display Resolution"

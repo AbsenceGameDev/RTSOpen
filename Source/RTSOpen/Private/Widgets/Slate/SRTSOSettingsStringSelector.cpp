@@ -12,6 +12,7 @@
 // #include "Widgets/Layout/SBox.h"
 // #include "Widgets/Layout/SSplitter.h"
 #include "Widgets/Views/SListView.h"
+#include "Widgets/Layout/SExpandableArea.h"
 // #include "Styling/AppStyle.h"
 
 #define LOCTEXT_NAMESPACE "SettingsStringSelector"
@@ -21,8 +22,19 @@ void SRTSOStringSelector::Construct(const FArguments& InArgs)
 	// InArgs._OnUserClicked;
 	// InArgs._OnUserScrolled;
 
+   Caller = InArgs._Caller;
+   OnStringValueSelected = InArgs._OnStringValueSelected;
    OptionsArray = InArgs._OptionsArray;
    UpdateOptions(OptionsArray);
+}
+
+void SRTSOStringSelector::UpdateExpandableArea(bool bOpen)
+{
+   if (ExpandableArea.IsValid())
+   {
+      ExpandableArea->SetExpanded_Animated(bOpen);
+   }
+
 }
 
 void SRTSOStringSelector::UpdateOptions(TArray<TSharedPtr<FString>>* InOptionsArray)
@@ -36,21 +48,32 @@ void SRTSOStringSelector::UpdateOptions(TArray<TSharedPtr<FString>>* InOptionsAr
 
 	const URTSStringSelectorDeveloperSettings* SelectorDeveloperSettings = GetDefault<URTSStringSelectorDeveloperSettings>();
 
+   ExpandableArea.Reset();
+
+   TSharedRef<SExpandableArea> ExpandableAreaRef = SNew(SExpandableArea)
+      .InitiallyCollapsed(true)
+      .HeaderContent()
+      [
+         SNew(STextBlock)
+         .Text(FText::AsCultureInvariant("Options"))
+      ]
+      .BodyContent()
+      [
+         SNew(SListView<TSharedPtr<FString>>)
+         .ListItemsSource(OptionsArray)
+         .OnGenerateRow(this, &SRTSOStringSelector::MakeListViewWidget_SettingOptionsSelector)
+         .OnSelectionChanged(this, &SRTSOStringSelector::OnOptionSelected_SettingOptionsSelector)
+         .SelectionMode(ESelectionMode::Single)
+      ];
+   ExpandableArea = ExpandableAreaRef.ToSharedPtr();
+
    // 
 	// TODO - finish up
    ChildSlot
    .HAlign(HAlign_Center)
    .VAlign(VAlign_Fill)
    [
-      SNew(SScrollBox)
-      + SScrollBox::Slot()
-      [
-         SNew(SListView<TSharedPtr<FString>>)
-         .ListItemsSource(OptionsArray)
-         .OnGenerateRow(this, &SRTSOStringSelector::MakeListViewWidget_SettingOptionsSelector)
-         .OnSelectionChanged(this, &SRTSOStringSelector::OnOptionSelected_SettingOptionsSelector)
-         .SelectionMode(ESelectionMode::None)
-      ]
+      ExpandableAreaRef
    ];   
 }
 
@@ -78,8 +101,25 @@ TSharedRef<ITableRow> SRTSOStringSelector::MakeListViewWidget_SettingOptionsSele
 
 
 void SRTSOStringSelector::OnOptionSelected_SettingOptionsSelector(TSharedPtr<FString> InItem, ESelectInfo::Type InSelectInfo)
-{
-	// TODO
+{   
+   switch(InSelectInfo)
+   {
+      default:
+      case ESelectInfo::OnNavigation: 
+      break;
+      
+      case ESelectInfo::OnKeyPress:
+      case ESelectInfo::OnMouseClick:
+      case ESelectInfo::Direct: 
+
+      if (InItem.IsValid() && OnStringValueSelected.IsBound())
+      {
+         OnStringValueSelected.Execute(*InItem, Caller);
+      }
+      break;
+   }
+
+   // Todo cche latest selected item perhaps? not sure yet
 }
 
 #undef LOCTEXT_NAMESPACE

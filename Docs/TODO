@@ -21,7 +21,7 @@
     ✔ Prepare list of console commands that are needed to apply certain settings @done(25-07-03 22:54)
 
 July 28th 2025 - Commit#0 :
-    - Set up precommit message script, to generate the date and the commit count 
+    ✔ Set up precommit message script, to generate the date and the commit count @done
     - In progress 'SRTSOStringSelector' and the settings menu. 
         - String tables filled out. 
         - Crashes resolved 
@@ -30,11 +30,25 @@ July 28th 2025 - Commit#0 :
         - New developer settings class for the game settings, storing the stringtable path in there for now
         - Other supporting changes 
 
+
+August 9th 2025 - Commit#0 :
+    - DONE 'SRTSOStringSelector' and most of the settings menu entry logic. 
+        - Slate widget functionality finished
+        - UMG widgets are being updated based on the selected string
+        - Changes to how the dataselectors work so we can associate a list of data with the list of strings
+        - String selector fonts have been configured
+        - functionality to handle cahcing/fetching associated string data 
+        - IncrementBox is extended to allow controlling the size of the button and value text from PDRangedSelector
+        - Other changes for the settings menu (lots of them, ranging from resolving bugs, removing uneeded comments, removing logs, adding or removing functions, etc)
+
+
 TODO:
 
     - Set up logic to translate our Gameplay and UI settings to actaul changes for our gameplay states 
     - Implement Save/Load logic for settings, 
     - Set up a save dialog in case the user changes a setting but forgets to save, to give them a chance to save the game
+
+    - (LOW PRIO): Finsh UPDRangedSelector changes so it can iterate a list of data. Search for ERTSOSettingsType::IntegerSelector to find your way back to this
     
 TODO - After polishing existing systems:
     - Finish implementation of the mission/quest system
