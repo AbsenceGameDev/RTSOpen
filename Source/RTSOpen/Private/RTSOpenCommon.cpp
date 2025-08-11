@@ -4,6 +4,31 @@
 
 #include "Animation/WidgetAnimation.h"
 #include "Kismet/KismetSystemLibrary.h"
+#include "Misc/Guid.h"
+#include "Serialization/StructuredArchive.h"
+
+bool FRTSOSettingsKeyData::Serialize(FArchive& Ar)
+{
+	Ar << HiddenSettingIdToMatchAgainst;
+
+	FBinaryArchiveFormatter ArFormatter{Ar};
+	FStructuredArchive ArStructured{ArFormatter};
+
+	FStructuredArchive::FSlot Slot = ArStructured.Open();	
+	FPropertyTag Tag;
+	Tag.Type = NAME_NameProperty;
+	Main_KeyBoardMouse.SerializeFromMismatchedTag(Tag, Slot);
+	Alt_KeyBoardMouse.SerializeFromMismatchedTag(Tag, Slot);
+	Main_GenericGamepad.SerializeFromMismatchedTag(Tag, Slot);
+	Alt_GenericGamepad.SerializeFromMismatchedTag(Tag, Slot);
+	Main_DS45.SerializeFromMismatchedTag(Tag, Slot);
+	Alt_DS45.SerializeFromMismatchedTag(Tag, Slot);
+	Main_XSX.SerializeFromMismatchedTag(Tag, Slot);
+	Alt_XSX.SerializeFromMismatchedTag(Tag, Slot);
+	ArStructured.Close();
+
+	return true;					
+}
 
 TArray<TSharedPtr<FString>> FPDSettingStatics::GenerateQualityStringPtrArray()
 {
@@ -82,8 +107,66 @@ void UPDTransitionWidget::EndTransition_Implementation()
 	UKismetSystemLibrary::Delay(this, TransitionAnimation->GetEndTime(), DelayInfo);
 }
 
+FRTSOSettingsKeyData::FRTSOSettingsKeyData(FGuid IdToMatchAgainst, FKey InMain_KeyBoardMouse) : Main_KeyBoardMouse(InMain_KeyBoardMouse)
+{
+	HiddenSettingIdToMatchAgainst = IdToMatchAgainst;
+}
+FRTSOSettingsKeyData::FRTSOSettingsKeyData(FGuid IdToMatchAgainst, FKey InMain_KeyBoardMouse, FKey InMain_GenericGamepad, FKey InMain_DS45, FKey InMain_XSX) 
+		: Main_KeyBoardMouse(InMain_KeyBoardMouse), Main_GenericGamepad(InMain_GenericGamepad), Main_DS45(InMain_DS45), Main_XSX(InMain_XSX)
+{
+	HiddenSettingIdToMatchAgainst = IdToMatchAgainst;
+}	
+FRTSOSettingsKeyData::FRTSOSettingsKeyData(FGuid IdToMatchAgainst, 
+		FKey InMain_KeyBoardMouse, FKey InMain_GenericGamepad, FKey InMain_DS45, FKey InMain_XSX, 
+		FKey InAlt_KeyBoardMouse, FKey InAlt_GenericGamepad, FKey InAlt_DS45, FKey InAlt_XSX) 
+		: Main_KeyBoardMouse(InMain_KeyBoardMouse), Main_GenericGamepad(InMain_GenericGamepad), Main_DS45(InMain_DS45), Main_XSX(InMain_XSX) 
+		, Alt_KeyBoardMouse(InAlt_KeyBoardMouse), Alt_GenericGamepad(InAlt_GenericGamepad), Alt_DS45(InAlt_DS45), Alt_XSX(InAlt_XSX)		
+{
+	HiddenSettingIdToMatchAgainst = IdToMatchAgainst;
+}
+
+FRTSOSettingsKeyData::FRTSOSettingsKeyData(FKey InMain_KeyBoardMouse) : Main_KeyBoardMouse(InMain_KeyBoardMouse)
+{
+	HiddenSettingIdToMatchAgainst = FGuid::NewGuid();
+}
+FRTSOSettingsKeyData::FRTSOSettingsKeyData(FKey InMain_KeyBoardMouse, FKey InMain_GenericGamepad, FKey InMain_DS45, FKey InMain_XSX) 
+		: Main_KeyBoardMouse(InMain_KeyBoardMouse), Main_GenericGamepad(InMain_GenericGamepad), Main_DS45(InMain_DS45), Main_XSX(InMain_XSX)
+{
+	HiddenSettingIdToMatchAgainst = FGuid::NewGuid();
+}	
+FRTSOSettingsKeyData::FRTSOSettingsKeyData(
+		FKey InMain_KeyBoardMouse, FKey InMain_GenericGamepad, FKey InMain_DS45, FKey InMain_XSX, 
+		FKey InAlt_KeyBoardMouse, FKey InAlt_GenericGamepad, FKey InAlt_DS45, FKey InAlt_XSX) 
+		: Main_KeyBoardMouse(InMain_KeyBoardMouse), Main_GenericGamepad(InMain_GenericGamepad), Main_DS45(InMain_DS45), Main_XSX(InMain_XSX) 
+		, Alt_KeyBoardMouse(InAlt_KeyBoardMouse), Alt_GenericGamepad(InAlt_GenericGamepad), Alt_DS45(InAlt_DS45), Alt_XSX(InAlt_XSX)		
+{
+	HiddenSettingIdToMatchAgainst = FGuid::NewGuid();
+}
+
 namespace PD::Settings
 {
+	//
+	// Settings - Gameplay categories
+	UE_DEFINE_GAMEPLAY_TAG(TAG_Camera, "Settings.Gameplay.Camera")
+	UE_DEFINE_GAMEPLAY_TAG(TAG_ActionLog, "Settings.Gameplay.ActionLog")
+	UE_DEFINE_GAMEPLAY_TAG(TAG_Difficulty, "Settings.Gameplay.Difficulty")
+
+	// Settings - Video categories
+	UE_DEFINE_GAMEPLAY_TAG(TAG_Display, "Settings.Video.Display")
+	UE_DEFINE_GAMEPLAY_TAG(TAG_Effects, "Settings.Video.Effects") 
+	UE_DEFINE_GAMEPLAY_TAG(TAG_Graphics, "Settings.Video.Graphics")
+
+	// Settings - Audio categories
+	UE_DEFINE_GAMEPLAY_TAG(TAG_Audio, "Settings.Audio")
+	UE_DEFINE_GAMEPLAY_TAG(TAG_Audio_Volume, "Settings.Audio.Volume")
+
+	// Settings - Control categories
+	UE_DEFINE_GAMEPLAY_TAG(TAG_Controls, "Settings.Controls")
+	UE_DEFINE_GAMEPLAY_TAG(TAG_Controls_UI, "Settings.Controls.UI") 
+
+	// Settings - Interface categories
+	UE_DEFINE_GAMEPLAY_TAG(TAG_Interface, "Settings.Interface") 
+
 	namespace Gameplay::Camera
 	{
 		UE_DEFINE_GAMEPLAY_TAG(TAG_Camera_RotationRateModifier, "Settings.Gameplay.Camera.RotationRateModifier") // (Slider, Limit to range [40, 100])
@@ -218,7 +301,7 @@ namespace PD::Settings
 			Entry{Video::Display::TAG_Display_Mode, FRTSOSettingsDataSelector{ERTSOSettingsType::EnumAsByte, ERTSOResolutionMode::Windowed}},
 			Entry{Video::Display::TAG_Display_Resolution, FRTSOSettingsDataSelector{ERTSOSettingsType::String, Resolution_Strings[1], FRTSOMinMax<FString>{}, Resolution_Strings, Resolution_Values}},
 			Entry{Video::Display::TAG_Display_ResolutionScale, FRTSOSettingsDataSelector{ERTSOSettingsType::IntegerSlider, 100, FRTSOMinMax<int32>{10, 100}}},
-			Entry{Video::Display::TAG_Display_AntiAliasing, FRTSOSettingsDataSelector{ERTSOSettingsType::IntegerSelector, 4, FRTSOMinMax<int32>{}, TArray{0, 1, 2, 3, 4, 5, 6}}},
+			Entry{Video::Display::TAG_Display_AntiAliasing, FRTSOSettingsDataSelector{ERTSOSettingsType::String, FString("4"), FRTSOMinMax<FString>{}, TArray<FString>{"0", "1", "2", "3", "4", "5", "6"}, TArray{0, 1, 2, 3, 4, 5, 6}}},
 			Entry{Video::Display::TAG_Display_VSyncEnabled, FRTSOSettingsDataSelector{ERTSOSettingsType::Boolean, false}},
 			Entry{Video::Display::TAG_Display_FPSLimit, FRTSOSettingsDataSelector{ERTSOSettingsType::String, FString("60"), FRTSOMinMax<FString>{}, TArray<FString>{"0", "30", "60", "120", "144"}, TArray{0, 30, 60, 120, 144}}},
 		};
@@ -259,7 +342,7 @@ namespace PD::Settings
 	// Controls
 	TMap<FGameplayTag, FRTSOSettingsDataSelector> FControlsSettingsDefaults::Game =
 		{
-			Entry{Controls::Game::TAG_Controls_MoveForward, FRTSOSettingsDataSelector{ERTSOSettingsType::Key, FRTSOSettingsKeyData{FKey{EKeys::W}}}},
+			Entry{Controls::Game::TAG_Controls_MoveForward, FRTSOSettingsDataSelector{ERTSOSettingsType::Key, FRTSOSettingsKeyData(FKey{EKeys::W})}},
 			Entry{Controls::Game::TAG_Controls_MoveBackward, FRTSOSettingsDataSelector{ERTSOSettingsType::Key, FRTSOSettingsKeyData{FKey{EKeys::S}}}},
 			Entry{Controls::Game::TAG_Controls_MoveLeftward, FRTSOSettingsDataSelector{ERTSOSettingsType::Key, FRTSOSettingsKeyData{FKey{EKeys::A}}}},
 			Entry{Controls::Game::TAG_Controls_MoveRightward, FRTSOSettingsDataSelector{ERTSOSettingsType::Key, FRTSOSettingsKeyData{FKey{EKeys::D}}}},

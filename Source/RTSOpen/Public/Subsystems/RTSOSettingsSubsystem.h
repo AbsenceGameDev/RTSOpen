@@ -4,21 +4,13 @@
 
 #include "CoreMinimal.h"
 #include "GameplayTags.h"
+#include "RTSOpenCommon.h"
 #include "GameFramework/GameUserSettings.h"
 #include "Subsystems/EngineSubsystem.h"
 #include "RTSOSettingsSubsystem.generated.h"
 
 DECLARE_LOG_CATEGORY_CLASS(PDLog_SettingsHandler, Log, All);
 
-USTRUCT(Blueprintable, BlueprintType)
-struct FRTSOInputKeyStore
-{
-   GENERATED_BODY()
-
-   UPROPERTY(BlueprintReadWrite, EditAnywhere) FKey KeyboardMouse;
-   UPROPERTY(BlueprintReadWrite, EditAnywhere) FKey Gamepad;
-   UPROPERTY(BlueprintReadWrite, EditAnywhere) FKey Other;
-};
 
 /**
  * @brief  Loads custom tags that may have been added by a player/user
@@ -52,7 +44,7 @@ public:
 	/** @brief TODO */
    UFUNCTION() void OnColour(FColor NewColour, const FGameplayTag& SettingsTag);
 	/** @brief TODO */
-   UFUNCTION() void OnKey(FRTSOInputKeyStore NewKeys, const FGameplayTag& SettingsTag);
+   UFUNCTION() void OnKey(FRTSOSettingsKeyData NewKeys, const FGameplayTag& SettingsTag);
 
    /** @brief TODO */
    template<typename TDataType>
@@ -83,6 +75,22 @@ public:
 
    void* GetData(const FGameplayTag& SettingsTag);
 
+   static PD::Settings::EType GetSettingsTypeFromCategory(const FGameplayTag& SettingsCategory);
+
+#pragma region SaveStatics
+   UFUNCTION(BlueprintCallable, Category = "File Operations")
+   static bool SaveBinaryDataToFile(const FString& InFileName, const TArray<uint8>& InBinaryData);
+
+   UFUNCTION(BlueprintCallable, Category = "File Operations")
+   static bool LoadBinaryDataFromFile(const FString& InFileName, TArray<uint8>& OutBinaryData);
+
+   UFUNCTION(BlueprintCallable, Category = "File Operations")
+   static bool SaveAllSettingspData();
+
+   UFUNCTION(BlueprintCallable, Category = "File Operations")
+   static bool LoadAllSettingsData();
+#pragma endregion // SaveStatics
+
 	/** @brief TODO */
    UPROPERTY() TMap<FGameplayTag, bool> CheckBoxStates;
 	/** @brief TODO */
@@ -100,7 +108,9 @@ public:
    /** @brief TODO */
    UPROPERTY() TMap<FGameplayTag, FColor> ColourStates;
    /** @brief <KBM, Gamepad, Other> */
-   UPROPERTY() TMap<FGameplayTag, FRTSOInputKeyStore> KeyStates;
+   UPROPERTY() TMap<FGameplayTag, FRTSOSettingsKeyData> KeyStates;
+
+   static const FString SettingsLocalSaveFileName;
 };
 
 

@@ -1,6 +1,8 @@
 ﻿/* @author: Ario Amin @ Permafrost Development. @copyright: Full BSL(1.1) License included at bottom of the file  */
 #include "Subsystems/RTSOSettingsSubsystem.h"
+#include "RTSOpenCommon.h"
 #include "Engine/Engine.h"
+
 
 void URTSOSettingsSubsystem::Initialize(FSubsystemCollectionBase& Collection)
 {
@@ -13,10 +15,97 @@ URTSOSettingsSubsystem* URTSOSettingsSubsystem::Get()
 {
    return GEngine != nullptr ? GEngine->GetEngineSubsystem<URTSOSettingsSubsystem>() : nullptr;
 }
+
+PD::Settings::EType URTSOSettingsSubsystem::GetSettingsTypeFromCategory(const FGameplayTag& SettingsCategory)
+{
+	// Settings - Gameplay categories
+	if (SettingsCategory == PD::Settings::TAG_Camera)
+   {
+      return PD::Settings::EType::Camera;
+   }
+	else if (SettingsCategory == PD::Settings::TAG_ActionLog)
+   {
+      return PD::Settings::EType::ActionLog;
+   }
+	else if (SettingsCategory == PD::Settings::TAG_Difficulty)
+   {
+      return PD::Settings::EType::Difficulty;
+   }
+
+	// Settings - Video categories
+	else if (SettingsCategory == PD::Settings::TAG_Display)
+   {
+      return PD::Settings::EType::Display;
+   }
+	else if (SettingsCategory == PD::Settings::TAG_Effects)
+   {
+      return PD::Settings::EType::Effects;
+   } 
+	else if (SettingsCategory == PD::Settings::TAG_Graphics)
+   {
+      return PD::Settings::EType::Graphics;
+   }
+
+	// Settings - Audio categories
+	else if (SettingsCategory == PD::Settings::TAG_Audio)
+   {
+      return PD::Settings::EType::Audio;
+   }
+	else if (SettingsCategory == PD::Settings::TAG_Audio_Volume)
+   {
+      return PD::Settings::EType::Audio_Volume;
+   }
+
+	// Settings - Control categories
+	else if (SettingsCategory == PD::Settings::TAG_Controls)
+   {
+      return PD::Settings::EType::Controls;
+   }
+	else if (SettingsCategory == PD::Settings::TAG_Controls_UI)
+   {
+      return PD::Settings::EType::Controls_UI;
+   }
+
+	// Settings - Interface categories
+	else if (SettingsCategory == PD::Settings::TAG_Interface)
+   {
+      return PD::Settings::EType::Interface;
+   } 
+
+   return PD::Settings::EType::Num;
+}
+
 void URTSOSettingsSubsystem::OnCheckBox(bool bNewState, const FGameplayTag &SettingsTag)
 {
    UE_LOG(PDLog_SettingsHandler, Warning, TEXT("URTSOSettingsSubsystem::OnCheckBox(%s)"), *SettingsTag.ToString())
    CheckBoxStates.FindOrAdd(SettingsTag, bNewState);
+
+   FGameplayTag SettingsCategory = SettingsTag.RequestDirectParent();
+   switch(GetSettingsTypeFromCategory(SettingsCategory))
+   {
+		case PD::Settings::EType::Camera:
+      break;
+		case PD::Settings::EType::ActionLog:
+      break;
+		case PD::Settings::EType::Difficulty:
+      break;
+		case PD::Settings::EType::Display:
+      break;
+		case PD::Settings::EType::Effects:
+      break;
+		case PD::Settings::EType::Graphics:
+      break;
+		case PD::Settings::EType::Audio:
+      break;
+		case PD::Settings::EType::Audio_Volume:
+      break;
+		case PD::Settings::EType::Controls:
+      break;
+		case PD::Settings::EType::Controls_UI:
+      break;
+		case PD::Settings::EType::Interface:
+      break;      
+   }
 }
 void URTSOSettingsSubsystem::OnFloat(float NewFloat, const FGameplayTag &SettingsTag)
 {
@@ -54,7 +143,7 @@ void URTSOSettingsSubsystem::OnColour(FColor NewColour, const FGameplayTag& Sett
    UE_LOG(PDLog_SettingsHandler, Warning, TEXT("URTSOSettingsSubsystem::OnColour(%s)"), *SettingsTag.ToString())
    ColourStates.FindOrAdd(SettingsTag, NewColour);   
 }
-void URTSOSettingsSubsystem::OnKey(FRTSOInputKeyStore NewKeys, const FGameplayTag& SettingsTag)
+void URTSOSettingsSubsystem::OnKey(FRTSOSettingsKeyData NewKeys, const FGameplayTag& SettingsTag)
 {
    UE_LOG(PDLog_SettingsHandler, Warning, TEXT("URTSOSettingsSubsystem::OnKey(%s)"), *SettingsTag.ToString())
    KeyStates.FindOrAdd(SettingsTag, NewKeys);   
@@ -69,10 +158,99 @@ void* URTSOSettingsSubsystem::GetData(const FGameplayTag& SettingsTag)
    if (VectorStates.Contains(SettingsTag)) {return VectorStates.Find(SettingsTag);}
    if (Vector2dStates.Contains(SettingsTag)) {return Vector2dStates.Find(SettingsTag);}
    if (ColourStates.Contains(SettingsTag)) {return ColourStates.Find(SettingsTag);}
-   if (KeyStates.Contains(SettingsTag)) {return KeyStates.Find(SettingsTag);}
    if (StringStates.Contains(SettingsTag)) {return StringStates.Find(SettingsTag);}
+   if (KeyStates.Contains(SettingsTag)) {return KeyStates.Find(SettingsTag);}
 
    return nullptr;
+}
+
+const FString URTSOSettingsSubsystem::SettingsLocalSaveFileName = "LocalSettingsData.dat";
+
+bool URTSOSettingsSubsystem::SaveBinaryDataToFile(const FString& InFileName, const TArray<uint8>& InBinaryData)
+{
+    FString SaveDirectory = FPaths::ProjectPersistentDownloadDir();
+    FString AbsoluteFilePath = FPaths::Combine(SaveDirectory, InFileName);
+    IPlatformFile& PlatformFile = FPlatformFileManager::Get().GetPlatformFile();
+    if (PlatformFile.DirectoryExists(*SaveDirectory) == false)
+    {
+        if (PlatformFile.CreateDirectory(*SaveDirectory) == false)
+        {
+            UE_LOG(LogTemp, Error, TEXT("Failed to create directory: %s"), *SaveDirectory);
+            return false;
+        }
+    }
+
+    if (FFileHelper::SaveArrayToFile(InBinaryData, *AbsoluteFilePath))
+    {
+        UE_LOG(LogTemp, Warning, TEXT("Binary data saved successfully to: %s"), *AbsoluteFilePath);
+        return true;
+    }
+    else
+    {
+        UE_LOG(LogTemp, Error, TEXT("Failed to save binary data to: %s"), *AbsoluteFilePath);
+        return false;
+    }
+}
+
+bool URTSOSettingsSubsystem::LoadBinaryDataFromFile(const FString& InFileName, TArray<uint8>& OutBinaryData)
+{
+    FString SaveDirectory = FPaths::ProjectPersistentDownloadDir();
+    FString AbsoluteFilePath = FPaths::Combine(SaveDirectory, InFileName);
+
+    if (FFileHelper::LoadFileToArray(OutBinaryData, *AbsoluteFilePath))
+    {
+        UE_LOG(LogTemp, Warning, TEXT("Binary data loaded successfully from: %s"), *AbsoluteFilePath);
+        return true;
+    }
+    else
+    {
+        UE_LOG(LogTemp, Error, TEXT("Failed to load binary data from: %s (File might not exist or is empty)"), *AbsoluteFilePath);
+        OutBinaryData.Empty(); 
+        return false;
+    }
+}
+
+bool URTSOSettingsSubsystem::SaveAllSettingspData()
+{
+	TArray<uint8> BinaryData;
+	FMemoryWriter Writer(BinaryData, true);
+	URTSOSettingsSubsystem* SettingsSubsystem = URTSOSettingsSubsystem::Get();
+   Writer << SettingsSubsystem->CheckBoxStates;
+   Writer << SettingsSubsystem->DoubleStates;
+   Writer << SettingsSubsystem->IntegerStates;
+   Writer << SettingsSubsystem->ByteStates;
+   Writer << SettingsSubsystem->StringStates;
+   Writer << SettingsSubsystem->VectorStates;
+   Writer << SettingsSubsystem->Vector2dStates;
+   Writer << SettingsSubsystem->ColourStates;
+   Writer << SettingsSubsystem->KeyStates;
+   return SaveBinaryDataToFile(URTSOSettingsSubsystem::SettingsLocalSaveFileName, BinaryData);
+}
+
+bool URTSOSettingsSubsystem::LoadAllSettingsData()
+{
+   TArray<uint8> BinaryData;
+   if (LoadBinaryDataFromFile(URTSOSettingsSubsystem::SettingsLocalSaveFileName, BinaryData))
+   {
+      if (BinaryData.Num() > 0)
+      {
+      	URTSOSettingsSubsystem* SettingsSubsystem = URTSOSettingsSubsystem::Get();
+         FMemoryReader Reader(BinaryData, true); 
+         Reader << SettingsSubsystem->CheckBoxStates;
+         Reader << SettingsSubsystem->DoubleStates;
+         Reader << SettingsSubsystem->IntegerStates;
+         Reader << SettingsSubsystem->ByteStates;
+         Reader << SettingsSubsystem->StringStates;
+         Reader << SettingsSubsystem->VectorStates;
+         Reader << SettingsSubsystem->Vector2dStates;
+         Reader << SettingsSubsystem->ColourStates;
+         Reader << SettingsSubsystem->KeyStates;
+         Reader.Close();
+         return true;
+      }
+   }
+	
+    return false;
 }
 
 /**

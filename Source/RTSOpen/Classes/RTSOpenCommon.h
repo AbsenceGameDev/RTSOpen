@@ -3,6 +3,7 @@
 #pragma once
 
 #include "PDInteractCommon.h"
+#include "PDItemCommon.h"
 #include "Net/PDItemNetDatum.h"
 
 #include "Math/Range.h"
@@ -11,7 +12,6 @@
 #include "GameFramework/SaveGame.h"
 #include "CommonActivatableWidget.h"
 #include "CommonButtonBase.h"
-#include "PDItemCommon.h"
 #include "AI/Mass/PDMassFragments.h"
 #include "MassEntityConfigAsset.h"
 #include "RTSOpenCommon.generated.h"
@@ -547,30 +547,86 @@ enum class ERTSOResolutionMode : uint8
 	Borderless,
 };
 
+UENUM()
+enum class ERTSOSettingsKeySource : uint8
+{
+	KBM,
+	GGP,
+	DS45,
+	XSX,
+};
+
 USTRUCT(Blueprintable)
 struct FRTSOSettingsKeyData
 {
 	GENERATED_BODY()
 
-	UPROPERTY(EditAnywhere, BlueprintReadWrite)
-	FKey Main_KeyBoardMouse;
-	UPROPERTY(EditAnywhere, BlueprintReadWrite)
-	FKey Alt_KeyBoardMouse;
+	FRTSOSettingsKeyData(){}
+	FRTSOSettingsKeyData(FGuid IdToMatchAgainst, FKey InMain_KeyBoardMouse);
+	FRTSOSettingsKeyData(FGuid IdToMatchAgainst, FKey InMain_KeyBoardMouse, FKey InMain_GenericGamepad, FKey InMain_DS45, FKey InMain_XSX);	
+	FRTSOSettingsKeyData(FGuid IdToMatchAgainst, FKey InMain_KeyBoardMouse, FKey InMain_GenericGamepad, FKey InMain_DS45, FKey InMain_XSX, FKey InAlt_KeyBoardMouse, FKey InAlt_GenericGamepad, FKey InAlt_DS45, FKey InAlt_XSX);
+	FRTSOSettingsKeyData(FKey InMain_KeyBoardMouse);
+	FRTSOSettingsKeyData(FKey InMain_KeyBoardMouse, FKey InMain_GenericGamepad, FKey InMain_DS45, FKey InMain_XSX);	
+	FRTSOSettingsKeyData(FKey InMain_KeyBoardMouse, FKey InMain_GenericGamepad, FKey InMain_DS45, FKey InMain_XSX, FKey InAlt_KeyBoardMouse, FKey InAlt_GenericGamepad, FKey InAlt_DS45, FKey InAlt_XSX);
+	template<ERTSOSettingsKeySource TKeySource = ERTSOSettingsKeySource::KBM>
+	FRTSOSettingsKeyData(FKey InMain, FKey InAlt)
+	{
+		if constexpr (ERTSOSettingsKeySource::KBM == TKeySource)
+		{
+			Main_KeyBoardMouse = InMain;
+			Alt_KeyBoardMouse = InAlt;
+		}
+		else if constexpr (ERTSOSettingsKeySource::GGP == TKeySource)
+		{
+			Main_GenericGamepad = InMain;
+			Alt_GenericGamepad = InAlt;
+		}
+		else if constexpr (ERTSOSettingsKeySource::DS45 == TKeySource)
+		{
+			Main_DS45 = InMain;
+			Alt_DS45 = InAlt;
+		}
+		else if constexpr (ERTSOSettingsKeySource::XSX == TKeySource)
+		{
+			Main_XSX = InMain;
+			Alt_XSX = InAlt;
+		}
+	}
 
+	// Main keys
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
-	FKey Main_GenericGamepad;
+	FKey Main_KeyBoardMouse = {};
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
-	FKey Alt_GenericGamepad;
+	FKey Main_GenericGamepad = {};
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	FKey Main_DS45 = {};
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	FKey Main_XSX = {};
 
+	// Alt keys
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
-	FKey Main_DS45;
+	FKey Alt_KeyBoardMouse  = {};
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
-	FKey Alt_DS45;
+	FKey Alt_GenericGamepad = {};
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	FKey Alt_DS45 = {};
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	FKey Alt_XSX = {};
 
-	UPROPERTY(EditAnywhere, BlueprintReadWrite)
-	FKey Main_XSX;
-	UPROPERTY(EditAnywhere, BlueprintReadWrite)
-	FKey Alt_XSX;	
+	UPROPERTY()
+	FGuid HiddenSettingIdToMatchAgainst = FGuid{};
+
+	RTSOPEN_API bool operator==(const FRTSOSettingsKeyData& Other) const
+	{
+		return this->HiddenSettingIdToMatchAgainst == Other.HiddenSettingIdToMatchAgainst;
+	}
+
+	RTSOPEN_API bool Serialize(FArchive& Ar);
+	RTSOPEN_API FORCEINLINE friend FArchive& operator<<(FArchive& Ar, FRTSOSettingsKeyData& Value)
+	{
+		Value.Serialize(Ar);
+		return Ar;		
+	}
 };
 
 UCLASS(Blueprintable)
@@ -863,6 +919,44 @@ enum class ERTSOSettings : uint8
 namespace PD::Settings
 {
 	using ERTSOSettingsGroups = ERTSOSettings;
+
+	//
+	// Settings - Gameplay categories
+	UE_DECLARE_GAMEPLAY_TAG_EXTERN(TAG_Camera)
+	UE_DECLARE_GAMEPLAY_TAG_EXTERN(TAG_ActionLog)
+	UE_DECLARE_GAMEPLAY_TAG_EXTERN(TAG_Difficulty)
+
+	// Settings - Video categories
+	UE_DECLARE_GAMEPLAY_TAG_EXTERN(TAG_Display)
+	UE_DECLARE_GAMEPLAY_TAG_EXTERN(TAG_Effects) 
+	UE_DECLARE_GAMEPLAY_TAG_EXTERN(TAG_Graphics)
+
+	// Settings - Audio categories
+	UE_DECLARE_GAMEPLAY_TAG_EXTERN(TAG_Audio)
+	UE_DECLARE_GAMEPLAY_TAG_EXTERN(TAG_Audio_Volume)
+
+	// Settings - Control categories
+	UE_DECLARE_GAMEPLAY_TAG_EXTERN(TAG_Controls)
+	UE_DECLARE_GAMEPLAY_TAG_EXTERN(TAG_Controls_UI)
+
+	// Settings - Interface categories
+	UE_DECLARE_GAMEPLAY_TAG_EXTERN(TAG_Interface) 
+
+	enum class EType : uint8
+	{
+		Camera,
+		ActionLog,
+		Difficulty,
+		Display,
+		Effects,
+		Graphics,
+		Audio,
+		Audio_Volume,
+		Controls,
+		Controls_UI,
+		Interface,
+		Num,
+	};
 
 	namespace Gameplay::Camera
 	{
