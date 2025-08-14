@@ -2,6 +2,32 @@
 #pragma once
 
 #include "CoreMinimal.h"
+#include "Modules/ModuleManager.h"
+
+/**
+ * RTSOpen Game Module
+ */
+class FRTSOpenModule : public IModuleInterface
+{
+public:
+	static inline FRTSOpenModule& Get()
+	{
+		if (IsAvailable())
+		{
+			return FModuleManager::GetModuleChecked<FRTSOpenModule>("RTSOpen");
+		}
+		return FModuleManager::LoadModuleChecked<FRTSOpenModule>("RTSOpen");
+	}
+
+	static inline bool IsAvailable()
+	{
+		return FModuleManager::Get().IsModuleLoaded("RTSOpen");
+	}
+
+   virtual void StartupModule() final override;
+   virtual void ShutdownModule() final override;
+};
+
 
 
 /**

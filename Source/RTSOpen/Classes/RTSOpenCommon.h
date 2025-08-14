@@ -14,7 +14,16 @@
 #include "CommonButtonBase.h"
 #include "AI/Mass/PDMassFragments.h"
 #include "MassEntityConfigAsset.h"
+
+#if WITH_EDITOR
+#include "DetailCategoryBuilder.h"
+#include "DetailLayoutBuilder.h"
+#include "DetailWidgetRow.h"
+#include "IDetailChildrenBuilder.h"
+#endif // WITH_EDITOR
+
 #include "RTSOpenCommon.generated.h"
+
 
 DECLARE_LOG_CATEGORY_CLASS(PDLog_RTSOConversation, Log, All);
 DECLARE_LOG_CATEGORY_CLASS(PDLog_RTSOInteract, Log, All);
@@ -1137,7 +1146,52 @@ namespace PD::Settings
 
 
 	constexpr double FloatUIMultiplier = 10000; 
-}
+};
+
+class RTSOPEN_API FRTSOValueBinderDetails : public IPropertyTypeCustomization
+{
+public:
+	/** Makes a new instance of this detail layout class for a specific detail view requesting it */
+	static TSharedRef<IPropertyTypeCustomization> MakeInstance();
+
+	/** IDetailCustomization interface */
+	virtual void CustomizeHeader(TSharedRef<IPropertyHandle> PropertyHandle, FDetailWidgetRow& HeaderRow, IPropertyTypeCustomizationUtils& CustomizationUtils) override;
+	virtual void CustomizeChildren(TSharedRef<IPropertyHandle> PropertyHandle, IDetailChildrenBuilder& ChildBuilder, IPropertyTypeCustomizationUtils& CustomizationUtils) override;
+};
+
+#if WITH_EDITOR
+class FRTSOBinderDetailRowBuilder : public IDetailCustomNodeBuilder, public TSharedFromThis<FRTSOBinderDetailRowBuilder>
+{
+public:
+	FRTSOBinderDetailRowBuilder() {}
+	virtual ~FRTSOBinderDetailRowBuilder(){}
+
+    static TSharedRef<SVerticalBox> GenerateSectionTitle(const FText& SectionText);
+	//~ Begin IDetailCustomNodeBuilder interface
+	virtual void SetOnRebuildChildren(FSimpleDelegate InOnRegenerateChildren) override;
+	virtual void GenerateHeaderRowContent(FDetailWidgetRow& NodeRow) override;
+	virtual void GenerateChildContent(IDetailChildrenBuilder& ChildrenBuilder) override;
+	virtual bool RequiresTick() const override { return false; }
+	virtual bool InitiallyCollapsed() const override { return false; }
+	virtual FName GetName() const override;
+	//~ End IDetailCustomNodeBuilder interface
+    
+	TSharedRef<class SExpandableArea> SpawnExpandableOptionsArea();
+	
+    ERTSOSettingsType PropertyType = ERTSOSettingsType::Key;
+    TSharedPtr<IPropertyHandle> PropertyHandle;
+
+	FGameplayTag LatestSelectedTag;
+
+protected:
+    /** @brief */
+	FSimpleDelegate OnRegenerateChildren;
+
+	TSharedPtr<SExpandableArea> ExpandableAreaPtr = nullptr;
+};
+#endif // WITH_EDITOR
+
+
 
 /**
 Business Source License 1.1

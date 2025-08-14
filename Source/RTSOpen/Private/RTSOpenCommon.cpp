@@ -6,6 +6,28 @@
 #include "Kismet/KismetSystemLibrary.h"
 #include "Misc/Guid.h"
 #include "Serialization/StructuredArchive.h"
+#include "Subsystems/RTSOSettingsSubsystem.h"
+
+#if WITH_EDITOR
+#include "Editor.h"
+
+#include "DetailCategoryBuilder.h"
+#include "DetailLayoutBuilder.h"
+#include "DetailWidgetRow.h"
+#include "IDetailChildrenBuilder.h"
+
+#include "Widgets/Layout/SExpandableArea.h"
+#include "Widgets/Layout/SBorder.h"
+#include "Widgets/Text/STextBlock.h"
+#include "Widgets/Input/SButton.h"
+#include "SGameplayTagCombo.h"
+#include "SGameplayTagPicker.h"
+#include "SGameplayTagWidget.h"
+
+#include "Styling/CoreStyle.h"
+#endif // WITH_EDITOR
+
+
 
 bool FRTSOSettingsKeyData::Serialize(FArchive& Ar)
 {
@@ -29,6 +51,223 @@ bool FRTSOSettingsKeyData::Serialize(FArchive& Ar)
 
 	return true;					
 }
+
+//
+//// Value binder START
+#if WITH_EDITOR
+TSharedRef<IPropertyTypeCustomization> FRTSOValueBinderDetails::MakeInstance()
+{
+	TSharedRef<FRTSOValueBinderDetails> Shareable = MakeShareable(new FRTSOValueBinderDetails);
+	return Shareable;
+}
+void FRTSOValueBinderDetails::CustomizeHeader(TSharedRef<IPropertyHandle> PropertyHandle, FDetailWidgetRow& HeaderRow, IPropertyTypeCustomizationUtils& CustomizationUtils)
+{
+
+}
+void FRTSOValueBinderDetails::CustomizeChildren(TSharedRef<IPropertyHandle> PropertyHandle, IDetailChildrenBuilder& ChildBuilder, IPropertyTypeCustomizationUtils& CustomizationUtils)
+{
+	if(PropertyHandle->IsValidHandle() == false)
+	{
+		return;
+	}
+
+	FStructProperty* AsStructProperty = static_cast<FStructProperty*>(PropertyHandle->GetProperty());
+
+	TSharedRef<FRTSOBinderDetailRowBuilder> BinderRowBuilder = MakeShareable(new FRTSOBinderDetailRowBuilder);
+	if (static_cast<FFloatProperty*>(PropertyHandle->GetProperty())) 
+	{
+		BinderRowBuilder->PropertyType = ERTSOSettingsType::FloatSlider;
+	}
+	else if (static_cast<FIntProperty*>(PropertyHandle->GetProperty()))
+	{
+		BinderRowBuilder->PropertyType = ERTSOSettingsType::IntegerSlider;
+	}
+	else if (static_cast<FBoolProperty*>(PropertyHandle->GetProperty()))
+	{
+		BinderRowBuilder->PropertyType = ERTSOSettingsType::Boolean;
+	}
+	else
+	{
+		if (AsStructProperty == nullptr)
+		{
+			return;
+		}
+
+		if (AsStructProperty->Struct == TBaseStructure<FVector2D>::Get())
+		{
+			BinderRowBuilder->PropertyType = ERTSOSettingsType::Vector2;
+		}
+		else if (AsStructProperty->Struct = TBaseStructure<FVector>::Get())
+		{
+			BinderRowBuilder->PropertyType = ERTSOSettingsType::Vector3;
+		}		
+		else if (AsStructProperty->Struct == TBaseStructure<FColor>::Get()
+			|| AsStructProperty->Struct == TBaseStructure<FLinearColor>::Get())
+		{
+			BinderRowBuilder->PropertyType = ERTSOSettingsType::Colour;
+		}
+		else if (AsStructProperty->Struct == FKey::StaticStruct())
+		{
+			BinderRowBuilder->PropertyType = ERTSOSettingsType::Key;
+		}
+		else
+		{
+			return;
+		}
+	}
+
+	BinderRowBuilder->PropertyHandle = PropertyHandle;
+	ChildBuilder.AddCustomBuilder(BinderRowBuilder);
+}
+
+//FRTSOBinderDetailRowBuilder
+#define LOCTEXT_NAMESPACE "RTSOBinderDetails"
+TSharedRef<SVerticalBox> FRTSOBinderDetailRowBuilder::GenerateSectionTitle(const FText& SectionText)
+{
+	return 
+	SNew(SVerticalBox)
+	+ SVerticalBox::Slot()
+	[
+		SNew(STextBlock)
+		.Text(FText::AsCultureInvariant("Bind To Settings System:"))
+	]
+	+ SVerticalBox::Slot()
+	[
+		SNew(STextBlock)
+		.Text(SectionText)
+	];
+}
+void FRTSOBinderDetailRowBuilder::SetOnRebuildChildren(FSimpleDelegate InOnRegenerateChildren)
+{
+	IDetailCustomNodeBuilder::SetOnRebuildChildren(InOnRegenerateChildren);
+}
+void FRTSOBinderDetailRowBuilder::GenerateHeaderRowContent(FDetailWidgetRow& NodeRow)
+{
+	// FDetailWidgetRow::AddCustomContxtMenuAction 
+}
+void FRTSOBinderDetailRowBuilder::GenerateChildContent(IDetailChildrenBuilder& ChildrenBuilder)
+{
+	// FDetailWidgetRow& RowBuilder_GuidMapper = ChildrenBuilder .AddCustomRow(LOCTEXT("GuidMappingSelector", "Edit Targets")).RowTag("EditTargetRow");
+	FDetailWidgetRow& BinderRow = ChildrenBuilder.AddCustomRow(LOCTEXT("RTSOBinderDetails", "Edit Targets")).RowTag("EditTargetRow");
+
+	BinderRow.NameContent()
+	[
+		PropertyHandle->CreatePropertyNameWidget()
+	];
+	BinderRow.ValueContent()
+	[
+		SNew(SHorizontalBox)
+		+ SHorizontalBox::Slot()
+		[
+			PropertyHandle->CreatePropertyValueWidget()
+		]
+		+ SHorizontalBox::Slot()
+		[
+			SNew(SVerticalBox)
+			+ SVerticalBox::Slot()
+			[
+				SNew(STextBlock)
+				.Text(FText::AsCultureInvariant("Bind Game Settings"))
+			]
+			+ SVerticalBox::Slot()
+			[
+				SNew(SHorizontalBox)
+				+ SHorizontalBox::Slot()
+				[
+					SNew(SCheckBox)
+					.OnCheckStateChanged_Lambda(
+						[](ECheckBoxState NewState)
+						{
+							// TODO, Handle on check state changed
+							UE_LOG(LogTemp, Warning, TEXT("FRTSOBinderDetailRowBuilder::GenerateChildContent::OnCheckStateChanged_Lambda(NewCheckboxState:%s)"), *UEnum::GetValueAsString(NewState))
+						})
+				]
+				+ SHorizontalBox::Slot()
+				[
+					// Selected tag // TODO
+					SNew(STextBlock)
+					.Text(FText::AsCultureInvariant("TODO:TAGNAME"))
+				]
+				+ SHorizontalBox::Slot()
+				[
+					SpawnExpandableOptionsArea()
+				]
+			]
+		] 
+	];
+}
+
+TSharedRef<SExpandableArea> FRTSOBinderDetailRowBuilder::SpawnExpandableOptionsArea()
+{
+	TSharedRef<SExpandableArea> ExpandableAreaRef = SNew(SExpandableArea)
+	.InitiallyCollapsed(true)
+	.HeaderContent()
+	[
+		SNew(STextBlock)
+		.Text(FText::AsCultureInvariant("Options"))
+	]
+	.BodyContent()
+	[
+		SNew(SGameplayTagPicker)
+		.OnTagChanged_Lambda(
+			[this](const TArray<FGameplayTagContainer>& TagContainers)
+			{
+				LatestSelectedTag = TagContainers.IsEmpty() ? FGameplayTag() : TagContainers[0].First();
+				UE_LOG(LogTemp, Warning, TEXT("FRTSOBinderDetailRowBuilder::GenerateChildContent::OnTagChanged_Lambda(LatestSelectedTag:%s)"), *LatestSelectedTag.ToString())
+			})
+		.OnFilterTag_Lambda(
+			[PropertyTypeCapture = PropertyType](const TSharedPtr<FGameplayTagNode>& InGameplayTagNode) -> SGameplayTagPicker::ETagFilterResult
+			{
+				constexpr SGameplayTagPicker::ETagFilterResult IncludeTag = SGameplayTagPicker::ETagFilterResult::IncludeTag;
+				constexpr SGameplayTagPicker::ETagFilterResult ExcludeTag = SGameplayTagPicker::ETagFilterResult::ExcludeTag;
+
+				const FGameplayTag& CompTag = InGameplayTagNode->GetCompleteTag();
+				URTSOSettingsSubsystem* SettingsSubsystem = URTSOSettingsSubsystem::Get();
+
+				switch(PropertyTypeCapture)
+				{
+				case ERTSOSettingsType::Boolean:
+					return SettingsSubsystem->CheckBoxStates.Contains(CompTag) ? IncludeTag : ExcludeTag;
+				case ERTSOSettingsType::FloatSelector:
+				case ERTSOSettingsType::FloatSlider:
+					return SettingsSubsystem->DoubleStates.Contains(CompTag) ? IncludeTag : ExcludeTag;
+				case ERTSOSettingsType::IntegerSelector:
+				case ERTSOSettingsType::IntegerSlider:
+					return SettingsSubsystem->IntegerStates.Contains(CompTag) ? IncludeTag : ExcludeTag;
+				case ERTSOSettingsType::Vector2:
+					return SettingsSubsystem->Vector2dStates.Contains(CompTag) ? IncludeTag : ExcludeTag;
+				case ERTSOSettingsType::Vector3:
+					return SettingsSubsystem->VectorStates.Contains(CompTag) ? IncludeTag : ExcludeTag;
+				case ERTSOSettingsType::Colour:
+					return SettingsSubsystem->ColourStates.Contains(CompTag) ? IncludeTag : ExcludeTag;
+				case ERTSOSettingsType::String:
+					return SettingsSubsystem->StringStates.Contains(CompTag) ? IncludeTag : ExcludeTag;
+				case ERTSOSettingsType::EnumAsByte:
+					return SettingsSubsystem->ByteStates.Contains(CompTag) ? IncludeTag : ExcludeTag;
+				case ERTSOSettingsType::Key:
+					return SettingsSubsystem->KeyStates.Contains(CompTag) ? IncludeTag : ExcludeTag;
+
+				default:
+					return ExcludeTag; 
+				}
+
+				return IncludeTag;
+			})
+	];
+
+	ExpandableAreaPtr = ExpandableAreaRef.ToSharedPtr();
+	return ExpandableAreaRef;
+}
+
+FName FRTSOBinderDetailRowBuilder::GetName() const
+{
+	return FName("RTSOBinderDetailRowBuilder");
+}
+#undef LOCTEXT_NAMESPACE
+#endif // WITH_EDITOR
+
+//// Value binder END 
+//
 
 TArray<TSharedPtr<FString>> FPDSettingStatics::GenerateQualityStringPtrArray()
 {

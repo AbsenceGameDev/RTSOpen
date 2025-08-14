@@ -8,14 +8,27 @@ public class RTSOpen : ModuleRules
 	public RTSOpen(ReadOnlyTargetRules Target) : base(Target)
 	{
 		PCHUsage = PCHUsageMode.UseExplicitOrSharedPCHs;
-	
+		
 		PublicIncludePaths.Add(Path.Combine(ModuleDirectory, "Classes"));
+		if (Target.Type == TargetType.Editor)
+		{
+			PublicDependencyModuleNames.AddRange(new string[] 
+			{ 
+				/*Tag*/          "GameplayTagsEditor"
+			});
+
+			PrivateDependencyModuleNames.AddRange(new string[] 
+			{ 
+				/*Editor*/       "UnrealEd",
+			});
+		}
+	
 		
 		PublicDependencyModuleNames.AddRange(new string[] 
 		{ 
 			/*Core*/         "Engine", "Core", "CoreUObject", "NetCore", "ApplicationCore",
 			/*Settings*/     "DeveloperSettings", 
-			/*Tag*/          "GameplayTags", 
+			/*Tag*/          "GameplayTags",
 			/*Input*/        "InputCore",  "EnhancedInput", 
 			/*Conversation*/ "CommonConversationRuntime", 
 			/*PermaDev*/     "PDRTSBase", "PDInventory", "PDConversationHelper", "PDSharedUI", "PDInteraction"
@@ -32,8 +45,7 @@ public class RTSOpen : ModuleRules
 		});
 		
 		PrivateDependencyModuleNames.AddRange(new string[] 
-		{ 
-			/*Editor*/       "UnrealEd",			
+		{ 	
 			/*Tag*/          "GameplayTags", 
 			/*Input*/        "EnhancedInput", 
 			/*Widget*/       "SlateCore", "Slate", "CommonUI", "UMG", 

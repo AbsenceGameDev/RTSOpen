@@ -1,9 +1,27 @@
 /* @author: Ario Amin @ Permafrost Development. @copyright: Full BSL(1.1) License included at bottom of the file  */
 
 #include "RTSOpen.h"
+#include "RTSOpenCommon.h"
 #include "Modules/ModuleManager.h"
 
-IMPLEMENT_PRIMARY_GAME_MODULE( FDefaultGameModuleImpl, RTSOpen, "RTSOpen" );
+
+void FRTSOpenModule::StartupModule()
+{
+#if WITH_EDITOR
+   FPropertyEditorModule& PropertyEditor = FModuleManager::LoadModuleChecked<FPropertyEditorModule>("PropertyEditor");
+
+   FOnGetPropertyTypeCustomizationInstance InstanceDelegate;
+   InstanceDelegate.BindStatic(&FRTSOValueBinderDetails::MakeInstance);
+   PropertyEditor.RegisterCustomPropertyTypeLayout("FloatProperty", InstanceDelegate);
+#endif
+}
+
+void FRTSOpenModule::ShutdownModule()
+{
+
+}
+
+IMPLEMENT_PRIMARY_GAME_MODULE(FRTSOpenModule, RTSOpen, "RTSOpen" );
 
 
 /**

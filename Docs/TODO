@@ -41,6 +41,10 @@ August 9th 2025 - Commit#0 :
         - IncrementBox is extended to allow controlling the size of the button and value text from PDRangedSelector
         - Other changes for the settings menu (lots of them, ranging from resolving bugs, removing uneeded comments, removing logs, adding or removing functions, etc)
 
+August 14th 2025 - Commit#0 :
+    - IN PROGRESS: Set up logic to translate our Gameplay and UI settings to actaul changes for our gameplay states 
+        - Create a property detail extension via overriding detail row content using slate to allow any property to be bound to the games settings system 
+        Note: Need to resolve visual layout issues 
 
 TODO:
 
