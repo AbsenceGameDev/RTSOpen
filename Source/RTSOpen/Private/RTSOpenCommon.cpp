@@ -68,49 +68,55 @@ void FRTSOValueBinderDetails::CustomizeHeader(TSharedRef<IPropertyHandle> Proper
 }
 void FRTSOValueBinderDetails::CustomizeChildren(TSharedRef<IPropertyHandle> PropertyHandle, IDetailChildrenBuilder& ChildBuilder, IPropertyTypeCustomizationUtils& CustomizationUtils)
 {
-	if(PropertyHandle->IsValidHandle() == false)
+	if(PropertyHandle->IsValidHandle() == false || PropertyHandle->GetPropertyClass() == nullptr)
 	{
 		return;
 	}
 
 	FStructProperty* AsStructProperty = static_cast<FStructProperty*>(PropertyHandle->GetProperty());
 
+	const FName PropertyTypeName = PropertyHandle->GetPropertyClass()->GetFName();
+	UE_LOG(LogTemp, Warning, TEXT("FRTSOValueBinderDetails::CustomizeChildren::(%s)%s"), *PropertyHandle->GetPropertyClass()->GetName(), *PropertyHandle->GetProperty()->NamePrivate.ToString())
+
 	TSharedRef<FRTSOBinderDetailRowBuilder> BinderRowBuilder = MakeShareable(new FRTSOBinderDetailRowBuilder);
-	if (static_cast<FFloatProperty*>(PropertyHandle->GetProperty())) 
+	if (NAME_FloatProperty == PropertyTypeName 
+		| NAME_DoubleProperty == PropertyTypeName) 
 	{
 		BinderRowBuilder->PropertyType = ERTSOSettingsType::FloatSlider;
+		UE_LOG(LogTemp, Warning, TEXT("FRTSOValueBinderDetails::CustomizeChildren - FLOAT"))
 	}
-	else if (static_cast<FIntProperty*>(PropertyHandle->GetProperty()))
+	else if (NAME_IntProperty == PropertyTypeName || NAME_Int32Property == PropertyTypeName)
 	{
 		BinderRowBuilder->PropertyType = ERTSOSettingsType::IntegerSlider;
+		UE_LOG(LogTemp, Warning, TEXT("FRTSOValueBinderDetails::CustomizeChildren - INTEGER"))
 	}
-	else if (static_cast<FBoolProperty*>(PropertyHandle->GetProperty()))
+	else if (NAME_BoolProperty == PropertyTypeName)
 	{
 		BinderRowBuilder->PropertyType = ERTSOSettingsType::Boolean;
+		UE_LOG(LogTemp, Warning, TEXT("FRTSOValueBinderDetails::CustomizeChildren - BOOL"))
 	}
 	else
 	{
-		if (AsStructProperty == nullptr)
-		{
-			return;
-		}
-
-		if (AsStructProperty->Struct == TBaseStructure<FVector2D>::Get())
+		if (NAME_Vector2D == PropertyTypeName)
 		{
 			BinderRowBuilder->PropertyType = ERTSOSettingsType::Vector2;
+			UE_LOG(LogTemp, Warning, TEXT("FRTSOValueBinderDetails::CustomizeChildren - VEC2D"))
 		}
-		else if (AsStructProperty->Struct = TBaseStructure<FVector>::Get())
+		else if (NAME_Vector == PropertyTypeName )
 		{
 			BinderRowBuilder->PropertyType = ERTSOSettingsType::Vector3;
+			UE_LOG(LogTemp, Warning, TEXT("FRTSOValueBinderDetails::CustomizeChildren - VEC"))
 		}		
-		else if (AsStructProperty->Struct == TBaseStructure<FColor>::Get()
-			|| AsStructProperty->Struct == TBaseStructure<FLinearColor>::Get())
+		else if (TBaseStructure<FColor>::Get()->GetFName() == PropertyTypeName
+			|| TBaseStructure<FLinearColor>::Get()->GetName() == PropertyTypeName)
 		{
 			BinderRowBuilder->PropertyType = ERTSOSettingsType::Colour;
+			UE_LOG(LogTemp, Warning, TEXT("FRTSOValueBinderDetails::CustomizeChildren - COLOUR"))
 		}
-		else if (AsStructProperty->Struct == FKey::StaticStruct())
+		else if (FKey::StaticStruct()->GetFName() == PropertyTypeName)
 		{
 			BinderRowBuilder->PropertyType = ERTSOSettingsType::Key;
+			UE_LOG(LogTemp, Warning, TEXT("FRTSOValueBinderDetails::CustomizeChildren - KEY"))
 		}
 		else
 		{
@@ -158,7 +164,6 @@ void FRTSOBinderDetailRowBuilder::GenerateChildContent(IDetailChildrenBuilder& C
 	[
 		PropertyHandle->CreatePropertyNameWidget()
 	];
-	RowWidgetPtr = BinderRow.WholeRowWidget.Widget;
 	BinderRow.ValueContent()
 	[
 		SNew(SHorizontalBox)
@@ -194,7 +199,7 @@ void FRTSOBinderDetailRowBuilder::GenerateChildContent(IDetailChildrenBuilder& C
 					]
 				]
 			]
-		] 
+		]
 	];
 }
 
@@ -203,7 +208,12 @@ void FRTSOBinderDetailRowBuilder::OnTagSelectorPressed()
 	FSlateApplication& SlateApp = FSlateApplication::Get();
 	const FWidgetPath WidgetPath = SlateApp.LocateWindowUnderMouse(SlateApp.GetCursorPos(), SlateApp.GetInteractiveTopLevelWindows());
 
-	const FGeometry& RowWidgetGeometry = WidgetPath.Widgets.Num() <= 0 ? RowWidgetPtr->GetCachedGeometry() : WidgetPath.Widgets.Last().Geometry;
+	if (WidgetPath.Widgets.Num() <= 0)
+	{
+		return;
+	}
+
+	const FGeometry& RowWidgetGeometry = WidgetPath.Widgets.Last().Geometry;
 	const float LayoutScaleMultiplier =  RowWidgetGeometry.GetAccumulatedLayoutTransform().GetScale();							
 	
 	TSharedRef<SGameplayTagPicker> MenuContentRef = SpawnFilteredOptionsPicker();
@@ -214,7 +224,7 @@ void FRTSOBinderDetailRowBuilder::OnTagSelectorPressed()
 	FVector2D NewWindowSize = DesiredContentSize;
 	
 	TSharedPtr<IMenu> PopupMenu = FSlateApplication::Get().PushMenu(
-		WidgetPath.Widgets.Num() <= 0 ? RowWidgetPtr.ToSharedRef() : WidgetPath.Widgets.Last().Widget, 
+		WidgetPath.Widgets.Last().Widget, 
 		WidgetPath, MenuContentRef, NewPosition, FPopupTransitionEffect::ComboButton, true, NewWindowSize, EPopupMethod::CreateNewWindow, false);
 	if (PopupMenu.IsValid() == false)
 	{
@@ -271,32 +281,41 @@ TSharedRef<SGameplayTagPicker> FRTSOBinderDetailRowBuilder::SpawnFilteredOptions
 	{
 	case ERTSOSettingsType::Boolean:
 		SettingsSubsystem->CheckBoxStates.GenerateKeyArray(TagsToShow);
+		UE_LOG(LogTemp, Warning, TEXT("FRTSOBinderDetailRowBuilder::SpawnFilteredOptionsPicker - Spawning Bool Tags"))
 		break;
 	case ERTSOSettingsType::FloatSelector:
 	case ERTSOSettingsType::FloatSlider:
 		SettingsSubsystem->DoubleStates.GenerateKeyArray(TagsToShow);
+		UE_LOG(LogTemp, Warning, TEXT("FRTSOBinderDetailRowBuilder::SpawnFilteredOptionsPicker - Spawning Float Tags"))
 		break;
 	case ERTSOSettingsType::IntegerSelector:
 	case ERTSOSettingsType::IntegerSlider:
 		SettingsSubsystem->IntegerStates.GenerateKeyArray(TagsToShow);
+		UE_LOG(LogTemp, Warning, TEXT("FRTSOBinderDetailRowBuilder::SpawnFilteredOptionsPicker - Spawning Int Tags"))
 		break;
 	case ERTSOSettingsType::Vector2:
 		SettingsSubsystem->Vector2dStates.GenerateKeyArray(TagsToShow);
+		UE_LOG(LogTemp, Warning, TEXT("FRTSOBinderDetailRowBuilder::SpawnFilteredOptionsPicker - Spawning Vec2 Tags"))
 		break;
 	case ERTSOSettingsType::Vector3:
 		SettingsSubsystem->VectorStates.GenerateKeyArray(TagsToShow);
+		UE_LOG(LogTemp, Warning, TEXT("FRTSOBinderDetailRowBuilder::SpawnFilteredOptionsPicker - Spawning Vec3 Tags"))
 		break;
 	case ERTSOSettingsType::Colour:
 		SettingsSubsystem->ColourStates.GenerateKeyArray(TagsToShow);
+		UE_LOG(LogTemp, Warning, TEXT("FRTSOBinderDetailRowBuilder::SpawnFilteredOptionsPicker - Spawning Colour Tags"))
 		break;
 	case ERTSOSettingsType::String:
 		SettingsSubsystem->StringStates.GenerateKeyArray(TagsToShow);
+		UE_LOG(LogTemp, Warning, TEXT("FRTSOBinderDetailRowBuilder::SpawnFilteredOptionsPicker - Spawning String Tags"))
 		break;
 	case ERTSOSettingsType::EnumAsByte:
 		SettingsSubsystem->ByteStates.GenerateKeyArray(TagsToShow);
+		UE_LOG(LogTemp, Warning, TEXT("FRTSOBinderDetailRowBuilder::SpawnFilteredOptionsPicker - Spawning EnumAsByte or Byte Tags"))
 		break;
 	case ERTSOSettingsType::Key:
 		SettingsSubsystem->KeyStates.GenerateKeyArray(TagsToShow);
+		UE_LOG(LogTemp, Warning, TEXT("FRTSOBinderDetailRowBuilder::SpawnFilteredOptionsPicker - Spawning Key Tags"))
 		break;
 	default:
 		break; 
@@ -313,15 +332,16 @@ TSharedRef<SGameplayTagPicker> FRTSOBinderDetailRowBuilder::SpawnFilteredOptions
 		}
 	}
 
-	TArray<FGameplayTagContainer> TODOTagContainersTODO;
-
+	TArray<FGameplayTagContainer> TagContainers;
+	TagContainers.Add(FGameplayTagContainer{PD::Settings::TAG_SettingsBase});
 	TSharedRef<SGameplayTagPicker> TagPickerRef = SNew(SGameplayTagPicker)
 	.ReadOnly(true)
 	.ShowMenuItems(false)
 	.MaxHeight(350.0f)
 	.MultiSelect(false)
 	.Filter(TagsFilter)
-	.GameplayTagPickerMode(EGameplayTagPickerMode::ManagementMode)
+	.TagContainers(TagContainers)
+	.GameplayTagPickerMode(EGameplayTagPickerMode::SelectionMode)
 	.OnTagChanged_Lambda(
 		[this](const TArray<FGameplayTagContainer>& TagContainers)
 		{
@@ -329,10 +349,6 @@ TSharedRef<SGameplayTagPicker> FRTSOBinderDetailRowBuilder::SpawnFilteredOptions
 			if (PopupMenuPtr.IsValid()) 
 			{
 				PopupMenuPtr->Dismiss();
-			}
-			if (RowWidgetPtr.IsValid())
-			{
-				RowWidgetPtr->Invalidate(EInvalidateWidgetReason::All);
 			}
 			UE_LOG(LogTemp, Warning, TEXT("FRTSOBinderDetailRowBuilder::GenerateChildContent::OnTagChanged_Lambda(LatestSelectedTag:%s)"), *LatestSelectedTag.ToString())
 		});
@@ -466,6 +482,8 @@ FRTSOSettingsKeyData::FRTSOSettingsKeyData(
 
 namespace PD::Settings
 {
+	UE_DEFINE_GAMEPLAY_TAG(TAG_SettingsBase, "Settings")
+
 	//
 	// Settings - Gameplay categories
 	UE_DEFINE_GAMEPLAY_TAG(TAG_Camera, "Settings.Gameplay.Camera")

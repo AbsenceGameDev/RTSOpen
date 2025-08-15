@@ -101,33 +101,33 @@ void URTSOSettingsSubsystem::GenerateInitialSettingsEntries()
       {
       case ERTSOSettingsType::Boolean:
          OnCheckBox(DataSelector.GetRef<bool>(), SettingsTag);
-      continue;
+      break;
       case ERTSOSettingsType::FloatSlider:
       case ERTSOSettingsType::FloatSelector:
          OnFloat(DataSelector.GetRef<double>(), SettingsTag);
-      continue;
+      break;
       case ERTSOSettingsType::IntegerSlider:
       case ERTSOSettingsType::IntegerSelector:
          OnInteger(DataSelector.GetRef<int32>(), SettingsTag);
-      continue;
+      break;
       case ERTSOSettingsType::EnumAsByte:
          OnByte(DataSelector.GetRef<uint8>(), SettingsTag);
-      continue;
+      break;
       case ERTSOSettingsType::String:
          OnString(DataSelector.GetRef<FString>(), SettingsTag);
-      continue;
+      break;
       case ERTSOSettingsType::Vector3:
          OnVector(DataSelector.GetRef<FVector>(), SettingsTag);
-      continue;
+      break;
       case ERTSOSettingsType::Vector2:
          OnVector2D(DataSelector.GetRef<FVector2D>(), SettingsTag);
-      continue;
+      break;
       case ERTSOSettingsType::Colour:
          OnColour(DataSelector.GetRef<FColor>(), SettingsTag);
-      continue;
+      break;
       case ERTSOSettingsType::Key:
          OnKey(DataSelector.GetRef<FRTSOSettingsKeyData>(), SettingsTag);
-      continue;
+      break;
       }
    }
 }

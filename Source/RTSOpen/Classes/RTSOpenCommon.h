@@ -935,6 +935,7 @@ namespace PD::Settings
 {
 	using ERTSOSettingsGroups = ERTSOSettings;
 
+	UE_DECLARE_GAMEPLAY_TAG_EXTERN(TAG_SettingsBase)
 	//
 	// Settings - Gameplay categories
 	UE_DECLARE_GAMEPLAY_TAG_EXTERN(TAG_Camera)
@@ -1190,7 +1191,7 @@ public:
 	FText GetTagText() const;
 
 
-    ERTSOSettingsType PropertyType = ERTSOSettingsType::Key;
+    ERTSOSettingsType PropertyType = ERTSOSettingsType::None;
     TSharedPtr<IPropertyHandle> PropertyHandle = nullptr;
 	TSharedPtr<IMenu> PopupMenuPtr = nullptr;
 
@@ -1203,7 +1204,6 @@ protected:
 
 	TSharedPtr<class SExpandableArea> ExpandableAreaPtr = nullptr;
 	TSharedPtr<class SGameplayTagPicker> TagPickerPtr = nullptr;
-	TSharedPtr<class SWidget> RowWidgetPtr = nullptr;
 };
 #endif // WITH_EDITOR
 

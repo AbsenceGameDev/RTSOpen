@@ -19,6 +19,8 @@ void FRTSOpenModule::StartupModule()
    PropertyEditor.RegisterCustomPropertyTypeLayout(NAME_ByteProperty, InstanceDelegate);
    PropertyEditor.RegisterCustomPropertyTypeLayout("SlateColor", InstanceDelegate);
    PropertyEditor.RegisterCustomPropertyTypeLayout("Key", InstanceDelegate);
+
+   // Not working
    PropertyEditor.RegisterCustomPropertyTypeLayout(NAME_Vector, InstanceDelegate);
    PropertyEditor.RegisterCustomPropertyTypeLayout(NAME_Vector2D, InstanceDelegate);
    PropertyEditor.RegisterCustomPropertyTypeLayout(NAME_Color, InstanceDelegate);

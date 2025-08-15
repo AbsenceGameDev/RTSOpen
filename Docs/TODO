@@ -55,6 +55,12 @@ August 15th 2025 - Commit#0 :
             - Tags not updating in different proeprty types. Bool properties are displying the floatproperties tags
             - Selecting a tag does not close the tag picker popup 
 
+August 15th 2025 - Commit#1 :
+    - IN PROGRESS: Set up logic to translate our Gameplay and UI settings to actual changes for our gameplay states 
+        TODO BUGS (Next commit):
+            ✔ DONE: Tags not updating in different proeprty types. Bool properties are displying the floatproperties tags @done(25-08-15 12:04)
+            ✔ DONE: Selecting a tag does not close the tag picker popup @done(25-08-15 12:04)
+
 TODO:
 
     - Set up logic to translate our Gameplay and UI settings to actaul changes for our gameplay states 
