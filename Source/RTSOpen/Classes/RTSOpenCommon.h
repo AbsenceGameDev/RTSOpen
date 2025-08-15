@@ -895,6 +895,12 @@ struct FRTSOSettingsDataSelector
 	FRTSOSettingsKeyData AsKey;
 };
 
+namespace PD::Settings
+{
+	using FDataSelector = FRTSOSettingsDataSelector;
+
+}
+
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FRTSOSettingsDataDelegate, FRTSOSettingsDataSelector, SettingsDataSelector);
 
 /** @brief Settings data struct for game settings we want to display in the settings menu */
@@ -1177,17 +1183,27 @@ public:
 	//~ End IDetailCustomNodeBuilder interface
     
 	TSharedRef<class SExpandableArea> SpawnExpandableOptionsArea();
-	
+	TSharedRef<class SGameplayTagPicker> SpawnFilteredOptionsPicker();
+	void OnTagSelectorPressed();
+	void OnTagMenuDismissed(TSharedRef<IMenu> ClosingMenu);
+	void OnCheckboxStateChanged(ECheckBoxState NewState);
+	FText GetTagText() const;
+
+
     ERTSOSettingsType PropertyType = ERTSOSettingsType::Key;
-    TSharedPtr<IPropertyHandle> PropertyHandle;
+    TSharedPtr<IPropertyHandle> PropertyHandle = nullptr;
+	TSharedPtr<IMenu> PopupMenuPtr = nullptr;
 
 	FGameplayTag LatestSelectedTag;
 
 protected:
     /** @brief */
 	FSimpleDelegate OnRegenerateChildren;
+	FDelegateHandle FilterHandle;
 
-	TSharedPtr<SExpandableArea> ExpandableAreaPtr = nullptr;
+	TSharedPtr<class SExpandableArea> ExpandableAreaPtr = nullptr;
+	TSharedPtr<class SGameplayTagPicker> TagPickerPtr = nullptr;
+	TSharedPtr<class SWidget> RowWidgetPtr = nullptr;
 };
 #endif // WITH_EDITOR
 

@@ -13,6 +13,16 @@ void FRTSOpenModule::StartupModule()
    FOnGetPropertyTypeCustomizationInstance InstanceDelegate;
    InstanceDelegate.BindStatic(&FRTSOValueBinderDetails::MakeInstance);
    PropertyEditor.RegisterCustomPropertyTypeLayout("FloatProperty", InstanceDelegate);
+   PropertyEditor.RegisterCustomPropertyTypeLayout("BoolProperty", InstanceDelegate);
+   PropertyEditor.RegisterCustomPropertyTypeLayout("IntProperty", InstanceDelegate);
+   PropertyEditor.RegisterCustomPropertyTypeLayout(NAME_EnumProperty, InstanceDelegate);
+   PropertyEditor.RegisterCustomPropertyTypeLayout(NAME_ByteProperty, InstanceDelegate);
+   PropertyEditor.RegisterCustomPropertyTypeLayout("SlateColor", InstanceDelegate);
+   PropertyEditor.RegisterCustomPropertyTypeLayout("Key", InstanceDelegate);
+   PropertyEditor.RegisterCustomPropertyTypeLayout(NAME_Vector, InstanceDelegate);
+   PropertyEditor.RegisterCustomPropertyTypeLayout(NAME_Vector2D, InstanceDelegate);
+   PropertyEditor.RegisterCustomPropertyTypeLayout(NAME_Color, InstanceDelegate);
+   PropertyEditor.RegisterCustomPropertyTypeLayout(NAME_LinearColor, InstanceDelegate);
 #endif
 }
 

@@ -6,6 +6,7 @@
 #include "Kismet/KismetSystemLibrary.h"
 #include "Misc/Guid.h"
 #include "Serialization/StructuredArchive.h"
+#include "Internationalization/TextKey.h"
 #include "Subsystems/RTSOSettingsSubsystem.h"
 
 #if WITH_EDITOR
@@ -23,6 +24,7 @@
 #include "SGameplayTagCombo.h"
 #include "SGameplayTagPicker.h"
 #include "SGameplayTagWidget.h"
+#include "GameplayTagsManager.h"
 
 #include "Styling/CoreStyle.h"
 #endif // WITH_EDITOR
@@ -147,6 +149,8 @@ void FRTSOBinderDetailRowBuilder::GenerateHeaderRowContent(FDetailWidgetRow& Nod
 }
 void FRTSOBinderDetailRowBuilder::GenerateChildContent(IDetailChildrenBuilder& ChildrenBuilder)
 {
+	IDetailCustomNodeBuilder::GenerateChildContent(ChildrenBuilder);
+
 	// FDetailWidgetRow& RowBuilder_GuidMapper = ChildrenBuilder .AddCustomRow(LOCTEXT("GuidMappingSelector", "Edit Targets")).RowTag("EditTargetRow");
 	FDetailWidgetRow& BinderRow = ChildrenBuilder.AddCustomRow(LOCTEXT("RTSOBinderDetails", "Edit Targets")).RowTag("EditTargetRow");
 
@@ -154,6 +158,7 @@ void FRTSOBinderDetailRowBuilder::GenerateChildContent(IDetailChildrenBuilder& C
 	[
 		PropertyHandle->CreatePropertyNameWidget()
 	];
+	RowWidgetPtr = BinderRow.WholeRowWidget.Widget;
 	BinderRow.ValueContent()
 	[
 		SNew(SHorizontalBox)
@@ -175,26 +180,67 @@ void FRTSOBinderDetailRowBuilder::GenerateChildContent(IDetailChildrenBuilder& C
 				+ SHorizontalBox::Slot()
 				[
 					SNew(SCheckBox)
-					.OnCheckStateChanged_Lambda(
-						[](ECheckBoxState NewState)
-						{
-							// TODO, Handle on check state changed
-							UE_LOG(LogTemp, Warning, TEXT("FRTSOBinderDetailRowBuilder::GenerateChildContent::OnCheckStateChanged_Lambda(NewCheckboxState:%s)"), *UEnum::GetValueAsString(NewState))
-						})
+					.OnCheckStateChanged(this, &FRTSOBinderDetailRowBuilder::OnCheckboxStateChanged)
 				]
 				+ SHorizontalBox::Slot()
 				[
-					// Selected tag // TODO
-					SNew(STextBlock)
-					.Text(FText::AsCultureInvariant("TODO:TAGNAME"))
-				]
-				+ SHorizontalBox::Slot()
-				[
-					SpawnExpandableOptionsArea()
+					// Selected tag
+					SNew(SButton)
+					.OnPressed(this, &FRTSOBinderDetailRowBuilder::OnTagSelectorPressed)
+					[
+						// TODO: Update Button Text when a tag has been picked!
+						SNew(STextBlock)
+						.Text(this, &FRTSOBinderDetailRowBuilder::GetTagText)
+					]
 				]
 			]
 		] 
 	];
+}
+
+void FRTSOBinderDetailRowBuilder::OnTagSelectorPressed()
+{
+	FSlateApplication& SlateApp = FSlateApplication::Get();
+	const FWidgetPath WidgetPath = SlateApp.LocateWindowUnderMouse(SlateApp.GetCursorPos(), SlateApp.GetInteractiveTopLevelWindows());
+
+	const FGeometry& RowWidgetGeometry = WidgetPath.Widgets.Num() <= 0 ? RowWidgetPtr->GetCachedGeometry() : WidgetPath.Widgets.Last().Geometry;
+	const float LayoutScaleMultiplier =  RowWidgetGeometry.GetAccumulatedLayoutTransform().GetScale();							
+	
+	TSharedRef<SGameplayTagPicker> MenuContentRef = SpawnFilteredOptionsPicker();
+	MenuContentRef->SlatePrepass(LayoutScaleMultiplier);
+	const FVector2D DesiredContentSize = MenuContentRef->GetDesiredSize();  // @todo slate: This is ignoring any w indow border size!
+	
+	const FVector2D NewPosition = FVector2D(RowWidgetGeometry.AbsolutePosition);
+	FVector2D NewWindowSize = DesiredContentSize;
+	
+	TSharedPtr<IMenu> PopupMenu = FSlateApplication::Get().PushMenu(
+		WidgetPath.Widgets.Num() <= 0 ? RowWidgetPtr.ToSharedRef() : WidgetPath.Widgets.Last().Widget, 
+		WidgetPath, MenuContentRef, NewPosition, FPopupTransitionEffect::ComboButton, true, NewWindowSize, EPopupMethod::CreateNewWindow, false);
+	if (PopupMenu.IsValid() == false)
+	{
+		UE_LOG(LogSlate, Error, TEXT(" FRTSOBinderDetailRowBuilder::OnTagSelectorPressed could not open tag menu"));
+		return;
+	}
+	PopupMenu->GetOnMenuDismissed().AddSP(this, &FRTSOBinderDetailRowBuilder::OnTagMenuDismissed);
+	PopupMenuPtr = PopupMenu;	
+}
+
+
+void FRTSOBinderDetailRowBuilder::OnTagMenuDismissed(TSharedRef<IMenu> ClosingMenu)
+{
+	// TODO Do some things here, not sure what yet, but at the very elast we need to unregister our lambda(s) when we've got some that needs to be unregistered
+}
+
+void FRTSOBinderDetailRowBuilder::OnCheckboxStateChanged(ECheckBoxState NewState)
+{
+	// TODO, Handle on check state changed
+	UE_LOG(LogTemp, Warning, TEXT("FRTSOBinderDetailRowBuilder::GenerateChildContent::OnCheckStateChanged_Lambda(NewCheckboxState:%s)"), *UEnum::GetValueAsString(NewState))
+}
+
+FText FRTSOBinderDetailRowBuilder::GetTagText() const
+{
+	const URTSOSettingsDeveloperSettings* SettingsDevSettings = GetDefault<URTSOSettingsDeveloperSettings>();
+	return FText::FromStringTable(SettingsDevSettings->SettingsStringTablePath, LatestSelectedTag.ToString());
 }
 
 TSharedRef<SExpandableArea> FRTSOBinderDetailRowBuilder::SpawnExpandableOptionsArea()
@@ -208,55 +254,91 @@ TSharedRef<SExpandableArea> FRTSOBinderDetailRowBuilder::SpawnExpandableOptionsA
 	]
 	.BodyContent()
 	[
-		SNew(SGameplayTagPicker)
-		.OnTagChanged_Lambda(
-			[this](const TArray<FGameplayTagContainer>& TagContainers)
-			{
-				LatestSelectedTag = TagContainers.IsEmpty() ? FGameplayTag() : TagContainers[0].First();
-				UE_LOG(LogTemp, Warning, TEXT("FRTSOBinderDetailRowBuilder::GenerateChildContent::OnTagChanged_Lambda(LatestSelectedTag:%s)"), *LatestSelectedTag.ToString())
-			})
-		.OnFilterTag_Lambda(
-			[PropertyTypeCapture = PropertyType](const TSharedPtr<FGameplayTagNode>& InGameplayTagNode) -> SGameplayTagPicker::ETagFilterResult
-			{
-				constexpr SGameplayTagPicker::ETagFilterResult IncludeTag = SGameplayTagPicker::ETagFilterResult::IncludeTag;
-				constexpr SGameplayTagPicker::ETagFilterResult ExcludeTag = SGameplayTagPicker::ETagFilterResult::ExcludeTag;
-
-				const FGameplayTag& CompTag = InGameplayTagNode->GetCompleteTag();
-				URTSOSettingsSubsystem* SettingsSubsystem = URTSOSettingsSubsystem::Get();
-
-				switch(PropertyTypeCapture)
-				{
-				case ERTSOSettingsType::Boolean:
-					return SettingsSubsystem->CheckBoxStates.Contains(CompTag) ? IncludeTag : ExcludeTag;
-				case ERTSOSettingsType::FloatSelector:
-				case ERTSOSettingsType::FloatSlider:
-					return SettingsSubsystem->DoubleStates.Contains(CompTag) ? IncludeTag : ExcludeTag;
-				case ERTSOSettingsType::IntegerSelector:
-				case ERTSOSettingsType::IntegerSlider:
-					return SettingsSubsystem->IntegerStates.Contains(CompTag) ? IncludeTag : ExcludeTag;
-				case ERTSOSettingsType::Vector2:
-					return SettingsSubsystem->Vector2dStates.Contains(CompTag) ? IncludeTag : ExcludeTag;
-				case ERTSOSettingsType::Vector3:
-					return SettingsSubsystem->VectorStates.Contains(CompTag) ? IncludeTag : ExcludeTag;
-				case ERTSOSettingsType::Colour:
-					return SettingsSubsystem->ColourStates.Contains(CompTag) ? IncludeTag : ExcludeTag;
-				case ERTSOSettingsType::String:
-					return SettingsSubsystem->StringStates.Contains(CompTag) ? IncludeTag : ExcludeTag;
-				case ERTSOSettingsType::EnumAsByte:
-					return SettingsSubsystem->ByteStates.Contains(CompTag) ? IncludeTag : ExcludeTag;
-				case ERTSOSettingsType::Key:
-					return SettingsSubsystem->KeyStates.Contains(CompTag) ? IncludeTag : ExcludeTag;
-
-				default:
-					return ExcludeTag; 
-				}
-
-				return IncludeTag;
-			})
+		SpawnFilteredOptionsPicker()
 	];
 
 	ExpandableAreaPtr = ExpandableAreaRef.ToSharedPtr();
 	return ExpandableAreaRef;
+}
+
+TSharedRef<SGameplayTagPicker> FRTSOBinderDetailRowBuilder::SpawnFilteredOptionsPicker()
+{
+	using TFilterDelegate = TDelegate<SGameplayTagPicker::ETagFilterResult(const TSharedPtr<FGameplayTagNode>&)>;
+	FString TagsFilter;
+	URTSOSettingsSubsystem* SettingsSubsystem = URTSOSettingsSubsystem::Get();
+	TArray<FGameplayTag> TagsToShow;
+	switch(PropertyType)
+	{
+	case ERTSOSettingsType::Boolean:
+		SettingsSubsystem->CheckBoxStates.GenerateKeyArray(TagsToShow);
+		break;
+	case ERTSOSettingsType::FloatSelector:
+	case ERTSOSettingsType::FloatSlider:
+		SettingsSubsystem->DoubleStates.GenerateKeyArray(TagsToShow);
+		break;
+	case ERTSOSettingsType::IntegerSelector:
+	case ERTSOSettingsType::IntegerSlider:
+		SettingsSubsystem->IntegerStates.GenerateKeyArray(TagsToShow);
+		break;
+	case ERTSOSettingsType::Vector2:
+		SettingsSubsystem->Vector2dStates.GenerateKeyArray(TagsToShow);
+		break;
+	case ERTSOSettingsType::Vector3:
+		SettingsSubsystem->VectorStates.GenerateKeyArray(TagsToShow);
+		break;
+	case ERTSOSettingsType::Colour:
+		SettingsSubsystem->ColourStates.GenerateKeyArray(TagsToShow);
+		break;
+	case ERTSOSettingsType::String:
+		SettingsSubsystem->StringStates.GenerateKeyArray(TagsToShow);
+		break;
+	case ERTSOSettingsType::EnumAsByte:
+		SettingsSubsystem->ByteStates.GenerateKeyArray(TagsToShow);
+		break;
+	case ERTSOSettingsType::Key:
+		SettingsSubsystem->KeyStates.GenerateKeyArray(TagsToShow);
+		break;
+	default:
+		break; 
+	}
+
+	const int32 TagLim = TagsToShow.Num();
+	for (int32 TagIdx = 0; TagIdx < TagLim; TagIdx++)
+	{
+		const FGameplayTag& Tag = TagsToShow[TagIdx];
+		TagsFilter.Append(Tag.ToString());
+		if (TagIdx < TagLim - 1)
+		{
+			TagsFilter.Append(",");
+		}
+	}
+
+	TArray<FGameplayTagContainer> TODOTagContainersTODO;
+
+	TSharedRef<SGameplayTagPicker> TagPickerRef = SNew(SGameplayTagPicker)
+	.ReadOnly(true)
+	.ShowMenuItems(false)
+	.MaxHeight(350.0f)
+	.MultiSelect(false)
+	.Filter(TagsFilter)
+	.GameplayTagPickerMode(EGameplayTagPickerMode::ManagementMode)
+	.OnTagChanged_Lambda(
+		[this](const TArray<FGameplayTagContainer>& TagContainers)
+		{
+			LatestSelectedTag = TagContainers.IsEmpty() ? FGameplayTag() : TagContainers[0].First();
+			if (PopupMenuPtr.IsValid()) 
+			{
+				PopupMenuPtr->Dismiss();
+			}
+			if (RowWidgetPtr.IsValid())
+			{
+				RowWidgetPtr->Invalidate(EInvalidateWidgetReason::All);
+			}
+			UE_LOG(LogTemp, Warning, TEXT("FRTSOBinderDetailRowBuilder::GenerateChildContent::OnTagChanged_Lambda(LatestSelectedTag:%s)"), *LatestSelectedTag.ToString())
+		});
+
+	TagPickerPtr = TagPickerRef.ToSharedPtr(); 	
+	return TagPickerRef;
 }
 
 FName FRTSOBinderDetailRowBuilder::GetName() const

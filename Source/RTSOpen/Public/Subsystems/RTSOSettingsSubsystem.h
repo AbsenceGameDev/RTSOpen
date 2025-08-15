@@ -26,7 +26,8 @@ public:
 
 	/** @brief TODO */
    static URTSOSettingsSubsystem* Get();
-
+	/** @brief TODO */
+   void GenerateInitialSettingsEntries();
 	/** @brief TODO */
    UFUNCTION() void OnCheckBox(bool bNewState, const FGameplayTag& SettingsTag);
 	/** @brief TODO */

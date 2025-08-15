@@ -46,6 +46,15 @@ August 14th 2025 - Commit#0 :
         - Create a property detail extension via overriding detail row content using slate to allow any property to be bound to the games settings system 
         Note: Need to resolve visual layout issues 
 
+August 15th 2025 - Commit#0 :
+    - IN PROGRESS: Set up logic to translate our Gameplay and UI settings to actual changes for our gameplay states 
+        ✔ DONE: Need to resolve visual layout issues @done(25-08-15 03:38)
+        ✔ DONE: Gameplay tag picker filter logic @done(25-08-15 03:38)
+        ✔ DONE: Subssytem initial registration of all settings tags and their default data selectors @done(25-08-15 03:38)
+        TODO BUGS (Next commit):
+            - Tags not updating in different proeprty types. Bool properties are displying the floatproperties tags
+            - Selecting a tag does not close the tag picker popup 
+
 TODO:
 
     - Set up logic to translate our Gameplay and UI settings to actaul changes for our gameplay states 

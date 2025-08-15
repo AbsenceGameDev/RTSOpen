@@ -8,7 +8,7 @@ void URTSOSettingsSubsystem::Initialize(FSubsystemCollectionBase& Collection)
 {
 	Super::Initialize(Collection);
    
-   // TODO
+   GenerateInitialSettingsEntries();
 }
 
 URTSOSettingsSubsystem* URTSOSettingsSubsystem::Get()
@@ -75,37 +75,67 @@ PD::Settings::EType URTSOSettingsSubsystem::GetSettingsTypeFromCategory(const FG
    return PD::Settings::EType::Num;
 }
 
+void URTSOSettingsSubsystem::GenerateInitialSettingsEntries()
+{
+	TMap<FGameplayTag, PD::Settings::FDataSelector> SettingsCategories{};
+	SettingsCategories.Append(PD::Settings::FGameplaySettingsDefaults::Camera);
+	SettingsCategories.Append(PD::Settings::FGameplaySettingsDefaults::ActionLog);
+	SettingsCategories.Append(PD::Settings::FGameplaySettingsDefaults::Difficulty);
+
+	SettingsCategories.Append(PD::Settings::FVideoSettingsDefaults::Display);
+	SettingsCategories.Append(PD::Settings::FVideoSettingsDefaults::Effects);
+	SettingsCategories.Append(PD::Settings::FVideoSettingsDefaults::Graphics);
+	
+	SettingsCategories.Append(PD::Settings::FAudioSettingsDefaults::Base);
+	
+	SettingsCategories.Append(PD::Settings::FControlsSettingsDefaults::Game);
+	SettingsCategories.Append(PD::Settings::FControlsSettingsDefaults::UI);
+	
+	SettingsCategories.Append(PD::Settings::FInterfaceSettingsDefaults::Base);
+
+   for (TTuple<FGameplayTag, PD::Settings::FDataSelector> DataTuple : SettingsCategories)
+   {
+      FGameplayTag SettingsTag = DataTuple.Key;
+      PD::Settings::FDataSelector DataSelector = DataTuple.Value;
+      switch(DataSelector.ValueType)
+      {
+      case ERTSOSettingsType::Boolean:
+         OnCheckBox(DataSelector.GetRef<bool>(), SettingsTag);
+      continue;
+      case ERTSOSettingsType::FloatSlider:
+      case ERTSOSettingsType::FloatSelector:
+         OnFloat(DataSelector.GetRef<double>(), SettingsTag);
+      continue;
+      case ERTSOSettingsType::IntegerSlider:
+      case ERTSOSettingsType::IntegerSelector:
+         OnInteger(DataSelector.GetRef<int32>(), SettingsTag);
+      continue;
+      case ERTSOSettingsType::EnumAsByte:
+         OnByte(DataSelector.GetRef<uint8>(), SettingsTag);
+      continue;
+      case ERTSOSettingsType::String:
+         OnString(DataSelector.GetRef<FString>(), SettingsTag);
+      continue;
+      case ERTSOSettingsType::Vector3:
+         OnVector(DataSelector.GetRef<FVector>(), SettingsTag);
+      continue;
+      case ERTSOSettingsType::Vector2:
+         OnVector2D(DataSelector.GetRef<FVector2D>(), SettingsTag);
+      continue;
+      case ERTSOSettingsType::Colour:
+         OnColour(DataSelector.GetRef<FColor>(), SettingsTag);
+      continue;
+      case ERTSOSettingsType::Key:
+         OnKey(DataSelector.GetRef<FRTSOSettingsKeyData>(), SettingsTag);
+      continue;
+      }
+   }
+}
+
 void URTSOSettingsSubsystem::OnCheckBox(bool bNewState, const FGameplayTag &SettingsTag)
 {
    UE_LOG(PDLog_SettingsHandler, Warning, TEXT("URTSOSettingsSubsystem::OnCheckBox(%s)"), *SettingsTag.ToString())
    CheckBoxStates.FindOrAdd(SettingsTag, bNewState);
-
-   FGameplayTag SettingsCategory = SettingsTag.RequestDirectParent();
-   switch(GetSettingsTypeFromCategory(SettingsCategory))
-   {
-		case PD::Settings::EType::Camera:
-      break;
-		case PD::Settings::EType::ActionLog:
-      break;
-		case PD::Settings::EType::Difficulty:
-      break;
-		case PD::Settings::EType::Display:
-      break;
-		case PD::Settings::EType::Effects:
-      break;
-		case PD::Settings::EType::Graphics:
-      break;
-		case PD::Settings::EType::Audio:
-      break;
-		case PD::Settings::EType::Audio_Volume:
-      break;
-		case PD::Settings::EType::Controls:
-      break;
-		case PD::Settings::EType::Controls_UI:
-      break;
-		case PD::Settings::EType::Interface:
-      break;      
-   }
 }
 void URTSOSettingsSubsystem::OnFloat(float NewFloat, const FGameplayTag &SettingsTag)
 {
