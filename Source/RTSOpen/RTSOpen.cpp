@@ -16,9 +16,9 @@ void FRTSOpenModule::StartupModule()
    PropertyEditor.RegisterCustomPropertyTypeLayout("BoolProperty", InstanceDelegate);
    PropertyEditor.RegisterCustomPropertyTypeLayout("IntProperty", InstanceDelegate);
    PropertyEditor.RegisterCustomPropertyTypeLayout(NAME_EnumProperty, InstanceDelegate);
-   PropertyEditor.RegisterCustomPropertyTypeLayout(NAME_ByteProperty, InstanceDelegate);
+   PropertyEditor.RegisterCustomPropertyTypeLayout(NAME_EnumProperty, InstanceDelegate);
    PropertyEditor.RegisterCustomPropertyTypeLayout("SlateColor", InstanceDelegate);
-   PropertyEditor.RegisterCustomPropertyTypeLayout("Key", InstanceDelegate);
+   PropertyEditor.RegisterCustomPropertyTypeLayout("RTSOSettingsKeyData", InstanceDelegate);
 
    // Not working
    PropertyEditor.RegisterCustomPropertyTypeLayout(NAME_Vector, InstanceDelegate);

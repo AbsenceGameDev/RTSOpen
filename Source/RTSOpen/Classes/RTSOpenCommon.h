@@ -660,6 +660,10 @@ struct RTSOPEN_API FPDSettingStatics
 	
 	static TArray<TSharedPtr<FString>> GenerateQualityStringPtrArray();
 	static TArray<TSharedPtr<FString>> GenerateStringPtrArrayFromDataSelector(const FRTSOSettingsDataSelector& DataSelector);
+	static bool IsUFunctionViableForBinding(UFunction* Function, FString PropertyCompareTypeName);
+
+	static FString SelectTargetFunctionParamType(ERTSOSettingsType SettingsValueType);
+	static FName GetFirstInputPropertyName(UFunction* Function);
 };
 
 USTRUCT(Blueprintable) struct FRTSOIntegerRange { GENERATED_BODY()  UPROPERTY(EditAnywhere, BlueprintReadWrite) int32 Min = {0}; UPROPERTY(EditAnywhere, BlueprintReadWrite) int32 Max = {0};};
@@ -931,8 +935,27 @@ enum class ERTSOSettings : uint8
 	Num,
 };
 
+
 namespace PD::Settings
 {
+	namespace Signatures
+	{
+		template<typename TSettingValue> 
+		class FSettingsDelegate : TDelegate<TSettingValue(const TSettingValue&)>
+		{};
+
+		using FProcessFloatValue = FSettingsDelegate<float>;
+		using FProcessDoubleValue = FSettingsDelegate<double>;
+		using FProcessIntValue = FSettingsDelegate<int32>;
+		using FProcessBoolValue = FSettingsDelegate<bool>;
+		using FProcessByteValue = FSettingsDelegate<uint8>;
+		using FProcessVec2Value = FSettingsDelegate<FVector2D>;
+		using FProcessVec3Value = FSettingsDelegate<FVector>;
+		using FProcessColourValue = FSettingsDelegate<FColor>;
+		using FProcessStringValue = FSettingsDelegate<FString>;
+		using FProcessKeyValue = FSettingsDelegate<FKey>;
+	}
+
 	using ERTSOSettingsGroups = ERTSOSettings;
 
 	UE_DECLARE_GAMEPLAY_TAG_EXTERN(TAG_SettingsBase)
@@ -1134,7 +1157,6 @@ namespace PD::Settings
 	};
 
 	/** @brief TODO */
-
 	static inline TArray<FString> QualityDefaultStrings{"Low", "Medium", "High", "Epic"};
 	static inline TArray<FString> DifficultyDefaultStrings{"Neophyte", "Acolyte", "Adept", "Challenger", "Conduit"};
 
@@ -1182,9 +1204,16 @@ public:
 	virtual bool InitiallyCollapsed() const override { return false; }
 	virtual FName GetName() const override;
 	//~ End IDetailCustomNodeBuilder interface
+
+	TSharedRef<ITableRow> MakeListViewWidget_QualifiedPreprocessFunctions(TSharedPtr<FString> InQualifiedFunctionPath, const TSharedRef<STableViewBase>& OwnerTable) const;
+	void OnOptionSelected_QualifiedPreprocessFunctions(TSharedPtr<FString> InQualifiedFunctionPath, ESelectInfo::Type InSelectInfo);
+
     
+	void PreprocessPropertyType();
+	void PopulateTagArray();
 	TSharedRef<class SExpandableArea> SpawnExpandableOptionsArea();
 	TSharedRef<class SGameplayTagPicker> SpawnFilteredOptionsPicker();
+	TSharedRef<class SVerticalBox> SpawnFilteredOptionsPickerWithSignatureBinder();
 	void OnTagSelectorPressed();
 	void OnTagMenuDismissed(TSharedRef<IMenu> ClosingMenu);
 	void OnCheckboxStateChanged(ECheckBoxState NewState);
@@ -1195,15 +1224,18 @@ public:
     TSharedPtr<IPropertyHandle> PropertyHandle = nullptr;
 	TSharedPtr<IMenu> PopupMenuPtr = nullptr;
 
-	FGameplayTag LatestSelectedTag;
+	FGameplayTag SelectedSettingsTag;
 
 protected:
     /** @brief */
 	FSimpleDelegate OnRegenerateChildren;
 	FDelegateHandle FilterHandle;
-
+	FString PropertyCompareTypeName;
+	TArray<FGameplayTag> TagsToShow;
 	TSharedPtr<class SExpandableArea> ExpandableAreaPtr = nullptr;
 	TSharedPtr<class SGameplayTagPicker> TagPickerPtr = nullptr;
+	TSharedPtr<SVerticalBox> CombinedBinderListPtr;
+	TArray<TSharedPtr<FString>> QualifiedFunctionPaths;
 };
 #endif // WITH_EDITOR
 

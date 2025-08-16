@@ -132,52 +132,108 @@ void URTSOSettingsSubsystem::GenerateInitialSettingsEntries()
    }
 }
 
+template<typename TSettingsType> 
+TSettingsType URTSOSettingsSubsystem::OnProcessFunctionForSettings(const TSettingsType& bNewValue, const FGameplayTag &SettingsTag)
+{
+   constexpr ERTSOSettingsType SettingsType = 
+        std::is_same_v<bool, TSettingsType> ? ERTSOSettingsType::Boolean
+      : std::is_same_v<int32, TSettingsType> ? ERTSOSettingsType::IntegerSlider
+      : std::is_same_v<float, TSettingsType> ? ERTSOSettingsType::FloatSlider
+      : std::is_same_v<double, TSettingsType> ? ERTSOSettingsType::FloatSlider
+      : std::is_same_v<uint8, TSettingsType> ? ERTSOSettingsType::EnumAsByte
+      : std::is_base_of_v<FColor, TSettingsType> ? ERTSOSettingsType::Colour
+      : std::is_base_of_v<FLinearColor, TSettingsType> ? ERTSOSettingsType::Colour
+      : std::is_base_of_v<FString, TSettingsType> ? ERTSOSettingsType::String
+      : std::is_base_of_v<FVector2D, TSettingsType> ? ERTSOSettingsType::Vector2
+      : std::is_base_of_v<FVector, TSettingsType> ? ERTSOSettingsType::Vector3
+      : ERTSOSettingsType::None;
+
+   TSettingsType bProcessedValue = bNewValue;
+   if (SettingsProcessFunctionPaths.Contains(SettingsTag))
+   {
+      FString ObjectPath;
+      FString FunctionString;
+      SettingsProcessFunctionPaths.Find(SettingsTag)->Split(FString(":"), &ObjectPath, &FunctionString, ESearchCase::IgnoreCase, ESearchDir::FromEnd);
+
+      UObject* ObjectInstance = StaticLoadObject(UObject::StaticClass(), nullptr, *ObjectPath);
+      if (ObjectInstance != nullptr)
+      {
+         UFunction* Function = ObjectInstance->FindFunction(FName(FunctionString));
+         if (Function != nullptr && FPDSettingStatics::IsUFunctionViableForBinding(Function, FPDSettingStatics::SelectTargetFunctionParamType(SettingsType)))
+         {
+            FStructOnScope ParamStruct(Function);
+            void* Params = ParamStruct.GetStructMemory();
+            FProperty* InputProp = Function->FindPropertyByName(FPDSettingStatics::GetFirstInputPropertyName(Function));
+            if (InputProp != nullptr)
+            {
+               InputProp->SetValue_InContainer(Params, &bNewValue);
+            }
+            ObjectInstance->ProcessEvent(Function, Params);
+            FProperty* ReturnProp = Function->GetReturnProperty();
+            if (ReturnProp != nullptr)
+            {
+               ReturnProp->GetValue_InContainer(Params, &bProcessedValue);
+            }              
+         }
+      }      
+   }
+   return bProcessedValue;
+}
+
+
 void URTSOSettingsSubsystem::OnCheckBox(bool bNewState, const FGameplayTag &SettingsTag)
 {
    UE_LOG(PDLog_SettingsHandler, Warning, TEXT("URTSOSettingsSubsystem::OnCheckBox(%s)"), *SettingsTag.ToString())
-   CheckBoxStates.FindOrAdd(SettingsTag, bNewState);
+   CheckBoxStates.FindOrAdd(SettingsTag, OnProcessFunctionForSettings(bNewState, SettingsTag));
 }
 void URTSOSettingsSubsystem::OnFloat(float NewFloat, const FGameplayTag &SettingsTag)
 {
    UE_LOG(PDLog_SettingsHandler, Warning, TEXT("URTSOSettingsSubsystem::OnFloat(%s)"), *SettingsTag.ToString())
-   DoubleStates.FindOrAdd(SettingsTag, NewFloat);   
+   DoubleStates.FindOrAdd(SettingsTag, OnProcessFunctionForSettings(NewFloat, SettingsTag));
 }
 void URTSOSettingsSubsystem::OnInteger(int32 NewInteger, const FGameplayTag &SettingsTag)
 {
    UE_LOG(PDLog_SettingsHandler, Warning, TEXT("URTSOSettingsSubsystem::OnInteger(%s)"), *SettingsTag.ToString())
-   IntegerStates.FindOrAdd(SettingsTag, NewInteger);
+   IntegerStates.FindOrAdd(SettingsTag, OnProcessFunctionForSettings(NewInteger, SettingsTag));
 }
 void URTSOSettingsSubsystem::OnByte(uint8 NewByte, const FGameplayTag &SettingsTag)
 {
    UE_LOG(PDLog_SettingsHandler, Warning, TEXT("URTSOSettingsSubsystem::OnByte(%s)"), *SettingsTag.ToString())
-   ByteStates.FindOrAdd(SettingsTag, NewByte);   
+   ByteStates.FindOrAdd(SettingsTag, OnProcessFunctionForSettings(NewByte, SettingsTag));   
 }
 void URTSOSettingsSubsystem::OnString(FString NewString, const FGameplayTag& SettingsTag)
 {
    UE_LOG(PDLog_SettingsHandler, Warning, TEXT("URTSOSettingsSubssytem::OnString(%s)"), *SettingsTag.ToString())
-   StringStates.FindOrAdd(SettingsTag, NewString);
+   StringStates.FindOrAdd(SettingsTag, OnProcessFunctionForSettings(NewString, SettingsTag));
 }
 
 void URTSOSettingsSubsystem::OnVector(FVector NewVector, const FGameplayTag& SettingsTag)
 {
    UE_LOG(PDLog_SettingsHandler, Warning, TEXT("URTSOSettingsSubsystem::OnVector(%s)"), *SettingsTag.ToString())
-   VectorStates.FindOrAdd(SettingsTag, NewVector);   
+   VectorStates.FindOrAdd(SettingsTag, OnProcessFunctionForSettings(NewVector, SettingsTag));
 }
 void URTSOSettingsSubsystem::OnVector2D(FVector2D NewVector2d, const FGameplayTag& SettingsTag)
 {
    UE_LOG(PDLog_SettingsHandler, Warning, TEXT("URTSOSettingsSubsystem::OnVector2D(%s)"), *SettingsTag.ToString())
-   Vector2dStates.FindOrAdd(SettingsTag, NewVector2d);   
+   Vector2dStates.FindOrAdd(SettingsTag, OnProcessFunctionForSettings(NewVector2d, SettingsTag));   
 }
 void URTSOSettingsSubsystem::OnColour(FColor NewColour, const FGameplayTag& SettingsTag)
 {
    UE_LOG(PDLog_SettingsHandler, Warning, TEXT("URTSOSettingsSubsystem::OnColour(%s)"), *SettingsTag.ToString())
-   ColourStates.FindOrAdd(SettingsTag, NewColour);   
+   ColourStates.FindOrAdd(SettingsTag, OnProcessFunctionForSettings(NewColour, SettingsTag));
 }
 void URTSOSettingsSubsystem::OnKey(FRTSOSettingsKeyData NewKeys, const FGameplayTag& SettingsTag)
 {
    UE_LOG(PDLog_SettingsHandler, Warning, TEXT("URTSOSettingsSubsystem::OnKey(%s)"), *SettingsTag.ToString())
-   KeyStates.FindOrAdd(SettingsTag, NewKeys);   
+   KeyStates.FindOrAdd(SettingsTag, OnProcessFunctionForSettings(NewKeys, SettingsTag));
 }
+
+void URTSOSettingsSubsystem::SetProcessFunctionForSettingsBoundVariable(const FGameplayTag& SettingsTag, FString InQualifiedFunctionPath)
+{
+   UE_LOG(PDLog_SettingsHandler, Warning, TEXT("URTSOSettingsSubsystem::SetProcessFunctionForSettingsBoundVariable(%s::%s)"), *SettingsTag.ToString(), *InQualifiedFunctionPath)
+   SettingsProcessFunctionPaths.FindOrAdd(SettingsTag, InQualifiedFunctionPath);
+}
+
 
 void* URTSOSettingsSubsystem::GetData(const FGameplayTag& SettingsTag)
 {

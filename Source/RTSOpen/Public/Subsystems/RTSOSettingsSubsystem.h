@@ -46,6 +46,11 @@ public:
    UFUNCTION() void OnColour(FColor NewColour, const FGameplayTag& SettingsTag);
 	/** @brief TODO */
    UFUNCTION() void OnKey(FRTSOSettingsKeyData NewKeys, const FGameplayTag& SettingsTag);
+	/** @brief TODO */
+	UFUNCTION() void SetProcessFunctionForSettingsBoundVariable(const FGameplayTag& SettingsTag, FString InQualifiedFunctionPath);
+	template<typename TSettingsType> 
+   TSettingsType OnProcessFunctionForSettings(const TSettingsType& bNewValue, const FGameplayTag &SettingsTag);
+
 
    /** @brief TODO */
    template<typename TDataType>
@@ -92,6 +97,8 @@ public:
    static bool LoadAllSettingsData();
 #pragma endregion // SaveStatics
 
+	/** @brief Map that associates settigns tags with ufunctions using their objects paths as strings */
+   UPROPERTY() TMap<FGameplayTag, FString> SettingsProcessFunctionPaths;
 	/** @brief TODO */
    UPROPERTY() TMap<FGameplayTag, bool> CheckBoxStates;
 	/** @brief TODO */

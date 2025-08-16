@@ -61,13 +61,25 @@ August 15th 2025 - Commit#1 :
             ✔ DONE: Tags not updating in different proeprty types. Bool properties are displying the floatproperties tags @done(25-08-15 12:04)
             ✔ DONE: Selecting a tag does not close the tag picker popup @done(25-08-15 12:04)
 
-TODO:
 
-    - Set up logic to translate our Gameplay and UI settings to actaul changes for our gameplay states 
-    - Implement Save/Load logic for settings, 
+August 16th 2025 - Commit#0 :
+    - Allow the property binding to use a function with the signature, 
+            ✔ DONE: template<typename TSettingValueType> TSettingValueType ProcessValue(const TSettingValueType& UnprocessedValue) @done(25-08-16 03:46)
+            ✔ DONE: Extend subsystem to handle invoking any bound processvalue UFunction @done(25-08-16 03:46)
+            ✔ DONE: Need to scan the class for any such signatures and display them in a selectable string list @done(25-08-16 23:56)
+                - TODO: If a function is removed and does not exist, remove the entry from the string list
+
+August 17th 2025 - Commit#0 :
+    - Actually store property path information to the property we want to target
+    - Save/Load stored property path information to file
+    - Implement Save/Load logic for settings value as-well
     - Set up a save dialog in case the user changes a setting but forgets to save, to give them a chance to save the game
+    - Test settings system changes in game
 
-    - (LOW PRIO): Finsh UPDRangedSelector changes so it can iterate a list of data. Search for ERTSOSettingsType::IntegerSelector to find your way back to this
+TODO:
+    - Set up logic to translate our Gameplay and UI settings to actaul changes for our gameplay states 
+    - (LOW PRIO): Finish UPDRangedSelector changes so it can iterate a list of values instead of just incrementing a value stepwise. 
+        - Search for ERTSOSettingsType::IntegerSelector to find your way back to this
     
 TODO - After polishing existing systems:
     - Finish implementation of the mission/quest system
