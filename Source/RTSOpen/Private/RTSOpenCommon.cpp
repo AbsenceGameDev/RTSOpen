@@ -396,7 +396,7 @@ TSharedRef<SVerticalBox> FRTSOBinderDetailRowBuilder::SpawnFilteredOptionsPicker
 			+ SVerticalBox::Slot()
 			[
 				SpawnFilteredOptionsPicker()
-			]						
+			]
 		];
 	CombinedBinderListPtr = CombinedBinderListRef.ToSharedPtr();
 	return CombinedBinderListRef;
