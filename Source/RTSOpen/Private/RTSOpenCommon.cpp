@@ -373,7 +373,7 @@ TSharedRef<SVerticalBox> FRTSOBinderDetailRowBuilder::SpawnFilteredOptionsPicker
 			+ SVerticalBox::Slot()
 			[
 				SNew(STextBlock)
-				.Text(TEXT("BINDABLE FUNCTIONS"))
+				.Text(FText::AsCultureInvariant("BINDABLE FUNCTIONS"))
 			]
 			+ SVerticalBox::Slot()
 			[
@@ -391,7 +391,7 @@ TSharedRef<SVerticalBox> FRTSOBinderDetailRowBuilder::SpawnFilteredOptionsPicker
 			+ SVerticalBox::Slot()
 			[
 				SNew(STextBlock)
-				.Text(TEXT("TARGET TAG SELECTOR"))
+				.Text(FText::AsCultureInvariant("TARGET TAG SELECTOR"))
 			]
 			+ SVerticalBox::Slot()
 			[
