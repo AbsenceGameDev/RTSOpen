@@ -64,14 +64,25 @@ August 15th 2025 - Commit#1 :
 
 August 16th 2025 - Commit#0 :
     - Allow the property binding to use a function with the signature, 
-            ✔ DONE: template<typename TSettingValueType> TSettingValueType ProcessValue(const TSettingValueType& UnprocessedValue) @done(25-08-16 03:46)
-            ✔ DONE: Extend subsystem to handle invoking any bound processvalue UFunction @done(25-08-16 03:46)
-            ✔ DONE: Need to scan the class for any such signatures and display them in a selectable string list @done(25-08-16 23:56)
-                - TODO: If a function is removed and does not exist, remove the entry from the string list
+        ✔ DONE: template<typename TSettingValueType> TSettingValueType ProcessValue(const TSettingValueType& UnprocessedValue) @done(25-08-16 03:46)
+        ✔ DONE: Extend subsystem to handle invoking any bound processvalue UFunction @done(25-08-16 03:46)
+        ✔ DONE: Need to scan the class for any such signatures and display them in a selectable string list @done(25-08-16 23:56)
+            - TODO: If a function is removed and does not exist, remove the entry from the string list
 
-August 17th 2025 - Commit#0 :
-    - Actually store property path information to the property we want to target
-    - Save/Load stored property path information to file
+August 17th 2025 - Commit#2 :
+        ✔ DONE: Layout issues in property binder @done(25-08-17 04:09)
+        ✔ DONE: Custom detail costumization to attach the binding widget with the FRTSOSettingsKeyData details widgets (Bug was not displaying this at all) @done(25-08-17 04:09)
+        - TODO: The "solution" was a bit of a mess, will fix later 
+        - IN PROGRESS: Allow the property binding to use a function with the signature,
+            - INPROGRESS: OnSelect for the bindable function list 
+            - TODO: If a function is removed and does not exist, remove the entry from the string list
+
+August 17th 2025 - Commit#3 :
+    TODO : 
+        - Actually store property path information to the property we want to target
+        - Save/Load stored property path information to file
+
+August 18th 2025 - Commit#0 :
     - Implement Save/Load logic for settings value as-well
     - Set up a save dialog in case the user changes a setting but forgets to save, to give them a chance to save the game
     - Test settings system changes in game

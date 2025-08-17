@@ -13,18 +13,32 @@ void FRTSOpenModule::StartupModule()
    FOnGetPropertyTypeCustomizationInstance InstanceDelegate;
    InstanceDelegate.BindStatic(&FRTSOValueBinderDetails::MakeInstance);
    PropertyEditor.RegisterCustomPropertyTypeLayout("FloatProperty", InstanceDelegate);
+   PropertyEditor.UnregisterCustomPropertyTypeLayout("DoubleProperty");
+   PropertyEditor.RegisterCustomPropertyTypeLayout("DoubleProperty", InstanceDelegate);
+   PropertyEditor.UnregisterCustomPropertyTypeLayout("BoolProperty");
    PropertyEditor.RegisterCustomPropertyTypeLayout("BoolProperty", InstanceDelegate);
+   PropertyEditor.UnregisterCustomPropertyTypeLayout("IntProperty");
    PropertyEditor.RegisterCustomPropertyTypeLayout("IntProperty", InstanceDelegate);
+   PropertyEditor.UnregisterCustomPropertyTypeLayout(NAME_ByteProperty);
+   PropertyEditor.RegisterCustomPropertyTypeLayout(NAME_ByteProperty, InstanceDelegate);
+   PropertyEditor.UnregisterCustomPropertyTypeLayout(NAME_EnumProperty);
    PropertyEditor.RegisterCustomPropertyTypeLayout(NAME_EnumProperty, InstanceDelegate);
-   PropertyEditor.RegisterCustomPropertyTypeLayout(NAME_EnumProperty, InstanceDelegate);
-   PropertyEditor.RegisterCustomPropertyTypeLayout("SlateColor", InstanceDelegate);
+   PropertyEditor.UnregisterCustomPropertyTypeLayout(NAME_VectorProperty);
+   PropertyEditor.RegisterCustomPropertyTypeLayout(NAME_VectorProperty, InstanceDelegate);
+
    PropertyEditor.RegisterCustomPropertyTypeLayout("RTSOSettingsKeyData", InstanceDelegate);
 
-   // Not working
+   // Not working, will have to target struct property and find the correct type
+   PropertyEditor.UnregisterCustomPropertyTypeLayout(NAME_Vector);
    PropertyEditor.RegisterCustomPropertyTypeLayout(NAME_Vector, InstanceDelegate);
+   PropertyEditor.UnregisterCustomPropertyTypeLayout(NAME_Vector2D);
    PropertyEditor.RegisterCustomPropertyTypeLayout(NAME_Vector2D, InstanceDelegate);
+   PropertyEditor.UnregisterCustomPropertyTypeLayout(NAME_Color);
    PropertyEditor.RegisterCustomPropertyTypeLayout(NAME_Color, InstanceDelegate);
+   PropertyEditor.UnregisterCustomPropertyTypeLayout(NAME_LinearColor);
    PropertyEditor.RegisterCustomPropertyTypeLayout(NAME_LinearColor, InstanceDelegate);
+   PropertyEditor.UnregisterCustomPropertyTypeLayout("SlateColor");
+   PropertyEditor.RegisterCustomPropertyTypeLayout("SlateColor", InstanceDelegate);
 #endif
 }
 

@@ -566,7 +566,7 @@ enum class ERTSOSettingsKeySource : uint8
 };
 
 USTRUCT(Blueprintable)
-struct FRTSOSettingsKeyData
+struct RTSOPEN_API FRTSOSettingsKeyData
 {
 	GENERATED_BODY()
 
@@ -625,13 +625,13 @@ struct FRTSOSettingsKeyData
 	UPROPERTY()
 	FGuid HiddenSettingIdToMatchAgainst = FGuid{};
 
-	RTSOPEN_API bool operator==(const FRTSOSettingsKeyData& Other) const
+	bool operator==(const FRTSOSettingsKeyData& Other) const
 	{
 		return this->HiddenSettingIdToMatchAgainst == Other.HiddenSettingIdToMatchAgainst;
 	}
 
-	RTSOPEN_API bool Serialize(FArchive& Ar);
-	RTSOPEN_API FORCEINLINE friend FArchive& operator<<(FArchive& Ar, FRTSOSettingsKeyData& Value)
+	bool Serialize(FArchive& Ar);
+	FORCEINLINE friend FArchive& operator<<(FArchive& Ar, FRTSOSettingsKeyData& Value)
 	{
 		Value.Serialize(Ar);
 		return Ar;		

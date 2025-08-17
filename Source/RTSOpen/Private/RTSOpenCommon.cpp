@@ -14,6 +14,7 @@
 #if WITH_EDITOR
 #include "Editor.h"
 
+#include "IDetailGroup.h"
 #include "DetailCategoryBuilder.h"
 #include "DetailLayoutBuilder.h"
 #include "DetailWidgetRow.h"
@@ -75,12 +76,13 @@ void FRTSOValueBinderDetails::CustomizeChildren(TSharedRef<IPropertyHandle> Prop
 		return;
 	}
 
-	FStructProperty* AsStructProperty = static_cast<FStructProperty*>(PropertyHandle->GetProperty());
-
-	const FName PropertyTypeName = PropertyHandle->GetPropertyClass()->GetFName();
+	FName PropertyTypeName = PropertyHandle->GetPropertyClass()->GetFName();
+	UE_LOG(LogTemp, Warning, TEXT("=================================================="))
 	UE_LOG(LogTemp, Warning, TEXT("FRTSOValueBinderDetails::CustomizeChildren::(%s)%s"), *PropertyHandle->GetPropertyClass()->GetName(), *PropertyHandle->GetProperty()->NamePrivate.ToString())
 
+	FStructProperty* AsStructProperty = CastField<FStructProperty>(PropertyHandle->GetProperty());
 	TSharedRef<FRTSOBinderDetailRowBuilder> BinderRowBuilder = MakeShareable(new FRTSOBinderDetailRowBuilder);
+	BinderRowBuilder->PropertyType = ERTSOSettingsType::None;
 	if (NAME_FloatProperty == PropertyTypeName 
 		| NAME_DoubleProperty == PropertyTypeName) 
 	{
@@ -92,35 +94,47 @@ void FRTSOValueBinderDetails::CustomizeChildren(TSharedRef<IPropertyHandle> Prop
 		BinderRowBuilder->PropertyType = ERTSOSettingsType::IntegerSlider;
 		UE_LOG(LogTemp, Warning, TEXT("FRTSOValueBinderDetails::CustomizeChildren - INTEGER"))
 	}
+	else if (NAME_ByteProperty == PropertyTypeName)
+	{
+		BinderRowBuilder->PropertyType = ERTSOSettingsType::EnumAsByte;
+		UE_LOG(LogTemp, Warning, TEXT("FRTSOValueBinderDetails::CustomizeChildren - BYTE"))
+	}	
 	else if (NAME_BoolProperty == PropertyTypeName)
 	{
 		BinderRowBuilder->PropertyType = ERTSOSettingsType::Boolean;
 		UE_LOG(LogTemp, Warning, TEXT("FRTSOValueBinderDetails::CustomizeChildren - BOOL"))
 	}
-	else if (NAME_Vector2D == PropertyTypeName)
-	{
-		BinderRowBuilder->PropertyType = ERTSOSettingsType::Vector2;
-		UE_LOG(LogTemp, Warning, TEXT("FRTSOValueBinderDetails::CustomizeChildren - VEC2D"))
-	}
-	else if (NAME_Vector == PropertyTypeName )
+	else if (NAME_VectorProperty == PropertyTypeName)
 	{
 		BinderRowBuilder->PropertyType = ERTSOSettingsType::Vector3;
 		UE_LOG(LogTemp, Warning, TEXT("FRTSOValueBinderDetails::CustomizeChildren - VEC"))
-	}		
-	else if (TBaseStructure<FColor>::Get()->GetFName() == PropertyTypeName
-		|| TBaseStructure<FLinearColor>::Get()->GetName() == PropertyTypeName)
-	{
-		BinderRowBuilder->PropertyType = ERTSOSettingsType::Colour;
-		UE_LOG(LogTemp, Warning, TEXT("FRTSOValueBinderDetails::CustomizeChildren - COLOUR"))
 	}
-	else if (FKey::StaticStruct()->GetFName() == PropertyTypeName)
+	else if (NAME_StructProperty == PropertyTypeName && AsStructProperty != nullptr)
 	{
-		BinderRowBuilder->PropertyType = ERTSOSettingsType::Key;
-		UE_LOG(LogTemp, Warning, TEXT("FRTSOValueBinderDetails::CustomizeChildren - KEY"))
-	}
-	else
-	{
-		return;
+		UE_LOG(LogTemp, Warning, TEXT("FRTSOValueBinderDetails::CustomizeChildren - STRUCT(%s)"), *AsStructProperty->Struct->GetStructCPPName())
+		
+		PropertyTypeName = FName(AsStructProperty->Struct->GetStructCPPName());
+		if (NAME_Vector2D == PropertyTypeName)
+		{
+			BinderRowBuilder->PropertyType = ERTSOSettingsType::Vector2;
+			UE_LOG(LogTemp, Warning, TEXT("FRTSOValueBinderDetails::CustomizeChildren - VEC2D"))
+		}
+		else if (NAME_Vector == PropertyTypeName)
+		{
+			BinderRowBuilder->PropertyType = ERTSOSettingsType::Vector3;
+			UE_LOG(LogTemp, Warning, TEXT("FRTSOValueBinderDetails::CustomizeChildren - VEC"))
+		}		
+		else if (TBaseStructure<FColor>::Get()->GetFName() == PropertyTypeName
+			|| TBaseStructure<FLinearColor>::Get()->GetName() == PropertyTypeName)
+		{
+			BinderRowBuilder->PropertyType = ERTSOSettingsType::Colour;
+			UE_LOG(LogTemp, Warning, TEXT("FRTSOValueBinderDetails::CustomizeChildren - COLOUR"))
+		}
+		else if (FName("FRTSOSettingsKeyData") == PropertyTypeName)
+		{
+			BinderRowBuilder->PropertyType = ERTSOSettingsType::Key;
+			UE_LOG(LogTemp, Warning, TEXT("FRTSOValueBinderDetails::CustomizeChildren - KEY"))
+		}
 	}
 
 	BinderRowBuilder->PropertyHandle = PropertyHandle;
@@ -152,54 +166,99 @@ void FRTSOBinderDetailRowBuilder::GenerateHeaderRowContent(FDetailWidgetRow& Nod
 {
 	// FDetailWidgetRow::AddCustomContxtMenuAction 
 }
+
+//
+// TODO: Fix this mess
 void FRTSOBinderDetailRowBuilder::GenerateChildContent(IDetailChildrenBuilder& ChildrenBuilder)
 {
 	IDetailCustomNodeBuilder::GenerateChildContent(ChildrenBuilder);
 
-	// FDetailWidgetRow& RowBuilder_GuidMapper = ChildrenBuilder .AddCustomRow(LOCTEXT("GuidMappingSelector", "Edit Targets")).RowTag("EditTargetRow");
-	FDetailWidgetRow& BinderRow = ChildrenBuilder.AddCustomRow(LOCTEXT("RTSOBinderDetails", "Edit Targets")).RowTag("EditTargetRow");
+	bool bIsSettingsKeyData = false;
+	FStructProperty* AsStructProperty = CastField<FStructProperty>(PropertyHandle->GetProperty());
+	if (AsStructProperty != nullptr)
+	{
+		if (FName("FRTSOSettingsKeyData") == FName(AsStructProperty->Struct->GetStructCPPName()))
+		{
+			bIsSettingsKeyData = true;	
+		}
+	}
 
+	TSharedRef<SVerticalBox> BinderBox = SNew(SVerticalBox)
+	+ SVerticalBox::Slot()
+	[
+		SNew(STextBlock)
+		.Text(FText::AsCultureInvariant("Bind Game Settings"))
+	]
+	+ SVerticalBox::Slot()
+	[
+		SNew(SHorizontalBox)
+		+ SHorizontalBox::Slot()
+		.SizeParam(FAuto{})
+		[
+			SNew(SCheckBox)
+			.OnCheckStateChanged(this, &FRTSOBinderDetailRowBuilder::OnCheckboxStateChanged)
+		]
+		+ SHorizontalBox::Slot()
+		.SizeParam(FAuto{})
+		[
+			// Selected tag
+			SNew(SButton)
+			.OnPressed(this, &FRTSOBinderDetailRowBuilder::OnTagSelectorPressed)
+			[
+				// TODO: Update Button Text when a tag has been picked!
+				SNew(STextBlock)
+				.Text(this, &FRTSOBinderDetailRowBuilder::GetTagText)
+			]
+		]
+	];
+
+
+	IDetailGroup& PropertiesGroup = ChildrenBuilder.AddGroup(FName("Key"), FText::AsCultureInvariant("Properties"));
+	FDetailWidgetRow& BinderRow = ChildrenBuilder.AddCustomRow(LOCTEXT("RTSOBinderDetails", "Edit Targets")).RowTag("EditTargetRow");
 	BinderRow.NameContent()
 	[
 		PropertyHandle->CreatePropertyNameWidget()
 	];
 	BinderRow.ValueContent()
 	[
-		SNew(SHorizontalBox)
+		bIsSettingsKeyData 
+		? SNew(SHorizontalBox)
 		+ SHorizontalBox::Slot()
+		.Padding(FMargin(24, 0, 0, 0))
+		[
+			BinderBox
+		]
+		
+		: SNew(SHorizontalBox)
+		+ SHorizontalBox::Slot()
+		.SizeParam(FAuto{})
 		[
 			PropertyHandle->CreatePropertyValueWidget()
 		]
 		+ SHorizontalBox::Slot()
+		.Padding(FMargin(24, 0, 0, 0))
 		[
-			SNew(SVerticalBox)
-			+ SVerticalBox::Slot()
-			[
-				SNew(STextBlock)
-				.Text(FText::AsCultureInvariant("Bind Game Settings"))
-			]
-			+ SVerticalBox::Slot()
-			[
-				SNew(SHorizontalBox)
-				+ SHorizontalBox::Slot()
-				[
-					SNew(SCheckBox)
-					.OnCheckStateChanged(this, &FRTSOBinderDetailRowBuilder::OnCheckboxStateChanged)
-				]
-				+ SHorizontalBox::Slot()
-				[
-					// Selected tag
-					SNew(SButton)
-					.OnPressed(this, &FRTSOBinderDetailRowBuilder::OnTagSelectorPressed)
-					[
-						// TODO: Update Button Text when a tag has been picked!
-						SNew(STextBlock)
-						.Text(this, &FRTSOBinderDetailRowBuilder::GetTagText)
-					]
-				]
-			]
+			BinderBox
 		]
 	];
+
+
+	if (bIsSettingsKeyData == false)
+	{
+		return;
+	}	
+	
+	uint32 NumChildren = 0;
+	PropertyHandle->GetNumChildren(NumChildren);
+	for (uint32 Index = 0; Index < NumChildren; ++Index)
+	{
+		TSharedPtr<IPropertyHandle> ChildPropertyHandle = PropertyHandle->GetChildHandle(Index);
+		if (ChildPropertyHandle.IsValid())
+		{
+			IDetailPropertyRow& InnerBinderRow = PropertiesGroup.AddPropertyRow(ChildPropertyHandle.ToSharedRef());
+		}
+	}
+
 }
 
 void FRTSOBinderDetailRowBuilder::OnTagSelectorPressed()
@@ -371,17 +430,20 @@ TSharedRef<SVerticalBox> FRTSOBinderDetailRowBuilder::SpawnFilteredOptionsPicker
 		[
 			SNew(SVerticalBox)
 			+ SVerticalBox::Slot()
+			.SizeParam(FAuto{})
 			[
 				SNew(STextBlock)
 				.Text(FText::AsCultureInvariant("BINDABLE FUNCTIONS"))
 			]
 			+ SVerticalBox::Slot()
+			.SizeParam(FAuto{})
 			[
 				SNew(SListView<TSharedPtr<FString>>)
 				.ListItemsSource(&QualifiedFunctionPaths)
 				.OnGenerateRow(this, &FRTSOBinderDetailRowBuilder::MakeListViewWidget_QualifiedPreprocessFunctions)
 				.OnSelectionChanged(this, &FRTSOBinderDetailRowBuilder::OnOptionSelected_QualifiedPreprocessFunctions)			
 				.SelectionMode(ESelectionMode::Single)
+				.ItemHeight(24)
 			]
 		]
 		+ SVerticalBox::Slot()
@@ -389,11 +451,13 @@ TSharedRef<SVerticalBox> FRTSOBinderDetailRowBuilder::SpawnFilteredOptionsPicker
 		[
 			SNew(SVerticalBox)
 			+ SVerticalBox::Slot()
+			.SizeParam(FAuto{})
 			[
 				SNew(STextBlock)
 				.Text(FText::AsCultureInvariant("TARGET TAG SELECTOR"))
 			]
 			+ SVerticalBox::Slot()
+			.SizeParam(FAuto{})
 			[
 				SpawnFilteredOptionsPicker()
 			]
@@ -410,7 +474,6 @@ FName FRTSOBinderDetailRowBuilder::GetName() const
 TSharedRef<ITableRow> FRTSOBinderDetailRowBuilder::MakeListViewWidget_QualifiedPreprocessFunctions(TSharedPtr<FString> InQualifiedFunctionPath, const TSharedRef<STableViewBase>& OwnerTable) const
 {
 	check(InQualifiedFunctionPath.Get() != nullptr)
-	const URTSStringSelectorDeveloperSettings* SelectorDeveloperSettings = GetDefault<URTSStringSelectorDeveloperSettings>();
 
 	FString Trash;
 	FString FunctionName;
@@ -427,7 +490,7 @@ TSharedRef<ITableRow> FRTSOBinderDetailRowBuilder::MakeListViewWidget_QualifiedP
 			[
 				SNew(STextBlock)
 				.Text(FText::FromString(*FunctionName))
-				.Font(SelectorDeveloperSettings->DefaultFont) 
+				.Font(IDetailLayoutBuilder::GetDetailFont()) 
 			]
 		]
 	];
