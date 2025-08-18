@@ -33,7 +33,6 @@
 #endif // WITH_EDITOR
 
 
-
 bool FRTSOSettingsKeyData::Serialize(FArchive& Ar)
 {
 	Ar << HiddenSettingIdToMatchAgainst;
@@ -172,6 +171,7 @@ void FRTSOBinderDetailRowBuilder::GenerateHeaderRowContent(FDetailWidgetRow& Nod
 void FRTSOBinderDetailRowBuilder::GenerateChildContent(IDetailChildrenBuilder& ChildrenBuilder)
 {
 	IDetailCustomNodeBuilder::GenerateChildContent(ChildrenBuilder);
+	const FSlateFontInfo PropertyFontStyle = FAppStyle::GetFontStyle( TEXT("PropertyWindow.NormalFont") );
 
 	bool bIsSettingsKeyData = false;
 	FStructProperty* AsStructProperty = CastField<FStructProperty>(PropertyHandle->GetProperty());
@@ -188,6 +188,7 @@ void FRTSOBinderDetailRowBuilder::GenerateChildContent(IDetailChildrenBuilder& C
 	[
 		SNew(STextBlock)
 		.Text(FText::AsCultureInvariant("Bind Game Settings"))
+		.Font(PropertyFontStyle)
 	]
 	+ SVerticalBox::Slot()
 	[
@@ -205,22 +206,20 @@ void FRTSOBinderDetailRowBuilder::GenerateChildContent(IDetailChildrenBuilder& C
 			SNew(SButton)
 			.OnPressed(this, &FRTSOBinderDetailRowBuilder::OnTagSelectorPressed)
 			[
-				// TODO: Update Button Text when a tag has been picked!
 				SNew(STextBlock)
 				.Text(this, &FRTSOBinderDetailRowBuilder::GetTagText)
+				.Font(PropertyFontStyle)
 			]
 		]
 	];
 
-
-	IDetailGroup& PropertiesGroup = ChildrenBuilder.AddGroup(FName("Key"), FText::AsCultureInvariant("Properties"));
-	FDetailWidgetRow& BinderRow = ChildrenBuilder.AddCustomRow(LOCTEXT("RTSOBinderDetails", "Edit Targets")).RowTag("EditTargetRow");
-	BinderRow.NameContent()
-	[
-		PropertyHandle->CreatePropertyNameWidget()
-	];
-	BinderRow.ValueContent()
-	[
+	TSharedRef<SWidget> NameContent = 
+		bIsSettingsKeyData 
+			? SNew(STextBlock)
+				.Text(FText::AsCultureInvariant("Key Binder Header"))
+				.Font(PropertyFontStyle)
+			: PropertyHandle->CreatePropertyNameWidget();
+	TSharedRef<SWidget> ValueContent = 
 		bIsSettingsKeyData 
 		? SNew(SHorizontalBox)
 		+ SHorizontalBox::Slot()
@@ -239,17 +238,25 @@ void FRTSOBinderDetailRowBuilder::GenerateChildContent(IDetailChildrenBuilder& C
 		.Padding(FMargin(24, 0, 0, 0))
 		[
 			BinderBox
-		]
-	];
+		];
 
-
-	if (bIsSettingsKeyData == false)
-	{
-		return;
-	}	
-	
 	uint32 NumChildren = 0;
 	PropertyHandle->GetNumChildren(NumChildren);
+	if (bIsSettingsKeyData == false || NumChildren == 0)
+	{
+		FDetailWidgetRow& BinderRow = ChildrenBuilder.AddCustomRow(LOCTEXT("RTSOBinderDetails", "Edit Targets")).RowTag("EditTargetRow");
+		BinderRow.NameContent()[NameContent];
+		BinderRow.ValueContent()[ValueContent];
+		return;
+	}	
+
+	FText GroupName = FText::Format(FText::AsCultureInvariant("{0}(Bindable)"), PropertyHandle->GetPropertyDisplayName());
+	
+	IDetailGroup& PropertiesGroup = ChildrenBuilder.AddGroup(FName("Settings Keys"), GroupName);
+	FDetailWidgetRow& BinderRow = PropertiesGroup.AddWidgetRow();
+	BinderRow.NameContent()[NameContent];
+	BinderRow.ValueContent()[ValueContent];
+
 	for (uint32 Index = 0; Index < NumChildren; ++Index)
 	{
 		TSharedPtr<IPropertyHandle> ChildPropertyHandle = PropertyHandle->GetChildHandle(Index);
@@ -258,7 +265,6 @@ void FRTSOBinderDetailRowBuilder::GenerateChildContent(IDetailChildrenBuilder& C
 			IDetailPropertyRow& InnerBinderRow = PropertiesGroup.AddPropertyRow(ChildPropertyHandle.ToSharedRef());
 		}
 	}
-
 }
 
 void FRTSOBinderDetailRowBuilder::OnTagSelectorPressed()
@@ -351,14 +357,19 @@ void FRTSOBinderDetailRowBuilder::PopulateTagArray()
 	case ERTSOSettingsType::Colour: SettingsSubsystem->ColourStates.GenerateKeyArray(TagsToShow); break;
 	case ERTSOSettingsType::String: SettingsSubsystem->StringStates.GenerateKeyArray(TagsToShow); break;
 	case ERTSOSettingsType::EnumAsByte: SettingsSubsystem->ByteStates.GenerateKeyArray(TagsToShow); break;
-	case ERTSOSettingsType::Key: SettingsSubsystem->KeyStates.GenerateKeyArray(TagsToShow); break;
+
+	// Key is special case that crases when we filter out for each individual key, 
+	// seemingly resulting from the generated filter string being too long
+	// Current workaround is just to show the entire tag parent category, luckily for Keys these are all in one category without any other datatype
+	// NOTE: This will have to be resolved as with further development the other settings states are also expected to increase to the point of hitting this 
+	// string limit and then we can't use cheap tricks such as adding the tag cateogry to the filter as it will inevitably disply settingtags for other datatypes    
+	case ERTSOSettingsType::Key: TagsToShow.Emplace(PD::Settings::TAG_Controls); break;
 	default: break;
 	}
 }
 
 TSharedRef<SGameplayTagPicker> FRTSOBinderDetailRowBuilder::SpawnFilteredOptionsPicker()
 {
-	using TFilterDelegate = TDelegate<SGameplayTagPicker::ETagFilterResult(const TSharedPtr<FGameplayTagNode>&)>;
 	FString TagsFilter;
 
 	PopulateTagArray();
@@ -376,7 +387,7 @@ TSharedRef<SGameplayTagPicker> FRTSOBinderDetailRowBuilder::SpawnFilteredOptions
 	TArray<FGameplayTagContainer> TagContainers;
 	TagContainers.Add(FGameplayTagContainer{PD::Settings::TAG_SettingsBase});
 	TSharedRef<SGameplayTagPicker> TagPickerRef = SNew(SGameplayTagPicker)
-	.ReadOnly(true)
+	.ReadOnly(false)
 	.ShowMenuItems(false)
 	.MaxHeight(550.0f)
 	.MultiSelect(false)

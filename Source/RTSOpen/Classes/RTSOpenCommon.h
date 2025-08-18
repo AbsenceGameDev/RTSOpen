@@ -4,6 +4,7 @@
 
 #include "PDInteractCommon.h"
 #include "PDItemCommon.h"
+#include "PDRTSCommon.h"
 #include "Net/PDItemNetDatum.h"
 
 #include "Math/Range.h"

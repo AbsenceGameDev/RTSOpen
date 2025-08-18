@@ -72,20 +72,23 @@ August 16th 2025 - Commit#0 :
 August 17th 2025 - Commit#2 :
         ✔ DONE: Layout issues in property binder @done(25-08-17 04:09)
         ✔ DONE: Custom detail costumization to attach the binding widget with the FRTSOSettingsKeyData details widgets (Bug was not displaying this at all) @done(25-08-17 04:09)
-        - TODO: The "solution" was a bit of a mess, will fix later 
-        - IN PROGRESS: Allow the property binding to use a function with the signature,
-            - INPROGRESS: OnSelect for the bindable function list 
-            - TODO: If a function is removed and does not exist, remove the entry from the string list
+        
+August 18th 2025 - Commit#0 :
+    ✔ DONE: The "solution" was a bit of a mess, will fix later @done(25-08-18 07:05)
+    - IN PROGRESS: Other related changes and some fruitless debugging, Will figure this crap out in the coming days so I can bind to any core level property type 
 
-August 17th 2025 - Commit#3 :
-    TODO : 
-        - Actually store property path information to the property we want to target
-        - Save/Load stored property path information to file
 
 August 18th 2025 - Commit#0 :
     - Implement Save/Load logic for settings value as-well
     - Set up a save dialog in case the user changes a setting but forgets to save, to give them a chance to save the game
     - Test settings system changes in game
+    
+    - IN PROGRESS: Allow the property binding to use a function with the signature,
+        - INPROGRESS: OnSelect for the bindable function list 
+        - TODO: If a function is removed and does not exist, remove the entry from the string list
+    TODO : 
+        - Actually store property path information to the property we want to target
+        - Save/Load stored property path information to file
 
 TODO:
     - Set up logic to translate our Gameplay and UI settings to actaul changes for our gameplay states 
