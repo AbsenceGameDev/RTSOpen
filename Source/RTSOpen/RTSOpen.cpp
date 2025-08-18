@@ -26,12 +26,6 @@ void FRTSOpenModule::StartupModule()
    PropertyEditor.RegisterCustomPropertyTypeLayout("StrProperty", InstanceDelegate);
 
    PropertyEditor.RegisterCustomPropertyTypeLayout("RTSOSettingsKeyData", InstanceDelegate);
-   // Not working!! 
-   PropertyEditor.RegisterCustomPropertyTypeLayout(NAME_Vector, InstanceDelegate);
-   PropertyEditor.RegisterCustomPropertyTypeLayout(NAME_Vector2D, InstanceDelegate);
-   PropertyEditor.RegisterCustomPropertyTypeLayout(NAME_Color, InstanceDelegate);
-   PropertyEditor.RegisterCustomPropertyTypeLayout(NAME_LinearColor, InstanceDelegate);
-
 #endif
 }
 
