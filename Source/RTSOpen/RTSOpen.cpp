@@ -26,6 +26,12 @@ void FRTSOpenModule::StartupModule()
    PropertyEditor.RegisterCustomPropertyTypeLayout("StrProperty", InstanceDelegate);
 
    PropertyEditor.RegisterCustomPropertyTypeLayout("RTSOSettingsKeyData", InstanceDelegate);
+
+   // Types with some ungodly hardcoded customizations, so I will have to wrap them
+   PropertyEditor.RegisterCustomPropertyTypeLayout("VectorWrapper", InstanceDelegate);
+   PropertyEditor.RegisterCustomPropertyTypeLayout("Vector2DWrapper", InstanceDelegate);
+   PropertyEditor.RegisterCustomPropertyTypeLayout("ColorWrapper", InstanceDelegate);
+   PropertyEditor.RegisterCustomPropertyTypeLayout("LinearColorWrapper", InstanceDelegate);
 #endif
 }
 

@@ -103,28 +103,23 @@ void FRTSOValueBinderDetails::CustomizeChildren(TSharedRef<IPropertyHandle> Prop
 		BinderRowBuilder->PropertyType = ERTSOSettingsType::Boolean;
 		UE_LOG(LogTemp, Warning, TEXT("FRTSOValueBinderDetails::CustomizeChildren - BOOL"))
 	}
-	else if (NAME_VectorProperty == PropertyTypeName)
-	{
-		BinderRowBuilder->PropertyType = ERTSOSettingsType::Vector3;
-		UE_LOG(LogTemp, Warning, TEXT("FRTSOValueBinderDetails::CustomizeChildren - VEC"))
-	}
 	else if (NAME_StructProperty == PropertyTypeName && AsStructProperty != nullptr)
 	{
 		UE_LOG(LogTemp, Warning, TEXT("FRTSOValueBinderDetails::CustomizeChildren - STRUCT(%s)"), *AsStructProperty->Struct->GetStructCPPName())
 		
 		PropertyTypeName = FName(AsStructProperty->Struct->GetStructCPPName());
-		if (NAME_Vector2D == PropertyTypeName)
+		if (FName("FVector2DWrapper") == PropertyTypeName)
 		{
 			BinderRowBuilder->PropertyType = ERTSOSettingsType::Vector2;
 			UE_LOG(LogTemp, Warning, TEXT("FRTSOValueBinderDetails::CustomizeChildren - VEC2D"))
 		}
-		else if (NAME_Vector == PropertyTypeName)
+		else if (FName("FVectorWrapper") == PropertyTypeName)
 		{
 			BinderRowBuilder->PropertyType = ERTSOSettingsType::Vector3;
 			UE_LOG(LogTemp, Warning, TEXT("FRTSOValueBinderDetails::CustomizeChildren - VEC"))
 		}		
-		else if (TBaseStructure<FColor>::Get()->GetFName() == PropertyTypeName
-			|| TBaseStructure<FLinearColor>::Get()->GetName() == PropertyTypeName)
+		else if (FName("FColorWrapper") == PropertyTypeName
+			|| FName("FLinearColorWrapper") == PropertyTypeName)
 		{
 			BinderRowBuilder->PropertyType = ERTSOSettingsType::Colour;
 			UE_LOG(LogTemp, Warning, TEXT("FRTSOValueBinderDetails::CustomizeChildren - COLOUR"))
@@ -173,13 +168,17 @@ void FRTSOBinderDetailRowBuilder::GenerateChildContent(IDetailChildrenBuilder& C
 	IDetailCustomNodeBuilder::GenerateChildContent(ChildrenBuilder);
 	const FSlateFontInfo PropertyFontStyle = FAppStyle::GetFontStyle( TEXT("PropertyWindow.NormalFont") );
 
-	bool bIsSettingsKeyData = false;
+	bool bIsNestedStructData = false;
 	FStructProperty* AsStructProperty = CastField<FStructProperty>(PropertyHandle->GetProperty());
 	if (AsStructProperty != nullptr)
 	{
-		if (FName("FRTSOSettingsKeyData") == FName(AsStructProperty->Struct->GetStructCPPName()))
+		if (FName("FRTSOSettingsKeyData") == FName(AsStructProperty->Struct->GetStructCPPName())
+			|| FName("FVectorWrapper") == FName(AsStructProperty->Struct->GetStructCPPName())
+			|| FName("FVector2DWrapper") == FName(AsStructProperty->Struct->GetStructCPPName())
+			|| FName("FLinearColorWrapper") == FName(AsStructProperty->Struct->GetStructCPPName())
+			|| FName("FColorWrapper") == FName(AsStructProperty->Struct->GetStructCPPName()))
 		{
-			bIsSettingsKeyData = true;	
+			bIsNestedStructData = true;	
 		}
 	}
 
@@ -214,13 +213,13 @@ void FRTSOBinderDetailRowBuilder::GenerateChildContent(IDetailChildrenBuilder& C
 	];
 
 	TSharedRef<SWidget> NameContent = 
-		bIsSettingsKeyData 
+		bIsNestedStructData 
 			? SNew(STextBlock)
-				.Text(FText::AsCultureInvariant("Key Binder Header"))
+				.Text(FText::AsCultureInvariant("Settings Binder Header"))
 				.Font(PropertyFontStyle)
 			: PropertyHandle->CreatePropertyNameWidget();
 	TSharedRef<SWidget> ValueContent = 
-		bIsSettingsKeyData 
+		bIsNestedStructData 
 		? SNew(SHorizontalBox)
 		+ SHorizontalBox::Slot()
 		.Padding(FMargin(24, 0, 0, 0))
@@ -242,7 +241,7 @@ void FRTSOBinderDetailRowBuilder::GenerateChildContent(IDetailChildrenBuilder& C
 
 	uint32 NumChildren = 0;
 	PropertyHandle->GetNumChildren(NumChildren);
-	if (bIsSettingsKeyData == false || NumChildren == 0)
+	if (bIsNestedStructData == false || NumChildren == 0)
 	{
 		FDetailWidgetRow& BinderRow = ChildrenBuilder.AddCustomRow(LOCTEXT("RTSOBinderDetails", "Edit Targets")).RowTag("EditTargetRow");
 		BinderRow.NameContent()[NameContent];
@@ -252,7 +251,7 @@ void FRTSOBinderDetailRowBuilder::GenerateChildContent(IDetailChildrenBuilder& C
 
 	FText GroupName = FText::Format(FText::AsCultureInvariant("{0}(Bindable)"), PropertyHandle->GetPropertyDisplayName());
 	
-	IDetailGroup& PropertiesGroup = ChildrenBuilder.AddGroup(FName("Settings Keys"), GroupName);
+	IDetailGroup& PropertiesGroup = ChildrenBuilder.AddGroup(FName("SettingsEnabledTypes"), GroupName);
 	FDetailWidgetRow& BinderRow = PropertiesGroup.AddWidgetRow();
 	BinderRow.NameContent()[NameContent];
 	BinderRow.ValueContent()[ValueContent];

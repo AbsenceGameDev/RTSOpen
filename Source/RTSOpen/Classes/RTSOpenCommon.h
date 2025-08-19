@@ -1240,7 +1240,39 @@ protected:
 };
 #endif // WITH_EDITOR
 
+//
+// messy to just wrap these, but worsk for now
+USTRUCT(Blueprintable)
+struct RTSOPEN_API FVectorWrapper
+{
+	GENERATED_BODY()
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	FVector Inner;
+};
 
+USTRUCT(Blueprintable)
+struct RTSOPEN_API FVector2DWrapper
+{
+	GENERATED_BODY()
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	FVector2D Inner;
+};
+
+USTRUCT(Blueprintable)
+struct RTSOPEN_API FColorWrapper
+{
+	GENERATED_BODY()
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	FColor Inner;
+};
+
+USTRUCT(Blueprintable)
+struct RTSOPEN_API FLinearColorWrapper
+{
+	GENERATED_BODY()
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	FLinearColor Inner;
+};
 
 /**
 Business Source License 1.1

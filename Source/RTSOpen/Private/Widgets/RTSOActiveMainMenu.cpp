@@ -270,7 +270,8 @@ void URTSOMenuWidget_SettingsCategory::Refresh(
 			if (SettingsEntry->RangedSelector != nullptr && SettingsEntry->RangedSelector->IsValidLowLevel())
 			{
 				SettingsEntry->RangedSelector->CountTypeSelector = EPDSharedUICountTypeSelector::ERangedSlider;
-				// TODO
+				// TODO: Make widget with multiple selector boxes
+				// TODO: Then bind to it
 			}
 			
 			break;
@@ -278,7 +279,8 @@ void URTSOMenuWidget_SettingsCategory::Refresh(
 			if (SettingsEntry->RangedSelector != nullptr && SettingsEntry->RangedSelector->IsValidLowLevel())
 			{
 				SettingsEntry->RangedSelector->CountTypeSelector = EPDSharedUICountTypeSelector::ERangedSlider;
-				// TODO
+				// TODO: Make widget with multiple selector boxes
+				// TODO: Then bind to it
 			}
 			
 			break;
@@ -286,7 +288,8 @@ void URTSOMenuWidget_SettingsCategory::Refresh(
 			if (SettingsEntry->RangedSelector != nullptr && SettingsEntry->RangedSelector->IsValidLowLevel())
 			{
 				SettingsEntry->RangedSelector->CountTypeSelector = EPDSharedUICountTypeSelector::ERangedSlider;
-				// TODO
+				// TODO: Make runtime color picker widget? 
+				// TODO: Then bind to it
 			}
 			
 			break;

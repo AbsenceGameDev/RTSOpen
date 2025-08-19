@@ -231,9 +231,6 @@ public:
 	/** @brief TODO */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
 	uint8 bIsCheckBox : 1;
-	/** @brief TODO */
-	UPROPERTY(EditAnywhere, BlueprintReadWrite)
-	uint8 bIsRangedSelector : 1;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
 	uint8 WidgetSwitcherIndex = 0;

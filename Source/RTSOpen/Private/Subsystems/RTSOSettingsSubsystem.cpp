@@ -133,7 +133,7 @@ void URTSOSettingsSubsystem::GenerateInitialSettingsEntries()
 }
 
 template<typename TSettingsType> 
-TSettingsType URTSOSettingsSubsystem::OnProcessFunctionForSettings(const TSettingsType& bNewValue, const FGameplayTag &SettingsTag)
+TSettingsType URTSOSettingsSubsystem::OnProcessFunctionForSettings(const TSettingsType& NewValue, const FGameplayTag &SettingsTag)
 {
    constexpr ERTSOSettingsType SettingsType = 
         std::is_same_v<bool, TSettingsType> ? ERTSOSettingsType::Boolean
@@ -148,7 +148,7 @@ TSettingsType URTSOSettingsSubsystem::OnProcessFunctionForSettings(const TSettin
       : std::is_base_of_v<FVector, TSettingsType> ? ERTSOSettingsType::Vector3
       : ERTSOSettingsType::None;
 
-   TSettingsType bProcessedValue = bNewValue;
+   TSettingsType ProcessedValue = NewValue;
    if (SettingsProcessFunctionPaths.Contains(SettingsTag))
    {
       FString ObjectPath;

@@ -49,7 +49,7 @@ public:
 	/** @brief TODO */
 	UFUNCTION() void SetProcessFunctionForSettingsBoundVariable(const FGameplayTag& SettingsTag, FString InQualifiedFunctionPath);
 	template<typename TSettingsType> 
-   TSettingsType OnProcessFunctionForSettings(const TSettingsType& bNewValue, const FGameplayTag &SettingsTag);
+   TSettingsType OnProcessFunctionForSettings(const TSettingsType& NewValue, const FGameplayTag &SettingsTag);
 
 
    /** @brief TODO */
