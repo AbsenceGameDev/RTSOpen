@@ -1,63 +1,78 @@
-/* @author: Ario Amin @ Permafrost Development. @copyright: Full BSL(1.1) License included at bottom of the file  */
+﻿/* @author: Ario Amin @ Permafrost Development. @copyright: Full BSL(1.1) License included at bottom of the file  */
 
-using UnrealBuildTool;
-using System.IO;
+#pragma once
 
-public class RTSOpen : ModuleRules
+#include "CoreMinimal.h"
+#include "RTSOpenCommon.h"
+#include "Widgets/SCompoundWidget.h"
+#include "GameFramework/GameUserSettings.h"
+// #include "SRTSOVectorWidgets.generated.h"
+
+DECLARE_DELEGATE_ThreeParams(FOnVectorValueUpdated, UE::Math::TVector4<double> /*UpdatedValue*/, PD::Settings::VectorType /*Type*/, UWidget* /*Caller*/)
+
+/** @brief */
+class RTSOPEN_API SRTSOVectorBase : public SCompoundWidget
 {
-	public RTSOpen(ReadOnlyTargetRules Target) : base(Target)
-	{
-		PCHUsage = PCHUsageMode.UseExplicitOrSharedPCHs;
-		
-		PublicIncludePaths.Add(Path.Combine(ModuleDirectory, "Classes"));
-		if (Target.Type == TargetType.Editor)
-		{
-			PublicDependencyModuleNames.AddRange(new string[] 
-			{ 
-				/*Tag*/          "GameplayTagsEditor"
-			});
+public:
+   SLATE_BEGIN_ARGS(SRTSOVectorBase)
+      : _VectorType()
+      , _Caller()
+      , _OnVectorUpdated()
+      {}
+      SLATE_ARGUMENT(PD::Settings::VectorType, VectorType)
+      SLATE_ARGUMENT(FOnVectorValueUpdated, OnVectorUpdated)
+      SLATE_ARGUMENT(UWidget*, Caller)
+   SLATE_END_ARGS()
 
-			PrivateDependencyModuleNames.AddRange(new string[] 
-			{ 
-				/*Editor*/       "UnrealEd",
-			});
-		}
-	
-		
-		PublicDependencyModuleNames.AddRange(new string[] 
-		{ 
-			/*Core*/         "Engine", "Core", "CoreUObject", "NetCore", "ApplicationCore", 
-			/*App*/          "AppFramework",
-			/*Settings*/     "DeveloperSettings", 
-			/*Tag*/          "GameplayTags",
-			/*Input*/        "InputCore",  "EnhancedInput", 
-			/*Conversation*/ "CommonConversationRuntime", 
-			/*PermaDev*/     "PDRTSBase", "PDInventory", "PDConversationHelper", "PDSharedUI", "PDInteraction"
-		});
+	/** @brief */
+	void Construct(const FArguments& InArgs);
 
-		PublicDependencyModuleNames.AddRange(new string[]
-		{
-			/*Mass*/     "MassEntity", "MassCommon", "MassNavigation", "MassMovement", "MassAIBehavior", "MassSmartObjects", "MassSignals", "MassRepresentation", "MassLOD", "MassSpawner", 
-			/*AI*/       "AIModule", "StateTreeModule", "SmartObjectsModule", "NavigationSystem", 
-			/*Struct*/   "StructUtils", 
-			/*Animation*/"AnimToTexture", 
-			/*Physics*/  "Chaos",
-			
-		});
-		
-		PrivateDependencyModuleNames.AddRange(new string[] 
-		{ 	
-			/*Tag*/          "GameplayTags", 
-			/*Input*/        "EnhancedInput", 
-			/*Widget*/       "SlateCore", "Slate", "CommonUI", "UMG", 
-			/*Effects*/      "Niagara", "MassCrowd", 
-            /*Conversation*/ "CommonConversationRuntime", 
-			/*PermaDev*/     "PDInteraction", "PDInventory", "PDRTSBase", "PDConversationHelper", "PDUserMessageBase",
-		});
-	}
-}
+	/** @brief */
+   TSharedRef<SWidget> GenerateVectorBox();
 
-/*
+	/** @brief */
+   TSharedRef<SWidget> GenerateColourPicker();   
+
+	/** @brief */
+	void UpdateExpandableArea(bool bOpen);
+
+	/** @brief */
+	void UpdateType(PD::Settings::VectorType NewVectorType);
+
+   TOptional<FVector> ResolveVec3() const;
+   void OnVec3ValueChanged(FVector NewVector, ETextCommit::Type CommitType);
+
+   TOptional<FVector2D> ResolveVec2() const;
+   void OnVec2ValueChanged(FVector2D NewVector, ETextCommit::Type CommitType);
+
+   TOptional<UE::Math::TVector4<double>> ResolveColour() const;
+   void OnColourValueChanged(UE::Math::TVector4<double> NewColor, ETextCommit::Type CommitType);
+
+	// TOptional<UE::Math::TVector<double>> ResolveLocation() const;
+	// void OnLocationValueChanged(UE::Math::TVector<double> Vector, ETextCommit::Type Arg);
+
+
+#pragma region LocalCache
+	/** @brief */
+   FOnVectorValueUpdated OnVectorUpdated;
+
+	/** @brief */
+	PD::Settings::VectorType VectorType;
+
+	/** @brief Cached pointer to the caller stringselector */
+   class UWidget* Caller = nullptr;
+
+   TSharedPtr<class SExpandableArea> ExpandableArea;  
+   TSharedPtr<class SColorPicker> ColourPicker;
+   TSharedPtr<SWidget> ActionWidget;
+
+   UE::Math::TVector4<double> VectorValue;
+
+#pragma endregion // LocalCache
+};
+
+
+/**
 Business Source License 1.1
 
 Parameters
@@ -69,6 +84,8 @@ Additional Use Grant: You may make free use of the Licensed Work in a commercial
                       1. Must give attributions to the original author of the Licensed Work, in 'Credits' if that is applicable.
                       2. The Licensed Work must be Compiled before being redistributed.
                       3. The Licensed Work Source may be linked but may not be packaged into the product or service being sold
+                      4. Must not be resold or repackaged or redistributed as another product, is only allowed to be used within a commercial or non-commercial game project.
+                      5. Teams with yearly budgets larger than 100000 USD must contact the owner for a custom license or buy the framework from a marketplace it has been made available on.
 
                       "Credits" indicate a scrolling screen with attributions. This is usually in a products end-state
 

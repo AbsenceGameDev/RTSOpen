@@ -532,6 +532,33 @@ struct FRTSGodhandState
 // Move everything below this to a file called RTSOpenSettingsCommon
 
 /** @brief Value types we should allow for settings  */
+namespace PD::Settings
+{
+	enum class BaseType : uint8
+	{
+		Boolean = 0, // 'bool' or 'uint8 : 1'
+		FloatSelector,   // 'double' or 'float'
+		FloatSlider,   // 'double' or 'float'
+		IntegerSelector, // 'int32' or 'int64'
+		IntegerSlider, // 'int32' or 'int64'
+		BaseTypeLim,
+	};
+	enum class VectorType : uint8
+	{
+		Vector2 = BaseType::BaseTypeLim,  // 'FVector2D' 
+		Vector3,  // 'FVector'
+		Colour,  // 'FColor'
+		VectorTypeLim,		
+	};
+	enum class OtherType : uint8
+	{
+		String = VectorType::VectorTypeLim, // 'FString'
+		EnumAsByte, // 'Byte'
+		Key,     // 'FKey'
+		OtherTypeLim,		
+	};
+}
+
 UENUM()
 enum class ERTSOSettingsType : uint8
 {

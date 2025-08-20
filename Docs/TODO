@@ -77,8 +77,11 @@ August 18th 2025 - Commit#0 :
     ✔ DONE: The "solution" was a bit of a mess, will fix later @done(25-08-18 07:05)
     - IN PROGRESS: Other related changes and some fruitless debugging, Will figure this crap out in the coming days so I can bind to any core level property type 
 
-
 August 20th 2025 - Commit#0 :
+    - IN PROGRESS: Base vector slate widgets for the settings entry widget along using the color picker from the appframework module
+    
+
+August 2xth 2025 - Commit#1 :
     - Implement Save/Load logic for settings value as-well
     - Set up a save dialog in case the user changes a setting but forgets to save, to give them a chance to save the game
     - Test settings system changes in game

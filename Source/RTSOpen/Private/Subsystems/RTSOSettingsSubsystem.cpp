@@ -166,18 +166,18 @@ TSettingsType URTSOSettingsSubsystem::OnProcessFunctionForSettings(const TSettin
             FProperty* InputProp = Function->FindPropertyByName(FPDSettingStatics::GetFirstInputPropertyName(Function));
             if (InputProp != nullptr)
             {
-               InputProp->SetValue_InContainer(Params, &bNewValue);
+               InputProp->SetValue_InContainer(Params, &NewValue);
             }
             ObjectInstance->ProcessEvent(Function, Params);
             FProperty* ReturnProp = Function->GetReturnProperty();
             if (ReturnProp != nullptr)
             {
-               ReturnProp->GetValue_InContainer(Params, &bProcessedValue);
+               ReturnProp->GetValue_InContainer(Params, &ProcessedValue);
             }              
          }
       }      
    }
-   return bProcessedValue;
+   return ProcessedValue;
 }
 
 
