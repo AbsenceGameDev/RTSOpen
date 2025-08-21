@@ -1,9 +1,12 @@
 ﻿/* @author: Ario Amin @ Permafrost Development. @copyright: Full BSL(1.1) License included at bottom of the file  */
 #include "Widgets/Slate/SRTSOVectorWidgets.h"
 
+#include "Widgets/SBoxPanel.h"
 #include "Widgets/Views/SListView.h"
 #include "Widgets/Layout/SExpandableArea.h"
 #include "Widgets/Layout/SBorder.h"
+#include "Widgets/Layout/SBox.h"
+#include "Widgets/Layout/SScaleBox.h"
 #include "Widgets/Input/SVectorInputBox.h"
 #include "Widgets/Colors/SColorWheel.h"
 #include "Widgets/Colors/SColorBlock.h"
@@ -28,32 +31,39 @@ void SRTSOVectorBase::Construct(const FArguments& InArgs)
 
 TSharedRef<SWidget> SRTSOVectorBase::GenerateVectorBox()
 {
+   
    TSharedPtr<SCompoundWidget> VectorBox;
    switch(VectorType)
    {
       case PD::Settings::VectorType::Vector2:
          VectorBox = SNew(SNumericV2d)
             .Vector(this, &SRTSOVectorBase::ResolveVec2)
-            .OnVectorCommitted(this, &SRTSOVectorBase::OnVec2ValueChanged);
+            .OnVectorCommitted(this, &SRTSOVectorBase::OnVec2ValueChanged)
+            .AllowSpin(true);
       break;
 
       case PD::Settings::VectorType::Vector3: 
          VectorBox = SNew(SNumericV3d)
             .Vector(this, &SRTSOVectorBase::ResolveVec3)
-            .OnVectorCommitted(this, &SRTSOVectorBase::OnVec3ValueChanged);
+            .OnVectorCommitted(this, &SRTSOVectorBase::OnVec3ValueChanged)
+            .AllowSpin(true);
       break;
 
       case PD::Settings::VectorType::Colour: 
-         VectorBox = SNew(SNumericV4d)
-            .Vector(this, &SRTSOVectorBase::ResolveColour)
-            .OnVectorCommitted(this, &SRTSOVectorBase::OnColourValueChanged)
-            .SpinDelta(1.0)
-            .MinVector(UE::Math::TVector4<double>{0})
-            .MaxVector(UE::Math::TVector4<double>{255});
+         VectorBox = SNew(SScaleBox).Stretch(EStretch::ScaleToFitY).Content()
+         [
+            SNew(SNumericV4d)
+               .Vector(this, &SRTSOVectorBase::ResolveColour)
+               .OnVectorCommitted(this, &SRTSOVectorBase::OnColourValueChanged)
+               .AllowSpin(true)
+               .SpinDelta(1.0)
+               .MinVector(UE::Math::TVector4<double>{0})
+               .MaxVector(UE::Math::TVector4<double>{255})
+         ];
       break;
    }
 
-   return VectorBox.ToSharedRef();
+   return SNew(SBox).MinDesiredHeight(50.0)[VectorBox.ToSharedRef()];
 }
 
 TSharedRef<SWidget> SRTSOVectorBase::GenerateColourPicker()
@@ -94,7 +104,7 @@ void SRTSOVectorBase::UpdateExpandableArea(bool bOpen)
    }
 
 }
-#define VBoxSlot SVerticalBox::Slot()
+
 void SRTSOVectorBase::UpdateType(PD::Settings::VectorType NewVectorType)
 {
    VectorType = NewVectorType;
@@ -106,7 +116,7 @@ void SRTSOVectorBase::UpdateType(PD::Settings::VectorType NewVectorType)
    case PD::Settings::VectorType::Vector2:
    ActionWidget =
       SNew(SVerticalBox)
-      + VBoxSlot[GenerateVectorBox()];
+      + SVerticalBox::Slot().MaxHeight(50.f).HAlign(HAlign_Left).VAlign(VAlign_Fill)[GenerateVectorBox()];
    break;
    
    case PD::Settings::VectorType::Colour: 
@@ -114,14 +124,23 @@ void SRTSOVectorBase::UpdateType(PD::Settings::VectorType NewVectorType)
       TSharedRef<SExpandableArea> ExpandableAreaRef = SNew(SExpandableArea)
          .InitiallyCollapsed(true)
          .HeaderContent()[SNew(STextBlock).Text(FText::AsCultureInvariant("Colour Picker"))]
-         .BodyContent()[GenerateColourPicker()];
+         .BodyContent()
+         [
+            SNew(SBox).MinDesiredHeight(500.0f)
+            [
+               SNew(SScaleBox).Stretch(EStretch::ScaleToFitY).Content()
+               [
+                  GenerateColourPicker()
+               ]
+            ]
+         ];
          ExpandableArea.Reset();
          ExpandableArea = ExpandableAreaRef.ToSharedPtr();
 
       ActionWidget =
          SNew(SVerticalBox)
-         + VBoxSlot[GenerateVectorBox()]
-         + VBoxSlot[ExpandableAreaRef];
+         + SVerticalBox::Slot().MaxHeight(50.f).HAlign(HAlign_Left).VAlign(VAlign_Fill)[GenerateVectorBox()]
+         + SVerticalBox::Slot().HAlign(HAlign_Left).VAlign(VAlign_Fill)[ExpandableAreaRef];
    }
    break;
    

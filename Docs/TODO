@@ -82,7 +82,13 @@ August 20th 2025 - Commit#0 :
     
 August 21st 2025 - Commit#0 :
         ✔ DONE: Base vector slate widgets for the settings entry widget along using the color picker from the appframework module @done(25-08-21 05:19)
-        - TODO: Fix Vector box Widgets stretching whencolor picker is opened 
+        - TODO: Fix Vector box Widgets stretching whencolor picker is opened
+        
+August 21st 2025 - Commit#1 :
+        ✔ DONE: Fix Vector box Widgets stretching when color picker is opened @done(25-08-21 07:06)
+        ✔ DONE: Fix Vector box aligment @done(25-08-21 07:06)
+        - TODO: FKey selector widget
+        - TODO: Persistent settings data
 
 August 2xth 2025 - Commit#1 :
     - Implement Save/Load logic for settings value as-well
