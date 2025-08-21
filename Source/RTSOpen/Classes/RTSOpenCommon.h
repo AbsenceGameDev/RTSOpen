@@ -692,6 +692,11 @@ struct RTSOPEN_API FPDSettingStatics
 
 	static FString SelectTargetFunctionParamType(ERTSOSettingsType SettingsValueType);
 	static FName GetFirstInputPropertyName(UFunction* Function);
+
+	static FORCEINLINE PD::Settings::VectorType ToVectorType(ERTSOSettingsType ReflectedEnum)
+	{
+		return static_cast<PD::Settings::VectorType>(ReflectedEnum);
+	}	
 };
 
 USTRUCT(Blueprintable) struct FRTSOIntegerRange { GENERATED_BODY()  UPROPERTY(EditAnywhere, BlueprintReadWrite) int32 Min = {0}; UPROPERTY(EditAnywhere, BlueprintReadWrite) int32 Max = {0};};

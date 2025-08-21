@@ -10,7 +10,10 @@
 #include "RTSOpenCommon.h"
 #include "UI/PDButtons.h"
 #include "UI/PDDialogs.h"
+
 #include "Widgets/Slate/SRTSOSettingsStringSelector.h"
+#include "Widgets/Slate/SRTSOVectorWidgets.h"
+
 #include "RTSOActiveMainMenu.generated.h"
 
 class UHorizontalBox;
@@ -131,9 +134,8 @@ public:
 	class URTSOMainMenuBase* OwningStack = nullptr;	
 };
 
-
-/** @brief Game Menu - Settings Entry */
-
+//
+// String Selector Widgets (UMG)
 USTRUCT(Blueprintable)
 struct FRTSOStringSelectorData
 {
@@ -187,6 +189,61 @@ public:
 	void SetOnStringSelected(const FOnStringValueSelected& Delegate);
 };
 
+//
+// Vector Selector Widgets (UMG)
+USTRUCT(Blueprintable)
+struct FRTSOVectorSelectorData
+{
+	GENERATED_BODY()
+public:
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	FVector4 SelectedValue;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Meta = (ValidEnumValues="Vector2, Vector3, Colour"))
+	ERTSOSettingsType VectorType;
+};
+
+UCLASS()
+class URTSOVectorSelectorBox : public UWidget
+{
+	GENERATED_BODY()
+
+public:
+	virtual TSharedRef<SWidget> RebuildWidget() override;
+	virtual void ReleaseSlateResources(bool bReleaseChildren) override;
+	virtual void Refresh();
+	virtual void CloseExpandableArea();
+
+	TSharedPtr<class SRTSOVectorBase> SlateWidget;
+	FRTSOVectorSelectorData* DataPtr = nullptr;
+
+	UPROPERTY()
+	UWidget* Owner = nullptr; 
+
+	FOnVectorValueUpdated OnVectorUpdated;
+};
+
+UCLASS(Blueprintable)
+class RTSOPEN_API URTSOVectorSelector : public UCommonActivatableWidget
+{
+	GENERATED_BODY()
+public:
+	virtual void Refresh();
+	virtual void CloseExpandableArea();
+
+	UPROPERTY(BlueprintReadWrite, Meta=(BindWidget))
+	URTSOVectorSelectorBox* SelectorBox = nullptr;	
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	FRTSOVectorSelectorData Data;
+
+	void SetOnVectorUpdated(const FOnVectorValueUpdated& OnVectorUpdated);
+};
+
+
+//
+// Settings Entry Widgets (UMG)
 
 DECLARE_MULTICAST_DELEGATE_OneParam(FPDPostCheckBoxStateChanged, bool);
 /** @brief Game Menu - Settings Entry */
@@ -218,7 +275,10 @@ public:
 	class UWidgetSwitcher* InputValueWidgetSwitcher;
 
 	UPROPERTY(BlueprintReadWrite, Meta=(BindWidget))
-	class URTSOStringSelector* AsStringSelector;	
+	class URTSOStringSelector* AsStringSelector;
+
+	UPROPERTY(BlueprintReadWrite, Meta=(BindWidget))
+	class URTSOVectorSelector* AsVectorSelector;	
 
 	/** @brief TODO */
 	UPROPERTY(BlueprintReadWrite, Meta=(BindWidget))

@@ -16,8 +16,8 @@ class RTSOPEN_API SRTSOVectorBase : public SCompoundWidget
 public:
    SLATE_BEGIN_ARGS(SRTSOVectorBase)
       : _VectorType()
-      , _Caller()
       , _OnVectorUpdated()
+      , _Caller()
       {}
       SLATE_ARGUMENT(PD::Settings::VectorType, VectorType)
       SLATE_ARGUMENT(FOnVectorValueUpdated, OnVectorUpdated)

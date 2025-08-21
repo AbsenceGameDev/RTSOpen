@@ -59,33 +59,28 @@ TSharedRef<SWidget> SRTSOVectorBase::GenerateVectorBox()
 TSharedRef<SWidget> SRTSOVectorBase::GenerateColourPicker()
 {
 	TSharedRef<SColorPicker> ColourPickerRef = SNew(SColorPicker)
-		.UseAlpha(false)
+		.UseAlpha(true)
+      .ClampValue(true)
 		.DisplayInlineVersion(true)
-
-      // Fix by next commit
-		// .TargetColorAttribute_Lambda([this]() -> FLinearColor
-      // {
-		// 	return FLinearColor(VectorValue.X, VectorValue.Y, VectorValue.Z, VectorValue.W);
-      // })
-		// .OnColorCommitted_Lambda([this](FVector4& NewValue, bool bShouldCommitValueChange)
-      // {
-      //    if (bShouldCommitValueChange)
-      //    {
-      //       VectorValue.X = NewValue.X;
-      //       VectorValue.Y = NewValue.Y;
-      //       VectorValue.Z = NewValue.Z;
-      //       VectorValue.W = NewValue.W;
-      //    }
-      // })
-		// .OnInteractivePickBegin_Lambda([this]()
-		// {
-		// 	// TODO
-		// })
-		// .OnInteractivePickEnd_Lambda([this]()
-		// {
-		// 	// TODO
-		// })
-      ;
+		.TargetColorAttribute_Lambda([this]() -> FLinearColor
+      {
+			return FLinearColor(VectorValue.X, VectorValue.Y, VectorValue.Z, VectorValue.W);
+      })
+		.OnColorCommitted_Lambda([this](const FLinearColor& NewValue) -> void
+      {
+         VectorValue.X = NewValue.R;
+         VectorValue.Y = NewValue.G;
+         VectorValue.Z = NewValue.B;
+         VectorValue.W = NewValue.A;
+      })
+		.OnInteractivePickBegin_Lambda([this]()
+		{
+			// TODO
+		})
+		.OnInteractivePickEnd_Lambda([this]()
+		{
+			// TODO
+		});
 
    ColourPicker = ColourPickerRef.ToSharedPtr();
    return ColourPickerRef;

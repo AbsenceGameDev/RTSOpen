@@ -71,6 +71,8 @@ void URTSOMenuWidget_SaveGame::NativePreConstruct()
 	Super::NativePreConstruct();
 }
 
+//
+// String Selector 
 TSharedRef<SWidget> URTSOStringSelectorBox::RebuildWidget()
 {
 	SRTSOStringSelector::FArguments StringArgs;
@@ -124,6 +126,64 @@ void URTSOStringSelector::SetOnStringSelected(const FOnStringValueSelected& Dele
 	SelectorBox->OnStringSelected = Delegate;
 }
 
+//
+// Vector Selector
+TSharedRef<SWidget> URTSOVectorSelectorBox::RebuildWidget()
+{
+	SRTSOVectorBase::FArguments VectorArgs;
+	VectorArgs._Caller = Owner; 
+	VectorArgs._OnVectorUpdated = OnVectorUpdated;
+
+	if (DataPtr != nullptr)
+	{
+		VectorArgs._VectorType = FPDSettingStatics::ToVectorType(DataPtr->VectorType);
+	}
+	SlateWidget = SArgumentNew(VectorArgs, SRTSOVectorBase);
+	return SlateWidget.ToSharedRef();
+}
+void URTSOVectorSelectorBox::ReleaseSlateResources(bool bReleaseChildren)
+{
+	SlateWidget.Reset();
+	Super::ReleaseSlateResources(bReleaseChildren);
+}
+
+void URTSOVectorSelectorBox::Refresh()
+{
+	if (SlateWidget != nullptr && DataPtr != nullptr)
+	{
+		SlateWidget->OnVectorUpdated = OnVectorUpdated;
+		SlateWidget->UpdateType(FPDSettingStatics::ToVectorType(DataPtr->VectorType));
+	}
+}
+void URTSOVectorSelectorBox::CloseExpandableArea()
+{
+	if (SlateWidget != nullptr)
+	{
+		SlateWidget->UpdateExpandableArea(false);
+	}
+}
+
+void URTSOVectorSelector::Refresh()
+{
+	SelectorBox->Owner = this;
+	SelectorBox->DataPtr = &Data;
+	SelectorBox->Refresh();
+}
+
+void URTSOVectorSelector::CloseExpandableArea()
+{
+	SelectorBox->CloseExpandableArea();
+}
+
+void URTSOVectorSelector::SetOnVectorUpdated(const FOnVectorValueUpdated& OnVectorUpdated)
+{
+	SelectorBox->OnVectorUpdated = OnVectorUpdated;
+}
+
+
+
+//
+// Settings Entry
 void URTSOMenuWidget_SettingsEntry::NativePreConstruct()
 {
 	Super::NativePreConstruct();
@@ -267,29 +327,52 @@ void URTSOMenuWidget_SettingsCategory::Refresh(
 			
 			break;
 		case ERTSOSettingsType::Vector2:
-			if (SettingsEntry->RangedSelector != nullptr && SettingsEntry->RangedSelector->IsValidLowLevel())
+			if (SettingsEntry->AsVectorSelector != nullptr && SettingsEntry->AsVectorSelector->IsValidLowLevel())
 			{
-				SettingsEntry->RangedSelector->CountTypeSelector = EPDSharedUICountTypeSelector::ERangedSlider;
-				// TODO: Make widget with multiple selector boxes
-				// TODO: Then bind to it
+				SettingsEntry->WidgetSwitcherIndex = 3;
+				SettingsEntry->AsVectorSelector->Data.VectorType = DataSelector.ValueType;
+
+				SettingsEntry->AsVectorSelector->Data.SelectedValue.X = DataSelector.AsVector2.X;
+				SettingsEntry->AsVectorSelector->Data.SelectedValue.Y = DataSelector.AsVector2.Y;
+				SettingsEntry->AsVectorSelector->SetOnVectorUpdated(FOnVectorValueUpdated::CreateLambda(
+					[SettingsTag](UE::Math::TVector4<double> UpdatedValue, PD::Settings::VectorType Type, UWidget* Caller)
+					{
+						URTSOSettingsSubsystem::Get()->OnColour(FLinearColor(UpdatedValue), SettingsTag);
+					}));
+				SettingsEntry->AsVectorSelector->Refresh();
 			}
 			
 			break;
 		case ERTSOSettingsType::Vector3:
-			if (SettingsEntry->RangedSelector != nullptr && SettingsEntry->RangedSelector->IsValidLowLevel())
+			if (SettingsEntry->AsVectorSelector != nullptr && SettingsEntry->AsVectorSelector->IsValidLowLevel())
 			{
-				SettingsEntry->RangedSelector->CountTypeSelector = EPDSharedUICountTypeSelector::ERangedSlider;
-				// TODO: Make widget with multiple selector boxes
-				// TODO: Then bind to it
+				SettingsEntry->WidgetSwitcherIndex = 3;
+				SettingsEntry->AsVectorSelector->Data.VectorType = DataSelector.ValueType;
+
+				SettingsEntry->AsVectorSelector->Data.SelectedValue = DataSelector.AsVector3;
+				SettingsEntry->AsVectorSelector->SetOnVectorUpdated(FOnVectorValueUpdated::CreateLambda(
+					[SettingsTag](UE::Math::TVector4<double> UpdatedValue, PD::Settings::VectorType Type, UWidget* Caller)
+					{
+						URTSOSettingsSubsystem::Get()->OnColour(FLinearColor(UpdatedValue), SettingsTag);
+					}));
+				SettingsEntry->AsVectorSelector->Refresh();
 			}
 			
 			break;
 		case ERTSOSettingsType::Colour:
-			if (SettingsEntry->RangedSelector != nullptr && SettingsEntry->RangedSelector->IsValidLowLevel())
+			if (SettingsEntry->AsVectorSelector != nullptr && SettingsEntry->AsVectorSelector->IsValidLowLevel())
 			{
-				SettingsEntry->RangedSelector->CountTypeSelector = EPDSharedUICountTypeSelector::ERangedSlider;
-				// TODO: Make runtime color picker widget? 
-				// TODO: Then bind to it
+				SettingsEntry->WidgetSwitcherIndex = 3;
+				SettingsEntry->AsVectorSelector->Data.VectorType = DataSelector.ValueType;
+
+				SettingsEntry->AsVectorSelector->Data.SelectedValue = FLinearColor(DataSelector.AsColour);
+				SettingsEntry->AsVectorSelector->SetOnVectorUpdated(FOnVectorValueUpdated::CreateLambda(
+					[SettingsTag](UE::Math::TVector4<double> UpdatedValue, PD::Settings::VectorType Type, UWidget* Caller)
+					{
+						URTSOSettingsSubsystem::Get()->OnColour(FLinearColor(UpdatedValue), SettingsTag);
+					}));
+				SettingsEntry->AsVectorSelector->Refresh();
+
 			}
 			
 			break;

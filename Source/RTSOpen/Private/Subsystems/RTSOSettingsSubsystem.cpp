@@ -217,7 +217,7 @@ void URTSOSettingsSubsystem::OnVector2D(FVector2D NewVector2d, const FGameplayTa
    UE_LOG(PDLog_SettingsHandler, Warning, TEXT("URTSOSettingsSubsystem::OnVector2D(%s)"), *SettingsTag.ToString())
    Vector2dStates.FindOrAdd(SettingsTag, OnProcessFunctionForSettings(NewVector2d, SettingsTag));   
 }
-void URTSOSettingsSubsystem::OnColour(FColor NewColour, const FGameplayTag& SettingsTag)
+void URTSOSettingsSubsystem::OnColour(FLinearColor NewColour, const FGameplayTag& SettingsTag)
 {
    UE_LOG(PDLog_SettingsHandler, Warning, TEXT("URTSOSettingsSubsystem::OnColour(%s)"), *SettingsTag.ToString())
    ColourStates.FindOrAdd(SettingsTag, OnProcessFunctionForSettings(NewColour, SettingsTag));

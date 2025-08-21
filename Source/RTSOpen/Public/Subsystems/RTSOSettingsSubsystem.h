@@ -43,7 +43,7 @@ public:
 	/** @brief TODO */
    UFUNCTION() void OnVector2D(FVector2D NewVector2d, const FGameplayTag& SettingsTag);
 	/** @brief TODO */
-   UFUNCTION() void OnColour(FColor NewColour, const FGameplayTag& SettingsTag);
+   UFUNCTION() void OnColour(FLinearColor NewColour, const FGameplayTag& SettingsTag);
 	/** @brief TODO */
    UFUNCTION() void OnKey(FRTSOSettingsKeyData NewKeys, const FGameplayTag& SettingsTag);
 	/** @brief TODO */
@@ -114,7 +114,7 @@ public:
    /** @brief TODO */
    UPROPERTY() TMap<FGameplayTag, FVector2D> Vector2dStates;
    /** @brief TODO */
-   UPROPERTY() TMap<FGameplayTag, FColor> ColourStates;
+   UPROPERTY() TMap<FGameplayTag, FLinearColor> ColourStates;
    /** @brief <KBM, Gamepad, Other> */
    UPROPERTY() TMap<FGameplayTag, FRTSOSettingsKeyData> KeyStates;
 
