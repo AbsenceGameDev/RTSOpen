@@ -90,6 +90,10 @@ August 21st 2025 - Commit#1 :
         - TODO: FKey selector widget
         - TODO: Persistent settings data
 
+August 22nd 2025 - Commit#1 :
+        - IN PROGRESS: FKey selector widget
+        - TODO: Persistent settings data        
+
 August 2xth 2025 - Commit#1 :
     - Implement Save/Load logic for settings value as-well
     - Set up a save dialog in case the user changes a setting but forgets to save, to give them a chance to save the game

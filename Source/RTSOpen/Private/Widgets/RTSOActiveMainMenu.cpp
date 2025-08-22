@@ -12,6 +12,7 @@
 #include "Components/WidgetSwitcher.h"
 #include "Components/WidgetSwitcherSlot.h"
 
+
 #include "Core/RTSOBaseGM.h"
 #include "UI/PDNumberBoxes.h"
 #include "Widgets/CommonActivatableWidgetContainer.h"
@@ -22,6 +23,7 @@
 #include "Components/NamedSlot.h"
 #include "Components/VerticalBox.h"
 #include "Components/VerticalBoxSlot.h"
+#include "Components/InputKeySelector.h"
 // #include "Components/TextBlock.h"
 // #include "Components/Image.h"
 
@@ -183,25 +185,115 @@ void URTSOVectorSelector::SetOnVectorUpdated(const FOnVectorValueUpdated& OnVect
 
 
 //
-// Settings Entry
+// Settings Entry Widgets
+
+// Key/Input selector
+const FRTSOSettingsKeyData& URTSOInputSelector::UpdateKeyData(ERTSOSettingsKeySource KeySource, const FInputChord& InputChord, bool bAltKey)
+{
+	LocalKeydataStore;
+
+	if (bAltKey)
+	{
+		switch(KeySource)
+		{
+			case ERTSOSettingsKeySource::KBM: LocalKeydataStore.Alt_KeyBoardMouse = InputChord.Key; break;
+			case ERTSOSettingsKeySource::GGP: LocalKeydataStore.Alt_GenericGamepad = InputChord.Key; break;
+			case ERTSOSettingsKeySource::DS45: LocalKeydataStore.Alt_DS45 = InputChord.Key; break;
+			case ERTSOSettingsKeySource::XSX: LocalKeydataStore.Alt_XSX = InputChord.Key; break;
+		}
+		return LocalKeydataStore;
+	}
+
+	switch(KeySource)
+	{
+		case ERTSOSettingsKeySource::KBM: LocalKeydataStore.Main_KeyBoardMouse = InputChord.Key; break;
+		case ERTSOSettingsKeySource::GGP: LocalKeydataStore.Main_GenericGamepad = InputChord.Key; break;
+		case ERTSOSettingsKeySource::DS45: LocalKeydataStore.Main_DS45 = InputChord.Key; break;
+		case ERTSOSettingsKeySource::XSX: LocalKeydataStore.Main_XSX = InputChord.Key; break;
+	}
+	return LocalKeydataStore;
+}
+
+void URTSOInputSelector::UpdateAllKeyValues(const FRTSOSettingsDataSelector& ReadData)
+{
+	LocalKeydataStore = ReadData.AsKey;
+}
+
 void URTSOMenuWidget_SettingsEntry::NativePreConstruct()
 {
 	Super::NativePreConstruct();
 	
-	InputValueWidgetSwitcher->SetActiveWidgetIndex(WidgetSwitcherIndex);
+	InputValueWidgetSwitcher->SetActiveWidgetIndex(static_cast<uint8>(TargetWidgetIndex));
 
-	if (bIsCheckBox)
+	switch (TargetWidgetIndex)
 	{
-		TScriptDelegate InDelegate;
-		InDelegate.BindUFunction(this, TEXT("OnCheckBoxSet"));
-		AsCheckBox->OnCheckStateChanged.AddUnique(InDelegate);
+		case ERTSOSettingsWidgetIndex::AsCheckBox:
+		{
+			TScriptDelegate InDelegate;
+			InDelegate.BindUFunction(this, TEXT("OnCheckBoxSet"));
+			AsCheckBox->OnCheckStateChanged.AddUnique(InDelegate);
+		}
+		break;
+		case ERTSOSettingsWidgetIndex::AsKeySelector:
+		{		
+			TScriptDelegate MainKBMDelegate;
+			MainKBMDelegate.BindUFunction(this, TEXT("OnMainKeySelected_KBM"));
+			AsKeySelector->MainKeyboardMouseKey->OnKeySelected.AddUnique(MainKBMDelegate);
+
+			TScriptDelegate MainGamepadDelegate;
+			MainGamepadDelegate.BindUFunction(this, TEXT("OnMainKeySelected_GenericGamepad"));
+			AsKeySelector->MainGenericGamepadKey->OnKeySelected.AddUnique(MainGamepadDelegate);
+			
+			TScriptDelegate MainDS45Delegate;
+			MainDS45Delegate.BindUFunction(this, TEXT("OnMainKeySelected_DS45"));
+			AsKeySelector->MainDS45Key->OnKeySelected.AddUnique(MainDS45Delegate);
+
+			TScriptDelegate MainXSXDelegate;
+			MainXSXDelegate.BindUFunction(this, TEXT("OnMainKeySelected_XSX"));
+			AsKeySelector->MainXSXKey->OnKeySelected.AddUnique(MainXSXDelegate);
+
+			TScriptDelegate AltKBMDelegate;
+			AltKBMDelegate.BindUFunction(this, TEXT("OnAltKeySelected_KBM"));
+			AsKeySelector->AltKeyboardMouseKey->OnKeySelected.AddUnique(AltKBMDelegate);
+
+			TScriptDelegate AltGamepadDelegate;
+			AltGamepadDelegate.BindUFunction(this, TEXT("OnAltKeySelected_GenericGamepad"));
+			AsKeySelector->AltGenericGamepadKey->OnKeySelected.AddUnique(AltGamepadDelegate);
+			
+			TScriptDelegate AltDS45Delegate;
+			AltDS45Delegate.BindUFunction(this, TEXT("OnAltKeySelected_DS45"));
+			AsKeySelector->AltDS45Key->OnKeySelected.AddUnique(AltDS45Delegate);
+
+			TScriptDelegate AltXSXDelegate;
+			AltXSXDelegate.BindUFunction(this, TEXT("OnAltKeySelected_XSX"));
+			AsKeySelector->AltXSXKey->OnKeySelected.AddUnique(AltXSXDelegate);
+
+		}
+		break;
 	}
 }
 
 void URTSOMenuWidget_SettingsEntry::OnCheckBoxSet(bool bNewState)
 {
-	OnCheckBoxStateChanged.Broadcast(bNewState);
+	URTSOSettingsSubsystem::Get()->OnCheckBox(bNewState, SettingsTag);
 }
+
+void URTSOMenuWidget_SettingsEntry::OnKeySelected(const FRTSOSettingsKeyData& NewKeyData)
+{
+	URTSOSettingsSubsystem::Get()->OnKey(NewKeyData, SettingsTag);
+}
+
+void URTSOMenuWidget_SettingsEntry::OnMainKeySelected_KBM(const FInputChord& InputChord){OnKeySelected(AsKeySelector->UpdateKeyData(ERTSOSettingsKeySource::KBM, InputChord, false));}
+void URTSOMenuWidget_SettingsEntry::OnMainKeySelected_GenericGamepad(const FInputChord& InputChord){OnKeySelected(AsKeySelector->UpdateKeyData(ERTSOSettingsKeySource::GGP, InputChord, false));}
+void URTSOMenuWidget_SettingsEntry::OnMainKeySelected_DS45(const FInputChord& InputChord){OnKeySelected(AsKeySelector->UpdateKeyData(ERTSOSettingsKeySource::DS45, InputChord, false));}
+void URTSOMenuWidget_SettingsEntry::OnMainKeySelected_XSX(const FInputChord& InputChord){OnKeySelected(AsKeySelector->UpdateKeyData(ERTSOSettingsKeySource::XSX, InputChord, false));}
+
+void URTSOMenuWidget_SettingsEntry::OnAltKeySelected_KBM(const FInputChord& InputChord){OnKeySelected(AsKeySelector->UpdateKeyData(ERTSOSettingsKeySource::KBM, InputChord, true));}
+void URTSOMenuWidget_SettingsEntry::OnAltKeySelected_GenericGamepad(const FInputChord& InputChord){OnKeySelected(AsKeySelector->UpdateKeyData(ERTSOSettingsKeySource::GGP, InputChord, true));}
+void URTSOMenuWidget_SettingsEntry::OnAltKeySelected_DS45(const FInputChord& InputChord){OnKeySelected(AsKeySelector->UpdateKeyData(ERTSOSettingsKeySource::DS45, InputChord, true));}
+void URTSOMenuWidget_SettingsEntry::OnAltKeySelected_XSX(const FInputChord& InputChord){OnKeySelected(AsKeySelector->UpdateKeyData(ERTSOSettingsKeySource::XSX, InputChord, true));}
+
+
 
 void URTSOMenuWidget_SettingsEntry::NativeOnActivated()
 {
@@ -248,10 +340,11 @@ void URTSOMenuWidget_SettingsCategory::Refresh(
 
 		SettingsEntry->SettingsEntryLabel->SetText(SettingsLabelText);
 		SettingsEntry->SettingsEntryDescription->SetText(SettingsDescrText);
+		SettingsEntry->SettingsTag = SettingsTag;
 
 		SettingsEntry->OwnerSubmenu = OwnerSubmenu;
 
-		SettingsEntry->WidgetSwitcherIndex = 0;
+		SettingsEntry->TargetWidgetIndex = ERTSOSettingsWidgetIndex::AsRangedSelector;
 		switch (DataSelector.ValueType)
 		{
 		case ERTSOSettingsType::FloatSelector:
@@ -329,7 +422,7 @@ void URTSOMenuWidget_SettingsCategory::Refresh(
 		case ERTSOSettingsType::Vector2:
 			if (SettingsEntry->AsVectorSelector != nullptr && SettingsEntry->AsVectorSelector->IsValidLowLevel())
 			{
-				SettingsEntry->WidgetSwitcherIndex = 3;
+				SettingsEntry->TargetWidgetIndex = ERTSOSettingsWidgetIndex::AsVectorSelector;
 				SettingsEntry->AsVectorSelector->Data.VectorType = DataSelector.ValueType;
 
 				SettingsEntry->AsVectorSelector->Data.SelectedValue.X = DataSelector.AsVector2.X;
@@ -337,7 +430,7 @@ void URTSOMenuWidget_SettingsCategory::Refresh(
 				SettingsEntry->AsVectorSelector->SetOnVectorUpdated(FOnVectorValueUpdated::CreateLambda(
 					[SettingsTag](UE::Math::TVector4<double> UpdatedValue, PD::Settings::VectorType Type, UWidget* Caller)
 					{
-						URTSOSettingsSubsystem::Get()->OnColour(FLinearColor(UpdatedValue), SettingsTag);
+						URTSOSettingsSubsystem::Get()->OnVector2D(FVector2D(UpdatedValue), SettingsTag);
 					}));
 				SettingsEntry->AsVectorSelector->Refresh();
 			}
@@ -346,14 +439,14 @@ void URTSOMenuWidget_SettingsCategory::Refresh(
 		case ERTSOSettingsType::Vector3:
 			if (SettingsEntry->AsVectorSelector != nullptr && SettingsEntry->AsVectorSelector->IsValidLowLevel())
 			{
-				SettingsEntry->WidgetSwitcherIndex = 3;
+				SettingsEntry->TargetWidgetIndex = ERTSOSettingsWidgetIndex::AsVectorSelector;
 				SettingsEntry->AsVectorSelector->Data.VectorType = DataSelector.ValueType;
 
 				SettingsEntry->AsVectorSelector->Data.SelectedValue = DataSelector.AsVector3;
 				SettingsEntry->AsVectorSelector->SetOnVectorUpdated(FOnVectorValueUpdated::CreateLambda(
 					[SettingsTag](UE::Math::TVector4<double> UpdatedValue, PD::Settings::VectorType Type, UWidget* Caller)
 					{
-						URTSOSettingsSubsystem::Get()->OnColour(FLinearColor(UpdatedValue), SettingsTag);
+						URTSOSettingsSubsystem::Get()->OnVector(FVector(UpdatedValue), SettingsTag);
 					}));
 				SettingsEntry->AsVectorSelector->Refresh();
 			}
@@ -362,7 +455,7 @@ void URTSOMenuWidget_SettingsCategory::Refresh(
 		case ERTSOSettingsType::Colour:
 			if (SettingsEntry->AsVectorSelector != nullptr && SettingsEntry->AsVectorSelector->IsValidLowLevel())
 			{
-				SettingsEntry->WidgetSwitcherIndex = 3;
+				SettingsEntry->TargetWidgetIndex = ERTSOSettingsWidgetIndex::AsVectorSelector;
 				SettingsEntry->AsVectorSelector->Data.VectorType = DataSelector.ValueType;
 
 				SettingsEntry->AsVectorSelector->Data.SelectedValue = FLinearColor(DataSelector.AsColour);
@@ -379,21 +472,15 @@ void URTSOMenuWidget_SettingsCategory::Refresh(
 		case ERTSOSettingsType::Boolean:
 			if (SettingsEntry->AsCheckBox != nullptr && SettingsEntry->AsCheckBox->IsValidLowLevel())
 			{
-				SettingsEntry->WidgetSwitcherIndex = 1;
-				SettingsEntry->bIsCheckBox = true;
+				SettingsEntry->TargetWidgetIndex = ERTSOSettingsWidgetIndex::AsCheckBox;
 				SettingsEntry->AsCheckBox->SetCheckedState(DataSelector.AsBool ? ECheckBoxState::Checked : ECheckBoxState::Unchecked);
-				SettingsEntry->OnCheckBoxStateChanged.AddLambda(
-					[SettingsTag](bool bNewState) 
-					{
-						URTSOSettingsSubsystem::Get()->OnCheckBox(bNewState, SettingsTag);
-					});
 			}
 			break;
 		case ERTSOSettingsType::EnumAsByte:
 		case ERTSOSettingsType::String:
 			if(SettingsEntry->AsStringSelector != nullptr && SettingsEntry->AsStringSelector->IsValidLowLevel())
 			{
-				SettingsEntry->WidgetSwitcherIndex = 2;
+				SettingsEntry->TargetWidgetIndex = ERTSOSettingsWidgetIndex::AsStringSelector;
 				SettingsEntry->AsStringSelector->Data.SelectedString = DataSelector.AsString;
 
 				SettingsEntry->AsStringSelector->Data.GeneratedStringOptions = FPDSettingStatics::GenerateStringPtrArrayFromDataSelector(DataSelector);
@@ -440,7 +527,13 @@ void URTSOMenuWidget_SettingsCategory::Refresh(
 				
 			break;
 		case ERTSOSettingsType::Key:
-			// TODO
+			if(SettingsEntry->AsKeySelector != nullptr && SettingsEntry->AsKeySelector->IsValidLowLevel())
+			{
+				SettingsEntry->TargetWidgetIndex = ERTSOSettingsWidgetIndex::AsKeySelector;
+				SettingsEntry->AsKeySelector->UpdateAllKeyValues(DataSelector);
+			}
+
+
 			break;
 		}
 		

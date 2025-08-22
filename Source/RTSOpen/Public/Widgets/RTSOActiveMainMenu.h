@@ -244,6 +244,48 @@ public:
 
 //
 // Settings Entry Widgets (UMG)
+DECLARE_DELEGATE_OneParam(FRTSOInputSelectorKeyUpdated, const FRTSOSettingsKeyData&)
+UCLASS(Blueprintable)
+class RTSOPEN_API URTSOInputSelector : public UCommonActivatableWidget
+{
+	GENERATED_BODY()
+public:
+	const FRTSOSettingsKeyData& UpdateKeyData(ERTSOSettingsKeySource KeySource, const FInputChord& InputChord, bool bAltKey);
+	void UpdateAllKeyValues(const FRTSOSettingsDataSelector& ReadData);
+
+	UPROPERTY(BlueprintReadWrite, Meta=(BindWidget))
+	class UInputKeySelector* MainKeyboardMouseKey = nullptr;
+	UPROPERTY(BlueprintReadWrite, Meta=(BindWidget))
+	class UInputKeySelector* MainGenericGamepadKey = nullptr;
+	UPROPERTY(BlueprintReadWrite, Meta=(BindWidget))
+	class UInputKeySelector* MainDS45Key = nullptr;
+	UPROPERTY(BlueprintReadWrite, Meta=(BindWidget))
+	class UInputKeySelector* MainXSXKey = nullptr;	
+
+	UPROPERTY(BlueprintReadWrite, Meta=(BindWidget))
+	class UInputKeySelector* AltKeyboardMouseKey = nullptr;
+	UPROPERTY(BlueprintReadWrite, Meta=(BindWidget))
+	class UInputKeySelector* AltGenericGamepadKey = nullptr;
+	UPROPERTY(BlueprintReadWrite, Meta=(BindWidget))
+	class UInputKeySelector* AltDS45Key = nullptr;
+	UPROPERTY(BlueprintReadWrite, Meta=(BindWidget))
+	class UInputKeySelector* AltXSXKey = nullptr;		
+
+	FRTSOInputSelectorKeyUpdated OnInputUpdated;
+	FRTSOSettingsKeyData LocalKeydataStore;
+};
+
+
+
+UENUM(Blueprintable, BlueprintType)
+enum class ERTSOSettingsWidgetIndex : uint8
+{
+	AsRangedSelector = 0,
+	AsCheckBox,
+	AsStringSelector,
+	AsVectorSelector,
+	AsKeySelector,
+};
 
 DECLARE_MULTICAST_DELEGATE_OneParam(FPDPostCheckBoxStateChanged, bool);
 /** @brief Game Menu - Settings Entry */
@@ -261,6 +303,18 @@ public:
 	/** @brief TODO */
 	UFUNCTION()
 	void OnCheckBoxSet(bool bNewState);
+
+	/** @brief TODO */
+	UFUNCTION()
+	void OnKeySelected(const FRTSOSettingsKeyData& NewKeyData);
+	UFUNCTION() void OnMainKeySelected_KBM(const FInputChord& InputChord);
+	UFUNCTION() void OnMainKeySelected_GenericGamepad(const FInputChord& InputChord);
+	UFUNCTION() void OnMainKeySelected_DS45(const FInputChord& InputChord);
+	UFUNCTION() void OnMainKeySelected_XSX(const FInputChord& InputChord);	
+	UFUNCTION() void OnAltKeySelected_KBM(const FInputChord& InputChord);
+	UFUNCTION() void OnAltKeySelected_GenericGamepad(const FInputChord& InputChord);
+	UFUNCTION() void OnAltKeySelected_DS45(const FInputChord& InputChord);
+	UFUNCTION() void OnAltKeySelected_XSX(const FInputChord& InputChord);		
 	
 	/** @brief TODO */
 	UPROPERTY(BlueprintReadWrite, Meta=(BindWidget))
@@ -272,13 +326,19 @@ public:
 	
 	/** @brief TODO */
 	UPROPERTY(BlueprintReadWrite, Meta=(BindWidget))
-	class UWidgetSwitcher* InputValueWidgetSwitcher;
+	class UWidgetSwitcher* InputValueWidgetSwitcher = nullptr;
 
+	/** @brief TODO */
 	UPROPERTY(BlueprintReadWrite, Meta=(BindWidget))
-	class URTSOStringSelector* AsStringSelector;
+	class URTSOStringSelector* AsStringSelector = nullptr;
 
+	/** @brief TODO */
 	UPROPERTY(BlueprintReadWrite, Meta=(BindWidget))
-	class URTSOVectorSelector* AsVectorSelector;	
+	class URTSOVectorSelector* AsVectorSelector = nullptr;
+
+	/** @brief TODO */
+	UPROPERTY(BlueprintReadWrite, Meta=(BindWidget))
+	class URTSOInputSelector* AsKeySelector = nullptr;
 
 	/** @brief TODO */
 	UPROPERTY(BlueprintReadWrite, Meta=(BindWidget))
@@ -288,18 +348,14 @@ public:
 	UPROPERTY(BlueprintReadWrite, Meta=(BindWidget))
 	class UPDRangedSelector* RangedSelector = nullptr;
 
-	/** @brief TODO */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
-	uint8 bIsCheckBox : 1;
-
-	UPROPERTY(EditAnywhere, BlueprintReadWrite)
-	uint8 WidgetSwitcherIndex = 0;
+	ERTSOSettingsWidgetIndex TargetWidgetIndex;
 
 	UPROPERTY()
 	class URTSOMenuWidget_BaseSubmenu* OwnerSubmenu = nullptr;
 
-	/** @brief TODO */
-	FPDPostCheckBoxStateChanged OnCheckBoxStateChanged;
+	UPROPERTY()
+	FGameplayTag SettingsTag;
 };
 
 /** @brief Game Menu - Base Submenu*/
