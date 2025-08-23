@@ -19,7 +19,7 @@ public class RTSOpen : ModuleRules
 
 			PrivateDependencyModuleNames.AddRange(new string[] 
 			{ 
-				/*Editor*/       "UnrealEd",
+				/*Editor*/       "UnrealEd", "PropertyEditor"
 			});
 		}
 	

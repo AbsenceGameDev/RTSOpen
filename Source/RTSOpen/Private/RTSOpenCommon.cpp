@@ -19,6 +19,7 @@
 #include "DetailLayoutBuilder.h"
 #include "DetailWidgetRow.h"
 #include "IDetailChildrenBuilder.h"
+#include "PropertyCustomizationHelpers.h"
 
 #include "Widgets/Layout/SExpandableArea.h"
 #include "Widgets/Layout/SBorder.h"
@@ -212,32 +213,61 @@ void FRTSOBinderDetailRowBuilder::GenerateChildContent(IDetailChildrenBuilder& C
 		]
 	];
 
+	TSharedPtr<IPropertyHandle> EditInlineHandle;
+	bool bNegate;
+	FBoolProperty* EditInlineProperty = PropertyCustomizationHelpers::GetEditConditionProperty(PropertyHandle->GetProperty(), bNegate);
+	if (EditInlineProperty != nullptr)
+	{
+		uint32 ChildLim = 0;
+		PropertyHandle->GetNumChildren(ChildLim);
+		for (uint32 ChildIdx = 0; ChildIdx < ChildLim; ChildIdx++)
+		{
+			TSharedPtr<IPropertyHandle> ChildHandle = PropertyHandle->GetChildHandle(ChildIdx);
+	
+			if (ChildHandle.IsValid() && ChildHandle->IsValidHandle() && ChildHandle->GetProperty() == EditInlineProperty)
+			{
+				// Found the target property handle
+				EditInlineHandle = ChildHandle;
+				break;
+			}
+		}
+	}
+
 	TSharedRef<SWidget> NameContent = 
 		bIsNestedStructData 
-			? SNew(STextBlock)
-				.Text(FText::AsCultureInvariant("Settings Binder Header"))
-				.Font(PropertyFontStyle)
-			: PropertyHandle->CreatePropertyNameWidget();
+			? SNew(SHorizontalBox) 
+				+ SHorizontalBox::Slot()
+				[
+					SNew(STextBlock)
+					.Text(FText::AsCultureInvariant("Settings Binder Header"))
+					.Font(PropertyFontStyle)
+				] 
+			: EditInlineHandle.IsValid() && EditInlineHandle->IsValidHandle() 
+				? SNew(SHorizontalBox) 
+					+ SHorizontalBox::Slot()[EditInlineHandle->CreatePropertyValueWidget()]
+					+ SHorizontalBox::Slot()[PropertyHandle->CreatePropertyNameWidget()] 
+				: SNew(SHorizontalBox) 
+					+ SHorizontalBox::Slot()[PropertyHandle->CreatePropertyNameWidget()];	
+
 	TSharedRef<SWidget> ValueContent = 
 		bIsNestedStructData 
 		? SNew(SHorizontalBox)
-		+ SHorizontalBox::Slot()
-		.Padding(FMargin(24, 0, 0, 0))
-		[
-			BinderBox
-		]
-		
+			+ SHorizontalBox::Slot()
+			.Padding(FMargin(24, 0, 0, 0))
+			[
+				BinderBox
+			]
 		: SNew(SHorizontalBox)
-		+ SHorizontalBox::Slot()
-		.SizeParam(FAuto{})
-		[
-			PropertyHandle->CreatePropertyValueWidget()
-		]
-		+ SHorizontalBox::Slot()
-		.Padding(FMargin(24, 0, 0, 0))
-		[
-			BinderBox
-		];
+			+ SHorizontalBox::Slot()
+			.SizeParam(FAuto{})
+			[
+				PropertyHandle->CreatePropertyValueWidget()
+			]
+			+ SHorizontalBox::Slot()
+			.Padding(FMargin(24, 0, 0, 0))
+			[
+				BinderBox
+			];
 
 	uint32 NumChildren = 0;
 	PropertyHandle->GetNumChildren(NumChildren);

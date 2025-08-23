@@ -92,7 +92,13 @@ August 21st 2025 - Commit#1 :
 
 August 22nd 2025 - Commit#1 :
         - IN PROGRESS: FKey selector widget
-        - TODO: Persistent settings data        
+        - TODO: Persistent settings data   
+        
+August 23rd 2025 - Commit#0 :
+        - IN PROGRESS: FKey selector widget,
+            - Noticed an issues wih the name widget being incorrect for editinlinecontidion properties, the checkbox for the edit condition is nowhere. Looking to resolve it shortly
+            Pushing what I have although it has not yet reoslved the issue, need more debugging 
+        - TODO: Persistent settings data           
 
 August 2xth 2025 - Commit#1 :
     - Implement Save/Load logic for settings value as-well
