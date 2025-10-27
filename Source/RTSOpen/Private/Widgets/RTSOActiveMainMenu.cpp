@@ -182,7 +182,36 @@ void URTSOVectorSelector::SetOnVectorUpdated(const FOnVectorValueUpdated& OnVect
 	SelectorBox->OnVectorUpdated = OnVectorUpdated;
 }
 
+TSharedRef<SWidget> URTSODropdown::RebuildWidget()
+{
+	if (WidgetSlot == nullptr)
+	{
+		return SNew(STextBlock).Text(FText::AsCultureInvariant("ERROR"));
+	}
 
+	Refresh();
+	return ExpandableWidget.ToSharedRef(); 
+}
+
+void URTSODropdown::ReleaseSlateResources(bool bReleaseChildren)
+{
+	SlateWidget.Reset();
+	ExpandableWidget.Reset();
+	Super::ReleaseSlateResources(bReleaseChildren);
+}
+
+void URTSODropdown::Refresh()
+{
+	check(WidgetSlot)
+	SlateWidget = WidgetSlot->TakeWidget().ToSharedPtr();
+	ExpandableWidget = SNew(SExpandableArea)
+		.InitiallyCollapsed(IsDesignTime() ? false : true)
+		.HeaderContent()[SNew(STextBlock).Text(FText::AsCultureInvariant("Key selectors"))]
+		.BodyContent()
+		[
+			SlateWidget.ToSharedRef()
+		];
+}
 
 //
 // Settings Entry Widgets
@@ -327,7 +356,6 @@ void URTSOMenuWidget_SettingsCategory::Refresh(
 	EntriesData = InEntriesData;
 
 	SettingsCategoryLabel->SetText(FText::FromString(EntryCategoryName));
-
 	ItemContentBox->ClearChildren();
 
 	for (auto& [SettingsTag, DataSelector] : InEntriesData)
@@ -531,6 +559,7 @@ void URTSOMenuWidget_SettingsCategory::Refresh(
 			{
 				SettingsEntry->TargetWidgetIndex = ERTSOSettingsWidgetIndex::AsKeySelector;
 				SettingsEntry->AsKeySelector->UpdateAllKeyValues(DataSelector);
+				// TODO: Key selectors aren't displaying any title, resolve ASAP
 			}
 
 
@@ -573,6 +602,18 @@ void URTSOMenuWidget_Settings::SetTabContent(const FName& TabName, const TMap<FS
 	{
 		ExistingSubMenu = &SpawnedSubmenus.Add(TabName, SpawnSettingsCategories(SettingsCategories));
 	}
+
+	// Describe the current details 
+	if (URTSOMenuWidget_BaseSubmenu* AsRTSOSubMenu = Cast<URTSOMenuWidget_BaseSubmenu>(*ExistingSubMenu))
+	{
+		FString TabStr = TabName.ToString();
+		const URTSOSettingsDeveloperSettings* ImmutableSettingsDevSettings = GetDefault<URTSOSettingsDeveloperSettings>();
+		const FText CategoryLabelText = FText::FromStringTable(ImmutableSettingsDevSettings->SettingsStringTablePath, FString::Printf(TEXT("Extended_Label_%s"), *TabStr));
+		const FText CategoryDescrText = FText::FromStringTable(ImmutableSettingsDevSettings->SettingsStringTablePath, FString::Printf(TEXT("Extended_Desc_%s"), *TabStr));
+		AsRTSOSubMenu->DetailsLabel->SetText(CategoryLabelText);
+		AsRTSOSubMenu->DetailsDescription->SetText(CategoryDescrText);	
+	}
+
 
 	// (*ExistingSubMenu)->ActivateWidget();
 	InnerContent->SetContent(*ExistingSubMenu);
@@ -633,6 +674,8 @@ void URTSOMenuWidget_Settings::OnCategoryPressed_Interface()
 UCommonActivatableWidget* URTSOMenuWidget_Settings::SpawnSettingsCategories(const TMap<FString, TMap<FGameplayTag, FRTSOSettingsDataSelector>>& SettingsCategories)
 {
 	URTSOMenuWidget_BaseSubmenu* Submenu = CreateWidget<URTSOMenuWidget_BaseSubmenu>(this, SubMenuClass);
+	check(Submenu)
+
 	for (auto&[SettingsCategoryName, CategoryData] : SettingsCategories)
 	{
 		UVerticalBoxSlot* ContentSlot = Submenu->ContentBox->AddChildToVerticalBox(CreateWidget<URTSOMenuWidget_SettingsCategory>(this, SettingsCategoryClass));

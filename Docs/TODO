@@ -100,7 +100,18 @@ August 23rd 2025 - Commit#0 :
             Pushing what I have although it has not yet reoslved the issue, need more debugging 
         - TODO: Persistent settings data           
 
-August 2xth 2025 - Commit#1 :
+
+        
+
+- NOTE: This took a bit of a break, and I got back to this during the weekend and there are some major issues but I need to spend time finishing the remainder gameplay systems before I get back to fixing the bidning systems I was implementing 
+October 27th 2025 - Commit#0 :
+    ✔ Disable settings binding code, certain editinlinecondition toggles were giving me a headache (those in usizebox specifically) @done(25-10-27 05:24)
+    ✔ Wrap input key settings selector in a slate dropdown, passing over underlying slate widget of a unamedslot @done(25-10-27 05:25)
+    ✔ Fill in missing code to update the submenu description sidepanel @done(25-10-27 05:25)
+    ✔ Add entries to settings stringtable or the submenu sidepanel @done(25-10-27 05:25)
+
+Next:
+XXXXXX XXth 2025 - Commit#1 :
     - Implement Save/Load logic for settings value as-well
     - Set up a save dialog in case the user changes a setting but forgets to save, to give them a chance to save the game
     - Test settings system changes in game

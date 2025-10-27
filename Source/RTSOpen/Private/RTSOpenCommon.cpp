@@ -20,6 +20,7 @@
 #include "DetailWidgetRow.h"
 #include "IDetailChildrenBuilder.h"
 #include "PropertyCustomizationHelpers.h"
+#include "IPropertyUtilities.h"
 
 #include "Widgets/Layout/SExpandableArea.h"
 #include "Widgets/Layout/SBorder.h"
@@ -29,6 +30,8 @@
 #include "SGameplayTagPicker.h"
 #include "SGameplayTagWidget.h"
 #include "GameplayTagsManager.h"
+
+#include "Components/SizeBox.h"
 
 #include "Styling/CoreStyle.h"
 #endif // WITH_EDITOR
@@ -76,9 +79,52 @@ void FRTSOValueBinderDetails::CustomizeChildren(TSharedRef<IPropertyHandle> Prop
 		return;
 	}
 
+#if 0 // Fix later, this is not relevant now, TODO: Must come back to this however before EoY
+	class FBoolProperty* EditInlinePtr = nullptr; 
+	FProperty* PropertyPtr = PropertyHandle->GetProperty();
+    FString EditConditionName = PropertyPtr->GetMetaData(TEXT("EditCondition"));
+    if (EditConditionName.IsEmpty() == false)
+    {
+		UE_LOG(LogTemp, Warning, TEXT("FRTSOValueBinderDetails::CustomizeChildren - EditCondition(%s) Found"), *EditConditionName)
+		
+		if (UClass* OwnerClass = PropertyPtr->GetOwnerClass())
+		{
+			FName EditConditionFName = FName(*EditConditionName);
+			EditInlinePtr = CastField<FBoolProperty>(OwnerClass->FindPropertyByName(EditConditionFName));
+		}
+
+		if (EditInlinePtr)
+		{
+			UE_LOG(LogTemp, Warning, TEXT("FRTSOValueBinderDetails::CustomizeChildren - EditInline Property Valid"))
+			TSharedPtr<IPropertyHandle> EditInlineHandle = ChildBuilder.GetParentCategory().GetParentLayout().GetProperty(EditInlinePtr->GetFName());
+			if (EditInlineHandle.IsValid())
+			{
+				uint32 ChildLim;
+				PropertyHandle->GetNumChildren(ChildLim);
+				IDetailGroup& PropertiesGroup = ChildBuilder.GetParentCategory().GetParentLayout().AddGroup(FName("SettingsEnabledTypes"), PropertyHandle->GetPropertyDisplayName());
+				for (uint32 ChildIdx = 0; ChildIdx < ChildLim; ChildIdx++)
+				{
+					TSharedPtr<IPropertyHandle> ChildPropertyHandle = PropertyHandle->GetChildHandle(ChildIdx);
+					if (ChildPropertyHandle.IsValid())
+					{
+						IDetailPropertyRow& InnerBinderRow = PropertiesGroup.AddPropertyRow(ChildPropertyHandle.ToSharedRef());
+					}
+				}
+
+				return;
+			}
+		}
+	}
+#endif 
+
 	FName PropertyTypeName = PropertyHandle->GetPropertyClass()->GetFName();
 	UE_LOG(LogTemp, Warning, TEXT("=================================================="))
 	UE_LOG(LogTemp, Warning, TEXT("FRTSOValueBinderDetails::CustomizeChildren::(%s)%s"), *PropertyHandle->GetPropertyClass()->GetName(), *PropertyHandle->GetProperty()->NamePrivate.ToString())
+	TSharedPtr<IPropertyHandle> ParentHandle = PropertyHandle->GetParentHandle();
+	if(ParentHandle && ParentHandle->IsValidHandle() && ParentHandle->GetPropertyClass())
+	{
+		UE_LOG(LogTemp, Warning, TEXT("FRTSOValueBinderDetails::CustomizeChildren::Parent::(%s)%s"), *ParentHandle->GetPropertyClass()->GetName(), *ParentHandle->GetProperty()->NamePrivate.ToString())
+	}
 
 	FStructProperty* AsStructProperty = CastField<FStructProperty>(PropertyHandle->GetProperty());
 	TSharedRef<FRTSOBinderDetailRowBuilder> BinderRowBuilder = MakeShareable(new FRTSOBinderDetailRowBuilder);
@@ -157,13 +203,11 @@ void FRTSOBinderDetailRowBuilder::SetOnRebuildChildren(FSimpleDelegate InOnRegen
 {
 	IDetailCustomNodeBuilder::SetOnRebuildChildren(InOnRegenerateChildren);
 }
-void FRTSOBinderDetailRowBuilder::GenerateHeaderRowContent(FDetailWidgetRow& NodeRow)
+void FRTSOBinderDetailRowBuilder::GenerateHeaderRowContent(FDetailWidgetRow& HeaderRow)
 {
-	// FDetailWidgetRow::AddCustomContxtMenuAction 
 }
-
 //
-// TODO: Fix this mess
+// TODO: Fix this mess. Update: fixed, but still a mess :cry:
 void FRTSOBinderDetailRowBuilder::GenerateChildContent(IDetailChildrenBuilder& ChildrenBuilder)
 {
 	IDetailCustomNodeBuilder::GenerateChildContent(ChildrenBuilder);
@@ -181,6 +225,13 @@ void FRTSOBinderDetailRowBuilder::GenerateChildContent(IDetailChildrenBuilder& C
 		{
 			bIsNestedStructData = true;	
 		}
+	}
+
+	uint32 NumChildren = 0;
+	PropertyHandle->GetNumChildren(NumChildren);
+	if (bIsNestedStructData && NumChildren == 0)
+	{
+		return;
 	}
 
 	TSharedRef<SVerticalBox> BinderBox = SNew(SVerticalBox)
@@ -213,26 +264,6 @@ void FRTSOBinderDetailRowBuilder::GenerateChildContent(IDetailChildrenBuilder& C
 		]
 	];
 
-	TSharedPtr<IPropertyHandle> EditInlineHandle;
-	bool bNegate;
-	FBoolProperty* EditInlineProperty = PropertyCustomizationHelpers::GetEditConditionProperty(PropertyHandle->GetProperty(), bNegate);
-	if (EditInlineProperty != nullptr)
-	{
-		uint32 ChildLim = 0;
-		PropertyHandle->GetNumChildren(ChildLim);
-		for (uint32 ChildIdx = 0; ChildIdx < ChildLim; ChildIdx++)
-		{
-			TSharedPtr<IPropertyHandle> ChildHandle = PropertyHandle->GetChildHandle(ChildIdx);
-	
-			if (ChildHandle.IsValid() && ChildHandle->IsValidHandle() && ChildHandle->GetProperty() == EditInlineProperty)
-			{
-				// Found the target property handle
-				EditInlineHandle = ChildHandle;
-				break;
-			}
-		}
-	}
-
 	TSharedRef<SWidget> NameContent = 
 		bIsNestedStructData 
 			? SNew(SHorizontalBox) 
@@ -242,13 +273,9 @@ void FRTSOBinderDetailRowBuilder::GenerateChildContent(IDetailChildrenBuilder& C
 					.Text(FText::AsCultureInvariant("Settings Binder Header"))
 					.Font(PropertyFontStyle)
 				] 
-			: EditInlineHandle.IsValid() && EditInlineHandle->IsValidHandle() 
-				? SNew(SHorizontalBox) 
-					+ SHorizontalBox::Slot()[EditInlineHandle->CreatePropertyValueWidget()]
-					+ SHorizontalBox::Slot()[PropertyHandle->CreatePropertyNameWidget()] 
-				: SNew(SHorizontalBox) 
-					+ SHorizontalBox::Slot()[PropertyHandle->CreatePropertyNameWidget()];	
-
+			: SNew(SHorizontalBox) 
+				+ SHorizontalBox::Slot()[PropertyHandle->CreatePropertyNameWidget()];
+	
 	TSharedRef<SWidget> ValueContent = 
 		bIsNestedStructData 
 		? SNew(SHorizontalBox)
@@ -269,15 +296,13 @@ void FRTSOBinderDetailRowBuilder::GenerateChildContent(IDetailChildrenBuilder& C
 				BinderBox
 			];
 
-	uint32 NumChildren = 0;
-	PropertyHandle->GetNumChildren(NumChildren);
-	if (bIsNestedStructData == false || NumChildren == 0)
+	if (bIsNestedStructData == false)
 	{
 		FDetailWidgetRow& BinderRow = ChildrenBuilder.AddCustomRow(LOCTEXT("RTSOBinderDetails", "Edit Targets")).RowTag("EditTargetRow");
 		BinderRow.NameContent()[NameContent];
 		BinderRow.ValueContent()[ValueContent];
 		return;
-	}	
+	}
 
 	FText GroupName = FText::Format(FText::AsCultureInvariant("{0}(Bindable)"), PropertyHandle->GetPropertyDisplayName());
 	

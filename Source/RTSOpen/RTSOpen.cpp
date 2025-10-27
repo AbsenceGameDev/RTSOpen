@@ -17,13 +17,16 @@ void FRTSOpenModule::StartupModule()
 
    FOnGetPropertyTypeCustomizationInstance InstanceDelegate;
    InstanceDelegate.BindStatic(&FRTSOValueBinderDetails::MakeInstance);
+
+#if 0 // Fix later, this is not relevant now, TODO: Must come back to this however before EoY
    PropertyEditor.RegisterCustomPropertyTypeLayout("FloatProperty", InstanceDelegate);
-   PropertyEditor.RegisterCustomPropertyTypeLayout("DoubleProperty", InstanceDelegate);
    PropertyEditor.RegisterCustomPropertyTypeLayout("BoolProperty", InstanceDelegate);
+   PropertyEditor.RegisterCustomPropertyTypeLayout("DoubleProperty", InstanceDelegate);
    PropertyEditor.RegisterCustomPropertyTypeLayout("IntProperty", InstanceDelegate);
    PropertyEditor.RegisterCustomPropertyTypeLayout(NAME_ByteProperty, InstanceDelegate);
    PropertyEditor.RegisterCustomPropertyTypeLayout(NAME_EnumProperty, InstanceDelegate);
    PropertyEditor.RegisterCustomPropertyTypeLayout("StrProperty", InstanceDelegate);
+#endif 
 
    PropertyEditor.RegisterCustomPropertyTypeLayout("RTSOSettingsKeyData", InstanceDelegate);
 

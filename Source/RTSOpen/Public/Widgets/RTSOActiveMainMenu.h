@@ -242,6 +242,38 @@ public:
 };
 
 
+UCLASS(Blueprintable)
+class RTSOPEN_API URTSODropdownBase : public UWidget
+{
+	GENERATED_BODY()
+public:
+	virtual TSharedRef<SWidget> RebuildWidget() override 
+	{
+		return Super::RebuildWidget();
+	}
+	virtual void ReleaseSlateResources(bool bReleaseChildren) override 
+	{
+		Super::ReleaseSlateResources(bReleaseChildren);
+	}
+};
+
+UCLASS(Blueprintable)
+class RTSOPEN_API URTSODropdown : public UUserWidget
+{
+	GENERATED_BODY()
+public:
+	virtual TSharedRef<SWidget> RebuildWidget() override;
+	virtual void ReleaseSlateResources(bool bReleaseChildren) override;
+	void Refresh();
+
+	UPROPERTY(BlueprintReadOnly, Category="Widgets", Meta=(BindWidget))
+	class UNamedSlot* WidgetSlot = nullptr;
+
+	TSharedPtr<class SExpandableArea> ExpandableWidget;
+	TSharedPtr<class SWidget> SlateWidget;
+};
+
+
 //
 // Settings Entry Widgets (UMG)
 DECLARE_DELEGATE_OneParam(FRTSOInputSelectorKeyUpdated, const FRTSOSettingsKeyData&)

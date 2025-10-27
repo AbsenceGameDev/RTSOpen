@@ -1231,7 +1231,7 @@ public:
     static TSharedRef<SVerticalBox> GenerateSectionTitle(const FText& SectionText);
 	//~ Begin IDetailCustomNodeBuilder interface
 	virtual void SetOnRebuildChildren(FSimpleDelegate InOnRegenerateChildren) override;
-	virtual void GenerateHeaderRowContent(FDetailWidgetRow& NodeRow) override;
+	virtual void GenerateHeaderRowContent(FDetailWidgetRow& HeaderRow) override;
 	virtual void GenerateChildContent(IDetailChildrenBuilder& ChildrenBuilder) override;
 	virtual bool RequiresTick() const override { return false; }
 	virtual bool InitiallyCollapsed() const override { return false; }
@@ -1240,7 +1240,6 @@ public:
 
 	TSharedRef<ITableRow> MakeListViewWidget_QualifiedPreprocessFunctions(TSharedPtr<FString> InQualifiedFunctionPath, const TSharedRef<STableViewBase>& OwnerTable) const;
 	void OnOptionSelected_QualifiedPreprocessFunctions(TSharedPtr<FString> InQualifiedFunctionPath, ESelectInfo::Type InSelectInfo);
-
     
 	void PreprocessPropertyType();
 	void PopulateTagArray();
@@ -1251,7 +1250,6 @@ public:
 	void OnTagMenuDismissed(TSharedRef<IMenu> ClosingMenu);
 	void OnCheckboxStateChanged(ECheckBoxState NewState);
 	FText GetTagText() const;
-
 
     ERTSOSettingsType PropertyType = ERTSOSettingsType::None;
     TSharedPtr<IPropertyHandle> PropertyHandle = nullptr;
