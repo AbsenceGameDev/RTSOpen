@@ -61,6 +61,9 @@ public:
 	 * @todo backlog: when the design issues with enhanced input have been resolved by epic then remove the reset value stack of the input subsystem */
 	virtual void BeginPlay() override;
 
+	/** @brief Deinit subsystems if needed */
+	virtual void EndPlay(EEndPlayReason::Type EndPlayReason) override;
+
 	/** @brief Refreshes the instance settings from the settings table handle */
 	void RefreshSettingsInstance();
 	

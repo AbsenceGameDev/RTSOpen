@@ -111,7 +111,7 @@ enum EPDRTSGhostTransition
 
 /** @brief Ghost transition behaviour enum selector */
 UENUM(Blueprintable)
-enum class EPDRTSGhostStageBehaviour
+enum class EPDRTSGhostStageBehaviour : uint8
 {
 	EOnStart UMETA(DisplayName="OnStart"),
 	EOnEnd UMETA(DisplayName="OnEnd"),
@@ -243,7 +243,7 @@ struct FPDRTSGhostBuildState
 
 /** @brief Should Move camera or not upon placing a ghost ? */
 UENUM(Blueprintable)
-enum class EPDRTSBuildCameraBehaviour
+enum class EPDRTSBuildCameraBehaviour : uint8
 {
 	Placement_SmoothInterp, /** @brief Immediate Ghost;  If no resources, put in waiting queue; when resources: start build automatically without workers needing to gather any resourced there */
 	Place_NoCameraMovement,   /** @brief Processing: If no resources, put in waiting queue; when resources: send workers to gather to location */
@@ -257,7 +257,7 @@ namespace PD::Build::Behaviour
 
 /** @brief Building destruction behaviour, for when players "bulldoze" their own buildings  */
 UENUM(Blueprintable)
-enum class EPDRTSDestroyBuildingBehaviour
+enum class EPDRTSDestroyBuildingBehaviour : uint8
 {
 	RequireConfirmationDialog, /** @brief Require a confirmation dialog before destroying the buildable */
 	ImmediateDestruction,   /** @brief Destroy immediately, for snappy feeling and in games where dialogs really mess up the flow of the game */

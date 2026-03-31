@@ -2,10 +2,15 @@
 #include "Widgets/RTSOMiniMap.h"
 
 #include "Widgets/Slate/SRTSOMiniMap.h"
+#include "Components/SizeBox.h"
 
 TSharedRef<SWidget> URTSOMiniMap::RebuildWidget()
 {
-	const TSharedRef<SRTSOMiniMap> SlateMiniMapRef = SNew(SRTSOMiniMap);
+   SRTSOMiniMap::FArguments Args;
+   Args._RadarSize = RadarSize; 
+   Args._GenericMinimapIconRectSize = GenericMinimapIconRectSize;
+
+	const TSharedRef<SRTSOMiniMap> SlateMiniMapRef = SArgumentNew(Args, SRTSOMiniMap);
 	SlateMiniMap = SlateMiniMapRef.ToSharedPtr();
 	return SlateMiniMap.ToSharedRef();
 }
@@ -15,6 +20,21 @@ void URTSOMiniMap::OnWidgetRebuilt()
 	Super::OnWidgetRebuilt();
 }
 
+void URTSOMiniMap::ReleaseSlateResources(bool bReleaseChildren)
+{
+   SlateMiniMap.Reset();
+   Super::ReleaseSlateResources(bReleaseChildren);
+}
+
+void URTSOMiniMapUserWidget::NativePreConstruct()
+{
+   Super::NativePreConstruct();
+
+   if (MinimapBase && MinimapSizeBox)
+   {
+      MinimapBase->RadarSize = MinimapSizeBox->GetDesiredSize();
+   }
+}
 
 /**
 Business Source License 1.1

@@ -77,6 +77,13 @@ Plugins/*/Intermediate/*
 # Cache files for the editor to use
 DerivedDataCache/*
 
+# Content external objects, leave out for now
+Content/__ExternalActors__/
+Content/__ExternalObjects__/
+
+# Plugins prototype ideas on hold 
+Plugins/PDLenia
+
 # Workspace misc
 *.code-workspace
 *.DotSettings.user

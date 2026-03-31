@@ -144,6 +144,8 @@ public:
 	UPROPERTY(Config, EditAnywhere, Category = "Worker AI Subsystem")
 	bool bVisualizeWorkerPaths = true;
 	
+	UPROPERTY(Config, EditAnywhere, Category = "Worker AI Subsystem")
+	TSoftObjectPtr<UTextureRenderTarget2D> EntityDataTexture = nullptr;
 };
 
 

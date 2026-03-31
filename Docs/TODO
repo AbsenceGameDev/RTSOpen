@@ -110,7 +110,40 @@ October 27th 2025 - Commit#0 :
     ✔ Fill in missing code to update the submenu description sidepanel @done(25-10-27 05:25)
     ✔ Add entries to settings stringtable or the submenu sidepanel @done(25-10-27 05:25)
 
-Next:
+
+Nov 8th 2025 - Commit#0:
+    - Test minimap: If not working, this is the commit to resolve it
+
+
+Nov 2025 - Mar 31st 2026 - Commit#0:
+Note: Haven't updated this in a while, but I have made sporadic changes locally over the past months and I've always had some issues making it never be ready for a commit
+Also, because I am too lazy I will not split things up in different commits, I will however add some notes for things I want to get done the coming week
+TODO: 
+    ☐ Deprecate and then Remove Slate minimap
+IN PROGRESS:
+    ☐ Implementing a new minimap in hlsl, most of the preliminary work here is done now @started(26-03-31 01:48)
+    Note: After fixing the slate minimap it and testing it I realized that the CPU is really not the place I should handle this minimap stuff
+
+    Issues with bitonic sort (getting overhead from 210 sorting passes of a 1024x1024 data texture):
+        ☐ Bringing it down to 256x256 and I will only need to do many fewer passes in total, and will still hold ~65500 entities
+        ☐ Also consider groupshared passes where possible, should bring it down byfrom 210 passes now to ~30 passes, we will see significantly less overhead 
+
+DONE: 
+    ✔ Created a new game-level module that maps our custom shader paths so they may be used by USF scripts @done(26-03-31 01:47)
+    ✔ Wrote a bitonic sort to sort entites based on world location, shader and supporting c++ code to implement it as a global shader (Thanks Epic for the crappy docs on rendergraph, RHI and global shaders) @done(26-03-31 01:47)
+        ✔ Added an RT texture to UPDRTSSubsystemSettings that is the output buffer for our entity data @done(26-03-31 01:47)
+        ✔ Packing entity related data into a flinearcolor, where the RGB values are world location vectors XYZ and A channel encodes TeamColorID, EntityFlags and simplified yaw rotation (360/16) @done(26-03-31 01:47)
+    
+    ✔ Updated various enum classes to inherit from uint8 @done(26-03-31 01:47)
+    ✔ Added function WorldDeinit that deletes the rendergraph buffers for the RTSSubssytem. Calling it upon godhand endplay. @done(26-03-31 01:47)
+    ✔ Build error in experimental system that is on pause. @done(26-03-31 01:47)
+
+    ✔ A number of changes to SRTSO Minimap which are now obsolote sine moving to a shader based approach @done(26-03-31 01:47)
+    ✔ Updated .gitignore @done(26-03-31 01:50)
+
+    
+
+Backlogged until gameplay systems are fully functional:
 XXXXXX XXth 2025 - Commit#1 :
     - Implement Save/Load logic for settings value as-well
     - Set up a save dialog in case the user changes a setting but forgets to save, to give them a chance to save the game

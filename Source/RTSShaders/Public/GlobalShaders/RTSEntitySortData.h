@@ -1,75 +1,50 @@
 /* @author: Ario Amin @ Permafrost Development. @copyright: Full BSL(1.1) License included at bottom of the file  */
+#pragma once
 
-using UnrealBuildTool;
-using System.IO;
+// Compute shader / RDG graph includes
+#include "CoreMinimal.h"
+#include "GlobalShader.h"
+#include "ShaderParameterStruct.h"
+#include "ShaderParameterMacros.h"
+#include "Engine/TextureRenderTarget2D.h"
 
-public class RTSOpen : ModuleRules
+class FRTSSortData : public FGlobalShader
 {
-	public RTSOpen(ReadOnlyTargetRules Target) : base(Target)
-	{
-		PCHUsage = PCHUsageMode.UseExplicitOrSharedPCHs;
-		
-		PublicIncludePaths.Add(Path.Combine(ModuleDirectory, "Classes"));
-		if (Target.Type == TargetType.Editor)
-		{
-			PublicDependencyModuleNames.AddRange(new string[] 
-			{ 
-				/*Tag*/          "GameplayTagsEditor"
-			});
+public:
+   DECLARE_EXPORTED_GLOBAL_SHADER(FRTSSortData, RTSSHADERS_API);
+   SHADER_USE_PARAMETER_STRUCT(FRTSSortData, FGlobalShader);
 
-			PrivateDependencyModuleNames.AddRange(new string[] 
-			{ 
-				/*Editor*/       "UnrealEd", "PropertyEditor"
-			});
-		}
-	
-		
-		PublicDependencyModuleNames.AddRange(new string[] 
-		{ 
-			/*Core*/         "Engine", "Core", "CoreUObject", "NetCore", "ApplicationCore", "RenderCore", "RHICore",
-			/*App*/          "AppFramework",
-			/*Rendering*/    "RHI",
-			/*Settings*/     "DeveloperSettings", 
-			/*Tag*/          "GameplayTags",
-			/*Input*/        "InputCore",  "EnhancedInput", 
-			/*Conversation*/ "CommonConversationRuntime", 
-			/*PermaDev*/     "PDRTSBase", "PDInventory", "PDConversationHelper", "PDSharedUI", "PDInteraction", "RTSShaders", 
-		});
+   BEGIN_SHADER_PARAMETER_STRUCT(FParameters, )
+      SHADER_PARAMETER_RDG_BUFFER_UAV(RWBuffer<float4>, EntityData)
+      SHADER_PARAMETER_RDG_TEXTURE_UAV(RWTexture2D<float4>, OutSortedEntityDataTexture)
+      SHADER_PARAMETER(uint32, ComputePassStage)
+      SHADER_PARAMETER(uint32, ComputePassStep)
+   END_SHADER_PARAMETER_STRUCT()
 
-		PublicDependencyModuleNames.AddRange(new string[]
-		{
-			/*Mass*/     "MassEntity", "MassCommon", "MassNavigation", "MassMovement", "MassAIBehavior", "MassSmartObjects", "MassSignals", "MassRepresentation", "MassLOD", "MassSpawner", 
-			/*AI*/       "AIModule", "StateTreeModule", "SmartObjectsModule", "NavigationSystem", 
-			/*Struct*/   "StructUtils", 
-			/*Animation*/"AnimToTexture", 
-			/*Physics*/  "Chaos",
-			
-		});
-		
-		PrivateDependencyModuleNames.AddRange(new string[] 
-		{ 	
-			/*Tag*/          "GameplayTags", 
-			/*Input*/        "EnhancedInput", 
-			/*Widget*/       "SlateCore", "Slate", "CommonUI", "UMG", 
-			/*Effects*/      "Niagara", "MassCrowd", 
-            /*Conversation*/ "CommonConversationRuntime", 
-			/*PermaDev*/     "PDInteraction", "PDInventory", "PDRTSBase", "PDConversationHelper", "PDUserMessageBase",
-		});
-	}
-}
+   void RTSSHADERS_API BuildAndExecuteGraph(FRHICommandListImmediate &RHICmdList, UTextureRenderTarget2D* RenderTarget, const TRefCountPtr<FRDGPooledBuffer>& EntityInputPooledBuffer, const TRefCountPtr<IPooledRenderTarget>& ExternalPooledTexture, TArray<FLinearColor> InData, int32 BufferSize);
 
-/*
+
+   static bool ShouldCompilePermutation(const FGlobalShaderPermutationParameters& Parameters) 
+   {
+       return IsFeatureLevelSupported(Parameters.Platform, ERHIFeatureLevel::SM5);
+   }
+};
+
+
+/**
 Business Source License 1.1
 
 Parameters
 
 Licensor:             Ario Amin (@ Permafrost Development)
-Licensed Work:        RTSOpen (Source available on github)
+Licensed Work:        RTSShaders (Source available on github)
                       The Licensed Work is (c) 2024 Ario Amin (@ Permafrost Development)
 Additional Use Grant: You may make free use of the Licensed Work in a commercial product or service provided these three additional conditions as met; 
                       1. Must give attributions to the original author of the Licensed Work, in 'Credits' if that is applicable.
                       2. The Licensed Work must be Compiled before being redistributed.
                       3. The Licensed Work Source may be linked but may not be packaged into the product or service being sold
+                      4. Must not be resold or repackaged or redistributed as another product, is only allowed to be used within a commercial or non-commercial game project.
+                      5. Teams with yearly budgets larger than 100000 USD must contact the owner for a custom license or buy the framework from a marketplace it has been made available on.
 
                       "Credits" indicate a scrolling screen with attributions. This is usually in a products end-state
 
@@ -90,9 +65,9 @@ please visit: https://permadev.se/
 
 Notice
 
-The Business Source License (this document, or the “License”) is not an Open
+The Business Source License (this document, or the “License”) is not an Shaders
 Source license. However, the Licensed Work will eventually be made available
-under an Open Source License, as stated in this License.
+under an Shaders Source License, as stated in this License.
 
 License text copyright (c) 2017 MariaDB Corporation Ab, All Rights Reserved.
 “Business Source License” is a trademark of MariaDB Corporation Ab.

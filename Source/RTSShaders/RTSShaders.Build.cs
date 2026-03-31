@@ -3,58 +3,23 @@
 using UnrealBuildTool;
 using System.IO;
 
-public class RTSOpen : ModuleRules
+public class RTSShaders : ModuleRules
 {
-	public RTSOpen(ReadOnlyTargetRules Target) : base(Target)
+	public RTSShaders(ReadOnlyTargetRules Target) : base(Target)
 	{
 		PCHUsage = PCHUsageMode.UseExplicitOrSharedPCHs;
 		
-		PublicIncludePaths.Add(Path.Combine(ModuleDirectory, "Classes"));
-		if (Target.Type == TargetType.Editor)
-		{
-			PublicDependencyModuleNames.AddRange(new string[] 
-			{ 
-				/*Tag*/          "GameplayTagsEditor"
-			});
-
-			PrivateDependencyModuleNames.AddRange(new string[] 
-			{ 
-				/*Editor*/       "UnrealEd", "PropertyEditor"
-			});
-		}
-	
-		
+		PublicIncludePaths.AddRange(new string[]
+      {
+         Path.Combine(ModuleDirectory, "Classes"),
+      });
 		PublicDependencyModuleNames.AddRange(new string[] 
 		{ 
-			/*Core*/         "Engine", "Core", "CoreUObject", "NetCore", "ApplicationCore", "RenderCore", "RHICore",
-			/*App*/          "AppFramework",
-			/*Rendering*/    "RHI",
-			/*Settings*/     "DeveloperSettings", 
-			/*Tag*/          "GameplayTags",
-			/*Input*/        "InputCore",  "EnhancedInput", 
-			/*Conversation*/ "CommonConversationRuntime", 
-			/*PermaDev*/     "PDRTSBase", "PDInventory", "PDConversationHelper", "PDSharedUI", "PDInteraction", "RTSShaders", 
+			/*Core*/         "Core", "Engine", "RenderCore", "RHICore", 
+			/*App*/          "Projects",
+			/*Rendering*/    "Renderer","RHI", "PDRTSBase"
 		});
 
-		PublicDependencyModuleNames.AddRange(new string[]
-		{
-			/*Mass*/     "MassEntity", "MassCommon", "MassNavigation", "MassMovement", "MassAIBehavior", "MassSmartObjects", "MassSignals", "MassRepresentation", "MassLOD", "MassSpawner", 
-			/*AI*/       "AIModule", "StateTreeModule", "SmartObjectsModule", "NavigationSystem", 
-			/*Struct*/   "StructUtils", 
-			/*Animation*/"AnimToTexture", 
-			/*Physics*/  "Chaos",
-			
-		});
-		
-		PrivateDependencyModuleNames.AddRange(new string[] 
-		{ 	
-			/*Tag*/          "GameplayTags", 
-			/*Input*/        "EnhancedInput", 
-			/*Widget*/       "SlateCore", "Slate", "CommonUI", "UMG", 
-			/*Effects*/      "Niagara", "MassCrowd", 
-            /*Conversation*/ "CommonConversationRuntime", 
-			/*PermaDev*/     "PDInteraction", "PDInventory", "PDRTSBase", "PDConversationHelper", "PDUserMessageBase",
-		});
 	}
 }
 
@@ -64,7 +29,7 @@ Business Source License 1.1
 Parameters
 
 Licensor:             Ario Amin (@ Permafrost Development)
-Licensed Work:        RTSOpen (Source available on github)
+Licensed Work:        RTSShaders (Source available on github)
                       The Licensed Work is (c) 2024 Ario Amin (@ Permafrost Development)
 Additional Use Grant: You may make free use of the Licensed Work in a commercial product or service provided these three additional conditions as met; 
                       1. Must give attributions to the original author of the Licensed Work, in 'Credits' if that is applicable.
@@ -90,9 +55,9 @@ please visit: https://permadev.se/
 
 Notice
 
-The Business Source License (this document, or the “License”) is not an Open
+The Business Source License (this document, or the “License”) is not an Shaders
 Source license. However, the Licensed Work will eventually be made available
-under an Open Source License, as stated in this License.
+under an Shaders Source License, as stated in this License.
 
 License text copyright (c) 2017 MariaDB Corporation Ab, All Rights Reserved.
 “Business Source License” is a trademark of MariaDB Corporation Ab.

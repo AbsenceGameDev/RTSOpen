@@ -23,6 +23,21 @@ class UMassEntitySubsystem;
 /** fwd decl.  */
 struct FPDWorkUnitDatum;
 
+struct FPDRTSPerPixelStorageHelper
+{
+	FORCEINLINE static FLinearColor ConstructData(FVector Location, uint16_t Entity16WayRotation, uint8_t EntityFlags, uint8_t TeamColourId)
+	{
+ 		const uint32_t ConstructedAlphaChannel = Entity16WayRotation | uint32_t(EntityFlags) >> 7 | uint32_t(TeamColourId) >> 15;
+    	return FLinearColor(
+    		Location.X, 
+    		Location.Y,
+    		Location.Z, 
+    		*reinterpret_cast<const float*>(&ConstructedAlphaChannel));
+	}
+};
+
+DECLARE_DELEGATE_SixParams(FRTSBuildGlobalSortEntityShader, FRHICommandListImmediate& /*RHICmdList*/, UTextureRenderTarget2D* /*RenderTarget*/, const TRefCountPtr<FRDGPooledBuffer>& /*EntityInputPooledBuffer*/, const TRefCountPtr<IPooledRenderTarget>& /*ExternalPooledTexture*/, TArray<FLinearColor> /*InData*/, int32 /*BufferSize*/);
+
 /** @brief Subsystem to handle octree size changes and to act as a manager for the entity workers */
 UCLASS()
 class PDRTSBASE_API UPDRTSBaseSubsystem : public UEngineSubsystem
@@ -72,14 +87,28 @@ public:
 	/** @brief Retrieves the config asset */
 	TSoftObjectPtr<UMassEntityConfigAsset> GetConfigAssetForArchetype(const FMassArchetypeHandle& Archetype);
 
-	/** @brief Caches the worlds entity manager */
+	/** @brief Caches the worlds entity manager and sets up pooled buffers for a bitonic sort in a compute shader */
 	void WorldInit(const UWorld* World);
+	/** @brief Releases pooled buffers */
+	void WorldDeinit(const UWorld* World);
 
 	/** @brief Does some portable iso-approved 'hacks' to fetch the all the mass ISM's */
 	static const TArray<TObjectPtr<UInstancedStaticMeshComponent>>& GetMassISMs(const UWorld* InWorld);
+	
+	/** @brief  */
+	void GenerateEntityMapData();
+
+	UFUNCTION(BlueprintCallable, Category = "Texture", CallInEditor)
+	void CreateDataTexture();
+	UFUNCTION(BlueprintCallable, Category = "Texture", CallInEditor)
+	void CreateDataBuffer();
+	UFUNCTION(BlueprintCallable, Category = "Texture", CallInEditor)
+	void UpdateDataTexture(TArray<FLinearColor>& PerPixelData);
+	UFUNCTION(BlueprintCallable, Category = "Texture", CallInEditor)
+	void DeleteBuffers(); 
 
 
-public:	
+public:		
 	/** @brief Work tables used by subsystem to organize ai-jobs */
 	UPROPERTY()
 	TArray<UDataTable*> WorkTables{};
@@ -136,7 +165,24 @@ public:
 	
 	/** @brief  (User) Query Shape structure */
 	FPDOctreeUserQuery OctreeUserQuery{};
+
+	TArray<FLinearColor> EntityShaderInputData;
+
+	FRTSBuildGlobalSortEntityShader BuildEntitySortComputeShader;
+	
+private:
+	FRDGBufferRef EntityInputBuffer;
+
+	/** @brief  */
+	UPROPERTY()
+	class UTextureRenderTarget2D* EntityDataTexture;
+
+	TRefCountPtr<FRDGPooledBuffer> EntityInputPooledBuffer;
+	TRefCountPtr<IPooledRenderTarget> EntityPooledRT;
+
+	bool bHasCreatedPooledBuffers = false;
 };
+
 
 /**
 Business Source License 1.1

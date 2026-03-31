@@ -1,75 +1,78 @@
 /* @author: Ario Amin @ Permafrost Development. @copyright: Full BSL(1.1) License included at bottom of the file  */
 
-using UnrealBuildTool;
-using System.IO;
+#include "GlobalShaders/RTSEntitySortData.h"
+#include "Engine/TextureRenderTarget2D.h"
+#include "RenderGraphBuilder.h"
+#include "RenderGraphUtils.h"
 
-public class RTSOpen : ModuleRules
+
+void FRTSSortData::BuildAndExecuteGraph(FRHICommandListImmediate& RHICmdList, UTextureRenderTarget2D* RenderTarget, const TRefCountPtr<FRDGPooledBuffer>& EntityInputPooledBuffer, const TRefCountPtr<IPooledRenderTarget>& ExternalPooledTexture, TArray<FLinearColor> InData, int32 BufferSize)
 {
-	public RTSOpen(ReadOnlyTargetRules Target) : base(Target)
-	{
-		PCHUsage = PCHUsageMode.UseExplicitOrSharedPCHs;
-		
-		PublicIncludePaths.Add(Path.Combine(ModuleDirectory, "Classes"));
-		if (Target.Type == TargetType.Editor)
-		{
-			PublicDependencyModuleNames.AddRange(new string[] 
-			{ 
-				/*Tag*/          "GameplayTagsEditor"
-			});
+	constexpr uint32 GMaxBufferElements = 1024*1024;
 
-			PrivateDependencyModuleNames.AddRange(new string[] 
-			{ 
-				/*Editor*/       "UnrealEd", "PropertyEditor"
-			});
-		}
+	FRDGBuilder GraphBuilder(RHICmdList);
+	FParameters* AllocatedPassParameter = GraphBuilder.AllocParameters<FRTSSortData::FParameters>();
+
+	// GetStaticType();
+
+	// Buffer UAV
+	FRDGBufferRef DataBufferRDG = GraphBuilder.RegisterExternalBuffer(
+		EntityInputPooledBuffer,
+		*FString(TEXT("SortDataBuffer")),
+		ERDGBufferFlags::MultiFrame
+	);
+	FRDGBufferUAVDesc UAVDesc(DataBufferRDG, EPixelFormat::PF_A32B32G32R32F); 
+
+	FRDGBufferUAVRef EntityUAV = GraphBuilder.CreateUAV(UAVDesc);
+	AllocatedPassParameter->EntityData = EntityUAV;
 	
-		
-		PublicDependencyModuleNames.AddRange(new string[] 
-		{ 
-			/*Core*/         "Engine", "Core", "CoreUObject", "NetCore", "ApplicationCore", "RenderCore", "RHICore",
-			/*App*/          "AppFramework",
-			/*Rendering*/    "RHI",
-			/*Settings*/     "DeveloperSettings", 
-			/*Tag*/          "GameplayTags",
-			/*Input*/        "InputCore",  "EnhancedInput", 
-			/*Conversation*/ "CommonConversationRuntime", 
-			/*PermaDev*/     "PDRTSBase", "PDInventory", "PDConversationHelper", "PDSharedUI", "PDInteraction", "RTSShaders", 
-		});
+	// Texture UAV
+	FRHITexture2D* RhiTexture = RenderTarget->GetResource()->GetTexture2DRHI();
+	FRDGTextureRef OutTextureRef = GraphBuilder.RegisterExternalTexture(
+		ExternalPooledTexture, 
+		*FString(TEXT("RT_MinimapEntityData")),
+		ERDGTextureFlags::None
+	); 
 
-		PublicDependencyModuleNames.AddRange(new string[]
+	FRDGTextureUAVDesc OutTextureUAVDesc(OutTextureRef);
+	FRDGTextureUAVRef TextureBufferUAV = GraphBuilder.CreateUAV(OutTextureUAVDesc, ERDGUnorderedAccessViewFlags::None);
+	AllocatedPassParameter->OutSortedEntityDataTexture = TextureBufferUAV;
+
+	const int32 GroupCount = BufferSize / 64;
+	const uint32 BitCount = FMath::CeilLogTwo(FMath::Sqrt(static_cast<double>(BufferSize)));	
+	for (uint32 BitIndex = 0; BitIndex < BitCount; ++BitIndex)
+	{
+		AllocatedPassParameter->ComputePassStage = 1 << (BitIndex + 1);
+
+		for (int32 PassSubStep = BitIndex; PassSubStep >= 0; --PassSubStep)
 		{
-			/*Mass*/     "MassEntity", "MassCommon", "MassNavigation", "MassMovement", "MassAIBehavior", "MassSmartObjects", "MassSignals", "MassRepresentation", "MassLOD", "MassSpawner", 
-			/*AI*/       "AIModule", "StateTreeModule", "SmartObjectsModule", "NavigationSystem", 
-			/*Struct*/   "StructUtils", 
-			/*Animation*/"AnimToTexture", 
-			/*Physics*/  "Chaos",
-			
-		});
-		
-		PrivateDependencyModuleNames.AddRange(new string[] 
-		{ 	
-			/*Tag*/          "GameplayTags", 
-			/*Input*/        "EnhancedInput", 
-			/*Widget*/       "SlateCore", "Slate", "CommonUI", "UMG", 
-			/*Effects*/      "Niagara", "MassCrowd", 
-            /*Conversation*/ "CommonConversationRuntime", 
-			/*PermaDev*/     "PDInteraction", "PDInventory", "PDRTSBase", "PDConversationHelper", "PDUserMessageBase",
-		});
+			AllocatedPassParameter->ComputePassStep = 1 << PassSubStep;
+
+			// Adding the compute pass to our bitonic sort
+			TShaderMapRef<FRTSSortData> ComputeShader(GetGlobalShaderMap(GMaxRHIFeatureLevel));
+			FComputeShaderUtils::AddPass(GraphBuilder, RDG_EVENT_NAME("RTSSortData"), ComputeShader, AllocatedPassParameter, FIntVector(GroupCount, 1, 1));
+		}
 	}
+	GraphBuilder.Execute();
 }
 
-/*
+IMPLEMENT_GLOBAL_SHADER(FRTSSortData, "/Project/SortData.usf", "SortData", SF_Compute);
+
+
+/**
 Business Source License 1.1
 
 Parameters
 
 Licensor:             Ario Amin (@ Permafrost Development)
-Licensed Work:        RTSOpen (Source available on github)
+Licensed Work:        RTSShaders (Source available on github)
                       The Licensed Work is (c) 2024 Ario Amin (@ Permafrost Development)
 Additional Use Grant: You may make free use of the Licensed Work in a commercial product or service provided these three additional conditions as met; 
                       1. Must give attributions to the original author of the Licensed Work, in 'Credits' if that is applicable.
                       2. The Licensed Work must be Compiled before being redistributed.
                       3. The Licensed Work Source may be linked but may not be packaged into the product or service being sold
+                      4. Must not be resold or repackaged or redistributed as another product, is only allowed to be used within a commercial or non-commercial game project.
+                      5. Teams with yearly budgets larger than 100000 USD must contact the owner for a custom license or buy the framework from a marketplace it has been made available on.
 
                       "Credits" indicate a scrolling screen with attributions. This is usually in a products end-state
 
@@ -90,9 +93,9 @@ please visit: https://permadev.se/
 
 Notice
 
-The Business Source License (this document, or the “License”) is not an Open
+The Business Source License (this document, or the “License”) is not an Shaders
 Source license. However, the Licensed Work will eventually be made available
-under an Open Source License, as stated in this License.
+under an Shaders Source License, as stated in this License.
 
 License text copyright (c) 2017 MariaDB Corporation Ab, All Rights Reserved.
 “Business Source License” is a trademark of MariaDB Corporation Ab.

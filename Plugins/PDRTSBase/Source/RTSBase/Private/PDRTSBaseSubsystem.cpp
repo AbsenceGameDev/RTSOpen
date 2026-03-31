@@ -14,6 +14,11 @@
 #include "Interfaces/PDRTSBuildableGhostInterface.h"
 #include "Pawns/PDRTSBaseUnit.h"
 
+#include "Engine/TextureRenderTarget2D.h"
+
+// Shader inc
+#include "RenderGraphUtils.h"
+
 struct FTransformFragment;
 class UMassCrowdRepresentationSubsystem;
 class AMassVisualizer;
@@ -218,7 +223,17 @@ void UPDRTSBaseSubsystem::WorldInit(const UWorld* World)
 {
 	check(World)
 	EntityManager = &World->GetSubsystem<UMassEntitySubsystem>()->GetEntityManager();	
+	CreateDataTexture();
 }
+
+void UPDRTSBaseSubsystem::WorldDeinit(const UWorld* World)
+{
+	check(World)
+	EntityManager = &World->GetSubsystem<UMassEntitySubsystem>()->GetEntityManager();
+	
+	DeleteBuffers();
+}
+
 
 void UPDRTSBaseSubsystem::OnDeveloperSettingsChanged(UObject* SettingsToChange, FPropertyChangedEvent& PropertyEvent)
 {
@@ -278,6 +293,121 @@ const TArray<TObjectPtr<UInstancedStaticMeshComponent>>& UPDRTSBaseSubsystem::Ge
 		return MeshInfo.*TPrivateAccessor<ISMTag>::TypeValue;
 	}
 	return FailDummy;
+}
+
+void UPDRTSBaseSubsystem::GenerateEntityMapData()
+{
+	UpdateDataTexture(EntityShaderInputData);
+}
+
+void UPDRTSBaseSubsystem::CreateDataTexture()
+{
+	const UPDRTSSubsystemSettings* RTSSettings = GetDefault<UPDRTSSubsystemSettings>();
+	const bool bDataTextureAssigned = !RTSSettings->EntityDataTexture.IsNull(); 
+	const bool bDataTextureLoaded = EntityDataTexture != nullptr && EntityDataTexture->IsValidLowLevelFast();
+	EntityDataTexture = bDataTextureLoaded
+		? EntityDataTexture
+		: bDataTextureAssigned 
+			? RTSSettings->EntityDataTexture.LoadSynchronous() 
+			: NewObject<UTextureRenderTarget2D>(this);
+
+	EntityDataTexture->bCanCreateUAV = true;
+
+	const bool bNewlyCreatedRT = bDataTextureAssigned == false && bDataTextureLoaded == false;
+	if (bNewlyCreatedRT)
+	{
+		EntityDataTexture->InitAutoFormat(1024, 1024);		
+		EntityDataTexture->CompressionSettings = TC_HDR_F32;
+		EntityDataTexture->SRGB = false;
+		EntityDataTexture->Filter = TF_Nearest; 
+#if WITH_EDITORONLY_DATA
+		EntityDataTexture->MipGenSettings = TMGS_NoMipmaps;
+#endif
+	}
+
+	AsyncTask(ENamedThreads::GameThread, [&]()
+	{
+		if (bNewlyCreatedRT) { EntityDataTexture->UpdateResource(); }
+
+		CreateDataBuffer();
+	});
+}
+
+void UPDRTSBaseSubsystem::CreateDataBuffer()
+{	
+	ENQUEUE_RENDER_COMMAND(CreateDataBufferCommandName)
+	(
+		[this](FRHICommandListImmediate& RHICmdList)
+		{
+			constexpr int32 GMaxBufferElements = 1024*1024;
+			uint32 ElementSize = sizeof(FLinearColor); 
+			uint32 TotalSize = GMaxBufferElements * ElementSize;
+			if (false == EntityInputPooledBuffer.IsValid())
+			{
+				FRDGBufferDesc BufferDescriptor = FRDGBufferDesc::CreateBufferDesc(ElementSize, GMaxBufferElements);
+				EntityInputPooledBuffer = AllocatePooledBuffer(BufferDescriptor, TEXT("SortDataBuffer"), ERDGPooledBufferAlignment::PowerOfTwo);
+			}
+			
+			if (false == EntityPooledRT.IsValid())
+			{
+				EntityPooledRT = AllocatePooledTexture(
+					FRDGTextureDesc::Create2D(
+						FIntPoint(EntityDataTexture->SizeX, EntityDataTexture->SizeY),
+						EPixelFormat::PF_A32B32G32R32F,
+						FClearValueBinding(),
+						TexCreate_UAV),
+					TEXT("RT_MinimapEntityData"));
+			}
+			bHasCreatedPooledBuffers = true;
+		}
+	);
+}
+
+void UPDRTSBaseSubsystem::UpdateDataTexture(TArray<FLinearColor>& PerPixelData)
+{
+	if (false == bHasCreatedPooledBuffers) 
+	{
+		// Potential TODO: Log error? Assert?
+		 return; 
+	}
+
+	UTextureRenderTarget2D* RenderTargetParam = EntityDataTexture;
+	TRefCountPtr<FRDGPooledBuffer> EntityInputPooledBufferCopy = EntityInputPooledBuffer;
+	TRefCountPtr<IPooledRenderTarget> TexturePoolCopy = EntityPooledRT;
+	FRTSBuildGlobalSortEntityShader BuildEntitySortComputeShaderCopy = BuildEntitySortComputeShader;
+	TArray<FLinearColor> InData = PerPixelData;
+	ENQUEUE_RENDER_COMMAND(UpdateDataTextureCommandName)(
+		[
+			BuildEntitySortComputeShaderCopy,
+			// ComputeShader,
+			EntityInputPooledBufferCopy,
+			TexturePoolCopy,
+			RenderTargetParam,
+			InData
+		](FRHICommandListImmediate& RHICmdList)
+		{
+			BuildEntitySortComputeShaderCopy.ExecuteIfBound(
+				RHICmdList,
+				RenderTargetParam,
+				EntityInputPooledBufferCopy,
+				TexturePoolCopy,
+				InData,
+				1024*1024				
+			);
+		});
+}
+
+void UPDRTSBaseSubsystem::DeleteBuffers()
+{
+	ENQUEUE_RENDER_COMMAND(DeleteBuffersCommandName)
+	(
+		[this](FRHICommandListImmediate& RHICmdList)
+		{			
+			bHasCreatedPooledBuffers = false;
+			if (EntityInputPooledBuffer.IsValid()) {EntityInputPooledBuffer.SafeRelease();}
+			if (EntityPooledRT.IsValid()) {EntityPooledRT.SafeRelease();}	
+		}	
+	);
 }
 
 /**

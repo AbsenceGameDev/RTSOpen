@@ -39,9 +39,9 @@ class SRTSOMiniMap : public SCompoundWidget
 public:
 
 	SLATE_BEGIN_ARGS(SRTSOMiniMap) {}
-		SLATE_ARGUMENT(double, RadarSize)
+		SLATE_ARGUMENT(FVector2D, RadarSize)
+		SLATE_ARGUMENT(FVector2D, GenericMinimapIconRectSize)
 		SLATE_ARGUMENT(double, RadarDistanceScale)
-		SLATE_ARGUMENT(double, GenericMinimapIconRectSize)
 		SLATE_ARGUMENT(double, FixedTextureScale)
 		SLATE_ARGUMENT(FVector2D, RadarStartLocation)
 		SLATE_ARGUMENT(FColor, EnemyColour)
@@ -97,16 +97,16 @@ public:
 	UPDRTSBaseSubsystem* RTSSubSystem = nullptr;
 	/** @brief  Start screen location of the minimap (radar) */
 	FVector2D RadarStartLocation = FVector2D(10.f, 10.f);
-	/** @brief  Pixel (uniform) size for the radar  */
-	double RadarSize                  = 200.0;
+	/** @brief  Slate unit size for the radar  */
+	FVector2D RadarSize                  = FVector2D{200.0};
+	/** @brief  Size (uniform)  of generic minimap icons */
+	FVector2D GenericMinimapIconRectSize = FVector2D{3.0};
 	/** @brief  Zoom scaling for the radar */
 	double RadarDistanceScale         = 25.0;
 	/** @brief  Height for the overlap ellipsoid  */
 	double SphereHeight               = 300.0;
 	/** @brief  Radius for the overlap ellipsoid  */
 	double RadarTraceSphereRadius     = 4000.0;
-	/** @brief  Size (uniform)  of generic minimap icons */
-	double GenericMinimapIconRectSize = 3.0;
 	/** @brief  Colour for mission related actors  */
 	FColor MissionColour      {1,1,0};
 	/** @brief  Colour for interactable actors  */

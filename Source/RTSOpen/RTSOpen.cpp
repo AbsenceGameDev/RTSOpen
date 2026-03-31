@@ -3,6 +3,7 @@
 #include "RTSOpen.h"
 #include "RTSOpenCommon.h"
 #include "Modules/ModuleManager.h"
+#include "ShaderCore.h"
 
 #if WITH_EDITOR
 #include "PropertyEditorModule.h"

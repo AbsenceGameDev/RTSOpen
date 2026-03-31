@@ -11,6 +11,8 @@
 
 void SRTSOMiniMap::Construct(const FArguments& InArgs)
 {
+	RadarSize = InArgs._RadarSize;
+
 	InitializeData();
 	
 	this->ChildSlot
@@ -30,16 +32,19 @@ void SRTSOMiniMap::InitializeData()
 		UE_LOG(PDLog_RTSO, Error, TEXT("SRTSOMiniMap::InitializeData -- URTSOMinimapDeveloperSettings::DefaultMinimapData is not set! Go into your editor config settings and assign a table to it"))
 		return;
 	}
+
+	RTSSubSystem = UPDRTSBaseSubsystem::Get();		
 	
-	const UE::Slate::FDeprecateVector2DParameter GenericIcon_RadarSize{RadarSize};
-	SetBrushSettings(InstanceData.ConstructedBackgroundBrush, nullptr, ESlateBrushImageType::Linear, GenericIcon_RadarSize, InstanceData.BGColour);
+	SetBrushSettings(InstanceData.ConstructedBackgroundBrush, nullptr, ESlateBrushImageType::Linear, RadarSize, InstanceData.BGColour);
+	SetBrushSettings(InstanceData.GenericIconBrush, nullptr, ESlateBrushImageType::Linear, GenericMinimapIconRectSize, InstanceData.GenericIconColour);
 	
-	const UE::Slate::FDeprecateVector2DParameter GenericIcon_ImageSize{GenericMinimapIconRectSize};
-	SetBrushSettings(InstanceData.GenericIconBrush, nullptr, ESlateBrushImageType::Linear, GenericIcon_ImageSize, InstanceData.GenericIconColour);
-	
-	const float TextureWidth = MiniMapData->ArrowTexture->GetSurfaceWidth();
-	const float TextureHeight = MiniMapData->ArrowTexture->GetSurfaceHeight();
-	const UE::Slate::FDeprecateVector2DParameter OwnerIcon_ImageSize{TextureWidth, TextureHeight};
+	const FVector2D MaxOwnerIconSize = FVector2D{10, 10};
+	FVector2D OwnerIcon_ImageSize = RadarSize * 0.1f;
+	if (FMath::Abs(OwnerIcon_ImageSize.X) > MaxOwnerIconSize.X || FMath::Abs(OwnerIcon_ImageSize.Y) > MaxOwnerIconSize.Y)
+	{
+		OwnerIcon_ImageSize = MaxOwnerIconSize;
+	}
+
 	SetBrushSettings(InstanceData.OwnerIconBrush, MiniMapData->ArrowTexture, ESlateBrushImageType::FullColor, OwnerIcon_ImageSize, InstanceData.OwnerIconColour);
 }
 
@@ -49,13 +54,11 @@ void SRTSOMiniMap::Tick(
 	const float InDeltaTime)
 {
 	SCompoundWidget::Tick(AllottedGeometry, InCurrentTime, InDeltaTime);
-	
-	// Update positions?
-
-	// todo move outside of the tick, some analogue to OnConstruction for slate widgets if there are any
-	RTSSubSystem = UPDRTSBaseSubsystem::Get();	
 }
 
+
+// 
+// Note: This is not viable as a solution when I have 2000+ entities, adds so much overhead to the scene. Moving this to a shader and commenting out expensive code
 int32 SRTSOMiniMap::OnPaint(
 	const FPaintArgs& Args,
 	const FGeometry& AllottedGeometry,
@@ -65,14 +68,12 @@ int32 SRTSOMiniMap::OnPaint(
 	const FWidgetStyle& InWidgetStyle,
 	bool bParentEnabled) const
 {
-	const int32 SuperResult =SCompoundWidget::OnPaint(Args, AllottedGeometry, MyCullingRect, OutDrawElements, LayerId, InWidgetStyle, bParentEnabled);
-
-	constexpr bool bTemporary = false; // @todo remove and debug why Paint is painting over the full screen, likely fgeometry related
-	if (MiniMapData != nullptr && bTemporary)
+	const int32 SuperResult = SCompoundWidget::OnPaint(Args, AllottedGeometry, MyCullingRect, OutDrawElements, LayerId, InWidgetStyle, bParentEnabled);
+	if (MiniMapData != nullptr)
 	{
-		// Update positions. Call 'PaintRadarMiniMap'
-		PaintRadarMiniMap(OutDrawElements, AllottedGeometry, LayerId);
-	}	
+		// // Update positions. Call 'PaintRadarMiniMap'
+		// PaintRadarMiniMap(OutDrawElements, AllottedGeometry, LayerId);
+	}
 	
 	return SuperResult;
 }
@@ -94,7 +95,7 @@ void SRTSOMiniMap::PaintActorsOnMiniMap(FSlateWindowElementList& OutDrawElements
 	if (MinimapEntityBuffer == nullptr) { return; }
 	
 	APawn* OwnerPawn = Cast<APawn>(RTSSubSystem->OctreeUserQuery.CallingUser);
-	if (OwnerPawn == nullptr) { return; }
+	if (OwnerPawn == nullptr || OwnerPawn->IsValidLowLevelFast() == false) {return;}
 
 	TArray<AActor*>& MutableWorldActors = const_cast<TArray<AActor*>&>(OnWorldActors);
 	
@@ -117,10 +118,15 @@ void SRTSOMiniMap::PaintActorsOnMiniMap(FSlateWindowElementList& OutDrawElements
 	for (const AActor* It : OnWorldActors)
 	{
 		const FVector2D Location2D = WorldToScreen2D(It, OwnerPawn);
+		if (Location2D.X > RadarSize.X || Location2D.X < -RadarSize.X 
+			|| Location2D.Y > RadarSize.Y || Location2D.Y < -RadarSize.Y)
+		{
+			continue;
+		}
 
 		//Clamp positions in between the minimap size so they are not out of bounds
-		const float NewX = FMath::Clamp<float>(Location2D.X, -RadarSize / 2, RadarSize / 2 - GenericMinimapIconRectSize);
-		const float NewY = FMath::Clamp<float>(Location2D.Y, -RadarSize / 2, RadarSize / 2 - GenericMinimapIconRectSize);
+		const float NewX = FMath::Clamp<float>(Location2D.X, -RadarSize.X / 2, RadarSize.X / 2 - GenericMinimapIconRectSize.X);
+		const float NewY = FMath::Clamp<float>(Location2D.Y, -RadarSize.Y / 2, RadarSize.Y / 2 - GenericMinimapIconRectSize.Y);
 
 		FVector OwnerLocation = OwnerPawn->GetActorLocation();
 		FVector EnemyLocation = It->GetActorLocation();
@@ -187,10 +193,15 @@ void SRTSOMiniMap::PaintEntitiesOnMiniMap(FSlateWindowElementList& OutDrawElemen
 	{
 		FVector EntityLocation = EntityCompound.Location;
 		const FVector2D Location2D = WorldToScreen2D(EntityCompound, OwnerPawn);
+		if (Location2D.X > RadarSize.X || Location2D.X < -RadarSize.X 
+			|| Location2D.Y > RadarSize.Y || Location2D.Y < -RadarSize.Y)
+		{
+			continue;
+		}
 
 		//Clamp positions in between the minimap size so they are not out of bounds
-		const float NewX = FMath::Clamp<float>(Location2D.X, -RadarSize / 2, RadarSize / 2 - GenericMinimapIconRectSize);
-		const float NewY = FMath::Clamp<float>(Location2D.Y, -RadarSize / 2, RadarSize / 2 - GenericMinimapIconRectSize);
+		const float NewX = FMath::Clamp<float>(Location2D.X, -RadarSize.X / 2, RadarSize.X / 2 - GenericMinimapIconRectSize.X);
+		const float NewY = FMath::Clamp<float>(Location2D.Y, -RadarSize.Y / 2, RadarSize.Y / 2 - GenericMinimapIconRectSize.Y);
 
 		const float Distance = FVector::Distance(PlayerLocation, EntityLocation);
 		
@@ -221,32 +232,33 @@ void SRTSOMiniMap::PaintOwnerOnMiniMap(FSlateWindowElementList& OutDrawElements,
 		return;
 	}
 	
-	const FGeometry DerivedGeometry = AllottedGeometry;
-	const FSlateRenderTransform RT{{0.0},{static_cast<float>(GetRadarCenter().X), static_cast<float>(GetRadarCenter().Y)}};
-	DerivedGeometry.ToPaintGeometry().SetRenderTransform(RT);
-	//Clamp positions in between the minimap size so they are not out of bounds
-	
+	FPaintGeometry DerivedGeometry = AllottedGeometry.ToPaintGeometry();
+	const FSlateRenderTransform RT{{0.5f},{static_cast<float>(GetRadarCenter().X), static_cast<float>(GetRadarCenter().Y)}};
+	DerivedGeometry.SetRenderTransform(RT);
+
+	// 
+	// Clamp positions in between the minimap size so they are not out of bounds
 	FSlateDrawElement::MakeBox(
 		OutDrawElements,
 		LayerId,
-		DerivedGeometry.ToPaintGeometry(),
+		AllottedGeometry.ToPaintGeometry(),
 		&InstanceData.OwnerIconBrush,
 		ESlateDrawEffect::None,
-		FLinearColor::White);	
+		FLinearColor::White);
 }
 
 void SRTSOMiniMap::PaintRadar(FSlateWindowElementList& OutDrawElements, const FGeometry& AllottedGeometry, int32 LayerId, FLinearColor Color) const
 {
 	const double PosX = RadarStartLocation.X;
 	const double PosY = RadarStartLocation.Y;
-	const double HalfSize = RadarSize * 0.5;
+	const FVector2D HalfSize = RadarSize * 0.5;
 
 	// Outer box screen coordinated
 	TArray<FVector2D> Axes;
-	Axes.Add(FVector2D{PosX - HalfSize, PosY + HalfSize}); // Fwd Left 
-	Axes.Add(FVector2D{PosX + HalfSize, PosY + HalfSize}); // Fwd Right
-	Axes.Add(FVector2D{PosX - HalfSize, PosY - HalfSize}); // Bwd Left
-	Axes.Add(FVector2D{PosX + HalfSize, PosY - HalfSize}); // Bwd Right
+	Axes.Add(FVector2D{PosX - HalfSize.X, PosY + HalfSize.Y}); // Fwd Left 
+	Axes.Add(FVector2D{PosX + HalfSize.X, PosY + HalfSize.Y}); // Fwd Right
+	Axes.Add(FVector2D{PosX - HalfSize.X, PosY - HalfSize.Y}); // Bwd Left
+	Axes.Add(FVector2D{PosX + HalfSize.X, PosY - HalfSize.Y}); // Bwd Right
 	
 	// Actually Draw Outer Box
 	FSlateDrawElement::MakeLines(
@@ -262,11 +274,11 @@ void SRTSOMiniMap::PaintRadar(FSlateWindowElementList& OutDrawElements, const FG
 
 	// Draw Horizontal Radar Line
 	TArray<FVector2D> RadarHLine;
-	RadarHLine.Emplace(FVector2D{PosX + HalfSize, PosY});
-	RadarHLine.Emplace(FVector2D{PosX - HalfSize, PosY});
+	RadarHLine.Emplace(FVector2D{PosX + HalfSize.X, PosY});
+	RadarHLine.Emplace(FVector2D{PosX - HalfSize.X, PosY});
 	FSlateDrawElement::MakeLines(
 		OutDrawElements,
-		LayerId,
+		LayerId + 1,
 		AllottedGeometry.ToPaintGeometry(),
 		RadarHLine,
 		ESlateDrawEffect::None,
@@ -277,11 +289,11 @@ void SRTSOMiniMap::PaintRadar(FSlateWindowElementList& OutDrawElements, const FG
 	
 	// Draw Vertical Radar Line
 	TArray<FVector2D> RadarVLine;
-	RadarVLine.Emplace(FVector2D{PosX + HalfSize, PosY});
-	RadarVLine.Emplace(FVector2D{PosX - HalfSize, PosY});
+	RadarVLine.Emplace(FVector2D{PosX + HalfSize.Y, PosY});
+	RadarVLine.Emplace(FVector2D{PosX - HalfSize.Y, PosY});
 	FSlateDrawElement::MakeLines(
 		OutDrawElements,
-		LayerId,
+		LayerId + 1,
 		AllottedGeometry.ToPaintGeometry(),
 		RadarVLine,
 		ESlateDrawEffect::None,
@@ -301,7 +313,7 @@ void SRTSOMiniMap::PaintRadar(FSlateWindowElementList& OutDrawElements, const FG
 
 FVector2D SRTSOMiniMap::GetRadarCenter() const
 {
-	return FVector2D(RadarStartLocation.X + RadarSize / 2, RadarStartLocation.Y + RadarSize / 2);
+	return FVector2D(RadarStartLocation.X + RadarSize.X / 2, RadarStartLocation.Y + RadarSize.Y / 2);
 }
 
 FVector2D SRTSOMiniMap::WorldToScreen2D(FLEntityCompound& EntityCompound, APawn* OwnerPawn) const
@@ -327,6 +339,10 @@ FVector2D SRTSOMiniMap::WorldToScreen2D(FVector& WorldLocation) const
 {
 	WorldLocation = FRotator(0.f, -90.f, 0.f).RotateVector(WorldLocation);
 	WorldLocation /= RadarDistanceScale;
+
+	// Clamp location to edges?, atleast mask if outside the edge
+	RadarSize;
+
 	return FVector2D(WorldLocation);	
 }
 
@@ -335,7 +351,7 @@ void SRTSOMiniMap::SetBrushSettings(FSlateBrush& Target, UObject* InResourceObje
 	Target.ImageType = ImageType;
 	Target.DrawAs = ESlateBrushDrawType::Box;
 	Target.Margin = FMargin();
-	Target.Tiling = ESlateBrushTileType::Both;
+	Target.Tiling = ESlateBrushTileType::NoTile;
 	Target.SetImageSize(ImageSize);
 	Target.TintColor = TintColour;
 	Target.SetResourceObject(InResourceObject);

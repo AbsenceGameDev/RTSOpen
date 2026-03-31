@@ -522,6 +522,7 @@ void UPDOctreeProcessor::Execute(FMassEntityManager& EntityManager, FMassExecuti
 	RTSSubsystem->OctreeUserQuery.ClearQueryBuffer(EPDQueryGroups::QUERY_GROUP_MINIMAP);
 	RTSSubsystem->OctreeUserQuery.ClearQueryBuffer(EPDQueryGroups::QUERY_GROUP_HOVERSELECTION); // Hover Selection Group
 	BuilderSubsystem->OctreeBuildSystemEntityQuery.ClearQueryBuffer(EPDQueryGroups::QUERY_GROUP_BUILDABLE_ACTORS); // @todo finish impl. making use of this query group
+	RTSSubsystem->EntityShaderInputData.Empty(); // TODO: Replace this, or ratehr update the QUERY_GROUP_MINIMAP
 
 	// Clear all tracked cells for now
 	BuilderSubsystem->WorldBuildActorOctree.FindAllElements(
@@ -530,6 +531,8 @@ void UPDOctreeProcessor::Execute(FMassEntityManager& EntityManager, FMassExecuti
 			const_cast<FPDActorOctreeCell&>(Cell).IdleUnits.Empty();
 		});
 	
+	//
+	// From testing, each entity chunk holds max 140 entities 
 	UpdateOctreeElementsQuery.ForEachEntityChunk(EntityManager, Context,
 		[this, BuilderSubsystem](FMassExecutionContext& LambdaContext)
 	{
@@ -542,13 +545,13 @@ void UPDOctreeProcessor::Execute(FMassEntityManager& EntityManager, FMassExecuti
 		TConstFragment<FTransformFragment>& LocationList          = CONSTVIEW(LambdaContext, FTransformFragment);
 		TMutFragment<FPDMFragment_RTSEntityBase>& RTSEntityList   = MUTVIEW(LambdaContext, FPDMFragment_RTSEntityBase);
 		TConstFragment<FPDMFragment_Action>& UnitActionList       = CONSTVIEW(LambdaContext, FPDMFragment_Action);
-			
 		TMutFragment<FPDOctreeFragment>& OctreeFragments          = MUTVIEW(LambdaContext, FPDOctreeFragment);
-			
+		
 		for (int32 EntityListIdx = 0; EntityListIdx < NumEntities; ++EntityListIdx)
 		{
 			const FVector& DistanceTraveled = (Velocities[EntityListIdx].Value * LambdaContext.GetDeltaTimeSeconds());
-			const FVector& CurrentLocation = LocationList[EntityListIdx].GetTransform().GetLocation();
+			const FTransform& CurrentTransform = LocationList[EntityListIdx].GetTransform();
+			const FVector& CurrentLocation = CurrentTransform.GetLocation();
 			const FVector& PrevLocation = CurrentLocation - DistanceTraveled;
 			FPDOctreeFragment& OctreeFragment = OctreeFragments[EntityListIdx];
 
@@ -572,6 +575,27 @@ void UPDOctreeProcessor::Execute(FMassEntityManager& EntityManager, FMassExecuti
 				EPDQueryGroups::QUERY_GROUP_HOVERSELECTION,
 				CurrentLocation, Entity, RTSEntity.OwnerID);
 
+			// Pass minimap related data
+			{
+				constexpr double Rotation16WaySegmentLength = 22.5;
+				constexpr int32 MaxIds = 255; // we only have 255 ids stored
+				const double RotationYawDegrees = FRotator::ClampAxis(CurrentTransform.Rotator().Yaw);
+				int32_t RoundedIndex = (RotationYawDegrees / Rotation16WaySegmentLength) + 0.5;
+				uint8_t EntityFlags = 0b00010000;
+		        // const uint32_t EntityFlags = uint32_t((EntityExtraData << 15) & 0b11111111);
+		        // bool bCanSeePlayer = EntityFlags == 0b10000000;
+		        // bool bCanPlayerSee = EntityFlags == 0b01000000;
+		        // bool bIsObjective = EntityFlags == 0b00100000;
+		        // bool bIsEntity = EntityFlags == 0b00010000;
+		        // bool bIsStructure = EntityFlags == 0b00001000;
+		        // bool bIsObscured = EntityFlags == 0b00000100;
+		        // bool bReserved0 = EntityFlags == 0b00000010;
+		        // bool bReserved1 = EntityFlags == 0b00000001;
+				uint8_t TeamID = RTSEntity.OwnerID % MaxIds;
+
+				FLinearColor PerPixelStorage = FPDRTSPerPixelStorageHelper::ConstructData(CurrentLocation, RoundedIndex, EntityFlags, TeamID);
+				RTSSubsystem->EntityShaderInputData.Emplace(PerPixelStorage);
+			}
 
 			//
 			// @todo - Mark idle entities as available in our pool
@@ -619,6 +643,14 @@ void UPDOctreeProcessor::Execute(FMassEntityManager& EntityManager, FMassExecuti
 			CopyCurrentOctreeElement.Bounds.Center = FVector4(CurrentLocation, 0);
 			Octree.AddElement(CopyCurrentOctreeElement);
 		}
+
+		RTSSubsystem->GenerateEntityMapData();
+
+		AsyncTask(ENamedThreads::GameThread, 
+			 [ShaderEntryNum = RTSSubsystem->EntityShaderInputData.Num()]()
+			 {
+				GEngine->AddOnScreenDebugMessage(INDEX_NONE, 0, FColor::Green, FString::Printf(TEXT("Amounf of Entity Data Sent to GPU: %i"), ShaderEntryNum));
+			 });
 	});
 
 	//
@@ -739,7 +771,7 @@ void UPDOctreeEntityObserver::Execute(FMassEntityManager& EntityManager, FMassEx
 	[this](FMassExecutionContext& LambdaContext)
 	{
 		QUICK_SCOPE_CYCLE_COUNTER(STAT_OctreeCellTracker)
-		TConstFragment<FTransformFragment>& TransformList   = CONSTVIEW(LambdaContext, FTransformFragment); 
+		TConstFragment<FTransformFragment>& TransformList   = CONSTVIEW(LambdaContext, FTransformFragment);
 		TMutFragment<FPDOctreeFragment>& OctreeList         = MUTVIEW(LambdaContext, FPDOctreeFragment);
 		TMutFragment<FAgentRadiusFragment>& RadiusFragments = MUTVIEW(LambdaContext, FAgentRadiusFragment);
 

@@ -184,8 +184,8 @@ void TBucketTickHandler<TBucketType>::PImpl::HandleBucketFromTicks(TBucketType* 
 	// If ClampedInterval is zero, put it in ALL tickgroups
 	if (ClampedInterval <= (1.e-4f))
 	{
-		if constexpr (bRemove) { RemoveFromAllTickgroups<TBucketType>(BucketData); }
-		else { AddToAllTickgroups<TBucketType>(BucketData); }
+		if constexpr (bRemove) { TBucketTickHandler<TBucketType>::RemoveFromAllTickgroups(BucketData); }
+		else { TBucketTickHandler<TBucketType>::AddToAllTickgroups(BucketData); }
 		
 		return;
 	}

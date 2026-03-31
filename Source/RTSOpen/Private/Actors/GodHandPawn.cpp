@@ -64,6 +64,8 @@
 #include "Subsystems/PDUserMessageSubsystem.h"
 #include "Widgets/Slate/SRTSOActionLog.h"
 
+#include "GlobalShaders/RTSEntitySortData.h"
+
 //
 // Godhand functionality
 
@@ -1142,6 +1144,13 @@ void AGodHandPawn::BeginPlay()
 	RTSSubSystem->OctreeUserQuery.CreateNewQueryEntry(EPDQueryGroups::QUERY_GROUP_MINIMAP, MinimapQueryBox);
 	RTSSubSystem->OctreeUserQuery.CreateNewQueryEntry(EPDQueryGroups::QUERY_GROUP_HOVERSELECTION, HoverSelectionQueryBox);
 	RTSSubSystem->OctreeUserQuery.CallingUser = this;
+
+	RTSSubSystem->BuildEntitySortComputeShader = FRTSBuildGlobalSortEntityShader::CreateLambda(
+		[](FRHICommandListImmediate& RHICmdList, UTextureRenderTarget2D* RenderTarget, const TRefCountPtr<FRDGPooledBuffer>& EntityInputPooledBuffer, const TRefCountPtr<IPooledRenderTarget>& ExternalPooledTexture, TArray<FLinearColor> InData, int32 BufferSize)
+		{
+			TShaderMapRef<FRTSSortData> ComputeShader(GetGlobalShaderMap(GMaxRHIFeatureLevel));
+			ComputeShader->BuildAndExecuteGraph(RHICmdList, RenderTarget, EntityInputPooledBuffer, ExternalPooledTexture, InData, BufferSize);
+		});
 	RTSSubSystem->WorldInit(GetWorld());
 	EntityManager = RTSSubSystem->EntityManager;
 	
@@ -1160,6 +1169,15 @@ void AGodHandPawn::BeginPlay()
 	// A temporary way around it maybe have to be a subsystem or other singleton which caches a stack of modifier values 	
 	URTSOInputStackSubsystem* InputStackWorkaround = GetWorld()->GetSubsystem<URTSOInputStackSubsystem>();
 	InputStackWorkaround->DispatchValueStackReset();
+}
+
+void AGodHandPawn::EndPlay(EEndPlayReason::Type EndPlayReason)
+{
+	UPDRTSBaseSubsystem* RTSSubSystem = UPDRTSBaseSubsystem::Get();
+	ensure(RTSSubSystem != nullptr);
+	RTSSubSystem->WorldDeinit(GetWorld());
+
+	Super::EndPlay(EndPlayReason);
 }
 
 void AGodHandPawn::RefreshSettingsInstance()

@@ -611,9 +611,8 @@ void URTSOMenuWidget_Settings::SetTabContent(const FName& TabName, const TMap<FS
 		const FText CategoryLabelText = FText::FromStringTable(ImmutableSettingsDevSettings->SettingsStringTablePath, FString::Printf(TEXT("Extended_Label_%s"), *TabStr));
 		const FText CategoryDescrText = FText::FromStringTable(ImmutableSettingsDevSettings->SettingsStringTablePath, FString::Printf(TEXT("Extended_Desc_%s"), *TabStr));
 		AsRTSOSubMenu->DetailsLabel->SetText(CategoryLabelText);
-		AsRTSOSubMenu->DetailsDescription->SetText(CategoryDescrText);	
+		AsRTSOSubMenu->DetailsDescription->SetText(CategoryDescrText);
 	}
-
 
 	// (*ExistingSubMenu)->ActivateWidget();
 	InnerContent->SetContent(*ExistingSubMenu);

@@ -1,0 +1,48 @@
+// #include "Engine/Platform.ush"
+#include "/Engine/Public/Platform.ush"
+
+#define TEXTURE_MAX_INDEX 1023
+#define TOTAL_ELEMENTS (1024 * 1024)
+
+RWBuffer<float4> EntityData; 
+RWTexture2D<float4> OutSortedEntityDataTexture; // RT Texture we want to write to
+uint ComputePassStage; // power-of-two block size
+uint ComputePassStep;  // distance between partner elements
+
+//Ignore checking against z(height) for now
+float GetBrightness(float3 Color) { return dot(Color, float3(1.0, 1.0, 0.0));}
+
+[numthreads(64, 1, 1)]
+void SortData(uint3 ThreadId: SV_DispatchThreadID)
+{
+    const uint Index = ThreadId.x;
+    const uint PartnerIndex = Index ^ ComputePassStep;
+
+    const bool bHasNotProcessedIndex = PartnerIndex > Index;
+    if (bHasNotProcessedIndex)
+    {
+        const bool bAscending = (Index & ComputePassStage) == 0;
+
+        const float4 Unsorted1 = EntityData[Index];
+        const float4 Unsorted2 = EntityData[PartnerIndex];
+
+        const float Unsorted1Val = GetBrightness(Unsorted1.rgb);
+        const float Unsorted2Val = GetBrightness(Unsorted2.rgb);
+
+        const bool bSwap = (Unsorted1Val > Unsorted2Val) == bAscending;
+        if (bSwap)
+        {
+            EntityData[PartnerIndex] = Unsorted2;
+            EntityData[Index] = Unsorted1;
+        }
+    }
+
+    // Outputting to texture
+    const bool bIsOnLastPass = ComputePassStage >= TOTAL_ELEMENTS && ComputePassStep == 1;
+    if (bIsOnLastPass)
+    {
+        // AllMemoryBarrierWithGroupSync(); // maybe not needed, gpu might be synchronizing these calls
+        uint2 TexCoord = uint2(Index & TEXTURE_MAX_INDEX, Index >> 10);
+        OutSortedEntityDataTexture[TexCoord] = EntityData[Index];
+    }    
+}

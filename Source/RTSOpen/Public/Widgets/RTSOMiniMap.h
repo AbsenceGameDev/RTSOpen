@@ -7,6 +7,7 @@
 #include "RTSOMiniMap.generated.h"
 
 class SRTSOMiniMap;
+class USizeBox;
 /**
  * 
  */
@@ -18,9 +19,39 @@ public:
 	
 	virtual TSharedRef<SWidget> RebuildWidget() override;
 	virtual void OnWidgetRebuilt() override;
+   virtual void ReleaseSlateResources(bool bReleaseChildren) override;
 	
 	TSharedPtr<SRTSOMiniMap> SlateMiniMap;
-	
+
+	/** @brief  Slate unit size for the radar  */
+   UPROPERTY()
+	FVector2D RadarSize = FVector2D{200.0};
+	/** @brief  Size (uniform)  of generic minimap icons */
+   UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	FVector2D GenericMinimapIconRectSize = FVector2D{3.0};
+};
+
+
+/**
+ * 
+ */
+UCLASS(Blueprintable)
+class RTSOPEN_API URTSOMiniMapUserWidget : public UUserWidget
+{
+public:
+	GENERATED_BODY()
+
+   virtual void NativePreConstruct() override;
+
+public:
+   UPROPERTY(BlueprintReadWrite, Meta = (OptionalBindWidget)) // Deprecate or remove soon
+   URTSOMiniMap* MinimapBase = nullptr;
+
+   UPROPERTY(BlueprintReadWrite, Meta = (BindWidget))
+   class UImage* MinimapMat = nullptr;   
+
+   UPROPERTY(BlueprintReadWrite, Meta = (BindWidget))
+   USizeBox* MinimapSizeBox = nullptr;
 };
 
 
