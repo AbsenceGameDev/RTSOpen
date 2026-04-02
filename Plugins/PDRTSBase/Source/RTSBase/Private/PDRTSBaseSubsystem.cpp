@@ -369,7 +369,6 @@ void UPDRTSBaseSubsystem::CreateDataBuffer()
 	);
 }
 
-#define DEBUG_ENTITY_DATA_TEXTURE 1
 void UPDRTSBaseSubsystem::UpdateDataTexture(TArray<FLinearColor>& PerPixelData)
 {
 	if (false == bHasCreatedPooledBuffers) 
@@ -405,66 +404,78 @@ void UPDRTSBaseSubsystem::UpdateDataTexture(TArray<FLinearColor>& PerPixelData)
 		});
 
 
+// Hacky debug, something more robust if I move this over and create some debug ui
 #if DEBUG_ENTITY_DATA_TEXTURE == 1
-	UWorld* CurrentWorld = EntityManager->GetWorld();
-	if (CurrentWorld)
+	AsyncTask(ENamedThreads::GameThread, 
+	[&]()
 	{
-		CurrentWorld->GetTimerManager().SetTimerForNextTick(
-		[&]()
+		UWorld* CurrentWorld = EntityManager->GetWorld();
+		if (CurrentWorld)
 		{
-			if (DebugReadback && DebugReadback->IsReady())
+			FTimerManager& TimerManager = CurrentWorld->GetTimerManager();
+			TimerManager.SetTimerForNextTick(
+			FTimerDelegate::CreateWeakLambda(UPDRTSBaseSubsystem::Get(),
+			[&]()
 			{
-				ProcessDebugSortedEntityData();
-			}
-			else if (DebugReadback) // Wait at most another frame if it is not yet ready
-			{
-				CurrentWorld->GetTimerManager().SetTimerForNextTick(
-				[&]()
+				if (DebugReadback && DebugReadback->IsReady())
 				{
-					if (DebugReadback && DebugReadback->IsReady())
+					ProcessDebugSortedEntityData();
+				}
+				else if (DebugReadback) // Wait at most another frame if it is not yet ready
+				{
+					TimerManager.SetTimerForNextTick(
+					FTimerDelegate::CreateWeakLambda(UPDRTSBaseSubsystem::Get(),	
+					[&]()
 					{
-						ProcessDebugSortedEntityData();
-					}
-				});
-			}
-			
-		});
-	}
+						if (DebugReadback && DebugReadback->IsReady())
+						{
+							ProcessDebugSortedEntityData();
+						}
+					}));
+				}
+			}));
+		}
+	});
 #endif // DEBUG_ENTITY_DATA_TEXTURE == 1
 
 }
 
 void UPDRTSBaseSubsystem::ProcessDebugSortedEntityData()
 {
-	FLinearColor* Data = (FLinearColor*)DebugReadback->Lock(GMaxEntityDataSize);
-	if (Data)
+	ENQUEUE_RENDER_COMMAND(ProcessDebugSortedEntityDataCommandName)(
+	[&]
+	(FRHICommandListImmediate& RHICmdList)
 	{
-		uint32 ActivePixelCount = 0;
-
-		for (uint32 EntityStep = 0; EntityStep < GMaxEntityDataSize; ++EntityStep)
+		FLinearColor* Data = (FLinearColor*)DebugReadback->Lock(GMaxEntityDataSize);
+		if (Data)
 		{
-			const float EntityDataSum = Data[EntityStep].R + Data[EntityStep].G + Data[EntityStep].B + Data[EntityStep].A; // dot(rgb, (1,1,0))
-			if (EntityDataSum > 0.0f)
-			{
-				ActivePixelCount++;
+			uint32 ActivePixelCount = 0;
 
-				if (ActivePixelCount < 10)
+			for (uint32 EntityStep = 0; EntityStep < GMaxEntityDataSize; ++EntityStep)
+			{
+				const float EntityDataSum = Data[EntityStep].R + Data[EntityStep].G + Data[EntityStep].B + Data[EntityStep].A; // dot(rgb, (1,1,0))
+				if (EntityDataSum > 0.0f)
 				{
-					UE_LOG(LogTemp, Log, TEXT("Entity Sort Debug : Active Pixel [%d]: Location(%f, %f, %f), EncodedAlphaData: %f"),  EntityStep, Data[EntityStep].R, Data[EntityStep].G, Data[EntityStep].B, Data[EntityStep].A);
+					ActivePixelCount++;
+
+					if (ActivePixelCount < 10)
+					{
+						UE_LOG(LogTemp, Log, TEXT("Entity Sort Debug : Active Pixel [%d]: Location(%f, %f, %f), EncodedAlphaData: %f"),  EntityStep, Data[EntityStep].R, Data[EntityStep].G, Data[EntityStep].B, Data[EntityStep].A);
+					}
 				}
 			}
-		}
 
-		// Print summary to screen
-		if (GEngine)
-		{
-			GEngine->AddOnScreenDebugMessage(-1, 0.0f, FColor::Green, 
-				FString::Printf(TEXT("Sorted Elements Over Zero: %d"), ActivePixelCount));
-		}
+			// Print summary to screen
+			if (GEngine)
+			{
+				GEngine->AddOnScreenDebugMessage(-1, 0.0f, FColor::Green, 
+					FString::Printf(TEXT("Sorted Elements Over Zero: %d"), ActivePixelCount));
+			}
 
-		// CRITICAL: Always unlock so the GPU can use this buffer for the next frame's copy
-		DebugReadback->Unlock();
-	}
+			// CRITICAL: Always unlock so the GPU can use this buffer for the next frame's copy
+			DebugReadback->Unlock();
+		}
+	});
 }
 
 void UPDRTSBaseSubsystem::DeleteBuffers()

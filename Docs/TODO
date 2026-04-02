@@ -155,6 +155,18 @@ DONE:
     ✔ Disable any Slate minimap until later notice @done(26-04-02 07:43)
 
 
+April 2nd 2026 - Commit#1:
+TODO: 
+    - Debug the sorted output texture, and sort out why the log calls are not showing
+
+IN PROGRESS:
+    ☐ Implementing a new minimap in hlsl, most of the preliminary work here is done now @started(26-03-31 01:48)
+        
+DONE: 
+    ✔ Fixed soem runtime errors w.r.t. rendering thread and game thread assertions @done(26-04-02 08:05)
+
+
+
 Backlogged until gameplay systems are fully functional:
 XXXXXX XXth 2025 - Commit#1 :
     - Implement Save/Load logic for settings value as-well

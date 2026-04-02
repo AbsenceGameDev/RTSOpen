@@ -17,6 +17,8 @@
 
 #include "PDRTSBaseSubsystem.generated.h"
 
+#define DEBUG_ENTITY_DATA_TEXTURE 1
+
 class UPDRTSBaseUnit;
 class UMassEntitySubsystem;
 
