@@ -5,13 +5,18 @@
 #include "RenderGraphBuilder.h"
 #include "RenderGraphUtils.h"
 
-
-void FRTSSortData::BuildAndExecuteGraph(FRHICommandListImmediate& RHICmdList, UTextureRenderTarget2D* RenderTarget, const TRefCountPtr<FRDGPooledBuffer>& EntityInputPooledBuffer, const TRefCountPtr<IPooledRenderTarget>& ExternalPooledTexture, TArray<FLinearColor> InData, int32 BufferSize)
+// This looks messy but reduced the passes down from 136 passes to 28 passes for a 256x256 datatexture
+// Note: I couldn't get it to load the parameters properly unless defined in their own structs, and thus the mess below. Inheritance caused issues and shared SHADER_PARAMETER_STRUCTs caused other issues.  
+void FRTSSortData::BuildAndExecuteGraph(FRHICommandListImmediate& RHICmdList, UTextureRenderTarget2D* RenderTarget, const TRefCountPtr<FRDGPooledBuffer>& EntityInputPooledBuffer, const TRefCountPtr<IPooledRenderTarget>& ExternalPooledTexture, TArray<FLinearColor> InData, FRHIGPUBufferReadback* DebugBufferReadback)
 {
-	constexpr uint32 GMaxBufferElements = 1024*1024;
+	constexpr uint32 GMaxBuffer1Dim = 256;
+	constexpr uint32 GMaxBufferElements = 256*256;
 
 	FRDGBuilder GraphBuilder(RHICmdList);
-	FParameters* AllocatedPassParameter = GraphBuilder.AllocParameters<FRTSSortData::FParameters>();
+	FRTSSortData::FParameters* AllocatedPassParameter = GraphBuilder.AllocParameters<FRTSSortData::FParameters>();
+	FRTSSortDataFirstPass::FParameters* AllocatedPassParameter_FirstPass = GraphBuilder.AllocParameters<FRTSSortDataFirstPass::FParameters>();
+	FRTSSortDataInnerCheat::FParameters* AllocatedPassParameter_InnerCheat = GraphBuilder.AllocParameters<FRTSSortDataInnerCheat::FParameters>();
+	FRTSSortDataCopyToTexture::FParameters* AllocatedPassParameter_CopyToTexture = GraphBuilder.AllocParameters<FRTSSortDataCopyToTexture::FParameters>();
 
 	// GetStaticType();
 
@@ -21,10 +26,15 @@ void FRTSSortData::BuildAndExecuteGraph(FRHICommandListImmediate& RHICmdList, UT
 		*FString(TEXT("SortDataBuffer")),
 		ERDGBufferFlags::MultiFrame
 	);
-	FRDGBufferUAVDesc UAVDesc(DataBufferRDG, EPixelFormat::PF_A32B32G32R32F); 
-
+	GraphBuilder.QueueBufferUpload(DataBufferRDG, TArrayView<FLinearColor>(InData), ERDGInitialDataFlags::None);
+	
+	FRDGBufferUAVDesc UAVDesc(DataBufferRDG, EPixelFormat::PF_A32B32G32R32F);
 	FRDGBufferUAVRef EntityUAV = GraphBuilder.CreateUAV(UAVDesc);
-	AllocatedPassParameter->EntityData = EntityUAV;
+	AllocatedPassParameter->EntityData 
+		= AllocatedPassParameter_FirstPass->EntityData 
+		= AllocatedPassParameter_InnerCheat->EntityData 
+		= AllocatedPassParameter_CopyToTexture->EntityData 
+		= EntityUAV;
 	
 	// Texture UAV
 	FRHITexture2D* RhiTexture = RenderTarget->GetResource()->GetTexture2DRHI();
@@ -36,27 +46,74 @@ void FRTSSortData::BuildAndExecuteGraph(FRHICommandListImmediate& RHICmdList, UT
 
 	FRDGTextureUAVDesc OutTextureUAVDesc(OutTextureRef);
 	FRDGTextureUAVRef TextureBufferUAV = GraphBuilder.CreateUAV(OutTextureUAVDesc, ERDGUnorderedAccessViewFlags::None);
-	AllocatedPassParameter->OutSortedEntityDataTexture = TextureBufferUAV;
+	AllocatedPassParameter->OutSortedEntityDataTexture 
+		= AllocatedPassParameter_FirstPass->OutSortedEntityDataTexture 
+		= AllocatedPassParameter_InnerCheat->OutSortedEntityDataTexture 
+		= AllocatedPassParameter_CopyToTexture->OutSortedEntityDataTexture 
+		= TextureBufferUAV;
 
-	const int32 GroupCount = BufferSize / 64;
-	const uint32 BitCount = FMath::CeilLogTwo(FMath::Sqrt(static_cast<double>(BufferSize)));	
-	for (uint32 BitIndex = 0; BitIndex < BitCount; ++BitIndex)
+
+	// Texture size 256x256 = 65536 elements
+	const uint32 GroupSize = 1024; // (2^10)
+	const uint32 NumGroups = GMaxBufferElements / GroupSize; // 64 groups
+	
+	// --- INITIAL PASS ---
+	// Sorts the first 10 stages (Steps 2 to 1024) entirely in LDS
 	{
-		AllocatedPassParameter->ComputePassStage = 1 << (BitIndex + 1);
-
-		for (int32 PassSubStep = BitIndex; PassSubStep >= 0; --PassSubStep)
-		{
-			AllocatedPassParameter->ComputePassStep = 1 << PassSubStep;
-
-			// Adding the compute pass to our bitonic sort
-			TShaderMapRef<FRTSSortData> ComputeShader(GetGlobalShaderMap(GMaxRHIFeatureLevel));
-			FComputeShaderUtils::AddPass(GraphBuilder, RDG_EVENT_NAME("RTSSortData"), ComputeShader, AllocatedPassParameter, FIntVector(GroupCount, 1, 1));
-		}
+		TShaderMapRef<FRTSSortDataFirstPass> ComputeShader(GetGlobalShaderMap(GMaxRHIFeatureLevel));
+		FComputeShaderUtils::AddPass(GraphBuilder, RDG_EVENT_NAME("RTSSortDataFirstPass"), ComputeShader, AllocatedPassParameter_FirstPass, FIntVector(NumGroups, 1, 1));
 	}
+	
+	// --- GLOBAL PASSES & CHEAT PASSES ---
+	// We start at Step 2048 because 2 through 1024 are already sorted
+	for (uint32 Step = 2048; Step <= GMaxBufferElements; Step <<= 1)
+	{
+		AllocatedPassParameter->Step = AllocatedPassParameter_InnerCheat->Step = Step;
+
+		// Global Passes
+		// These are stages where the comparison distance (Jump) is larger than the LDS capacity
+		for (uint32 Jump = Step >> 1; Jump > 1024; Jump >>= 1)
+		{
+				AllocatedPassParameter->Jump = Jump;
+				TShaderMapRef<FRTSSortData> ComputeShader(GetGlobalShaderMap(GMaxRHIFeatureLevel));
+
+				FComputeShaderUtils::AddPass(GraphBuilder, RDG_EVENT_NAME("BitonicGlobal_S%d_J%d", Step, Jump), ComputeShader, AllocatedPassParameter, FIntVector(NumGroups, 1, 1));
+		}
+	
+		// Inner Cheat LDS Pass (handles remainder jumps of loop)
+		{ 
+			TShaderMapRef<FRTSSortDataInnerCheat> ComputeShader(GetGlobalShaderMap(GMaxRHIFeatureLevel));
+			FComputeShaderUtils::AddPass(GraphBuilder, RDG_EVENT_NAME("RTSSortDataInnerCheat%d", Step), ComputeShader, AllocatedPassParameter_InnerCheat, FIntVector(NumGroups, 1, 1));
+		}
+	} 
+
+	// --- FINAL COPY --- 
+	{
+		constexpr uint32 Uniform2DThreadCount = 8;
+		constexpr uint32 ThreadGroupCount = GMaxBuffer1Dim / Uniform2DThreadCount;
+		TShaderMapRef<FRTSSortDataCopyToTexture> ComputeShader(GetGlobalShaderMap(GMaxRHIFeatureLevel));
+		FComputeShaderUtils::AddPass(GraphBuilder, RDG_EVENT_NAME("RTSSortDataCopyToTexture"), ComputeShader, AllocatedPassParameter_CopyToTexture, FIntVector(ThreadGroupCount, ThreadGroupCount, 1));
+	}
+
+	// Debug prep, Frame n
+	if (nullptr != DebugBufferReadback)
+	{
+		GraphBuilder.AddPass(
+			RDG_EVENT_NAME("QueueDebugReadback"),
+			ERDGPassFlags::None,
+			[DebugBufferReadback, RHI = EntityInputPooledBuffer->GetRHI()](FRHICommandList& RHICmdList)
+			{
+				DebugBufferReadback->EnqueueCopy(RHICmdList, RHI);
+			});
+	}
+
 	GraphBuilder.Execute();
 }
 
 IMPLEMENT_GLOBAL_SHADER(FRTSSortData, "/Project/SortData.usf", "SortData", SF_Compute);
+IMPLEMENT_GLOBAL_SHADER(FRTSSortDataInnerCheat, "/Project/SortData.usf", "SortDataInnerCheat", SF_Compute);
+IMPLEMENT_GLOBAL_SHADER(FRTSSortDataFirstPass, "/Project/SortData.usf", "SortDataFirstPass", SF_Compute);
+IMPLEMENT_GLOBAL_SHADER(FRTSSortDataCopyToTexture, "/Project/SortData.usf", "CopyToTexture", SF_Compute);
 
 
 /**

@@ -36,7 +36,7 @@ struct FPDRTSPerPixelStorageHelper
 	}
 };
 
-DECLARE_DELEGATE_SixParams(FRTSBuildGlobalSortEntityShader, FRHICommandListImmediate& /*RHICmdList*/, UTextureRenderTarget2D* /*RenderTarget*/, const TRefCountPtr<FRDGPooledBuffer>& /*EntityInputPooledBuffer*/, const TRefCountPtr<IPooledRenderTarget>& /*ExternalPooledTexture*/, TArray<FLinearColor> /*InData*/, int32 /*BufferSize*/);
+DECLARE_DELEGATE_SixParams(FRTSBuildGlobalSortEntityShader, FRHICommandListImmediate& /*RHICmdList*/, UTextureRenderTarget2D* /*RenderTarget*/, const TRefCountPtr<FRDGPooledBuffer>& /*EntityInputPooledBuffer*/, const TRefCountPtr<IPooledRenderTarget>& /*ExternalPooledTexture*/, TArray<FLinearColor> /*InData*/, FRHIGPUBufferReadback* /*DebugBufferReadback*/)
 
 /** @brief Subsystem to handle octree size changes and to act as a manager for the entity workers */
 UCLASS()
@@ -106,6 +106,11 @@ public:
 	void UpdateDataTexture(TArray<FLinearColor>& PerPixelData);
 	UFUNCTION(BlueprintCallable, Category = "Texture", CallInEditor)
 	void DeleteBuffers(); 
+
+	void ProcessDebugSortedEntityData();
+
+	static constexpr uint32 GMaxEntityDim = 256;
+	static constexpr uint32 GMaxEntityDataSize = GMaxEntityDim * GMaxEntityDim;
 
 
 public:		
@@ -179,6 +184,7 @@ private:
 
 	TRefCountPtr<FRDGPooledBuffer> EntityInputPooledBuffer;
 	TRefCountPtr<IPooledRenderTarget> EntityPooledRT;
+	FRHIGPUBufferReadback* DebugReadback;
 
 	bool bHasCreatedPooledBuffers = false;
 };

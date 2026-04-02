@@ -9,6 +9,8 @@
 #include "ImageUtils.h"
 #include "Kismet/KismetSystemLibrary.h"
 
+#define DEPRECATE_OR_REWRITE_SLATE_MINIMAP true
+
 void SRTSOMiniMap::Construct(const FArguments& InArgs)
 {
 	RadarSize = InArgs._RadarSize;
@@ -69,10 +71,13 @@ int32 SRTSOMiniMap::OnPaint(
 	bool bParentEnabled) const
 {
 	const int32 SuperResult = SCompoundWidget::OnPaint(Args, AllottedGeometry, MyCullingRect, OutDrawElements, LayerId, InWidgetStyle, bParentEnabled);
+	if (DEPRECATE_OR_REWRITE_SLATE_MINIMAP) { return SuperResult; }
+
+	
 	if (MiniMapData != nullptr)
 	{
-		// // Update positions. Call 'PaintRadarMiniMap'
-		// PaintRadarMiniMap(OutDrawElements, AllottedGeometry, LayerId);
+		// Update positions. Call 'PaintRadarMiniMap'
+		PaintRadarMiniMap(OutDrawElements, AllottedGeometry, LayerId);
 	}
 	
 	return SuperResult;
@@ -82,6 +87,9 @@ int32 SRTSOMiniMap::OnPaint(
 // Paint functions
 void SRTSOMiniMap::PaintRadarMiniMap(FSlateWindowElementList& OutDrawElements, const FGeometry& AllottedGeometry, int32 LayerId) const
 {
+	if (DEPRECATE_OR_REWRITE_SLATE_MINIMAP) { return; }
+
+
 	PaintRadar(OutDrawElements, AllottedGeometry, LayerId, FLinearColor::Gray);
 	PaintOwnerOnMiniMap(OutDrawElements, AllottedGeometry, LayerId);
 	PaintActorsOnMiniMap(OutDrawElements, AllottedGeometry, LayerId);
@@ -91,6 +99,9 @@ void SRTSOMiniMap::PaintRadarMiniMap(FSlateWindowElementList& OutDrawElements, c
 // Move overlap logic out of the actual slate class, perform before of after the onpaint function
 void SRTSOMiniMap::PaintActorsOnMiniMap(FSlateWindowElementList& OutDrawElements, const FGeometry& AllottedGeometry, int32 LayerId) const
 {
+	if (DEPRECATE_OR_REWRITE_SLATE_MINIMAP) { return; }
+
+
 	TArray<FLEntityCompound>* MinimapEntityBuffer = RTSSubSystem->OctreeUserQuery.CurrentBuffer.Find(EPDQueryGroups::QUERY_GROUP_MINIMAP);
 	if (MinimapEntityBuffer == nullptr) { return; }
 	
@@ -156,6 +167,8 @@ void SRTSOMiniMap::PaintActorsOnMiniMap(FSlateWindowElementList& OutDrawElements
 // @todo move calculations out of the hud, keep cached data the HUD can quickly access during the draw call wittout having to run the octree iteration themselves
 void SRTSOMiniMap::PaintEntitiesOnMiniMap(FSlateWindowElementList& OutDrawElements, const FGeometry& AllottedGeometry, int32 LayerId) const
 {
+	if (DEPRECATE_OR_REWRITE_SLATE_MINIMAP) { return; }
+
 	TArray<FLEntityCompound>* MinimapEntityBuffer = RTSSubSystem->OctreeUserQuery.CurrentBuffer.Find(EPDQueryGroups::QUERY_GROUP_MINIMAP);
 	if (MinimapEntityBuffer == nullptr) { return; }
 	
@@ -227,6 +240,9 @@ void SRTSOMiniMap::PaintEntitiesOnMiniMap(FSlateWindowElementList& OutDrawElemen
 
 void SRTSOMiniMap::PaintOwnerOnMiniMap(FSlateWindowElementList& OutDrawElements, const FGeometry& AllottedGeometry, int32 LayerId) const
 {
+	if (DEPRECATE_OR_REWRITE_SLATE_MINIMAP) { return; }
+
+	
 	if (MiniMapData->ArrowTexture == nullptr)
 	{
 		return;
@@ -249,6 +265,8 @@ void SRTSOMiniMap::PaintOwnerOnMiniMap(FSlateWindowElementList& OutDrawElements,
 
 void SRTSOMiniMap::PaintRadar(FSlateWindowElementList& OutDrawElements, const FGeometry& AllottedGeometry, int32 LayerId, FLinearColor Color) const
 {
+	if (DEPRECATE_OR_REWRITE_SLATE_MINIMAP) { return; }
+
 	const double PosX = RadarStartLocation.X;
 	const double PosY = RadarStartLocation.Y;
 	const FVector2D HalfSize = RadarSize * 0.5;

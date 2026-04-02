@@ -17,17 +17,70 @@ public:
    BEGIN_SHADER_PARAMETER_STRUCT(FParameters, )
       SHADER_PARAMETER_RDG_BUFFER_UAV(RWBuffer<float4>, EntityData)
       SHADER_PARAMETER_RDG_TEXTURE_UAV(RWTexture2D<float4>, OutSortedEntityDataTexture)
-      SHADER_PARAMETER(uint32, ComputePassStage)
-      SHADER_PARAMETER(uint32, ComputePassStep)
+      SHADER_PARAMETER(uint32, Step)
+      SHADER_PARAMETER(uint32, Jump)
    END_SHADER_PARAMETER_STRUCT()
 
-   void RTSSHADERS_API BuildAndExecuteGraph(FRHICommandListImmediate &RHICmdList, UTextureRenderTarget2D* RenderTarget, const TRefCountPtr<FRDGPooledBuffer>& EntityInputPooledBuffer, const TRefCountPtr<IPooledRenderTarget>& ExternalPooledTexture, TArray<FLinearColor> InData, int32 BufferSize);
-
+   void RTSSHADERS_API BuildAndExecuteGraph(FRHICommandListImmediate &RHICmdList, UTextureRenderTarget2D* RenderTarget, const TRefCountPtr<FRDGPooledBuffer>& EntityInputPooledBuffer, const TRefCountPtr<IPooledRenderTarget>& ExternalPooledTexture, TArray<FLinearColor> InData, FRHIGPUBufferReadback* DebugBufferReadback);
 
    static bool ShouldCompilePermutation(const FGlobalShaderPermutationParameters& Parameters) 
    {
        return IsFeatureLevelSupported(Parameters.Platform, ERHIFeatureLevel::SM5);
    }
+};
+
+class FRTSSortDataFirstPass : public FRTSSortData
+{
+public:
+   DECLARE_EXPORTED_GLOBAL_SHADER(FRTSSortDataFirstPass, RTSSHADERS_API);
+   SHADER_USE_PARAMETER_STRUCT(FRTSSortDataFirstPass, FRTSSortData);   
+   BEGIN_SHADER_PARAMETER_STRUCT(FParameters, )
+      SHADER_PARAMETER_RDG_BUFFER_UAV(RWBuffer<float4>, EntityData)
+      SHADER_PARAMETER_RDG_TEXTURE_UAV(RWTexture2D<float4>, OutSortedEntityDataTexture)
+      SHADER_PARAMETER(uint32, Step)
+      SHADER_PARAMETER(uint32, Jump)
+   END_SHADER_PARAMETER_STRUCT()
+
+   static bool ShouldCompilePermutation(const FGlobalShaderPermutationParameters& Parameters) 
+   {
+       return IsFeatureLevelSupported(Parameters.Platform, ERHIFeatureLevel::SM5);
+   }
+};
+
+class FRTSSortDataInnerCheat : public FRTSSortData
+{
+public:
+   DECLARE_EXPORTED_GLOBAL_SHADER(FRTSSortDataInnerCheat, RTSSHADERS_API);
+   SHADER_USE_PARAMETER_STRUCT(FRTSSortDataInnerCheat, FRTSSortData); 
+   BEGIN_SHADER_PARAMETER_STRUCT(FParameters, )
+      SHADER_PARAMETER_RDG_BUFFER_UAV(RWBuffer<float4>, EntityData)
+      SHADER_PARAMETER_RDG_TEXTURE_UAV(RWTexture2D<float4>, OutSortedEntityDataTexture)
+      SHADER_PARAMETER(uint32, Step)
+      SHADER_PARAMETER(uint32, Jump)
+   END_SHADER_PARAMETER_STRUCT()
+
+   static bool ShouldCompilePermutation(const FGlobalShaderPermutationParameters& Parameters) 
+   {
+       return IsFeatureLevelSupported(Parameters.Platform, ERHIFeatureLevel::SM5);
+   }   
+};
+
+class FRTSSortDataCopyToTexture : public FRTSSortData
+{
+public:
+   DECLARE_EXPORTED_GLOBAL_SHADER(FRTSSortDataCopyToTexture, RTSSHADERS_API);
+   SHADER_USE_PARAMETER_STRUCT(FRTSSortDataCopyToTexture, FRTSSortData);
+   BEGIN_SHADER_PARAMETER_STRUCT(FParameters, )
+      SHADER_PARAMETER_RDG_BUFFER_UAV(RWBuffer<float4>, EntityData)
+      SHADER_PARAMETER_RDG_TEXTURE_UAV(RWTexture2D<float4>, OutSortedEntityDataTexture)
+      SHADER_PARAMETER(uint32, Step)
+      SHADER_PARAMETER(uint32, Jump)
+   END_SHADER_PARAMETER_STRUCT()
+
+   static bool ShouldCompilePermutation(const FGlobalShaderPermutationParameters& Parameters) 
+   {
+       return IsFeatureLevelSupported(Parameters.Platform, ERHIFeatureLevel::SM5);
+   }   
 };
 
 

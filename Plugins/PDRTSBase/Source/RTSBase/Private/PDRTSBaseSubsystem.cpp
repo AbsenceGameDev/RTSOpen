@@ -316,7 +316,7 @@ void UPDRTSBaseSubsystem::CreateDataTexture()
 	const bool bNewlyCreatedRT = bDataTextureAssigned == false && bDataTextureLoaded == false;
 	if (bNewlyCreatedRT)
 	{
-		EntityDataTexture->InitAutoFormat(1024, 1024);		
+		EntityDataTexture->InitAutoFormat(GMaxEntityDim, GMaxEntityDim);		
 		EntityDataTexture->CompressionSettings = TC_HDR_F32;
 		EntityDataTexture->SRGB = false;
 		EntityDataTexture->Filter = TF_Nearest; 
@@ -339,20 +339,26 @@ void UPDRTSBaseSubsystem::CreateDataBuffer()
 	(
 		[this](FRHICommandListImmediate& RHICmdList)
 		{
-			constexpr int32 GMaxBufferElements = 1024*1024;
 			uint32 ElementSize = sizeof(FLinearColor); 
-			uint32 TotalSize = GMaxBufferElements * ElementSize;
+			uint32 TotalSize = GMaxEntityDataSize * ElementSize;
 			if (false == EntityInputPooledBuffer.IsValid())
 			{
-				FRDGBufferDesc BufferDescriptor = FRDGBufferDesc::CreateBufferDesc(ElementSize, GMaxBufferElements);
+				FRDGBufferDesc BufferDescriptor = FRDGBufferDesc::CreateBufferDesc(ElementSize, GMaxEntityDataSize);
 				EntityInputPooledBuffer = AllocatePooledBuffer(BufferDescriptor, TEXT("SortDataBuffer"), ERDGPooledBufferAlignment::PowerOfTwo);
 			}
+
+#if DEBUG_ENTITY_DATA_TEXTURE == 1
+			if (nullptr == DebugReadback)
+			{
+				DebugReadback = new FRHIGPUBufferReadback(TEXT("SortDebugReadback"));
+			}
+#endif // DEBUG_ENTITY_DATA_TEXTURE	
 			
 			if (false == EntityPooledRT.IsValid())
 			{
 				EntityPooledRT = AllocatePooledTexture(
 					FRDGTextureDesc::Create2D(
-						FIntPoint(EntityDataTexture->SizeX, EntityDataTexture->SizeY),
+						FIntPoint(GMaxEntityDim, GMaxEntityDim),
 						EPixelFormat::PF_A32B32G32R32F,
 						FClearValueBinding(),
 						TexCreate_UAV),
@@ -363,6 +369,7 @@ void UPDRTSBaseSubsystem::CreateDataBuffer()
 	);
 }
 
+#define DEBUG_ENTITY_DATA_TEXTURE 1
 void UPDRTSBaseSubsystem::UpdateDataTexture(TArray<FLinearColor>& PerPixelData)
 {
 	if (false == bHasCreatedPooledBuffers) 
@@ -376,14 +383,15 @@ void UPDRTSBaseSubsystem::UpdateDataTexture(TArray<FLinearColor>& PerPixelData)
 	TRefCountPtr<IPooledRenderTarget> TexturePoolCopy = EntityPooledRT;
 	FRTSBuildGlobalSortEntityShader BuildEntitySortComputeShaderCopy = BuildEntitySortComputeShader;
 	TArray<FLinearColor> InData = PerPixelData;
+	FRHIGPUBufferReadback* DebugReadbackPtrCopy = DebugReadback;
 	ENQUEUE_RENDER_COMMAND(UpdateDataTextureCommandName)(
 		[
 			BuildEntitySortComputeShaderCopy,
-			// ComputeShader,
+			RenderTargetParam,
 			EntityInputPooledBufferCopy,
 			TexturePoolCopy,
-			RenderTargetParam,
-			InData
+			InData,
+			DebugReadbackPtrCopy
 		](FRHICommandListImmediate& RHICmdList)
 		{
 			BuildEntitySortComputeShaderCopy.ExecuteIfBound(
@@ -392,9 +400,71 @@ void UPDRTSBaseSubsystem::UpdateDataTexture(TArray<FLinearColor>& PerPixelData)
 				EntityInputPooledBufferCopy,
 				TexturePoolCopy,
 				InData,
-				1024*1024				
+				DebugReadbackPtrCopy
 			);
 		});
+
+
+#if DEBUG_ENTITY_DATA_TEXTURE == 1
+	UWorld* CurrentWorld = EntityManager->GetWorld();
+	if (CurrentWorld)
+	{
+		CurrentWorld->GetTimerManager().SetTimerForNextTick(
+		[&]()
+		{
+			if (DebugReadback && DebugReadback->IsReady())
+			{
+				ProcessDebugSortedEntityData();
+			}
+			else if (DebugReadback) // Wait at most another frame if it is not yet ready
+			{
+				CurrentWorld->GetTimerManager().SetTimerForNextTick(
+				[&]()
+				{
+					if (DebugReadback && DebugReadback->IsReady())
+					{
+						ProcessDebugSortedEntityData();
+					}
+				});
+			}
+			
+		});
+	}
+#endif // DEBUG_ENTITY_DATA_TEXTURE == 1
+
+}
+
+void UPDRTSBaseSubsystem::ProcessDebugSortedEntityData()
+{
+	FLinearColor* Data = (FLinearColor*)DebugReadback->Lock(GMaxEntityDataSize);
+	if (Data)
+	{
+		uint32 ActivePixelCount = 0;
+
+		for (uint32 EntityStep = 0; EntityStep < GMaxEntityDataSize; ++EntityStep)
+		{
+			const float EntityDataSum = Data[EntityStep].R + Data[EntityStep].G + Data[EntityStep].B + Data[EntityStep].A; // dot(rgb, (1,1,0))
+			if (EntityDataSum > 0.0f)
+			{
+				ActivePixelCount++;
+
+				if (ActivePixelCount < 10)
+				{
+					UE_LOG(LogTemp, Log, TEXT("Entity Sort Debug : Active Pixel [%d]: Location(%f, %f, %f), EncodedAlphaData: %f"),  EntityStep, Data[EntityStep].R, Data[EntityStep].G, Data[EntityStep].B, Data[EntityStep].A);
+				}
+			}
+		}
+
+		// Print summary to screen
+		if (GEngine)
+		{
+			GEngine->AddOnScreenDebugMessage(-1, 0.0f, FColor::Green, 
+				FString::Printf(TEXT("Sorted Elements Over Zero: %d"), ActivePixelCount));
+		}
+
+		// CRITICAL: Always unlock so the GPU can use this buffer for the next frame's copy
+		DebugReadback->Unlock();
+	}
 }
 
 void UPDRTSBaseSubsystem::DeleteBuffers()
@@ -406,6 +476,7 @@ void UPDRTSBaseSubsystem::DeleteBuffers()
 			bHasCreatedPooledBuffers = false;
 			if (EntityInputPooledBuffer.IsValid()) {EntityInputPooledBuffer.SafeRelease();}
 			if (EntityPooledRT.IsValid()) {EntityPooledRT.SafeRelease();}	
+			if (DebugReadback){ delete DebugReadback;}
 		}	
 	);
 }

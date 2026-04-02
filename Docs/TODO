@@ -141,7 +141,19 @@ DONE:
     ✔ A number of changes to SRTSO Minimap which are now obsolote sine moving to a shader based approach @done(26-03-31 01:47)
     ✔ Updated .gitignore @done(26-03-31 01:50)
 
-    
+
+April 2nd 2026 - Commit#0:
+TODO: 
+    IN PROGRESS:
+    ☐ Implementing a new minimap in hlsl, most of the preliminary work here is done now @started(26-03-31 01:48)
+        
+DONE: 
+    Issues with bitonic sort (getting overhead from 210 sorting passes of a 1024x1024 data texture):
+        ✔ Also consider groupshared passes where possible, should bring it down byfrom 210 passes now to ~30 passes, we will see significantly less overhead @done(26-04-02 07:42)
+        ✔ Bringing it down to 256x256 and I will do many fewer passes in total, and will still hold ~65500 entities @done(26-03-31 15:36)
+        
+    ✔ Disable any Slate minimap until later notice @done(26-04-02 07:43)
+
 
 Backlogged until gameplay systems are fully functional:
 XXXXXX XXth 2025 - Commit#1 :
