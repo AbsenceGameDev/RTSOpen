@@ -222,6 +222,7 @@ TSoftObjectPtr<UMassEntityConfigAsset> UPDRTSBaseSubsystem::GetConfigAssetForArc
 void UPDRTSBaseSubsystem::WorldInit(const UWorld* World)
 {
 	check(World)
+	TemporaryWorldCache = World;
 	EntityManager = &World->GetSubsystem<UMassEntitySubsystem>()->GetEntityManager();	
 	CreateDataTexture();
 }
@@ -230,6 +231,7 @@ void UPDRTSBaseSubsystem::WorldDeinit(const UWorld* World)
 {
 	check(World)
 	EntityManager = &World->GetSubsystem<UMassEntitySubsystem>()->GetEntityManager();
+	TemporaryWorldCache = nullptr;
 	
 	DeleteBuffers();
 }
@@ -384,61 +386,26 @@ void UPDRTSBaseSubsystem::UpdateDataTexture(TArray<FLinearColor>& PerPixelData)
 	TArray<FLinearColor> InData = PerPixelData;
 	FRHIGPUBufferReadback* DebugReadbackPtrCopy = DebugReadback;
 	ENQUEUE_RENDER_COMMAND(UpdateDataTextureCommandName)(
-		[
-			BuildEntitySortComputeShaderCopy,
+	[
+		BuildEntitySortComputeShaderCopy,
+		RenderTargetParam,
+		EntityInputPooledBufferCopy,
+		TexturePoolCopy,
+		InData,
+		DebugReadbackPtrCopy
+	](FRHICommandListImmediate& RHICmdList)
+	{
+		BuildEntitySortComputeShaderCopy.ExecuteIfBound(
+			RHICmdList,
 			RenderTargetParam,
 			EntityInputPooledBufferCopy,
 			TexturePoolCopy,
 			InData,
 			DebugReadbackPtrCopy
-		](FRHICommandListImmediate& RHICmdList)
-		{
-			BuildEntitySortComputeShaderCopy.ExecuteIfBound(
-				RHICmdList,
-				RenderTargetParam,
-				EntityInputPooledBufferCopy,
-				TexturePoolCopy,
-				InData,
-				DebugReadbackPtrCopy
-			);
-		});
-
-
-// Hacky debug, something more robust if I move this over and create some debug ui
-#if DEBUG_ENTITY_DATA_TEXTURE == 1
-	AsyncTask(ENamedThreads::GameThread, 
-	[&]()
-	{
-		UWorld* CurrentWorld = EntityManager->GetWorld();
-		if (CurrentWorld)
-		{
-			FTimerManager& TimerManager = CurrentWorld->GetTimerManager();
-			TimerManager.SetTimerForNextTick(
-			FTimerDelegate::CreateWeakLambda(UPDRTSBaseSubsystem::Get(),
-			[&]()
-			{
-				if (DebugReadback && DebugReadback->IsReady())
-				{
-					ProcessDebugSortedEntityData();
-				}
-				else if (DebugReadback) // Wait at most another frame if it is not yet ready
-				{
-					TimerManager.SetTimerForNextTick(
-					FTimerDelegate::CreateWeakLambda(UPDRTSBaseSubsystem::Get(),	
-					[&]()
-					{
-						if (DebugReadback && DebugReadback->IsReady())
-						{
-							ProcessDebugSortedEntityData();
-						}
-					}));
-				}
-			}));
-		}
+		);
 	});
-#endif // DEBUG_ENTITY_DATA_TEXTURE == 1
-
 }
+
 
 void UPDRTSBaseSubsystem::ProcessDebugSortedEntityData()
 {
@@ -453,16 +420,25 @@ void UPDRTSBaseSubsystem::ProcessDebugSortedEntityData()
 
 			for (uint32 EntityStep = 0; EntityStep < GMaxEntityDataSize; ++EntityStep)
 			{
-				const float EntityDataSum = Data[EntityStep].R + Data[EntityStep].G + Data[EntityStep].B + Data[EntityStep].A; // dot(rgb, (1,1,0))
+				const float EntityDataSum = Data[EntityStep].R + Data[EntityStep].G + Data[EntityStep].B + Data[EntityStep].A; 
 				if (EntityDataSum > 0.0f)
 				{
 					ActivePixelCount++;
 
-					if (ActivePixelCount < 10)
+					const bool bDebugEntityStep = ActivePixelCount < 2;
+					if (bDebugEntityStep)
 					{
 						UE_LOG(LogTemp, Log, TEXT("Entity Sort Debug : Active Pixel [%d]: Location(%f, %f, %f), EncodedAlphaData: %f"),  EntityStep, Data[EntityStep].R, Data[EntityStep].G, Data[EntityStep].B, Data[EntityStep].A);
 					}
 				}
+			}
+			if (ActivePixelCount == 0)
+			{
+				UE_LOG(LogTemp, Error, TEXT("Entity Sort Debug - Failed - No Valid Entity Values"));					
+			}
+			else
+			{
+				UE_LOG(LogTemp, Log, TEXT("Entity Sort Debug - %i Valid Entity Values"), ActivePixelCount);					
 			}
 
 			// Print summary to screen
@@ -474,6 +450,10 @@ void UPDRTSBaseSubsystem::ProcessDebugSortedEntityData()
 
 			// CRITICAL: Always unlock so the GPU can use this buffer for the next frame's copy
 			DebugReadback->Unlock();
+		}
+		else
+		{
+			UE_LOG(LogTemp, Error, TEXT("Entity Sort Debug - Failed - Data could not be locked"));
 		}
 	});
 }
@@ -490,6 +470,21 @@ void UPDRTSBaseSubsystem::DeleteBuffers()
 			if (DebugReadback){ delete DebugReadback;}
 		}	
 	);
+}
+
+// Tickable interface
+void UPDRTSBaseSubsystem::Tick(float DeltaTime) 
+{
+	if (DebugReadback && DebugReadback->IsReady())
+	{
+		UE_LOG(LogTemp, Warning, TEXT("DebugReadback Is Ready, Calling 'ProcessDebugSortedEntityData'"));
+		ProcessDebugSortedEntityData();
+	}
+}
+
+TStatId UPDRTSBaseSubsystem::GetStatId() const
+{
+	RETURN_QUICK_DECLARE_CYCLE_STAT(UPDRTSBaseSubsystem, STATGROUP_Tickables);
 }
 
 /**

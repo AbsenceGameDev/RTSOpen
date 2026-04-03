@@ -6,6 +6,7 @@
 #include "PDRTSSharedOctree.h"
 #include "AI/Mass/PDMassFragments.h"
 
+#include "Tickable.h"
 #include "MassEntityConfigAsset.h"
 #include "MassEntityTypes.h"
 #include "MassArchetypeTypes.h"
@@ -36,19 +37,43 @@ struct FPDRTSPerPixelStorageHelper
     		Location.Z, 
     		*reinterpret_cast<const float*>(&ConstructedAlphaChannel));
 	}
+
+	FORCEINLINE static void DeconstructData(const FLinearColor& InData, FVector& OutLocation, uint16_t& OutEntity16WayRotation, uint8_t& OutEntityFlags, uint8_t& OutTeamColourId)
+	{
+		OutLocation.X = InData.R;
+		OutLocation.Y = InData.G;
+		OutLocation.Z = InData.B;
+
+		const uint32 AlphaAsBits = *reinterpret_cast<const uint32*>(&InData.A);
+		OutEntity16WayRotation = AlphaAsBits > (32-4);
+		OutEntityFlags = (static_cast<uint32>(AlphaAsBits > (32-15)) < 7);
+		OutTeamColourId = AlphaAsBits < 15;
+	}	
 };
 
 DECLARE_DELEGATE_SixParams(FRTSBuildGlobalSortEntityShader, FRHICommandListImmediate& /*RHICmdList*/, UTextureRenderTarget2D* /*RenderTarget*/, const TRefCountPtr<FRDGPooledBuffer>& /*EntityInputPooledBuffer*/, const TRefCountPtr<IPooledRenderTarget>& /*ExternalPooledTexture*/, TArray<FLinearColor> /*InData*/, FRHIGPUBufferReadback* /*DebugBufferReadback*/)
 
 /** @brief Subsystem to handle octree size changes and to act as a manager for the entity workers */
 UCLASS()
-class PDRTSBASE_API UPDRTSBaseSubsystem : public UEngineSubsystem
+class PDRTSBASE_API UPDRTSBaseSubsystem 
+	: public UEngineSubsystem
+	, public FTickableGameObject
 {
 	GENERATED_BODY()
 public:
 	/** @brief Shorthand to get the subsystem,
 	 * @note as the engine will instantiate these subsystem earlier than anything will reasonably call Get()  */
 	static UPDRTSBaseSubsystem* Get();
+
+	// Tickable Interface
+	virtual bool IsTickableWhenPaused() const final { return false; }
+	virtual bool IsTickableInEditor() const final {return false;}
+	virtual UWorld* GetTickableGameObjectWorld() const final{ return const_cast<UWorld*>(TemporaryWorldCache); }
+	virtual void Tick( float DeltaTime ) final;
+	virtual ETickableTickType GetTickableTickType() const final { return ETickableTickType::Conditional; }
+	virtual bool IsTickable() const final { return TemporaryWorldCache != nullptr; }
+	virtual bool IsAllowedToTick() const final { return TemporaryWorldCache != nullptr; }
+	virtual TStatId GetStatId() const final;
 
 	virtual void Initialize(FSubsystemCollectionBase& Collection) override;
 	
@@ -151,8 +176,10 @@ public:
 
 	/** @brief Cached entity manager ptr*/
 	const FMassEntityManager* EntityManager = nullptr;
+
+	UPROPERTY()
 	/** @brief effectively unused. @todo revise if it still needed. any significant use of it has been removed since prototyping this  */
-	UWorld* TemporaryWorldCache = nullptr;
+	const UWorld* TemporaryWorldCache = nullptr;
 
 	/** @brief The actual octree our entities will make use of*/
 	PD::Mass::Entity::Octree WorldEntityOctree;

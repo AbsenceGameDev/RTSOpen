@@ -646,12 +646,27 @@ void UPDOctreeProcessor::Execute(FMassEntityManager& EntityManager, FMassExecuti
 
 		RTSSubsystem->GenerateEntityMapData();
 
-		AsyncTask(ENamedThreads::GameThread, 
-			 [ShaderEntryNum = RTSSubsystem->EntityShaderInputData.Num()]()
-			 {
-				GEngine->AddOnScreenDebugMessage(INDEX_NONE, 0, FColor::Green, FString::Printf(TEXT("Amounf of Entity Data Sent to GPU: %i"), ShaderEntryNum));
-			 });
 	});
+	AsyncTask(ENamedThreads::GameThread, 
+		 [EntityShaderInputData = RTSSubsystem->EntityShaderInputData]()
+		 {
+			GEngine->AddOnScreenDebugMessage(INDEX_NONE, 0, FColor::Green, FString::Printf(TEXT("Amount of Entity Data Sent to GPU: %i"), EntityShaderInputData.Num()));
+
+			int32 EntLocalID = INDEX_NONE;
+			for (const FLinearColor& EntityDatum : EntityShaderInputData)
+			{
+				++EntLocalID;
+				EntityDatum;
+
+				FVector RetLocation; 
+				uint16_t RetEntity16WayRotation; 
+				uint8_t RetEntityFlags; 
+				uint8_t RetTeamColourId;
+				FPDRTSPerPixelStorageHelper::DeconstructData(EntityDatum, RetLocation, RetEntity16WayRotation, RetEntityFlags, RetTeamColourId);
+				GEngine->AddOnScreenDebugMessage(INDEX_NONE, 0, FColor::Green, FString::Printf(TEXT("EntityId(%i) - DeconstructedData: Loc(%s), 16WayRot(%i), EntFlags(%x), TeamId(%i) "), EntLocalID, *RetLocation.ToCompactString(), static_cast<int32>(RetEntity16WayRotation), static_cast<int32>(RetEntityFlags), static_cast<int32>(RetTeamColourId)));
+			}
+
+		 });
 
 	//
 	// Poor mans threading
