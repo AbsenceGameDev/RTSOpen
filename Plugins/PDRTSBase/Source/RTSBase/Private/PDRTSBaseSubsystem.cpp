@@ -413,6 +413,8 @@ void UPDRTSBaseSubsystem::ProcessDebugSortedEntityData()
 	[&]
 	(FRHICommandListImmediate& RHICmdList)
 	{
+		UE_LOG(LogTemp, Warning, TEXT("================================================="));
+		UE_LOG(LogTemp, Warning, TEXT("UPDRTSBaseSubsystem::ProcessDebugSortedEntityData"));
 		FLinearColor* Data = (FLinearColor*)DebugReadback->Lock(GMaxEntityDataSize);
 		if (Data)
 		{
@@ -477,7 +479,6 @@ void UPDRTSBaseSubsystem::Tick(float DeltaTime)
 {
 	if (DebugReadback && DebugReadback->IsReady())
 	{
-		UE_LOG(LogTemp, Warning, TEXT("DebugReadback Is Ready, Calling 'ProcessDebugSortedEntityData'"));
 		ProcessDebugSortedEntityData();
 	}
 }
