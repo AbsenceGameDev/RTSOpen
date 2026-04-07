@@ -1,4 +1,7 @@
 #include "/Engine/Public/Platform.ush"
+#include "s2h/s2h_modified.usf"
+#include "s2h/s2h_3d.usf"
+#include "common.usf"
 
 // Parameters
 uint Step;
@@ -90,9 +93,32 @@ uint MortonSpread(uint x)
     x = (x | (x << 1)) & 0x55555555;
     return x;
 }
+
 uint GetMortonIndex(uint x, uint y) { return (MortonSpread(y) << 1) | MortonSpread(x);}
 [numthreads(8, 8, 1)]
 void CopyToTexture(uint3 DTID: SV_DispatchThreadID)
 {
+    // Note this won't output anything useful anywhere but it will tell us if unreal compiles these shaders and s2h successfully
+    uint bufferwidth;
+    uint bufferheight;
+    uint levels;
+    OutSortedEntityDataTexture.GetDimensions(bufferwidth, bufferheight);
+
+    ContextGather ui;
+    s2h_init(ui, float2(DTID.x, bufferwidth - DTID.y));
+
+    static glyph GlobTest32[32]=
+        {
+            T4(T, E, S, T),
+            T4(SPACE, SET_TEXT_BG, LARGESPACE, COLON),
+            T4(A, B, C, D),
+            T4(A, B, C, D),
+            T4(A, B, C, D),
+            T4(A, B, C, D),
+            T4(A, B, C, D),
+            T4(A, B, C, D)
+        };
+    PrintMessage(ui, GlobTest32);
+
     OutSortedEntityDataTexture[DTID.xy] = EntityData[GetMortonIndex(DTID.x, DTID.y)];
 }

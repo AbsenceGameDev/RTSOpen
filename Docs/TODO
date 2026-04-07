@@ -180,7 +180,28 @@ IN PROGRESS :
             - List amount of valid entities
             - If entity is selected, display it's selected pixel position in the data texture and some entity meta-data 
                 NOTE: Potentially not possible due to data limits per pixel unless I bump it up to 64 bits per channel, 
+
+
+April 7th 2026 - Commit#0:
+DONE:                 
+    ✔ Adding shader2human and makign sure the shader compiler handles it. Note my change won't output anything useful except that it will not compile if any changes/additions I make to s2h are compilable @done(26-04-07 21:18)
+
+
+
+COMING:    
+IN PROGRESS : 
+    ☐ Debug the sorted output texture, and sort out why the log calls are not showing
+        ✔ Simple debug (Logs and onscreenmessages) @done(26-04-03 04:10)
+            ✔ Wrote static helper function to convert pixel data back to the original unpacked data @done(26-04-03 04:19)
+            ☐ Integrate S2H in a useful manner in the minimap.usf when we get to it
+            BUGS FOUND USING SIMPLE DEBUG:
+            ☐ Valid entity data in the datatexture keeps increasing each frame, likely meaning the debug buffer isn't being flushed 
+            ☐ Entity data descontruction has a tendency to write 0 sporadically on teamID when it is known to be 1, need to figure it out, potentially something with how I  
             
+        ☐ Actual Debug UI 
+            - List amount of valid entities
+            - If entity is selected, display it's selected pixel position in the data texture and some entity meta-data 
+                NOTE: Potentially not possible due to data limits per pixel unless I bump it up to 64 bits per channel,                 
 
 IN PROGRESS (BACKLOGGED WHILE DEBUGGING):
     ☐ Implementing a new minimap in hlsl, most of the preliminary work here is done now @started(26-03-31 01:48)
