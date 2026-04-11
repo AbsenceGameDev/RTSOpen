@@ -348,13 +348,6 @@ void UPDRTSBaseSubsystem::CreateDataBuffer()
 				FRDGBufferDesc BufferDescriptor = FRDGBufferDesc::CreateBufferDesc(ElementSize, GMaxEntityDataSize);
 				EntityInputPooledBuffer = AllocatePooledBuffer(BufferDescriptor, TEXT("SortDataBuffer"), ERDGPooledBufferAlignment::PowerOfTwo);
 			}
-
-#if DEBUG_ENTITY_DATA_TEXTURE == 1
-			if (nullptr == DebugReadback)
-			{
-				DebugReadback = new FRHIGPUBufferReadback(TEXT("SortDebugReadback"));
-			}
-#endif // DEBUG_ENTITY_DATA_TEXTURE	
 			
 			if (false == EntityPooledRT.IsValid())
 			{
@@ -378,24 +371,24 @@ void UPDRTSBaseSubsystem::UpdateDataTexture()
 		// Potential TODO: Log error? Assert?
 		 return; 
 	}
-
+	
 	UTextureRenderTarget2D* RenderTargetParam = EntityDataTexture;
 	TRefCountPtr<FRDGPooledBuffer> EntityInputPooledBufferCopy = EntityInputPooledBuffer;
 	TRefCountPtr<IPooledRenderTarget> TexturePoolCopy = EntityPooledRT;
 	FRTSBuildGlobalSortEntityShader BuildEntitySortComputeShaderCopy = BuildEntitySortComputeShader;
 
 	TArray<FLinearColor> InData;
-	// OctreeUserQuery.MemCpyQueryBuffer<EPDQueryGroups::QUERY_GROUP_MINIMAP>(InData);
-
-	FRHIGPUBufferReadback* DebugReadbackPtrCopy = DebugReadback;
+	OctreeUserQuery.MemCpyQueryBuffer<EPDQueryGroups::QUERY_GROUP_MINIMAP>(InData);
+	FPDOctreeUserQuery::FBoundsSimple QueryBounds = OctreeUserQuery.GetLatestQueryBounds<EPDQueryGroups::QUERY_GROUP_MINIMAP>();
+	
 	ENQUEUE_RENDER_COMMAND(UpdateDataTextureCommandName)(
-	[
-		BuildEntitySortComputeShaderCopy,
-		RenderTargetParam,
-		EntityInputPooledBufferCopy,
-		TexturePoolCopy,
-		InData,
-		DebugReadbackPtrCopy
+		[
+			BuildEntitySortComputeShaderCopy,
+			RenderTargetParam,
+			EntityInputPooledBufferCopy,
+			TexturePoolCopy,
+			InData,
+			QueryBounds
 	](FRHICommandListImmediate& RHICmdList)
 	{
 		BuildEntitySortComputeShaderCopy.ExecuteIfBound(
@@ -404,78 +397,12 @@ void UPDRTSBaseSubsystem::UpdateDataTexture()
 			EntityInputPooledBufferCopy,
 			TexturePoolCopy,
 			InData,
-			DebugReadbackPtrCopy
+			QueryBounds.Min,
+			QueryBounds.Size
 		);
 	});
 }
 
-
-void UPDRTSBaseSubsystem::ProcessDebugSortedEntityData()
-{
-	UE_LOG(LogTemp, Warning, TEXT("================================================="));
-	UE_LOG(LogTemp, Warning, TEXT("UPDRTSBaseSubsystem::ProcessDebugSortedEntityData -- Atempt to send RHI Command"));	
-	ENQUEUE_RENDER_COMMAND(ProcessDebugSortedEntityDataCommandName)(
-	[&]
-	(FRHICommandListImmediate& RHICmdList)
-	{
-		UE_LOG(LogTemp, Warning, TEXT("================================================="));
-		UE_LOG(LogTemp, Warning, TEXT("UPDRTSBaseSubsystem::ProcessDebugSortedEntityData -- Entered RHI Command"));
-		FLinearColor* Data = (FLinearColor*)DebugReadback->Lock(GMaxEntityDataSize);
-		if (Data)
-		{
-			UE_LOG(LogTemp, Warning, TEXT("UPDRTSBaseSubsystem::ProcessDebugSortedEntityData -- Entered RHI Command - Data is valid"));
-			uint32 ActivePixelCount = 0;
-			uint32 InactivePixelCount = 0;
-
-			for (uint32 EntityStep = 0; EntityStep < GMaxEntityDataSize; ++EntityStep)
-			{
-				const float EntityDataSum = Data[EntityStep].R + Data[EntityStep].G + Data[EntityStep].B + Data[EntityStep].A; 
-				if (EntityDataSum > 0.0f)
-				{
-					ActivePixelCount++;
-
-					const bool bDebugEntityStep = ActivePixelCount < 8;
-					if (bDebugEntityStep)
-					{
-						UE_LOG(LogTemp, Log, TEXT("Entity Sort Debug : Active Pixel [%d]: Location(%f, %f, %f), EncodedAlphaData: %f"),  EntityStep, Data[EntityStep].R, Data[EntityStep].G, Data[EntityStep].B, Data[EntityStep].A);
-					}
-				}
-				else
-				{
-					InactivePixelCount++;
-
-					const bool bDebugEntityStep = InactivePixelCount < 8;
-					if (bDebugEntityStep)
-					{
-						UE_LOG(LogTemp, Log, TEXT("Entity Sort Debug : Inactive Pixel [%d]: Location(%f, %f, %f), EncodedAlphaData: %f"),  EntityStep, Data[EntityStep].R, Data[EntityStep].G, Data[EntityStep].B, Data[EntityStep].A);
-					}
-				}
-			}
-			if (ActivePixelCount == 0)
-			{
-				UE_LOG(LogTemp, Error, TEXT("Entity Sort Debug - Failed - No Valid Entity Values"));					
-			}
-			else
-			{
-				UE_LOG(LogTemp, Log, TEXT("Entity Sort Debug - %i Valid Entity Values"), ActivePixelCount);					
-			}
-
-			// Print summary to screen
-			if (GEngine)
-			{
-				GEngine->AddOnScreenDebugMessage(-1, 0.0f, FColor::Green, 
-					FString::Printf(TEXT("Sorted Elements Over Zero: %d"), ActivePixelCount));
-			}
-
-			// CRITICAL: Always unlock so the GPU can use this buffer for the next frame's copy
-			DebugReadback->Unlock();
-		}
-		else
-		{
-			UE_LOG(LogTemp, Error, TEXT("Entity Sort Debug - Failed - Data could not be locked"));
-		}
-	});
-}
 
 void UPDRTSBaseSubsystem::DeleteBuffers()
 {
@@ -486,7 +413,6 @@ void UPDRTSBaseSubsystem::DeleteBuffers()
 			bHasCreatedPooledBuffers = false;
 			if (EntityInputPooledBuffer.IsValid()) {EntityInputPooledBuffer.SafeRelease();}
 			if (EntityPooledRT.IsValid()) {EntityPooledRT.SafeRelease();}	
-			if (DebugReadback){ delete DebugReadback;}
 		}	
 	);
 }
@@ -494,10 +420,7 @@ void UPDRTSBaseSubsystem::DeleteBuffers()
 // Tickable interface
 void UPDRTSBaseSubsystem::Tick(float DeltaTime) 
 {
-	// if (DebugReadback && DebugReadback->IsReady())
-	// {
-	// 	ProcessDebugSortedEntityData();
-	// }
+	// Resered for potential future use
 }
 
 TStatId UPDRTSBaseSubsystem::GetStatId() const

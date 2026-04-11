@@ -236,13 +236,13 @@ TArray<AActor*> UPDInteractComponent::GetAllInteractablesInRadius(double Radius,
 	TArray<AActor*> OverlapActors{};
 	UKismetSystemLibrary::SphereOverlapActors(
 		OwnerPawn,
-		OverridePosition == FVector::ZeroVector ? OwnerPawn->GetActorLocation() : OverridePosition,
+		OverridePosition == PD::Interact::Constants::INVALID_WORLD_LOC ? OwnerPawn->GetActorLocation() : OverridePosition,
 		Radius,
 		{TraceSettings.GeneratedObjectType},
 		nullptr, 
 		{OwnerPawn},
 		Aggregate);
-	OverridePosition = bResetOverrideNextFrame ? FVector::ZeroVector : OverridePosition;
+	OverridePosition = bResetOverrideNextFrame ? PD::Interact::Constants::INVALID_WORLD_LOC : OverridePosition;
 	
 	if (bIgnorePerObjectInteractionDistance)
 	{
@@ -285,7 +285,7 @@ void UPDInteractComponent::TraceToTarget(const FVector& TraceStart, const FVecto
 
 void UPDInteractComponent::TraceToTarget(const FVector& TraceEnd, FCollisionQueryParams& TraceParams)
 {
-	const FVector TraceStart = FVector::ZeroVector;
+	const FVector TraceStart = PD::Interact::Constants::INVALID_WORLD_LOC;
 	TraceToTarget(TraceStart, TraceEnd, TraceParams);
 }
 void UPDInteractComponent::TraceToTarget(const FVector& TraceStart, const FVector& TraceEnd, FCollisionQueryParams& TraceParams)
@@ -309,7 +309,7 @@ FPDTraceResult UPDInteractComponent::TraceToTargetAndReset(const FVector& TraceS
 
 FPDTraceResult UPDInteractComponent::TraceToTargetAndReset(const FVector& TraceEnd, FCollisionQueryParams& TraceParams)
 {
-	const FVector TraceStart = FVector::ZeroVector;
+	const FVector TraceStart = PD::Interact::Constants::INVALID_WORLD_LOC;
 	return TraceToTargetAndReset(TraceStart, TraceEnd, TraceParams);
 }
 FPDTraceResult UPDInteractComponent::TraceToTargetAndReset(const FVector& TraceStart, const FVector& TraceEnd, FCollisionQueryParams& TraceParams)
@@ -392,9 +392,9 @@ void UPDInteractComponent::PerformComparativeTraces(FVector& TraceStart, FVector
 	// Trace 2 (Comparison trace)	
 	const FVector PawnEyeLocation = OwnerPawn->GetActorLocation() + FVector(0.f,0.f, OwnerPawn->BaseEyeHeight);
 	const FVector TargetEndLocation = 
-		CameraTraceResult.ImpactPoint != FVector::ZeroVector ? CameraTraceResult.ImpactPoint :
-		CameraTraceResult.Location    != FVector::ZeroVector ? CameraTraceResult.Location    :
-		FVector::ZeroVector;
+		CameraTraceResult.ImpactPoint != PD::Interact::Constants::INVALID_WORLD_LOC ? CameraTraceResult.ImpactPoint :
+		CameraTraceResult.Location    != PD::Interact::Constants::INVALID_WORLD_LOC ? CameraTraceResult.Location    :
+		PD::Interact::Constants::INVALID_WORLD_LOC;
 
 	bool bComparativeTraces = false;
 	TracePass(PawnEyeLocation, TargetEndLocation , TraceParams, TraceHitResult, bComparativeTraces);
@@ -412,7 +412,7 @@ void UPDInteractComponent::PerformSimpleTrace(const FVector& TraceStart, const F
 {
 	const APawn* OwnerPawn = GetOwner<APawn>();
 
-	const bool bTraceFromView = (TraceStart == FVector::ZeroVector && OwnerPawn != nullptr);
+	const bool bTraceFromView = (TraceStart == PD::Interact::Constants::INVALID_WORLD_LOC && OwnerPawn != nullptr);
 	const FVector ViewOffset = FVector(0.f,0.f, OwnerPawn->BaseEyeHeight);
 	const FVector SelectedStart = bTraceFromView ? OwnerPawn->GetActorLocation() + ViewOffset : TraceStart;
 

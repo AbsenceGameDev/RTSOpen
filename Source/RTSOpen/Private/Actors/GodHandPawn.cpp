@@ -64,7 +64,7 @@
 #include "Subsystems/PDUserMessageSubsystem.h"
 #include "Widgets/Slate/SRTSOActionLog.h"
 
-#include "GlobalShaders/RTSEntitySortData.h"
+#include "GlobalShaders/RTSEntityMinimapSplat.h"
 
 //
 // Godhand functionality
@@ -798,7 +798,7 @@ void AGodHandPawn::DispatchUnitActionWithTargets()
 	{
 		// The initial call to the walk task will overwrite this in case it has an entry,
 		// but if it is empty it will default to using a shared path instead
-		PermadevEntityBase->QueuedUnitPath.Emplace(FVector::ZeroVector);
+		PermadevEntityBase->QueuedUnitPath.Emplace(PD::Constants::INVALID_WORLD_LOC);
 		PermadevEntityBase->OwnerID = PC->GetActorID();
 	}	
 }
@@ -843,7 +843,7 @@ void AGodHandPawn::ResetPathParameters()
 	if (bVisualizeWorkerPaths && NC_WorkerPath != nullptr) { NC_WorkerPath->DestroyInstance(); }
 	
 	InstanceState.bUpdatePathOnTick = false;
-	InstanceState.WorkUnitTargetLocation = FVector::ZeroVector;
+	InstanceState.WorkUnitTargetLocation = PD::Constants::INVALID_WORLD_LOC;
 	InstanceState.WorkerUnitActionTarget = nullptr;
 }
 
@@ -922,7 +922,7 @@ void AGodHandPawn::ActionMoveSelection_Implementation(const FInputActionValue& V
 		Center.bBlockingHit  ? Center.Location
 		: Start.bBlockingHit ? Start.Location
 		: End.bBlockingHit   ? StartLocation
-		: FVector::ZeroVector;
+		: PD::Constants::INVALID_WORLD_LOC;
 	
 	Cast<UPDRTSBaseUnit>(ISMs[0])->RequestActionMulti(
 		PC->GetActorID(),
@@ -1139,10 +1139,10 @@ void AGodHandPawn::BeginPlay()
 	RTSSubSystem->OctreeUserQuery.SetCallingUser(this);
 
 	RTSSubSystem->BuildEntitySortComputeShader = FRTSBuildGlobalSortEntityShader::CreateLambda(
-		[](FRHICommandListImmediate& RHICmdList, UTextureRenderTarget2D* RenderTarget, const TRefCountPtr<FRDGPooledBuffer>& EntityInputPooledBuffer, const TRefCountPtr<IPooledRenderTarget>& ExternalPooledTexture, TArray<FLinearColor> InData, FRHIGPUBufferReadback* DebugBufferReadback)
+		[](FRHICommandListImmediate& RHICmdList, UTextureRenderTarget2D* RenderTarget, const TRefCountPtr<FRDGPooledBuffer>& EntityInputPooledBuffer, const TRefCountPtr<IPooledRenderTarget>& ExternalPooledTexture, TArray<FLinearColor> InData, FVector RegionMin, FVector RegionSize)
 		{
-			TShaderMapRef<FRTSSortData> ComputeShader(GetGlobalShaderMap(GMaxRHIFeatureLevel));
-			ComputeShader->BuildAndExecuteGraph(RHICmdList, RenderTarget, EntityInputPooledBuffer, ExternalPooledTexture, InData, DebugBufferReadback);
+			TShaderMapRef<FRTSMinimapSplat> ComputeShader(GetGlobalShaderMap(GMaxRHIFeatureLevel));
+			ComputeShader->BuildAndExecuteGraph(RHICmdList, RenderTarget, EntityInputPooledBuffer, ExternalPooledTexture, InData, RegionMin, RegionSize);
 		});
 	RTSSubSystem->WorldInit(GetWorld());
 	EntityManager = RTSSubSystem->EntityManager;

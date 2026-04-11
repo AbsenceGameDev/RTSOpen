@@ -18,8 +18,6 @@
 
 #include "PDRTSBaseSubsystem.generated.h"
 
-#define DEBUG_ENTITY_DATA_TEXTURE 1
-
 class UPDRTSBaseUnit;
 class UMassEntitySubsystem;
 
@@ -27,7 +25,7 @@ class UMassEntitySubsystem;
 struct FPDWorkUnitDatum;
 
 
-DECLARE_DELEGATE_SixParams(FRTSBuildGlobalSortEntityShader, FRHICommandListImmediate& /*RHICmdList*/, UTextureRenderTarget2D* /*RenderTarget*/, const TRefCountPtr<FRDGPooledBuffer>& /*EntityInputPooledBuffer*/, const TRefCountPtr<IPooledRenderTarget>& /*ExternalPooledTexture*/, TArray<FLinearColor> /*InData*/, FRHIGPUBufferReadback* /*DebugBufferReadback*/)
+DECLARE_DELEGATE_SevenParams(FRTSBuildGlobalSortEntityShader, FRHICommandListImmediate& /*RHICmdList*/, UTextureRenderTarget2D* /*RenderTarget*/, const TRefCountPtr<FRDGPooledBuffer>& /*EntityInputPooledBuffer*/, const TRefCountPtr<IPooledRenderTarget>& /*ExternalPooledTexture*/, TArray<FLinearColor> /*InData*/, FVector RegionMin, FVector RegionSize)
 
 /** @brief Subsystem to handle octree size changes and to act as a manager for the entity workers */
 UCLASS()
@@ -110,8 +108,6 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "Texture", CallInEditor)
 	void DeleteBuffers(); 
 
-	void ProcessDebugSortedEntityData();
-
 	static constexpr uint32 GMaxEntityDim = 256;
 	static constexpr uint32 GMaxEntityDataSize = GMaxEntityDim * GMaxEntityDim;
 
@@ -189,7 +185,6 @@ private:
 
 	TRefCountPtr<FRDGPooledBuffer> EntityInputPooledBuffer;
 	TRefCountPtr<IPooledRenderTarget> EntityPooledRT;
-	FRHIGPUBufferReadback* DebugReadback;
 
 	bool bHasCreatedPooledBuffers = false;
 };

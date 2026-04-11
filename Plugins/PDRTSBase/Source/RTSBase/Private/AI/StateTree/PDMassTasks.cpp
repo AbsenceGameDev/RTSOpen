@@ -175,7 +175,7 @@ EStateTreeRunStatus FPDMTask_MoveToTarget::EnterState(FStateTreeExecutionContext
 		bShouldUseSharedNavigation ? *SharedEntity.SharedNavData.Find(RTSData.OwnerID)->SelectionGroupNavData.Find(RTSData.SelectionGroupIndex) : nullptr;
 
 	const bool bShouldOverwriteQueuedPath = NavPath == nullptr && RTSData.QueuedUnitPath.IsEmpty() == false ?
-		RTSData.QueuedUnitPath.Last() == FVector::ZeroVector : false;
+		RTSData.QueuedUnitPath.Last() == PD::Constants::INVALID_WORLD_LOC : false;
 
 	const FPDMPathParameters
 		PathParams(InstanceData,MoveTarget, TransformFragment, EntitySubsystem, bIsEntityValid, InstanceData.OptTargets, NavPath);

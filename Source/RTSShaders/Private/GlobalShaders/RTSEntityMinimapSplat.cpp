@@ -1,87 +1,95 @@
 /* @author: Ario Amin @ Permafrost Development. @copyright: Full BSL(1.1) License included at bottom of the file  */
-#pragma once
 
-// Compute shader / RDG graph includes
-#include "CoreMinimal.h"
-#include "GlobalShader.h"
-#include "ShaderParameterStruct.h"
-#include "ShaderParameterMacros.h"
+#include "GlobalShaders/RTSEntityMinimapSplat.h"
 #include "Engine/TextureRenderTarget2D.h"
+#include "RenderGraphBuilder.h"
+#include "RenderGraphUtils.h"
 
-class FRTSSortData : public FGlobalShader
+// This looks messy but reduced the passes down from 136 passes to 28 passes for a 256x256 datatexture
+// Note: I couldn't get it to load the parameters properly unless defined in their own structs, and thus the mess below. Inheritance caused issues and shared SHADER_PARAMETER_STRUCTs caused other issues.  
+void FRTSMinimapSplat::BuildAndExecuteGraph(FRHICommandListImmediate& RHICmdList, UTextureRenderTarget2D* RenderTarget, const TRefCountPtr<FRDGPooledBuffer>& EntityInputPooledBuffer, const TRefCountPtr<IPooledRenderTarget>& ExternalPooledTexture, const TArray<FLinearColor>& InData, const FVector& RegionMin, const FVector& RegionSize)
 {
-public:
-   DECLARE_EXPORTED_GLOBAL_SHADER(FRTSSortData, RTSSHADERS_API);
-   SHADER_USE_PARAMETER_STRUCT(FRTSSortData, FGlobalShader);
+	// constexpr uint32 GMaxBuffer1Dim = 256;
+	// constexpr uint32 GMaxBufferElements = 256*256;
 
-   BEGIN_SHADER_PARAMETER_STRUCT(FParameters, )
-      SHADER_PARAMETER_RDG_BUFFER_UAV(RWBuffer<float4>, EntityData)
-      SHADER_PARAMETER_RDG_TEXTURE_UAV(RWTexture2D<float4>, OutSortedEntityDataTexture)
-      SHADER_PARAMETER(uint32, Step)
-      SHADER_PARAMETER(uint32, Jump)
-   END_SHADER_PARAMETER_STRUCT()
+	FRDGBuilder GraphBuilder(RHICmdList);
+	FRTSMinimapSplat::FParameters* AllocatedPassParameter = GraphBuilder.AllocParameters<FRTSMinimapSplat::FParameters>();
+	// FRTSMinimapSplatFirstPass::FParameters* AllocatedPassParameter_FirstPass = GraphBuilder.AllocParameters<FRTSMinimapSplatFirstPass::FParameters>();
+	// FRTSMinimapSplatInnerCheat::FParameters* AllocatedPassParameter_InnerCheat = GraphBuilder.AllocParameters<FRTSMinimapSplatInnerCheat::FParameters>();
+	// FRTSMinimapSplatCopyToTexture::FParameters* AllocatedPassParameter_CopyToTexture = GraphBuilder.AllocParameters<FRTSMinimapSplatCopyToTexture::FParameters>();
 
-   void RTSSHADERS_API BuildAndExecuteGraph(FRHICommandListImmediate &RHICmdList, UTextureRenderTarget2D* RenderTarget, const TRefCountPtr<FRDGPooledBuffer>& EntityInputPooledBuffer, const TRefCountPtr<IPooledRenderTarget>& ExternalPooledTexture, TArray<FLinearColor> InData, FRHIGPUBufferReadback* DebugBufferReadback);
+	// GetStaticType();
 
-   static bool ShouldCompilePermutation(const FGlobalShaderPermutationParameters& Parameters) 
-   {
-       return IsFeatureLevelSupported(Parameters.Platform, ERHIFeatureLevel::SM5);
-   }
-};
+	// Buffer UAV
+	FRDGBufferRef DataBufferRDG = GraphBuilder.RegisterExternalBuffer(
+		EntityInputPooledBuffer,
+		*FString(TEXT("SortDataBuffer")),
+		ERDGBufferFlags::MultiFrame
+	);
+	GraphBuilder.QueueBufferUpload(DataBufferRDG, TArrayView<const FLinearColor>(InData), ERDGInitialDataFlags::None);
+	
+	FRDGBufferUAVDesc UAVDesc(DataBufferRDG, EPixelFormat::PF_A32B32G32R32F);
+	FRDGBufferUAVRef EntityUAV = GraphBuilder.CreateUAV(UAVDesc);
+	AllocatedPassParameter->EntityData = EntityUAV;
+	
+	// Texture UAV
+	FRHITexture2D* RhiTexture = RenderTarget->GetResource()->GetTexture2DRHI();
+	FRDGTextureRef OutTextureRef = GraphBuilder.RegisterExternalTexture(
+		ExternalPooledTexture, 
+		*FString(TEXT("RT_MinimapEntityData")),
+		ERDGTextureFlags::None
+	); 
 
-class FRTSSortDataFirstPass : public FRTSSortData
-{
-public:
-   DECLARE_EXPORTED_GLOBAL_SHADER(FRTSSortDataFirstPass, RTSSHADERS_API);
-   SHADER_USE_PARAMETER_STRUCT(FRTSSortDataFirstPass, FRTSSortData);   
-   BEGIN_SHADER_PARAMETER_STRUCT(FParameters, )
-      SHADER_PARAMETER_RDG_BUFFER_UAV(RWBuffer<float4>, EntityData)
-      SHADER_PARAMETER_RDG_TEXTURE_UAV(RWTexture2D<float4>, OutSortedEntityDataTexture)
-      SHADER_PARAMETER(uint32, Step)
-      SHADER_PARAMETER(uint32, Jump)
-   END_SHADER_PARAMETER_STRUCT()
+	FRDGTextureUAVDesc OutTextureUAVDesc(OutTextureRef);
+	FRDGTextureUAVRef TextureBufferUAV = GraphBuilder.CreateUAV(OutTextureUAVDesc, ERDGUnorderedAccessViewFlags::None);
+	AllocatedPassParameter->OutSortedEntityDataTexture = TextureBufferUAV;
 
-   static bool ShouldCompilePermutation(const FGlobalShaderPermutationParameters& Parameters) 
-   {
-       return IsFeatureLevelSupported(Parameters.Platform, ERHIFeatureLevel::SM5);
-   }
-};
+	const uint32 GroupSize = 64; 
+	
+	AllocatedPassParameter->RegionMin = FVector2f{static_cast<float>(RegionMin.X), static_cast<float>(RegionMin.Y)};
+	AllocatedPassParameter->RegionSize = FVector2f{static_cast<float>(RegionSize.X), static_cast<float>(RegionSize.Y)};
+	AllocatedPassParameter->NumEntities = InData.Num();
+	TShaderMapRef<FRTSMinimapSplat> ComputeShader(GetGlobalShaderMap(GMaxRHIFeatureLevel));
+	FComputeShaderUtils::AddPass(GraphBuilder, RDG_EVENT_NAME("RTSMinimapSplat"), ComputeShader, AllocatedPassParameter, FComputeShaderUtils::GetGroupCount(InData.Num(), GroupSize));	
 
-class FRTSSortDataInnerCheat : public FRTSSortData
-{
-public:
-   DECLARE_EXPORTED_GLOBAL_SHADER(FRTSSortDataInnerCheat, RTSSHADERS_API);
-   SHADER_USE_PARAMETER_STRUCT(FRTSSortDataInnerCheat, FRTSSortData); 
-   BEGIN_SHADER_PARAMETER_STRUCT(FParameters, )
-      SHADER_PARAMETER_RDG_BUFFER_UAV(RWBuffer<float4>, EntityData)
-      SHADER_PARAMETER_RDG_TEXTURE_UAV(RWTexture2D<float4>, OutSortedEntityDataTexture)
-      SHADER_PARAMETER(uint32, Step)
-      SHADER_PARAMETER(uint32, Jump)
-   END_SHADER_PARAMETER_STRUCT()
+	// // --- GLOBAL PASSES & CHEAT PASSES ---
+	// // We start at Step 2048 because 2 through 1024 are already sorted
+	// for (uint32 Step = 2048; Step <= GMaxBufferElements; Step <<= 1)
+	// {
+	// 	AllocatedPassParameter->Step = AllocatedPassParameter_InnerCheat->Step = Step;
 
-   static bool ShouldCompilePermutation(const FGlobalShaderPermutationParameters& Parameters) 
-   {
-       return IsFeatureLevelSupported(Parameters.Platform, ERHIFeatureLevel::SM5);
-   }   
-};
+	// 	// Global Passes
+	// 	// These are stages where the comparison distance (Jump) is larger than the LDS capacity
+	// 	for (uint32 Jump = Step >> 1; Jump > 1024; Jump >>= 1)
+	// 	{
+	// 			AllocatedPassParameter->Jump = Jump;
+	// 			TShaderMapRef<FRTSMinimapSplat> ComputeShader(GetGlobalShaderMap(GMaxRHIFeatureLevel));
 
-class FRTSSortDataCopyToTexture : public FRTSSortData
-{
-public:
-   DECLARE_EXPORTED_GLOBAL_SHADER(FRTSSortDataCopyToTexture, RTSSHADERS_API);
-   SHADER_USE_PARAMETER_STRUCT(FRTSSortDataCopyToTexture, FRTSSortData);
-   BEGIN_SHADER_PARAMETER_STRUCT(FParameters, )
-      SHADER_PARAMETER_RDG_BUFFER_UAV(RWBuffer<float4>, EntityData)
-      SHADER_PARAMETER_RDG_TEXTURE_UAV(RWTexture2D<float4>, OutSortedEntityDataTexture)
-      SHADER_PARAMETER(uint32, Step)
-      SHADER_PARAMETER(uint32, Jump)
-   END_SHADER_PARAMETER_STRUCT()
+	// 			FComputeShaderUtils::AddPass(GraphBuilder, RDG_EVENT_NAME("BitonicGlobal_S%d_J%d", Step, Jump), ComputeShader, AllocatedPassParameter, FIntVector(NumGroups, 1, 1));
+	// 	}
+	
+	// 	// Inner Cheat LDS Pass (handles remainder jumps of loop)
+	// 	{ 
+	// 		TShaderMapRef<FRTSMinimapSplatInnerCheat> ComputeShader(GetGlobalShaderMap(GMaxRHIFeatureLevel));
+	// 		FComputeShaderUtils::AddPass(GraphBuilder, RDG_EVENT_NAME("RTSMinimapSplatInnerCheat%d", Step), ComputeShader, AllocatedPassParameter_InnerCheat, FIntVector(NumGroups, 1, 1));
+	// 	}
+	// } 
 
-   static bool ShouldCompilePermutation(const FGlobalShaderPermutationParameters& Parameters) 
-   {
-       return IsFeatureLevelSupported(Parameters.Platform, ERHIFeatureLevel::SM5);
-   }   
-};
+	// // --- FINAL COPY --- 
+	// {
+	// 	constexpr uint32 Uniform2DThreadCount = 8;
+	// 	constexpr uint32 ThreadGroupCount = GMaxBuffer1Dim / Uniform2DThreadCount;
+	// 	TShaderMapRef<FRTSMinimapSplatCopyToTexture> ComputeShader(GetGlobalShaderMap(GMaxRHIFeatureLevel));
+	// 	FComputeShaderUtils::AddPass(GraphBuilder, RDG_EVENT_NAME("RTSMinimapSplatCopyToTexture"), ComputeShader, AllocatedPassParameter_CopyToTexture, FIntVector(ThreadGroupCount, ThreadGroupCount, 1));
+	// }
+
+	GraphBuilder.Execute();
+}
+
+IMPLEMENT_GLOBAL_SHADER(FRTSMinimapSplat, "/Project/MinimapSplat.usf", "MinimapSplat", SF_Compute);
+IMPLEMENT_GLOBAL_SHADER(FRTSMinimapSplatInnerCheat, "/Project/SortData.usf", "SortDataInnerCheat", SF_Compute);
+IMPLEMENT_GLOBAL_SHADER(FRTSMinimapSplatFirstPass, "/Project/SortData.usf", "SortDataFirstPass", SF_Compute);
+IMPLEMENT_GLOBAL_SHADER(FRTSMinimapSplatCopyToTexture, "/Project/SortData.usf", "CopyToTexture", SF_Compute);
 
 
 /**

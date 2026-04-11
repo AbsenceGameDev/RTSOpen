@@ -73,15 +73,20 @@ struct TOpaqueSelf
 };
 
 // To avoid #define #undef NOMINMAX everywhere
-namespace PD::Constants::Limits
+namespace PD::Constants
 {
-	constexpr double Double = TNumericLimits<FVector::FReal>::Max();
+	namespace Limits
+	{
+		constexpr double Double = DBL_MAX;
+	}
+
+	inline constexpr FVector INVALID_WORLD_LOC = FVector(DBL_MAX, UE::Math::TVectorConstInit{});
 }
 
 
 struct FQueryResult_LocAndId
 {
-	FVector Location{PD::Constants::Limits::Double};
+	FVector Location = PD::Constants::INVALID_WORLD_LOC;
 	int16 OwnerID{0};
 	FMassEntityHandle EntityHandle = FMassEntityHandle{0,0};
 
@@ -94,11 +99,10 @@ enum class EBufferReadPos : uint8
 	END
 };
 
-inline constexpr FVector INVALID_WORLD_LOC = FVector(TNumericLimits<FVector::FReal>::Max(), UE::Math::TVectorConstInit{});
 namespace PD::Mass
 {
 	/** @brief Invalid MassInt16 vector location. Compared against and then returned as a dummy in failed functions */
-	static inline FMassInt16Vector InvalidLoc{INVALID_WORLD_LOC};
+	static inline FMassInt16Vector InvalidLoc{PD::Constants::INVALID_WORLD_LOC};
 	/** @brief Invalid FMassEntityHandle. Compared against and then returned as a dummy in failed functions */
 	const FMassEntityHandle InvalidHandle = FMassEntityHandle{0, 0};
 }

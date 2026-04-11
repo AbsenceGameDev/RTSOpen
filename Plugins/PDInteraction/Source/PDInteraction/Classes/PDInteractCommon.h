@@ -16,6 +16,18 @@ constexpr float DEFAULT_PEROBJECT_MAX_INTERACTION_DISTANCE = 150;
 constexpr float DEFAULT_TRACER_MAX_INTERACTION_DISTANCE = 1500;
 constexpr float DEFAULT_TRACER_MAX_RADIAL_DISTANCE = 500;
 
+
+namespace PD::Interact::Constants
+{
+	namespace Limits
+	{
+		constexpr double Double = DBL_MAX;
+	}
+
+	inline constexpr FVector INVALID_WORLD_LOC = FVector(DBL_MAX, UE::Math::TVectorConstInit{});
+}
+
+
 /* Interaction (trace) channels */
 constexpr ECollisionChannel DEDICATED_INTERACT_CHANNEL_ALT18 = ECollisionChannel::ECC_GameTraceChannel18;
 constexpr ECollisionChannel DEDICATED_INTERACT_CHANNEL_ALT17 = ECollisionChannel::ECC_GameTraceChannel17;

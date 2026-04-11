@@ -202,6 +202,15 @@ TODO:
     - IMPORTANT NOTE: Also think of just shelving this for later and going with the caveman route of a topdown camera on 256x256 output to an RT target and if I want to display certain things but not others I can add objext to some stencil masks I think to just not render it in that camera, like roofs or things like that
 
 
+April 11th 2026 - Commit#1:
+DONE:                 
+    ☐ Fix error when memcpy direclty on the array
+    ☐ Rethink compute shader, 
+        - Now we are sorting on 60k, compute shade is just be used for pure splatting into the target RT texture
+    ☐ Some smaller changes as-well, icr, 
+    
+
+
 COMING:    
 IN PROGRESS : 
     ☐ Debug the sorted output texture, and sort out why the log calls are not showing

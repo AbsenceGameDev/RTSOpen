@@ -252,6 +252,7 @@ using FPDOctreeUserQuery = struct QPDUserQuery_t
 	/** @brief Query Box shape definition */
 	struct QBox    : public TPDQueryBase<double> { UE::Math::TVector<double> QuerySizes = UE::Math::TVector<double>::ZeroVector; };
 	struct QSphere : public TPDQueryBase<double> { double QueryRadius = 0.0; };
+	struct FBoundsSimple{FVector Min = PD::Constants::INVALID_WORLD_LOC; FVector Size = PD::Constants::INVALID_WORLD_LOC;};
 	/** @brief Query Sphere shape definition */
 	// @note Alignment is same and they share the same initial memory layout,
 	// @note I'll get away with accessing the inner shape from either or to then resolve the rest to access proper memory space
@@ -271,11 +272,11 @@ using FPDOctreeUserQuery = struct QPDUserQuery_t
 			AsSphere = InAsSphere;
 			AsSphere.Shape = 1;
 		};
-		TPDQueryBase<double>* Get()
+		TPDQueryBase<double>* Get() const
 		{
-			void* This = this;
-			TPDQueryBase<double>* PtrHack = static_cast<TPDQueryBase<double>*>(This);
-			return PtrHack;
+			const void* This = this;
+			const TPDQueryBase<double>* PtrHack = static_cast<const TPDQueryBase<double>*>(This);
+			return const_cast<TPDQueryBase<double>*>(PtrHack);
 		};
 	};
 
@@ -320,6 +321,40 @@ using FPDOctreeUserQuery = struct QPDUserQuery_t
 	{
 		return Sphere.IsInside(Point);
 	}
+	
+	/** @return true - if the given point within the TBox */
+	static FBoundsSimple GetQueryBounds(const UE::Math::TBox<double>& Box)
+	{
+		FVector HalfSize = Box.GetSize() * 0.5;
+		FVector Min = Box.GetCenter() - HalfSize;
+		return FBoundsSimple{Min, Box.GetSize()};
+	}
+	/** @return true - if the given point within the TSphere */
+	static FBoundsSimple GetQueryBounds(const UE::Math::TSphere<double>& Sphere)
+	{
+		float Val = (3 * Sphere.GetVolume()) / (4 * UE_PI); 
+		float Radius = FMath::Pow(Val, 1.0/3.0);
+
+		FVector HalfSize = {Radius, Radius, Radius};
+		FVector Min = Sphere.Center - HalfSize;
+		return FBoundsSimple{Min, HalfSize * 2};
+	}
+
+	/** @return true - if the given point within the box shape, convert shape to TBox<double> and call IsPointWithinQuery */
+	static FBoundsSimple GetQueryBounds(const QBox& Box)
+	{
+		const UE::Math::TBox<double> InnerBox{{Box.Location - Box.QuerySizes},{Box.Location + Box.QuerySizes}};
+		return GetQueryBounds(InnerBox);
+	}
+	/** @return true - if the given point within the sphere shape, convert shape to TSphere<double> and call IsPointWithinQuery  */
+	static FBoundsSimple GetQueryBounds(const QSphere& Sphere)
+	{
+		const UE::Math::TSphere<double> InnerSphere{Sphere.Location, Sphere.QueryRadius};
+		return GetQueryBounds(InnerSphere);
+	}			
+
+
+
 	/** @brief  Creates a new Query Shape (QBox) entry */
 	void CreateNewQueryEntry(const int32 Key, EBufferType BufferType, const QBox& BoxData)
 	{
@@ -360,6 +395,36 @@ using FPDOctreeUserQuery = struct QPDUserQuery_t
 		FScopeLock Lock(&ArchetypeCS);
 		QueryArchetypes.FindOrAdd(Key).Get()->Location = NewPos;
 	}
+
+	template<EPDQueryGroups TKey>
+	FVector GetLatestQueryPosition() const
+	{
+		FScopeLock Lock(&ArchetypeCS);
+		QShapeSelector* ObjectAsBase = QueryArchetypes.Find(TKey);
+		if(ObjectAsBase == nullptr){return PD::Constants::INVALID_WORLD_LOC;}
+
+		return ObjectAsBase->Get()->Location;
+	}
+
+	template<EPDQueryGroups TKey>
+	FBoundsSimple GetLatestQueryBounds() const
+	{
+		const QShapeSelector* ObjectAsBase = QueryArchetypes.Find(TKey);
+		if(ObjectAsBase == nullptr){return FBoundsSimple{};}
+
+		const TPDQueryBase<double>* BasePtr = ObjectAsBase->Get();
+		switch (ObjectAsBase->Get()->Shape)
+		{
+		case 0: // Box
+			return GetQueryBounds(*static_cast<const QBox*>(BasePtr));
+		case 1: // Sphere
+			return GetQueryBounds(*static_cast<const QSphere*>(BasePtr));
+		default:
+			break;
+		}
+
+		return FBoundsSimple{};
+	}	
 	
 	/** @brief Performs an "overlap" query on a given position, optionally stores an ownerID and entity handle if point is within shape.
 	 * @note Stores the result in a buffer  */
@@ -589,8 +654,8 @@ using FPDOctreeUserQuery = struct QPDUserQuery_t
 			if constexpr (Conds.bIsMinimapGroup || Conds.bIsOther)
 			{
 				if (BufferPtr == nullptr) {return;}
-				FMemory::Memcpy(BufferPtr, &Target, BufferPtr->Num());
-				BufferPtr->Empty();
+				Target.Reserve(BufferPtr->Num());
+				Target = MoveTemp(*BufferPtr);
 			}
 		}
 	}
