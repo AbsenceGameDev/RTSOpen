@@ -187,6 +187,20 @@ DONE:
     ✔ Adding shader2human and makign sure the shader compiler handles it. Note my change won't output anything useful except that it will not compile if any changes/additions I make to s2h are compilable @done(26-04-07 21:18)
 
 
+April 11th 2026 - Commit#0:
+DONE:                 
+    ✔ Removing shaderinput array, being so long sine I touched this code I had forgotten I was using the the userquery to check for entities within the query shape, so that was a waste of time :catdespair: @done(26-04-11 05:55)
+    ✔ Extending functionality of FPDOctreeUserQuery @done(26-04-11 05:55)
+    ✔ Updated max invalid vector from ZeroVector, to a vector{max_dbl} @done(26-04-11 05:55)
+
+TODO:                 
+    ☐ Fix error when memcpy
+    ☐ Rethink compute shader, 
+        - instead of sorting as I do I might split world up in partitions, like bvh, entites should naturally be filtered into 'zones'
+        - Each zone should then be compared to a section of the minimap, perhaps 32x32 grids, so each pixel only compares with 1000 entites at max in a uniform spread of entities.
+            - An issue I am realizing however is that in case all entities are in the same grid, then that grid will still have each pixel checking against 60000 entites.. hmm should maybe group data
+    - IMPORTANT NOTE: Also think of just shelving this for later and going with the caveman route of a topdown camera on 256x256 output to an RT target and if I want to display certain things but not others I can add objext to some stencil masks I think to just not render it in that camera, like roofs or things like that
+
 
 COMING:    
 IN PROGRESS : 

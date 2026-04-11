@@ -522,7 +522,7 @@ void UPDOctreeProcessor::Execute(FMassEntityManager& EntityManager, FMassExecuti
 	RTSSubsystem->OctreeUserQuery.ClearQueryBuffer(EPDQueryGroups::QUERY_GROUP_MINIMAP);
 	RTSSubsystem->OctreeUserQuery.ClearQueryBuffer(EPDQueryGroups::QUERY_GROUP_HOVERSELECTION); // Hover Selection Group
 	BuilderSubsystem->OctreeBuildSystemEntityQuery.ClearQueryBuffer(EPDQueryGroups::QUERY_GROUP_BUILDABLE_ACTORS); // @todo finish impl. making use of this query group
-	RTSSubsystem->EntityShaderInputData.Empty(); // TODO: Replace this, or ratehr update the QUERY_GROUP_MINIMAP
+	// RTSSubsystem->EntityShaderInputData.Empty(); // TODO: Replace this, or rather update the QUERY_GROUP_MINIMAP
 
 	// Clear all tracked cells for now
 	BuilderSubsystem->WorldBuildActorOctree.FindAllElements(
@@ -567,18 +567,10 @@ void UPDOctreeProcessor::Execute(FMassEntityManager& EntityManager, FMassExecuti
 			const FPDMFragment_Action& UnitAction = UnitActionList[EntityListIdx];
 			
 			
-			const FMassEntityHandle Entity = LambdaContext.GetEntity(EntityListIdx);			
-			RTSSubsystem->OctreeUserQuery.UpdateQueryOverlapBuffer(
-				EPDQueryGroups::QUERY_GROUP_MINIMAP,
-				CurrentLocation, Entity, RTSEntity.OwnerID);
-			RTSSubsystem->OctreeUserQuery.UpdateQueryOverlapBuffer(
-				EPDQueryGroups::QUERY_GROUP_HOVERSELECTION,
-				CurrentLocation, Entity, RTSEntity.OwnerID);
-
+			FLinearColor PackedData;
 			// Pass minimap related data
 			{
 				constexpr double Rotation16WaySegmentLength = 22.5;
-				constexpr int32 MaxIds = 255; // we only have 255 ids stored
 				const double RotationYawDegrees = FRotator::ClampAxis(CurrentTransform.Rotator().Yaw);
 				int32_t RoundedIndex = (RotationYawDegrees / Rotation16WaySegmentLength) + 0.5;
 				uint8_t EntityFlags = 0b00010000;
@@ -591,11 +583,19 @@ void UPDOctreeProcessor::Execute(FMassEntityManager& EntityManager, FMassExecuti
 		        // bool bIsObscured = EntityFlags == 0b00000100;
 		        // bool bReserved0 = EntityFlags == 0b00000010;
 		        // bool bReserved1 = EntityFlags == 0b00000001;
-				uint8_t TeamID = RTSEntity.OwnerID % MaxIds;
-
-				FLinearColor PerPixelStorage = FPDRTSPerPixelStorageHelper::ConstructData(CurrentLocation, RoundedIndex, EntityFlags, TeamID);
-				RTSSubsystem->EntityShaderInputData.Emplace(PerPixelStorage);
+				uint16_t TeamID = RTSEntity.OwnerID % INT16_MAX;
+				PackedData = FPDRTSPerPixelStorageHelper::ConstructData(CurrentLocation, RoundedIndex, EntityFlags, TeamID);
+				
+				// RTSSubsystem->EntityShaderInputData.Emplace(PerPixelStorage);
 			}
+			
+			const FMassEntityHandle Entity = LambdaContext.GetEntity(EntityListIdx);			
+			RTSSubsystem->OctreeUserQuery.UpdateQueryOverlapBuffer(
+				EPDQueryGroups::QUERY_GROUP_MINIMAP,
+				CurrentLocation, PackedData);
+			RTSSubsystem->OctreeUserQuery.UpdateQueryOverlapBuffer(
+				EPDQueryGroups::QUERY_GROUP_HOVERSELECTION,
+				CurrentLocation, Entity, RTSEntity.OwnerID);
 
 			//
 			// @todo - Mark idle entities as available in our pool
@@ -647,26 +647,26 @@ void UPDOctreeProcessor::Execute(FMassEntityManager& EntityManager, FMassExecuti
 		RTSSubsystem->GenerateEntityMapData();
 
 	});
-	AsyncTask(ENamedThreads::GameThread, 
-		 [EntityShaderInputData = RTSSubsystem->EntityShaderInputData]()
-		 {
-			GEngine->AddOnScreenDebugMessage(INDEX_NONE, 0, FColor::Green, FString::Printf(TEXT("Amount of Entity Data Sent to GPU: %i"), EntityShaderInputData.Num()));
+	// AsyncTask(ENamedThreads::GameThread, 
+	// 	 [EntityShaderInputData = RTSSubsystem->EntityShaderInputData]()
+	// 	 {
+	// 		GEngine->AddOnScreenDebugMessage(INDEX_NONE, 0, FColor::Green, FString::Printf(TEXT("Amount of Entity Data Sent to GPU: %i"), EntityShaderInputData.Num()));
 
-			int32 EntLocalID = INDEX_NONE;
-			for (const FLinearColor& EntityDatum : EntityShaderInputData)
-			{
-				++EntLocalID;
-				EntityDatum;
+	// 		int32 EntLocalID = INDEX_NONE;
+	// 		for (const FLinearColor& EntityDatum : EntityShaderInputData)
+	// 		{
+	// 			++EntLocalID;
+	// 			EntityDatum;
 
-				FVector RetLocation; 
-				uint16_t RetEntity16WayRotation; 
-				uint8_t RetEntityFlags; 
-				uint8_t RetTeamColourId;
-				FPDRTSPerPixelStorageHelper::DeconstructData(EntityDatum, RetLocation, RetEntity16WayRotation, RetEntityFlags, RetTeamColourId);
-				GEngine->AddOnScreenDebugMessage(INDEX_NONE, 0, FColor::Green, FString::Printf(TEXT("EntityId(%i) - DeconstructedData: Loc(%s), 16WayRot(%i), EntFlags(%x), TeamId(%i) "), EntLocalID, *RetLocation.ToCompactString(), static_cast<int32>(RetEntity16WayRotation), static_cast<int32>(RetEntityFlags), static_cast<int32>(RetTeamColourId)));
-			}
+	// 			FVector RetLocation; 
+	// 			uint16_t RetEntity16WayRotation; 
+	// 			uint8_t RetEntityFlags; 
+	// 			uint8_t RetTeamColourId;
+	// 			FPDRTSPerPixelStorageHelper::DeconstructData(EntityDatum, RetLocation, RetEntity16WayRotation, RetEntityFlags, RetTeamColourId);
+	// 			GEngine->AddOnScreenDebugMessage(INDEX_NONE, 0, FColor::Green, FString::Printf(TEXT("EntityId(%i) - DeconstructedData: Loc(%s), 16WayRot(%i), EntFlags(%x), TeamId(%i) "), EntLocalID, *RetLocation.ToCompactString(), static_cast<int32>(RetEntity16WayRotation), static_cast<int32>(RetEntityFlags), static_cast<int32>(RetTeamColourId)));
+	// 		}
 
-		 });
+	// 	 });
 
 	//
 	// Poor mans threading

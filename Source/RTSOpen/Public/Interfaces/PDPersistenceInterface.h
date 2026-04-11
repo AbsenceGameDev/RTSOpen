@@ -26,7 +26,6 @@ public:
 };
 
 
-constexpr int32 INVALID_ID = 0; // is our INVALID_ID
 USTRUCT()
 struct FPDPersistentID
 {
@@ -48,7 +47,7 @@ public:
 	static FPDPersistentID GenerateNewPersistentID()
 	{
 		const TSet<int32>& ExistingIDs = UPDPersistentIDSubsystem::Get()->TrackedPersistentIDs;
-		if (ExistingIDs.Num() > UINT32_MAX)
+		if (ExistingIDs.Num() > INT16_MAX)
 		{
 			// Too many in the set, log as a warning and return invalid ID
 			return FPDPersistentID{INVALID_ID};
@@ -56,7 +55,7 @@ public:
 
 		// simple iteration algorithm which is reliable and in most cases should be faster than a regular iteration
 		// 1. Generate random Search start point, and pick random search direction
-		const int64 RandomStartingPoint = FMath::RandRange(0, UINT32_MAX);
+		const int64 RandomStartingPoint = FMath::RandRange(0, INT16_MAX);
 		const bool  RandomDirectionForward = FMath::RandBool();
 
 		
@@ -142,6 +141,10 @@ private:
 		return false;
 	}
 
+public:
+	inline static constexpr int32 INVALID_ID = 0; // is our INVALID_ID
+
+private:
 	/** @brief Wrapped data (Persistent ID) */
 	int32 BitSet_ID;	
 };

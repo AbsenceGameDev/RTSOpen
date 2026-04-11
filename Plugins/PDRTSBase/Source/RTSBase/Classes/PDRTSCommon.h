@@ -2,9 +2,11 @@
 
 #pragma once
 
+#define NOMINMAX
 #include "CoreMinimal.h"
 #include "GameplayTagContainer.h"
 #include "MassEntityTypes.h"
+#include "MassCommonTypes.h"
 #include "NativeGameplayTags.h"
 #include "Subsystems/EngineSubsystem.h"
 
@@ -69,6 +71,38 @@ struct TOpaqueSelf
 	TPImpl*        operator->()       { return Ptr(); }
 	TPImpl const*  operator->() const { return Ptr(); }
 };
+
+// To avoid #define #undef NOMINMAX everywhere
+namespace PD::Constants::Limits
+{
+	constexpr double Double = TNumericLimits<FVector::FReal>::Max();
+}
+
+
+struct FQueryResult_LocAndId
+{
+	FVector Location{PD::Constants::Limits::Double};
+	int16 OwnerID{0};
+	FMassEntityHandle EntityHandle = FMassEntityHandle{0,0};
+
+	bool IsValid() {return !FMath::IsNearlyEqual(Location.X, PD::Constants::Limits::Double);}
+};
+
+enum class EBufferReadPos : uint8
+{
+	INDEX,
+	END
+};
+
+inline constexpr FVector INVALID_WORLD_LOC = FVector(TNumericLimits<FVector::FReal>::Max(), UE::Math::TVectorConstInit{});
+namespace PD::Mass
+{
+	/** @brief Invalid MassInt16 vector location. Compared against and then returned as a dummy in failed functions */
+	static inline FMassInt16Vector InvalidLoc{INVALID_WORLD_LOC};
+	/** @brief Invalid FMassEntityHandle. Compared against and then returned as a dummy in failed functions */
+	const FMassEntityHandle InvalidHandle = FMassEntityHandle{0, 0};
+}
+
 
 
 /** @brief Query groups */
@@ -279,6 +313,8 @@ TTagPrivateMember<Tag,x> TTagPrivateMember<Tag,x>::PrivateInstance;
 // Each tag should contain a nested ::TType that is the corresponding pointer-to-member type.'
 template<typename TAccessorType, typename TAccessorValue>
 struct TAccessorTypeHandler { typedef TAccessorValue(TAccessorType::*TType); };
+
+#undef NOMINMAX
 
 /**
 Business Source License 1.1

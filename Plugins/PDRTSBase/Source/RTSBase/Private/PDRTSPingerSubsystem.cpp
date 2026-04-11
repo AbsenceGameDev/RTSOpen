@@ -203,7 +203,7 @@ void UPDEntityPinger::Ping_Implementation(UWorld* World, const FPDEntityPingDatu
 						return;
 					}
 
-					const FPDTargetCompound OptTarget = {InvalidHandle, ConstPingDatum.WorldActor->GetActorLocation(), ConstPingDatum.WorldActor};
+					const FPDTargetCompound OptTarget = {PD::Mass::InvalidHandle, ConstPingDatum.WorldActor->GetActorLocation(), ConstPingDatum.WorldActor};
 					RTSSubsystem->WorldToEntityHandler.FindRef(InWorld)->RequestAction(ConstPingDatum.OwnerID, OptTarget, ConstPingDatum.JobTag, EntityHandle);
 				},
 				EParallelForFlags::BackgroundPriority);

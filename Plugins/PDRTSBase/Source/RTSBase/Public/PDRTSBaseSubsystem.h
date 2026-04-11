@@ -26,30 +26,6 @@ class UMassEntitySubsystem;
 /** fwd decl.  */
 struct FPDWorkUnitDatum;
 
-struct FPDRTSPerPixelStorageHelper
-{
-	FORCEINLINE static FLinearColor ConstructData(FVector Location, uint16_t Entity16WayRotation, uint8_t EntityFlags, uint8_t TeamColourId)
-	{
- 		const uint32_t ConstructedAlphaChannel = Entity16WayRotation | uint32_t(EntityFlags) >> 7 | uint32_t(TeamColourId) >> 15;
-    	return FLinearColor(
-    		Location.X, 
-    		Location.Y,
-    		Location.Z, 
-    		*reinterpret_cast<const float*>(&ConstructedAlphaChannel));
-	}
-
-	FORCEINLINE static void DeconstructData(const FLinearColor& InData, FVector& OutLocation, uint16_t& OutEntity16WayRotation, uint8_t& OutEntityFlags, uint8_t& OutTeamColourId)
-	{
-		OutLocation.X = InData.R;
-		OutLocation.Y = InData.G;
-		OutLocation.Z = InData.B;
-
-		const uint32 AlphaAsBits = *reinterpret_cast<const uint32*>(&InData.A);
-		OutEntity16WayRotation = AlphaAsBits > (32-4);
-		OutEntityFlags = (static_cast<uint32>(AlphaAsBits > (32-15)) < 7);
-		OutTeamColourId = AlphaAsBits < 15;
-	}	
-};
 
 DECLARE_DELEGATE_SixParams(FRTSBuildGlobalSortEntityShader, FRHICommandListImmediate& /*RHICmdList*/, UTextureRenderTarget2D* /*RenderTarget*/, const TRefCountPtr<FRDGPooledBuffer>& /*EntityInputPooledBuffer*/, const TRefCountPtr<IPooledRenderTarget>& /*ExternalPooledTexture*/, TArray<FLinearColor> /*InData*/, FRHIGPUBufferReadback* /*DebugBufferReadback*/)
 
@@ -130,7 +106,7 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "Texture", CallInEditor)
 	void CreateDataBuffer();
 	UFUNCTION(BlueprintCallable, Category = "Texture", CallInEditor)
-	void UpdateDataTexture(TArray<FLinearColor>& PerPixelData);
+	void UpdateDataTexture();
 	UFUNCTION(BlueprintCallable, Category = "Texture", CallInEditor)
 	void DeleteBuffers(); 
 
@@ -200,7 +176,7 @@ public:
 	/** @brief  (User) Query Shape structure */
 	FPDOctreeUserQuery OctreeUserQuery{};
 
-	TArray<FLinearColor> EntityShaderInputData;
+	// TArray<FLinearColor> EntityShaderInputData;
 
 	FRTSBuildGlobalSortEntityShader BuildEntitySortComputeShader;
 	

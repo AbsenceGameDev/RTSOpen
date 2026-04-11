@@ -99,69 +99,69 @@ void SRTSOMiniMap::PaintRadarMiniMap(FSlateWindowElementList& OutDrawElements, c
 // Move overlap logic out of the actual slate class, perform before of after the onpaint function
 void SRTSOMiniMap::PaintActorsOnMiniMap(FSlateWindowElementList& OutDrawElements, const FGeometry& AllottedGeometry, int32 LayerId) const
 {
-	if (DEPRECATE_OR_REWRITE_SLATE_MINIMAP) { return; }
+	if constexpr (DEPRECATE_OR_REWRITE_SLATE_MINIMAP) { return; }
 
 
-	TArray<FLEntityCompound>* MinimapEntityBuffer = RTSSubSystem->OctreeUserQuery.CurrentBuffer.Find(EPDQueryGroups::QUERY_GROUP_MINIMAP);
-	if (MinimapEntityBuffer == nullptr) { return; }
-	
-	APawn* OwnerPawn = Cast<APawn>(RTSSubSystem->OctreeUserQuery.CallingUser);
-	if (OwnerPawn == nullptr || OwnerPawn->IsValidLowLevelFast() == false) {return;}
-
-	TArray<AActor*>& MutableWorldActors = const_cast<TArray<AActor*>&>(OnWorldActors);
-	
-	MutableWorldActors.Empty();
-	UKismetSystemLibrary::SphereOverlapActors(
-		OwnerPawn,
-		OwnerPawn->GetActorLocation(),
-		RadarTraceSphereRadius,
-		{UEngineTypes::ConvertToObjectType(ECollisionChannel::ECC_WorldStatic)},
-		nullptr, 
-		{OwnerPawn},
-		MutableWorldActors);
-	
-	const FVector2D RadarCenter = GetRadarCenter();
-	const FLinearColor EnemyLinearColour = FLinearColor(EnemyColour.R, EnemyColour.G, EnemyColour.B, 0.0);
-	const FLinearColor GenericActorLinearColour = FColor::Silver.ReinterpretAsLinear();
-	FLinearColor OffsetAlpha(0,0,0, 0);
-	
-	const FGeometry DerivedGeometry = AllottedGeometry;
-	for (const AActor* It : OnWorldActors)
-	{
-		const FVector2D Location2D = WorldToScreen2D(It, OwnerPawn);
-		if (Location2D.X > RadarSize.X || Location2D.X < -RadarSize.X 
-			|| Location2D.Y > RadarSize.Y || Location2D.Y < -RadarSize.Y)
-		{
-			continue;
-		}
-
-		//Clamp positions in between the minimap size so they are not out of bounds
-		const float NewX = FMath::Clamp<float>(Location2D.X, -RadarSize.X / 2, RadarSize.X / 2 - GenericMinimapIconRectSize.X);
-		const float NewY = FMath::Clamp<float>(Location2D.Y, -RadarSize.Y / 2, RadarSize.Y / 2 - GenericMinimapIconRectSize.Y);
-
-		FVector OwnerLocation = OwnerPawn->GetActorLocation();
-		FVector EnemyLocation = It->GetActorLocation();
-
-		const float Distance = FVector::Distance(OwnerLocation, EnemyLocation);
-
-		// // @todo Decide what type of actors this is, if enemy use 'EnemyColour' and so forth
-		// Contexts to consider:: Mission / Interactable :  {MissionColour; InteractableColour}
-		// Relation to consider:: Enemy / OwnedUnits / Friend : {EnemyColour; OwnedUnitsColour; FriendColour;}
-
-		const FLinearColor EntityColour = Cast<APawn>(It) != nullptr ? EnemyLinearColour: GenericActorLinearColour; 
-		OffsetAlpha.A = Alpha / Distance * 4;
-		
-		// Paint box element
-		const FSlateRenderTransform RT{{1.0},{static_cast<float>(GetRadarCenter().X + NewX), static_cast<float>(GetRadarCenter().Y + NewY)}};
-		DerivedGeometry.ToPaintGeometry().SetRenderTransform(RT);
-		FSlateDrawElement::MakeBox(
-			OutDrawElements,
-			LayerId,
-			DerivedGeometry.ToPaintGeometry(),
-			&InstanceData.GenericIconBrush,
-			ESlateDrawEffect::None,
-			EntityColour + OffsetAlpha);
-	}
+	// TArray<FLEntityCompound>* MinimapEntityBuffer = RTSSubSystem->OctreeUserQuery.CurrentBuffer.Find(EPDQueryGroups::QUERY_GROUP_MINIMAP);
+	// if (MinimapEntityBuffer == nullptr) { return; }
+	//
+	// APawn* OwnerPawn = Cast<APawn>(RTSSubSystem->OctreeUserQuery.CallingUser);
+	// if (OwnerPawn == nullptr || OwnerPawn->IsValidLowLevelFast() == false) {return;}
+	//
+	// TArray<AActor*>& MutableWorldActors = const_cast<TArray<AActor*>&>(OnWorldActors);
+	//
+	// MutableWorldActors.Empty();
+	// UKismetSystemLibrary::SphereOverlapActors(
+	// 	OwnerPawn,
+	// 	OwnerPawn->GetActorLocation(),
+	// 	RadarTraceSphereRadius,
+	// 	{UEngineTypes::ConvertToObjectType(ECollisionChannel::ECC_WorldStatic)},
+	// 	nullptr, 
+	// 	{OwnerPawn},
+	// 	MutableWorldActors);
+	//
+	// const FVector2D RadarCenter = GetRadarCenter();
+	// const FLinearColor EnemyLinearColour = FLinearColor(EnemyColour.R, EnemyColour.G, EnemyColour.B, 0.0);
+	// const FLinearColor GenericActorLinearColour = FColor::Silver.ReinterpretAsLinear();
+	// FLinearColor OffsetAlpha(0,0,0, 0);
+	//
+	// const FGeometry DerivedGeometry = AllottedGeometry;
+	// for (const AActor* It : OnWorldActors)
+	// {
+	// 	const FVector2D Location2D = WorldToScreen2D(It, OwnerPawn);
+	// 	if (Location2D.X > RadarSize.X || Location2D.X < -RadarSize.X 
+	// 		|| Location2D.Y > RadarSize.Y || Location2D.Y < -RadarSize.Y)
+	// 	{
+	// 		continue;
+	// 	}
+	//
+	// 	//Clamp positions in between the minimap size so they are not out of bounds
+	// 	const float NewX = FMath::Clamp<float>(Location2D.X, -RadarSize.X / 2, RadarSize.X / 2 - GenericMinimapIconRectSize.X);
+	// 	const float NewY = FMath::Clamp<float>(Location2D.Y, -RadarSize.Y / 2, RadarSize.Y / 2 - GenericMinimapIconRectSize.Y);
+	//
+	// 	FVector OwnerLocation = OwnerPawn->GetActorLocation();
+	// 	FVector EnemyLocation = It->GetActorLocation();
+	//
+	// 	const float Distance = FVector::Distance(OwnerLocation, EnemyLocation);
+	//
+	// 	// // @todo Decide what type of actors this is, if enemy use 'EnemyColour' and so forth
+	// 	// Contexts to consider:: Mission / Interactable :  {MissionColour; InteractableColour}
+	// 	// Relation to consider:: Enemy / OwnedUnits / Friend : {EnemyColour; OwnedUnitsColour; FriendColour;}
+	//
+	// 	const FLinearColor EntityColour = Cast<APawn>(It) != nullptr ? EnemyLinearColour: GenericActorLinearColour; 
+	// 	OffsetAlpha.A = Alpha / Distance * 4;
+	//	
+	// 	// Paint box element
+	// 	const FSlateRenderTransform RT{{1.0},{static_cast<float>(GetRadarCenter().X + NewX), static_cast<float>(GetRadarCenter().Y + NewY)}};
+	// 	DerivedGeometry.ToPaintGeometry().SetRenderTransform(RT);
+	// 	FSlateDrawElement::MakeBox(
+	// 		OutDrawElements,
+	// 		LayerId,
+	// 		DerivedGeometry.ToPaintGeometry(),
+	// 		&InstanceData.GenericIconBrush,
+	// 		ESlateDrawEffect::None,
+	// 		EntityColour + OffsetAlpha);
+	// }
 }
 
 // @todo move calculations out of the hud, keep cached data the HUD can quickly access during the draw call wittout having to run the octree iteration themselves
@@ -169,73 +169,73 @@ void SRTSOMiniMap::PaintEntitiesOnMiniMap(FSlateWindowElementList& OutDrawElemen
 {
 	if (DEPRECATE_OR_REWRITE_SLATE_MINIMAP) { return; }
 
-	TArray<FLEntityCompound>* MinimapEntityBuffer = RTSSubSystem->OctreeUserQuery.CurrentBuffer.Find(EPDQueryGroups::QUERY_GROUP_MINIMAP);
-	if (MinimapEntityBuffer == nullptr) { return; }
-	
-	APawn* OwnerPawn = Cast<APawn>(RTSSubSystem->OctreeUserQuery.CallingUser);
-	if (OwnerPawn == nullptr) { return; }
-	
-	// @todo consider caching
-	ARTSOController* RTSOController = OwnerPawn->GetController<ARTSOController>();
-	if (RTSOController == nullptr || RTSOController->GetPawn() == nullptr) { return; }
-	
-	// Viewport halfsize
-#if CHAOS_DEBUG_DRAW
-	{
-		TPDQueryBase<double>* BaseQueryShape = RTSSubSystem->OctreeUserQuery.QueryArchetypes.Find(EPDQueryGroups::QUERY_GROUP_MINIMAP)->Get();
-		FVector BoundsCenter = BaseQueryShape->Location;
-		FVector Extent = static_cast<FPDOctreeUserQuery::QBox*>(BaseQueryShape)->QuerySizes;
-		Chaos::FDebugDrawQueue::GetInstance().DrawDebugBox(BoundsCenter, Extent, FQuat::Identity, FColor::Silver, false, 0, 0, 10.0f);
-		const FVector& TextLocation = BoundsCenter + FVector(0, 0, Extent.Z * 2);
-		Chaos::FDebugDrawQueue::GetInstance().DrawDebugString(TextLocation,FString("Radar Octree Trace"), nullptr, FColor::Yellow, 0, true, 2);
-	}
-#endif
-
-	const FLinearColor EnemyLinearColour = FLinearColor(EnemyColour.R, EnemyColour.G, EnemyColour.B, 0.0);
-	const FLinearColor OwnerLinearColour = FLinearColor(OwnedUnitsColour.R, OwnedUnitsColour.G, OwnedUnitsColour.B, 0.0);
-	FLinearColor OffsetAlpha(0,0,0, 0);
-
-	// Copy some values we'll keep calling for the following loop
-	const FVector PlayerLocation = OwnerPawn->GetActorLocation();
-	const FVector2D RadarCenter  = GetRadarCenter();
-	const int32 CallerID         = RTSOController->GetActorID();
-	
-	// Iterate all found entities and draw boxes on screen to display them
-	const FGeometry DerivedGeometry = AllottedGeometry;
-	for (FLEntityCompound& EntityCompound : *MinimapEntityBuffer)
-	{
-		FVector EntityLocation = EntityCompound.Location;
-		const FVector2D Location2D = WorldToScreen2D(EntityCompound, OwnerPawn);
-		if (Location2D.X > RadarSize.X || Location2D.X < -RadarSize.X 
-			|| Location2D.Y > RadarSize.Y || Location2D.Y < -RadarSize.Y)
-		{
-			continue;
-		}
-
-		//Clamp positions in between the minimap size so they are not out of bounds
-		const float NewX = FMath::Clamp<float>(Location2D.X, -RadarSize.X / 2, RadarSize.X / 2 - GenericMinimapIconRectSize.X);
-		const float NewY = FMath::Clamp<float>(Location2D.Y, -RadarSize.Y / 2, RadarSize.Y / 2 - GenericMinimapIconRectSize.Y);
-
-		const float Distance = FVector::Distance(PlayerLocation, EntityLocation);
-		
-		//// @todo colour based on selection ID and/or owner ID, currently only colours green if owning and red otherwise, with no further disctions being made
-		// Contexts to consider:: Mission / Interactable :  {MissionColour; InteractableColour}
-		// Relation to consider:: Enemy / OwnedUnits / Friend : {EnemyColour; OwnedUnitsColour; FriendColour;}
-		
-		const FLinearColor EntityColour = CallerID != EntityCompound.OwnerID ? EnemyLinearColour: OwnerLinearColour; 
-		OffsetAlpha.A = Alpha / Distance * 4;
-		
-		// Paint box element
-		const FSlateRenderTransform RT{{1.0},{static_cast<float>(RadarCenter.X + NewX), static_cast<float>(RadarCenter.Y + NewY)}};
-		DerivedGeometry.ToPaintGeometry().SetRenderTransform(RT);
-		FSlateDrawElement::MakeBox(
-			OutDrawElements,
-			LayerId,
-			DerivedGeometry.ToPaintGeometry(),
-			&InstanceData.GenericIconBrush,
-			ESlateDrawEffect::None,
-			EntityColour + OffsetAlpha);
-	}
+// 	TArray<FLEntityCompound>* MinimapEntityBuffer = RTSSubSystem->OctreeUserQuery.CurrentBuffer.Find(EPDQueryGroups::QUERY_GROUP_MINIMAP);
+// 	if (MinimapEntityBuffer == nullptr) { return; }
+//	
+// 	APawn* OwnerPawn = Cast<APawn>(RTSSubSystem->OctreeUserQuery.CallingUser);
+// 	if (OwnerPawn == nullptr) { return; }
+//	
+// 	// @todo consider caching
+// 	ARTSOController* RTSOController = OwnerPawn->GetController<ARTSOController>();
+// 	if (RTSOController == nullptr || RTSOController->GetPawn() == nullptr) { return; }
+//	
+// 	// Viewport halfsize
+// #if CHAOS_DEBUG_DRAW
+// 	{
+// 		TPDQueryBase<double>* BaseQueryShape = RTSSubSystem->OctreeUserQuery.QueryArchetypes.Find(EPDQueryGroups::QUERY_GROUP_MINIMAP)->Get();
+// 		FVector BoundsCenter = BaseQueryShape->Location;
+// 		FVector Extent = static_cast<FPDOctreeUserQuery::QBox*>(BaseQueryShape)->QuerySizes;
+// 		Chaos::FDebugDrawQueue::GetInstance().DrawDebugBox(BoundsCenter, Extent, FQuat::Identity, FColor::Silver, false, 0, 0, 10.0f);
+// 		const FVector& TextLocation = BoundsCenter + FVector(0, 0, Extent.Z * 2);
+// 		Chaos::FDebugDrawQueue::GetInstance().DrawDebugString(TextLocation,FString("Radar Octree Trace"), nullptr, FColor::Yellow, 0, true, 2);
+// 	}
+// #endif
+//
+// 	const FLinearColor EnemyLinearColour = FLinearColor(EnemyColour.R, EnemyColour.G, EnemyColour.B, 0.0);
+// 	const FLinearColor OwnerLinearColour = FLinearColor(OwnedUnitsColour.R, OwnedUnitsColour.G, OwnedUnitsColour.B, 0.0);
+// 	FLinearColor OffsetAlpha(0,0,0, 0);
+//
+// 	// Copy some values we'll keep calling for the following loop
+// 	const FVector PlayerLocation = OwnerPawn->GetActorLocation();
+// 	const FVector2D RadarCenter  = GetRadarCenter();
+// 	const int32 CallerID         = RTSOController->GetActorID();
+//	
+// 	// Iterate all found entities and draw boxes on screen to display them
+// 	const FGeometry DerivedGeometry = AllottedGeometry;
+//	for (FLEntityCompound& EntityCompound : *MinimapEntityBuffer)
+// 	{
+// 		FVector EntityLocation = EntityCompound.Location;
+// 		const FVector2D Location2D = WorldToScreen2D(EntityCompound, OwnerPawn);
+// 		if (Location2D.X > RadarSize.X || Location2D.X < -RadarSize.X 
+// 			|| Location2D.Y > RadarSize.Y || Location2D.Y < -RadarSize.Y)
+// 		{
+// 			continue;
+// 		}
+//
+// 		//Clamp positions in between the minimap size so they are not out of bounds
+// 		const float NewX = FMath::Clamp<float>(Location2D.X, -RadarSize.X / 2, RadarSize.X / 2 - GenericMinimapIconRectSize.X);
+// 		const float NewY = FMath::Clamp<float>(Location2D.Y, -RadarSize.Y / 2, RadarSize.Y / 2 - GenericMinimapIconRectSize.Y);
+//
+// 		const float Distance = FVector::Distance(PlayerLocation, EntityLocation);
+//		
+// 		//// @todo colour based on selection ID and/or owner ID, currently only colours green if owning and red otherwise, with no further disctions being made
+// 		// Contexts to consider:: Mission / Interactable :  {MissionColour; InteractableColour}
+// 		// Relation to consider:: Enemy / OwnedUnits / Friend : {EnemyColour; OwnedUnitsColour; FriendColour;}
+//		
+// 		const FLinearColor EntityColour = CallerID != EntityCompound.OwnerID ? EnemyLinearColour: OwnerLinearColour; 
+// 		OffsetAlpha.A = Alpha / Distance * 4;
+//		
+// 		// Paint box element
+// 		const FSlateRenderTransform RT{{1.0},{static_cast<float>(RadarCenter.X + NewX), static_cast<float>(RadarCenter.Y + NewY)}};
+// 		DerivedGeometry.ToPaintGeometry().SetRenderTransform(RT);
+// 		FSlateDrawElement::MakeBox(
+// 			OutDrawElements,
+// 			LayerId,
+// 			DerivedGeometry.ToPaintGeometry(),
+// 			&InstanceData.GenericIconBrush,
+// 			ESlateDrawEffect::None,
+// 			EntityColour + OffsetAlpha);
+// 	}
 }
 
 void SRTSOMiniMap::PaintOwnerOnMiniMap(FSlateWindowElementList& OutDrawElements, const FGeometry& AllottedGeometry, int32 LayerId) const

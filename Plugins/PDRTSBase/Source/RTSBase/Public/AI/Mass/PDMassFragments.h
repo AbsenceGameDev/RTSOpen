@@ -40,45 +40,44 @@ enum class EPDEntitySelectionState : uint8
 	ENTITY_UNSET = 2       UMETA(DisplayName="Entity Unset"), 
 };
 
-/** @brief Base fragment for RTS Agents */
+/** @brief Base fragment for RTS Agents : Update, sorted their values to ensure as little padding as possible */
 USTRUCT(BlueprintType)
 struct PDRTSBASE_API FPDMFragment_RTSEntityBase : public FMassFragment
 {
 	GENERATED_BODY()
 
-	/** @brief Skin index for the static mesh vertex animation */
-	UPROPERTY()
-	float MeshSkinIdx = -1;
-
 	/** @todo Is the entity performing an action or not? */
 	UPROPERTY()
 	bool bAction  = false;
-
-	/** @brief The entities entity type, used by downstream systems  */
-	UPROPERTY()
-	FGameplayTag EntityType{TAG_AI_Type_BuilderUnit_Novice};	
-
-	/** @brief Selection state for an entity running this fragment */
-	UPROPERTY()
-	EPDEntitySelectionState SelectionState = EPDEntitySelectionState::ENTITY_UNSET;	
 	
 	/** @brief Selection clearing state for an entity running this fragment */
 	UPROPERTY()
 	bool bHasClearedSelection = true;
+	
+	/** @brief Selection state for an entity running this fragment */
+	UPROPERTY()
+	EPDEntitySelectionState SelectionState = EPDEntitySelectionState::ENTITY_UNSET;
+	
+	/** @brief Skin index for the static mesh vertex animation */
+	UPROPERTY()
+	float MeshSkinIdx = -1;
 
 	/** @brief Selection Group Index for an entity running this fragment */
 	UPROPERTY()
 	int32 SelectionGroupIndex = INDEX_NONE;
-
+	
 	/** @brief OwnerID(Players) for an entity running this fragment */
 	UPROPERTY()
 	int32 OwnerID = INDEX_NONE;
-
+	
 	/** @brief Queued unit path actually at most contains a single entry and if set it
 	 * runs a navpath calculation out-of-line with it's potential selection group */
 	UPROPERTY()
 	TArray<FVector> QueuedUnitPath{};	
 	
+	/** @brief The entities entity type, used by downstream systems  */
+	UPROPERTY()
+	FGameplayTag EntityType{TAG_AI_Type_BuilderUnit_Novice};	
 	// /** @todo Do we have any queued entity-to-entity interactions */
 	// UPROPERTY()
 	// TArray<FMassEntityHandle> QueuedInteractables;
@@ -115,11 +114,6 @@ struct PDRTSBASE_API FPDMFragment_EntityAnimation : public FMassFragment
 	int AnimPosition = 0;
 };
 
-/** @brief Invalid MassInt16 vector location. Compared against and then returned as a dummy in failed functions */
-static constexpr FMassInt16Vector InvalidLoc = FMassInt16Vector{};
-/** @brief Invalid FMassEntityHandle. Compared against and then returned as a dummy in failed functions */
-static const FMassEntityHandle InvalidHandle = FMassEntityHandle{0, 0};
-
 /** @brief Target compound keeps track of the target, either a static location, a given actor and mass-entities*/
 USTRUCT(Blueprintable)
 struct PDRTSBASE_API FPDTargetCompound
@@ -131,16 +125,16 @@ struct PDRTSBASE_API FPDTargetCompound
 	{
 		return
 			ActionTargetAsActor != nullptr
-			|| ActionTargetAsLocation.Get() != InvalidLoc.Get()
-			|| ActionTargetAsEntity != InvalidHandle;
+			|| ActionTargetAsLocation.Get() != PD::Mass::InvalidLoc.Get()
+			|| ActionTargetAsEntity != PD::Mass::InvalidHandle;
 	};
 	/** @brief Is valid check, takes into regard if the entity actually exists via a given entity manager */
 	bool IsValidCompoundByManager(const FMassEntityManager& Manager) const
 	{
 		return
 			ActionTargetAsActor != nullptr
-			|| ActionTargetAsLocation.Get() != InvalidLoc.Get()
-			|| (ActionTargetAsEntity != InvalidHandle && Manager.IsEntityValid(ActionTargetAsEntity));
+			|| ActionTargetAsLocation.Get() != PD::Mass::InvalidLoc.Get()
+			|| (ActionTargetAsEntity != PD::Mass::InvalidHandle && Manager.IsEntityValid(ActionTargetAsEntity));
 	};
 	
 	/** @brief Target (if entity) */

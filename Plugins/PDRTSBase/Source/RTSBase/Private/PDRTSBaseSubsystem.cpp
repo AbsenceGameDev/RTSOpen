@@ -299,7 +299,7 @@ const TArray<TObjectPtr<UInstancedStaticMeshComponent>>& UPDRTSBaseSubsystem::Ge
 
 void UPDRTSBaseSubsystem::GenerateEntityMapData()
 {
-	UpdateDataTexture(EntityShaderInputData);
+	UpdateDataTexture();
 }
 
 void UPDRTSBaseSubsystem::CreateDataTexture()
@@ -371,7 +371,7 @@ void UPDRTSBaseSubsystem::CreateDataBuffer()
 	);
 }
 
-void UPDRTSBaseSubsystem::UpdateDataTexture(TArray<FLinearColor>& PerPixelData)
+void UPDRTSBaseSubsystem::UpdateDataTexture()
 {
 	if (false == bHasCreatedPooledBuffers) 
 	{
@@ -383,7 +383,10 @@ void UPDRTSBaseSubsystem::UpdateDataTexture(TArray<FLinearColor>& PerPixelData)
 	TRefCountPtr<FRDGPooledBuffer> EntityInputPooledBufferCopy = EntityInputPooledBuffer;
 	TRefCountPtr<IPooledRenderTarget> TexturePoolCopy = EntityPooledRT;
 	FRTSBuildGlobalSortEntityShader BuildEntitySortComputeShaderCopy = BuildEntitySortComputeShader;
-	TArray<FLinearColor> InData = PerPixelData;
+
+	TArray<FLinearColor> InData;
+	// OctreeUserQuery.MemCpyQueryBuffer<EPDQueryGroups::QUERY_GROUP_MINIMAP>(InData);
+
 	FRHIGPUBufferReadback* DebugReadbackPtrCopy = DebugReadback;
 	ENQUEUE_RENDER_COMMAND(UpdateDataTextureCommandName)(
 	[
@@ -409,16 +412,20 @@ void UPDRTSBaseSubsystem::UpdateDataTexture(TArray<FLinearColor>& PerPixelData)
 
 void UPDRTSBaseSubsystem::ProcessDebugSortedEntityData()
 {
+	UE_LOG(LogTemp, Warning, TEXT("================================================="));
+	UE_LOG(LogTemp, Warning, TEXT("UPDRTSBaseSubsystem::ProcessDebugSortedEntityData -- Atempt to send RHI Command"));	
 	ENQUEUE_RENDER_COMMAND(ProcessDebugSortedEntityDataCommandName)(
 	[&]
 	(FRHICommandListImmediate& RHICmdList)
 	{
 		UE_LOG(LogTemp, Warning, TEXT("================================================="));
-		UE_LOG(LogTemp, Warning, TEXT("UPDRTSBaseSubsystem::ProcessDebugSortedEntityData"));
+		UE_LOG(LogTemp, Warning, TEXT("UPDRTSBaseSubsystem::ProcessDebugSortedEntityData -- Entered RHI Command"));
 		FLinearColor* Data = (FLinearColor*)DebugReadback->Lock(GMaxEntityDataSize);
 		if (Data)
 		{
+			UE_LOG(LogTemp, Warning, TEXT("UPDRTSBaseSubsystem::ProcessDebugSortedEntityData -- Entered RHI Command - Data is valid"));
 			uint32 ActivePixelCount = 0;
+			uint32 InactivePixelCount = 0;
 
 			for (uint32 EntityStep = 0; EntityStep < GMaxEntityDataSize; ++EntityStep)
 			{
@@ -427,10 +434,20 @@ void UPDRTSBaseSubsystem::ProcessDebugSortedEntityData()
 				{
 					ActivePixelCount++;
 
-					const bool bDebugEntityStep = ActivePixelCount < 2;
+					const bool bDebugEntityStep = ActivePixelCount < 8;
 					if (bDebugEntityStep)
 					{
 						UE_LOG(LogTemp, Log, TEXT("Entity Sort Debug : Active Pixel [%d]: Location(%f, %f, %f), EncodedAlphaData: %f"),  EntityStep, Data[EntityStep].R, Data[EntityStep].G, Data[EntityStep].B, Data[EntityStep].A);
+					}
+				}
+				else
+				{
+					InactivePixelCount++;
+
+					const bool bDebugEntityStep = InactivePixelCount < 8;
+					if (bDebugEntityStep)
+					{
+						UE_LOG(LogTemp, Log, TEXT("Entity Sort Debug : Inactive Pixel [%d]: Location(%f, %f, %f), EncodedAlphaData: %f"),  EntityStep, Data[EntityStep].R, Data[EntityStep].G, Data[EntityStep].B, Data[EntityStep].A);
 					}
 				}
 			}
@@ -477,10 +494,10 @@ void UPDRTSBaseSubsystem::DeleteBuffers()
 // Tickable interface
 void UPDRTSBaseSubsystem::Tick(float DeltaTime) 
 {
-	if (DebugReadback && DebugReadback->IsReady())
-	{
-		ProcessDebugSortedEntityData();
-	}
+	// if (DebugReadback && DebugReadback->IsReady())
+	// {
+	// 	ProcessDebugSortedEntityData();
+	// }
 }
 
 TStatId UPDRTSBaseSubsystem::GetStatId() const

@@ -789,7 +789,7 @@ void AGodHandPawn::DispatchUnitActionWithTargets()
 		const FVector& TestVector = FallbackTargetLocation.Get();
 		UE_LOG(PDLog_RTSO, Warning, TEXT("DispatchUnitActionWithTargets -- Sending action request to entity : FallbackTargetLocation(x: %f ,y: %f ,z: %f) "), TestVector.X, TestVector.Y, TestVector.Z);
 		
-		FPDTargetCompound OptTarget = {InvalidHandle, FallbackTargetLocation, InstanceState.WorkerUnitActionTarget};
+		FPDTargetCompound OptTarget = {PD::Mass::InvalidHandle, FallbackTargetLocation, InstanceState.WorkerUnitActionTarget};
 		Cast<UPDRTSBaseUnit>(ISMs[0])->RequestAction(PC->GetActorID(), OptTarget, AssociatedTags.GetByIndex(0), InstanceState.SelectedWorkerUnitHandle);
 	}
 
@@ -889,7 +889,7 @@ void AGodHandPawn::ActionMoveSelection_Implementation(const FInputActionValue& V
 	InstanceState.WorkerUnitActionTarget = InstanceState.HoveredActor;
 
 	// go to mouse location is no valid target
-	FMassInt16Vector SelectedLocation = InvalidLoc;
+	FMassInt16Vector SelectedLocation = PD::Mass::InvalidLoc;
 
 	FGameplayTagContainer FallbackContainer{TAG_AI_Job_Idle};
 	if (InstanceState.WorkerUnitActionTarget == nullptr)
@@ -910,7 +910,7 @@ void AGodHandPawn::ActionMoveSelection_Implementation(const FInputActionValue& V
 	
 	//
 	// Params for entity AI
-	const FPDTargetCompound OptTarget = {InvalidHandle, SelectedLocation, InstanceState.WorkerUnitActionTarget};
+	const FPDTargetCompound OptTarget = {PD::Mass::InvalidHandle, SelectedLocation, InstanceState.WorkerUnitActionTarget};
 	const FGameplayTagContainer AssociatedTags = InstanceState.WorkerUnitActionTarget != nullptr && InstanceState.WorkerUnitActionTarget->Implements<UPDInteractInterface>()
 		? IPDInteractInterface::Execute_GetGenericTagContainer(InstanceState.WorkerUnitActionTarget)
 		: FallbackContainer;
@@ -1048,22 +1048,15 @@ int32 AGodHandPawn::GetEntityOwnerID(const FMassEntityHandle& Handle) const
 FMassEntityHandle AGodHandPawn::FindClosestMassEntity() const
 {
 	const UPDRTSBaseSubsystem* RTSBaseSubsystem = UPDRTSBaseSubsystem::Get();
-	const TMap<int32, TArray<FLEntityCompound>>* CurrentBuffer = &RTSBaseSubsystem->OctreeUserQuery.CurrentBuffer;
-	if (CurrentBuffer == nullptr || CurrentBuffer->Contains(EPDQueryGroups::QUERY_GROUP_HOVERSELECTION) == false)
+	FQueryResult_LocAndId LocAndId = RTSBaseSubsystem->OctreeUserQuery.ReadQueryBufferFromEnd<EPDQueryGroups::QUERY_GROUP_HOVERSELECTION>(0);
+	if (LocAndId.Location == FVector{})
 	{
 		return FMassEntityHandle{0,0};
 	}
-	
-	const TArray<FLEntityCompound>* QueryBufferData = CurrentBuffer->Find(EPDQueryGroups::QUERY_GROUP_HOVERSELECTION);
-	if (QueryBufferData == nullptr || QueryBufferData->IsEmpty())
-	{
-		return FMassEntityHandle{0,0};
-	}
-	const FLEntityCompound& EntityCompound = (*QueryBufferData)[QueryBufferData->Num() - 1];
 
 	// Temporary work-around to resolve edge-case created by fixing a data-race in the query buffer 
 	// Ensure that it is not a hovered entity from a previous frame still lingering in the query buffer
-	const FVector DeltaV = Collision->GetComponentLocation() - EntityCompound.Location;
+	const FVector DeltaV = Collision->GetComponentLocation() - LocAndId.Location;
 	if (DeltaV.IsNearlyZero(50.0) == false)
 	{
 		return FMassEntityHandle{0,0};
@@ -1071,12 +1064,12 @@ FMassEntityHandle AGodHandPawn::FindClosestMassEntity() const
 
 	// Don't allow handling entities we do not own
 	AGodHandPawn* MutableThis = const_cast<AGodHandPawn*>(this);
-	if (GetEntityOwnerID(EntityCompound.EntityHandle) != IPDRTSBuilderInterface::Execute_GetBuilderID(MutableThis))
+	if (LocAndId.OwnerID != IPDRTSBuilderInterface::Execute_GetBuilderID(MutableThis))
 	{
 		return FMassEntityHandle{0,0};
 	}
 	
-	return EntityCompound.EntityHandle; 
+	return LocAndId.EntityHandle; 
 }
 
 //
@@ -1131,19 +1124,19 @@ void AGodHandPawn::BeginPlay()
 
 	// Starting query data
 	const FVector& QueryLocation = CursorMesh->GetComponentLocation();
-	const UE::Math::TVector<double> MinimapQueryExtent{ 2000.0, 2000.0, 500.0};
+	const UE::Math::TVector<double> MinimapQueryExtent{2000.0, 2000.0, 500.0};
 	const double CollisionRadius = Collision->GetScaledSphereRadius(); 
-	const UE::Math::TVector<double> HoverSelectionQueryExtent{ CollisionRadius};
+	const UE::Math::TVector<double> HoverSelectionQueryExtent{CollisionRadius};
 
 	// Query shapes
-	const FPDOctreeUserQuery::QBox MinimapQueryBox        = FPDOctreeUserQuery::MakeUserQuery(QueryLocation, MinimapQueryExtent);
-	const FPDOctreeUserQuery::QBox HoverSelectionQueryBox = FPDOctreeUserQuery::MakeUserQuery(QueryLocation, HoverSelectionQueryExtent);
-	const FPDOctreeUserQuery::QSphere PingSystemQuerySphere  = FPDOctreeUserQuery::MakeUserQuery(QueryLocation, 10000.0); // need to update whn calling, start att 100m however
+	const FPDOctreeUserQuery::QBox MinimapQueryBox          = FPDOctreeUserQuery::MakeUserQuery(QueryLocation, MinimapQueryExtent);
+	const FPDOctreeUserQuery::QBox HoverSelectionQueryBox   = FPDOctreeUserQuery::MakeUserQuery(QueryLocation, HoverSelectionQueryExtent);
+	const FPDOctreeUserQuery::QSphere PingSystemQuerySphere = FPDOctreeUserQuery::MakeUserQuery(QueryLocation, 10000.0); // need to update whn calling, start att 100m however
 
 	// RTS Subsystem initialized
-	RTSSubSystem->OctreeUserQuery.CreateNewQueryEntry(EPDQueryGroups::QUERY_GROUP_MINIMAP, MinimapQueryBox);
-	RTSSubSystem->OctreeUserQuery.CreateNewQueryEntry(EPDQueryGroups::QUERY_GROUP_HOVERSELECTION, HoverSelectionQueryBox);
-	RTSSubSystem->OctreeUserQuery.CallingUser = this;
+	RTSSubSystem->OctreeUserQuery.CreateNewQueryEntry(EPDQueryGroups::QUERY_GROUP_MINIMAP, FPDOctreeUserQuery::EBufferType::PackedData, MinimapQueryBox);
+	RTSSubSystem->OctreeUserQuery.CreateNewQueryEntry(EPDQueryGroups::QUERY_GROUP_HOVERSELECTION, FPDOctreeUserQuery::EBufferType::EntityCompound, HoverSelectionQueryBox);
+	RTSSubSystem->OctreeUserQuery.SetCallingUser(this);
 
 	RTSSubSystem->BuildEntitySortComputeShader = FRTSBuildGlobalSortEntityShader::CreateLambda(
 		[](FRHICommandListImmediate& RHICmdList, UTextureRenderTarget2D* RenderTarget, const TRefCountPtr<FRDGPooledBuffer>& EntityInputPooledBuffer, const TRefCountPtr<IPooledRenderTarget>& ExternalPooledTexture, TArray<FLinearColor> InData, FRHIGPUBufferReadback* DebugBufferReadback)
@@ -1155,8 +1148,8 @@ void AGodHandPawn::BeginPlay()
 	EntityManager = RTSSubSystem->EntityManager;
 	
 	// Builder Subsystem initialized
-	BuilderSubsystem->OctreeBuildSystemEntityQuery.CreateNewQueryEntry(EPDQueryGroups::QUERY_GROUP_BUILDABLE_ACTORS, PingSystemQuerySphere);
-	BuilderSubsystem->OctreeBuildSystemEntityQuery.CallingUser = this;
+	BuilderSubsystem->OctreeBuildSystemEntityQuery.CreateNewQueryEntry(EPDQueryGroups::QUERY_GROUP_BUILDABLE_ACTORS, FPDOctreeUserQuery::EBufferType::INVALID, PingSystemQuerySphere);
+	BuilderSubsystem->OctreeBuildSystemEntityQuery.SetCallingUser(this);
 	BuilderSubsystem->WorldInit(GetWorld());
 	
 	RefreshSettingsInstance();

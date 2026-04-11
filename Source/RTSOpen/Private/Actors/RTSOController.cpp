@@ -131,7 +131,7 @@ void ARTSOController::RefreshOrAddNewID()
 	TMap<AActor*, int32>& ActorToIDMap =  RTSSubsystem->SharedOwnerIDBackMappings;
 	TMap<int32, AActor*>& IDToActorMap =  RTSSubsystem->SharedOwnerIDMappings;
 
-	if (ActorToIDMap.Contains(this) && ActorToIDMap.FindRef(this) != INVALID_ID)
+	if (ActorToIDMap.Contains(this) && ActorToIDMap.FindRef(this) != FPDPersistentID::INVALID_ID)
 	{
 		ActorID = ActorToIDMap.FindRef(this);
 		IDToActorMap.FindOrAdd(ActorID.GetID()) = this;

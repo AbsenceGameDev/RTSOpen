@@ -2,10 +2,15 @@
 
 #pragma once
 
+
 #include "CoreMinimal.h"
 #include "GameplayTagContainer.h"
 #include "MassEntityTypes.h"
 #include "Containers/Deque.h"
+#include "PDRTSCommon.h"
+#include "HAL/UnrealMemory.h"
+#include "Misc/ScopeLock.h"
+
 #include "PDRTSSharedOctree.generated.h"
 
 
@@ -195,6 +200,38 @@ struct FLEntityCompound
 	UPROPERTY()
 	int32 OwnerID;
 };
+
+struct FPDRTSPerPixelStorageHelper
+{
+	FORCEINLINE static FLinearColor ConstructData(FVector Location, uint16_t Entity16WayRotation, uint8_t EntityFlags, uint16_t TeamColourId)
+	{
+ 		const uint32_t ConstructedAlphaChannel = Entity16WayRotation | uint32_t(EntityFlags) >> 7 | uint32_t(TeamColourId) >> 15;
+    	return FLinearColor(
+    		Location.X, 
+    		Location.Y,
+    		Location.Z, 
+    		*reinterpret_cast<const float*>(&ConstructedAlphaChannel));
+	}
+
+	FORCEINLINE static uint32 ConstructData(uint16_t Entity16WayRotation, uint8_t EntityFlags, uint8_t TeamColourId)
+	{
+ 		return Entity16WayRotation | uint32_t(EntityFlags) >> 7 | uint32_t(TeamColourId) >> 15;
+	}
+
+
+	FORCEINLINE static void DeconstructData(const FLinearColor& InData, FVector& OutLocation, uint16_t& OutEntity16WayRotation, uint8_t& OutEntityFlags, uint16_t& OutTeamColourId)
+	{
+		OutLocation.X = InData.R;
+		OutLocation.Y = InData.G;
+		OutLocation.Z = InData.B;
+
+		const uint32 AlphaAsBits = *reinterpret_cast<const uint32*>(&InData.A);
+		OutEntity16WayRotation = AlphaAsBits > (32-4);
+		OutEntityFlags = (static_cast<uint32>(AlphaAsBits > (32-15)) < 7);
+		OutTeamColourId = AlphaAsBits < 15;
+	}	
+};
+
 	
 /** @brief Query base shape */
 template<typename TDataType>
@@ -241,6 +278,14 @@ using FPDOctreeUserQuery = struct QPDUserQuery_t
 			return PtrHack;
 		};
 	};
+
+	enum class EBufferType : uint8 
+	{
+		INVALID = 0,
+		EntityCompound,
+		PackedData
+	};
+	
 	
 	/** @brief Makes a user query shape based on input params */
 	static QBox MakeUserQuery(const UE::Math::TVector<double>& Location = UE::Math::TVector<double>::ZeroVector, const FVector& QuerySizes = UE::Math::TVector<double>::OneVector)
@@ -276,25 +321,43 @@ using FPDOctreeUserQuery = struct QPDUserQuery_t
 		return Sphere.IsInside(Point);
 	}
 	/** @brief  Creates a new Query Shape (QBox) entry */
-	void CreateNewQueryEntry(const int32 Key, const QBox& BoxData)
+	void CreateNewQueryEntry(const int32 Key, EBufferType BufferType, const QBox& BoxData)
 	{
 		QShapeSelector InData;
 		InData.Set(BoxData);
-		QueryArchetypes.FindOrAdd(Key, InData);
-		CurrentBuffer.FindOrAdd(Key);
+
+		{
+			FScopeLock Lock(&ArchetypeCS);
+			QueryArchetypes.FindOrAdd(Key, InData);
+		}
+
+		{
+			FScopeLock Lock(&BufferCS);
+			CurrentBuffer.FindOrAdd(Key);
+			BufferTypeMapping.FindOrAdd(Key, BufferType);		
+		}
 	}
 	/** @brief  Creates a new Query Shape (QSphere) entry */
-	void CreateNewQueryEntry(const int32 Key, const QSphere& SphereData)
+	void CreateNewQueryEntry(const int32 Key, EBufferType BufferType, const QSphere& SphereData)
 	{
 		QShapeSelector InData;
 		InData.Set(SphereData);
-		
-		QueryArchetypes.FindOrAdd(Key, InData);
-		CurrentBuffer.FindOrAdd(Key);
+
+		{
+			FScopeLock Lock(&ArchetypeCS);
+			QueryArchetypes.FindOrAdd(Key, InData);
+		}
+
+		{
+			FScopeLock Lock(&BufferCS);
+			CurrentBuffer.FindOrAdd(Key);
+			BufferTypeMapping.FindOrAdd(Key, BufferType);
+		}		
 	}
 	/** @brief Updates a keyed query position */
 	void UpdateQueryPosition(const int32 Key, const FVector& NewPos)
 	{
+		FScopeLock Lock(&ArchetypeCS);
 		QueryArchetypes.FindOrAdd(Key).Get()->Location = NewPos;
 	}
 	
@@ -317,30 +380,70 @@ using FPDOctreeUserQuery = struct QPDUserQuery_t
 			break;
 		}
 		
-		if (bIsPointWithinQuery)
 		{
-			FLEntityCompound EntityCompound{OptionalEntityHandle, ComparePos, OptionalID};
-			CurrentBuffer.FindOrAdd(Key).Emplace(EntityCompound);
-		}
-		// Clear key if it still persists for some reason, this fricking data-race condition is fixed now but damn it is not pretty
-		else if (CurrentBuffer.Contains(Key))
-		{
-			TArray<FLEntityCompound>& EntityArray = *CurrentBuffer.Find(Key);
-			const FLEntityCompound EntityCompound{OptionalEntityHandle, ComparePos, OptionalID};
-			EntityArray.Remove(EntityCompound);
-		}
+			FScopeLock Lock(&BufferCS);
+			if (bIsPointWithinQuery)
+			{
+				FLEntityCompound EntityCompound{OptionalEntityHandle, ComparePos, OptionalID};
+				CurrentBuffer.FindOrAdd(Key).Emplace(EntityCompound);
+			}
+			// Clear key if it still persists for some reason, this fricking data-race condition is fixed now but damn it is not pretty
+			else if (CurrentBuffer.Contains(Key))
+			{
+				TArray<FLEntityCompound>& EntityArray = *CurrentBuffer.Find(Key);
+				const FLEntityCompound EntityCompound{OptionalEntityHandle, ComparePos, OptionalID};
+				EntityArray.Remove(EntityCompound);
+			}
+		}		
 	}
+
+	void UpdateQueryOverlapBuffer(const int32 Key, const FVector& ComparePos, const FLinearColor& MinimapEncodedData)
+	{
+		bool bIsPointWithinQuery = false;
+		QShapeSelector ObjectAsBase = QueryArchetypes.FindOrAdd(Key);
+		TPDQueryBase<double>* BasePtr = ObjectAsBase.Get();
+		switch (ObjectAsBase.Get()->Shape)
+		{
+		case 0: // Box
+			bIsPointWithinQuery = IsPointWithinQuery(ComparePos, *static_cast<QBox*>(BasePtr));
+			break;
+		case 1: // Sphere
+			bIsPointWithinQuery = IsPointWithinQuery(ComparePos, *static_cast<QSphere*>(BasePtr));
+			break;
+		default:
+			break;
+		}
+		
+		{
+			FScopeLock Lock(&BufferCS);
+			if (bIsPointWithinQuery)
+			{
+				CurrentPackedDataBuffer.FindOrAdd(Key).Emplace(MinimapEncodedData);
+			}
+			// Clear key if it still persists for some reason, this fricking data-race condition is fixed now but damn it is not pretty
+			else if (CurrentPackedDataBuffer.Contains(Key))
+			{
+				TArray<FLinearColor>& PackedDataArray = *CurrentPackedDataBuffer.Find(Key);
+				PackedDataArray.Remove(MinimapEncodedData);
+			}
+		}
+	}	
 	
 	/** @brief Removes a buffer entry and query archetypes, via key */
 	void RemoveQueryData(const int32 Key)
 	{
+		FScopeLock Lock(&BufferCS);
+
 		QueryArchetypes.Remove(Key);
 		CurrentBuffer.Remove(Key);
+		BufferTypeMapping.Remove(Key);
 	}
 	/** @brief Clears buffer entry and resets its query archetypes, via key.
 	 * @note does not remove any key entries */
 	void ClearQueryDataAndSettings(int32 Key)
 	{
+		FScopeLock Lock(&BufferCS);
+
 		QShapeSelector ObjectAsBase = QueryArchetypes.FindOrAdd(Key);
 		TPDQueryBase<double>* BasePtr = ObjectAsBase.Get();
 		switch (ObjectAsBase.Get()->Shape)
@@ -362,28 +465,156 @@ using FPDOctreeUserQuery = struct QPDUserQuery_t
 		default:
 			break;
 		}
+		
 		ClearQueryBuffer(Key);
 	}
 	/** @brief Clears buffer entry, via key.
 	 * @note does not remove any key entry */
 	void ClearQueryBuffer(int32 Key)
 	{
-		// CurrentBuffer.FindOrAdd(Key).Empty();
-		if (CurrentBuffer.Contains(Key))
+		FScopeLock Lock(&BufferCS);
+		
+		EBufferType* BufferTypePtr = BufferTypeMapping.Find(Key);
+		if (UNLIKELY(BufferTypePtr == nullptr))
 		{
-			CurrentBuffer.FindRef(Key).Empty();
+			ClearBuffer(Key, CurrentBuffer);
+			ClearBuffer(Key, CurrentPackedDataBuffer);
 		}
-		else
+		switch (*BufferTypePtr)
 		{
-			CurrentBuffer.Add(Key).Empty();
-		}			
-	}		
-	
+		case EBufferType::EntityCompound:
+			ClearBuffer(Key, CurrentBuffer);
+			break;
+		case EBufferType::PackedData:
+			ClearBuffer(Key, CurrentPackedDataBuffer);
+			break;
+			
+		case EBufferType::INVALID:
+		default:
+			break;
+		}
+	}
+
+	FORCEINLINE void SetCallingUser(AActor* Caller) { CallingUser = Caller;}
+
+
+	using BufferSelectorConds = struct BufferSelectorConds_t
+	{
+		bool bIsMinimapGroup;
+		bool bIsInvalid;
+		bool bIsOther;
+	};
+
+	template<EPDQueryGroups TKey = EPDQueryGroups::INVALID_QUERY_GROUP>
+	static constexpr BufferSelectorConds GetBufferSelectorConds()
+	{
+			constexpr bool bIsMinimapGroup = TKey == EPDQueryGroups::QUERY_GROUP_MINIMAP;
+			constexpr bool bIsInvalid = TKey == EPDQueryGroups::INVALID_QUERY_GROUP;
+			constexpr bool bIsOther = !bIsMinimapGroup && !bIsInvalid;
+			constexpr BufferSelectorConds Conds{bIsMinimapGroup, bIsInvalid, bIsOther};
+			return Conds;
+	}
+
+#define DefineBufferSelector \
+		using TBufferSelector = std::conditional_t<Conds.bIsMinimapGroup, TArray<FLinearColor>, std::conditional_t<Conds.bIsOther, TArray<FLEntityCompound>, void>>;
+
+	#define IsBufferValidReadPos ((TPos == EBufferReadPos::INDEX && BufferPtr->IsValidIndex(BufferOffset)) || BufferPtr->IsValidIndex(BufferPtr->Num() - 1 - BufferOffset))
+	template<EPDQueryGroups TKey, EBufferReadPos TPos>
+	FQueryResult_LocAndId ReadQueryBufferAtPosition(int32 BufferOffset) const
+	{
+		FScopeLock Lock(&BufferCS);
+
+		constexpr BufferSelectorConds Conds = GetBufferSelectorConds<TKey>();
+		DefineBufferSelector
+		
+		const TBufferSelector* BufferPtr;
+		if constexpr (Conds.bIsMinimapGroup) 
+		{ 
+			BufferPtr = CurrentPackedDataBuffer.Find(TKey);
+			if (BufferPtr && IsBufferValidReadPos)
+			{
+				auto BufferData = TPos == EBufferReadPos::INDEX ? (*BufferPtr)[BufferOffset] : (*BufferPtr)[BufferPtr->Num() - 1 - BufferOffset];
+
+				FVector OutLocation; 
+				uint16 OutEntity16WayRotation;
+				uint8 OutEntityFlags; 
+				uint16_t OutTeamColourId;
+				FPDRTSPerPixelStorageHelper::DeconstructData(BufferData, OutLocation, OutEntity16WayRotation, OutEntityFlags, OutTeamColourId);
+				return FQueryResult_LocAndId{OutLocation, OutTeamColourId, FMassEntityHandle{INDEX_NONE}};
+			}
+		}
+		if constexpr (Conds.bIsOther) 
+		{ 
+			BufferPtr = CurrentBuffer.Find(TKey); 
+			if (BufferPtr && IsBufferValidReadPos)
+			{
+				const FLEntityCompound& EntityCompound = TPos == EBufferReadPos::INDEX ? (*BufferPtr)[BufferOffset] : (*BufferPtr)[BufferPtr->Num() - 1 - BufferOffset];
+				return FQueryResult_LocAndId{EntityCompound.Location, static_cast<int16>(EntityCompound.OwnerID), EntityCompound.EntityHandle};
+			}
+		}
+		return FQueryResult_LocAndId{};
+	}
+
+	template<EPDQueryGroups TKey>
+	FQueryResult_LocAndId ReadQueryBufferFromEnd(int32 BufferOffset) const
+	{
+		return ReadQueryBufferAtPosition<TKey, EBufferReadPos::END>(BufferOffset);
+	}
+
+	template<EPDQueryGroups TKey>
+	FQueryResult_LocAndId ReadQueryBufferFromIndex(int32 BufferIndex) const
+	{
+		return ReadQueryBufferAtPosition<TKey, EBufferReadPos::INDEX>(BufferIndex);
+	}	
+
+	template<EPDQueryGroups TKey>
+	void MemCpyQueryBuffer(std::conditional_t<TKey == EPDQueryGroups::QUERY_GROUP_MINIMAP, TArray<FLinearColor>&, TArray<FLEntityCompound>&> Target)
+	{
+		constexpr BufferSelectorConds Conds = GetBufferSelectorConds<TKey>();
+		DefineBufferSelector
+		
+		EBufferType* BufferTypePtr = BufferTypeMapping.Find(TKey);
+		if (Conds.bIsInvalid || UNLIKELY(BufferTypePtr == nullptr))
+		{
+			return;
+		}
+
+		{ //Lock
+			FScopeLock Lock(&BufferCS);
+			
+			TBufferSelector* BufferPtr;
+			if constexpr (Conds.bIsMinimapGroup) { BufferPtr = CurrentPackedDataBuffer.Find(TKey);}
+			if constexpr (Conds.bIsOther) { BufferPtr = CurrentBuffer.Find(TKey); }
+			
+			if constexpr (Conds.bIsMinimapGroup || Conds.bIsOther)
+			{
+				if (BufferPtr == nullptr) {return;}
+				FMemory::Memcpy(BufferPtr, &Target, BufferPtr->Num());
+				BufferPtr->Empty();
+			}
+		}
+	}
+
+private:
+	template<typename TBuffer>
+	void ClearBuffer(int32 Key, TBuffer& Buffer)
+	{
+		if (Buffer.Contains(Key)) { Buffer.FindRef(Key).Empty(); }
+		else { Buffer.Add(Key).Empty();}
+	}
+
+public:
+	mutable FCriticalSection BufferCS;
+	mutable FCriticalSection ArchetypeCS;
+private:
+
 	/** @brief  Query shape archetypes */
 	TMap<int32, QShapeSelector> QueryArchetypes;
 	/** @brief  User Query buffers */
+	TMap<int32, EBufferType> BufferTypeMapping;
 	TMap<int32, TArray<FLEntityCompound>> CurrentBuffer;
-	/** @brief  User taht will be calling this query structure */
+	TMap<int32, TArray<FLinearColor>> CurrentPackedDataBuffer;
+	/** @brief  User that will be calling this query structure */
 	AActor* CallingUser = nullptr;
 };
 
