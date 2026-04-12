@@ -5,20 +5,6 @@
 
 // pixel shader or compute shader looping through all pixels
 
-// Example:
-// #include "s2h.h"
-// {
-//   ContextGather ui;
-//   // pxPos is the integer pixel position + 0.5f (pixel centered)
-//   s2h_init(ui, pxPos + 0.5f);
-//   // print AB 
-//   s2h_printTxt(ui, _A, _B);
-//   // Note: ui.dstColor is premultiplied
-//   linearColor = linearBackground * (1.0f - ui.dstColor.a) + ui.dstColor;
-//   // for correct AntiAliasing 
-//   srgbColor = float4(s2h_accurateLinearToSRGB(linearColor.rgb), 1);
-// }
-
 #ifndef S2H_INCLUDE
 #define S2H_INCLUDE
 

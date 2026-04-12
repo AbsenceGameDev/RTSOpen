@@ -18,14 +18,14 @@
 
 #include "PDRTSBaseSubsystem.generated.h"
 
+/** fwd decl.  */
 class UPDRTSBaseUnit;
 class UMassEntitySubsystem;
-
-/** fwd decl.  */
+class UTextureRenderTarget2D;
 struct FPDWorkUnitDatum;
 
 
-DECLARE_DELEGATE_SevenParams(FRTSBuildGlobalSortEntityShader, FRHICommandListImmediate& /*RHICmdList*/, UTextureRenderTarget2D* /*RenderTarget*/, const TRefCountPtr<FRDGPooledBuffer>& /*EntityInputPooledBuffer*/, const TRefCountPtr<IPooledRenderTarget>& /*ExternalPooledTexture*/, TArray<FLinearColor> /*InData*/, FVector RegionMin, FVector RegionSize)
+DECLARE_DELEGATE_SevenParams(FRTSBuildGlobalSortEntityShader, FRHICommandListImmediate& /*RHICmdList*/, UTextureRenderTarget2D* /*RenderTarget*/, const TRefCountPtr<FRDGPooledBuffer>& /*EntityInputPooledBuffer*/, TRefCountPtr<IPooledRenderTarget>& /*ExternalPooledTexture*/, TArray<FLinearColor> /*InData*/, FVector RegionMin, FVector RegionSize)
 
 /** @brief Subsystem to handle octree size changes and to act as a manager for the entity workers */
 UCLASS()
@@ -98,6 +98,8 @@ public:
 	
 	/** @brief  */
 	void GenerateEntityMapData();
+
+	UTextureRenderTarget2D* GetEntityDataTexture() { return EntityDataTexture; };
 
 	UFUNCTION(BlueprintCallable, Category = "Texture", CallInEditor)
 	void CreateDataTexture();

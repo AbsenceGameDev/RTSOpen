@@ -8,6 +8,8 @@
 
 class SRTSOMiniMap;
 class USizeBox;
+class UTextureRenderTarget2D;
+
 /**
  * 
  */
@@ -41,17 +43,19 @@ class RTSOPEN_API URTSOMiniMapUserWidget : public UUserWidget
 public:
 	GENERATED_BODY()
 
-   virtual void NativePreConstruct() override;
+   virtual void NativeConstruct() override;
+   virtual void NativeTick(const FGeometry& Geometry, float DeltaTime) override;
 
 public:
-   UPROPERTY(BlueprintReadWrite, Meta = (OptionalBindWidget)) // Deprecate or remove soon
-   URTSOMiniMap* MinimapBase = nullptr;
 
    UPROPERTY(BlueprintReadWrite, Meta = (BindWidget))
-   class UImage* MinimapMat = nullptr;   
+   class UImage* MinimapMat = nullptr;
 
    UPROPERTY(BlueprintReadWrite, Meta = (BindWidget))
    USizeBox* MinimapSizeBox = nullptr;
+
+   UPROPERTY()
+   UTextureRenderTarget2D* MinimapEntityRT = nullptr;
 };
 
 

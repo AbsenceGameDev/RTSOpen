@@ -2,14 +2,6 @@
 //   Shader To Human (S2H) - HLSL/GLSL library for debugging shaders    //
 //  Copyright (c) 2024-2025 Electronic Arts Inc.  All rights reserved.  //
 //////////////////////////////////////////////////////////////////////////
-
-// Example:
-// #include "s2h_3d.h"
-// {
-    //   struct Context3D context;
-    //   // todo
-    //   s2h_init(context);
-    // }
     
 #ifndef S2H_3D_INCLUDE
 #define S2H_3D_INCLUDE

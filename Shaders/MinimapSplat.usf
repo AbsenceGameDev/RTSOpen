@@ -4,7 +4,7 @@
 #include "common.usf"
 
 // Parameters
-RWBuffer<float4> EntityData;
+StructuredBuffer<float4> EntityData;
 RWTexture2D<float4> OutSortedEntityDataTexture;
 float2 RegionMin;
 float2 RegionSize;
@@ -22,9 +22,9 @@ uint32_t Colors(int32_t Index)
 }
 float3 HexToCol(uint32_t Hex)
 {
-    float R = float(Hex & 0xff0000);
-    float G = float(Hex & 0x00ff00);
-    float B = float(Hex & 0x0000ff);
+    float R = float((Hex & 0x00ff0000) >> 16) / 255.0;
+    float G = float((Hex & 0x0000ff00) >> 8) / 255.0;
+    float B = float(Hex & 0x000000ff) / 255.0;
     return float3(R, G, B);
 }
 bool InBounds(int2 Pos) {return (Pos.x >= 0 && Pos.x < 256 && Pos.y >= 0 && Pos.y < 256);}
@@ -36,12 +36,6 @@ void SplatEntity(float2 ExactPixelPos, float3 TeamColour, int HalfWidth, int Hal
         for (int y = -HalfHeight; y <= HalfHeight; y++)
         {
             int2 CurrentPixel = int2(ExactPixelPos) + int2(x, y);
-
-            // // TODO Gradient fade
-            // float2 RegionMax = RegionMin + RegionSize;
-            
-            // float2 WorldPosOfPixel = (float2(CurrentPixel) / 255.0) * RegionSize + RegionMin;
-            // float Fade = CalculateFade(WorldPosOfPixel, RegionMin, RegionMax);
             float Fade = 1;
 
             if (InBounds(CurrentPixel))
@@ -53,12 +47,6 @@ void SplatEntity(float2 ExactPixelPos, float3 TeamColour, int HalfWidth, int Hal
 }
 
 
-#define GROUP_SIZE 1024
-groupshared float4 LDS_Buffer[GROUP_SIZE];
-
-
-
-
 [numthreads(64, 1, 1)]
 void MinimapSplat(uint3 ThreadId: SV_DispatchThreadID)
 {
@@ -68,10 +56,12 @@ void MinimapSplat(uint3 ThreadId: SV_DispatchThreadID)
     const uint32_t EntityExtraData = uint32_t(Entity.a);    
 
     const uint32_t EntityTeamColorId = uint32_t(EntityExtraData << 15);
-    float3 TeamColour = HexToCol(Colors(EntityTeamColorId));    
+    float3 TeamColour = HexToCol(Colors(EntityTeamColorId));
 
-    // Convert world to 0-255 pixel space
-    float2 ExactPixelPos = (Entity.rg - RegionMin) / RegionSize * 255.0;
+    // Convert world to 0-255 pixel space, Note, seems to be rotated, fix in the code that send steh buffer to the gpu instead
+    // TODO: Realize that I am not taking into account the camera rotation, I could handle that in UMG by rotating the image or something I think
+    float2 RotatedPixelPos = (Entity.rg - RegionMin) / RegionSize * 255.0;
+    float2 ExactPixelPos = float2(RotatedPixelPos.x, RotatedPixelPos.y);
 
     SplatEntity(ExactPixelPos, TeamColour, 2, 2);
 }

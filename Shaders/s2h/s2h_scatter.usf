@@ -3,19 +3,6 @@
 //  Copyright (c) 2024-2025 Electronic Arts Inc.  All rights reserved.  //
 //////////////////////////////////////////////////////////////////////////
 
-// Example:
-// #include "s2h.h"
-// #include "s2h_scatter.h"
-// {
-//   struct ContextScatter ui;
-//   s2h_init(ui);
-//   s2h_printTxt(ui, _A, _B);
-// }
-// void onGfxForAllScatter(int2 pxPos, float4 color) 
-// {
-//	 g_computeOutput[pxPos] = color;
-// }
-
 #ifndef S2H_SCATTER_INCLUDE
 #define S2H_SCATTER_INCLUDE
 #include "s2h_modified.usf"

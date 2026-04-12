@@ -374,7 +374,7 @@ void UPDRTSBaseSubsystem::UpdateDataTexture()
 	
 	UTextureRenderTarget2D* RenderTargetParam = EntityDataTexture;
 	TRefCountPtr<FRDGPooledBuffer> EntityInputPooledBufferCopy = EntityInputPooledBuffer;
-	TRefCountPtr<IPooledRenderTarget> TexturePoolCopy = EntityPooledRT;
+	TRefCountPtr<IPooledRenderTarget>& TexturePoolRef = EntityPooledRT;
 	FRTSBuildGlobalSortEntityShader BuildEntitySortComputeShaderCopy = BuildEntitySortComputeShader;
 
 	TArray<FLinearColor> InData;
@@ -382,20 +382,21 @@ void UPDRTSBaseSubsystem::UpdateDataTexture()
 	FPDOctreeUserQuery::FBoundsSimple QueryBounds = OctreeUserQuery.GetLatestQueryBounds<EPDQueryGroups::QUERY_GROUP_MINIMAP>();
 	
 	ENQUEUE_RENDER_COMMAND(UpdateDataTextureCommandName)(
-		[
-			BuildEntitySortComputeShaderCopy,
-			RenderTargetParam,
-			EntityInputPooledBufferCopy,
-			TexturePoolCopy,
-			InData,
-			QueryBounds
+	[
+		BuildEntitySortComputeShaderCopy,
+		RenderTargetParam,
+		EntityInputPooledBufferCopy,
+		TexturePoolRef,
+		InData,
+		QueryBounds
 	](FRHICommandListImmediate& RHICmdList)
 	{
+		TRefCountPtr<IPooledRenderTarget> TexturePoolCopyNonConst = TexturePoolRef;
 		BuildEntitySortComputeShaderCopy.ExecuteIfBound(
 			RHICmdList,
 			RenderTargetParam,
 			EntityInputPooledBufferCopy,
-			TexturePoolCopy,
+			TexturePoolCopyNonConst,
 			InData,
 			QueryBounds.Min,
 			QueryBounds.Size

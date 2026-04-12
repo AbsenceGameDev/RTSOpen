@@ -148,8 +148,28 @@ void AGodHandPawn::HoverTick(const float DeltaTime)
 	// Update Octree query position for 'QUERY_GROUP_1'
 	UPDRTSBaseSubsystem* RTSSubsystem = UPDRTSBaseSubsystem::Get();
 	const FVector& QueryLocation = CursorMesh->GetComponentLocation();
-	RTSSubsystem->OctreeUserQuery.UpdateQueryPosition(EPDQueryGroups::QUERY_GROUP_MINIMAP, QueryLocation);
+
+	FVector MinimapQueryLocation = QueryLocation;
+	if (ARTSOController* PC = GetController<ARTSOController>(); PC && PC->IsValidLowLevelFast())
+	{	
+		FMinimalViewInfo ViewInfo;
+		Camera->GetCameraView(DeltaTime, ViewInfo);
+		constexpr float TraceLength = 100000000.0;
+		const FVector EndLocation = ViewInfo.Location + (ViewInfo.Rotation.Vector() * TraceLength);
+		FHitResult Hit;
+
+		FCollisionQueryParams QueryParams;
+		QueryParams.AddIgnoredActor(this);
+		QueryParams.AddIgnoredActor(PC);
+
+		FCollisionShape CollisionShape = FCollisionShape::MakeBox(FVector(20.0));
+		GetWorld()->SweepSingleByChannel(Hit, ViewInfo.Location, EndLocation, ViewInfo.Rotation.Quaternion(), PC->DedicatedLandscapeTraceChannel, CollisionShape, QueryParams);
+		MinimapQueryLocation = Hit.Location;
+	}
+	RTSSubsystem->OctreeUserQuery.UpdateQueryPosition(EPDQueryGroups::QUERY_GROUP_MINIMAP, MinimapQueryLocation);
 	RTSSubsystem->OctreeUserQuery.UpdateQueryPosition(EPDQueryGroups::QUERY_GROUP_HOVERSELECTION, QueryLocation);
+
+	
 	
 	AActor* ClosestActor = FindClosestInteractableActor();
 	// Overwrite HoveredActor if they are not the same
@@ -1139,7 +1159,7 @@ void AGodHandPawn::BeginPlay()
 	RTSSubSystem->OctreeUserQuery.SetCallingUser(this);
 
 	RTSSubSystem->BuildEntitySortComputeShader = FRTSBuildGlobalSortEntityShader::CreateLambda(
-		[](FRHICommandListImmediate& RHICmdList, UTextureRenderTarget2D* RenderTarget, const TRefCountPtr<FRDGPooledBuffer>& EntityInputPooledBuffer, const TRefCountPtr<IPooledRenderTarget>& ExternalPooledTexture, TArray<FLinearColor> InData, FVector RegionMin, FVector RegionSize)
+		[](FRHICommandListImmediate& RHICmdList, UTextureRenderTarget2D* RenderTarget, const TRefCountPtr<FRDGPooledBuffer>& EntityInputPooledBuffer, TRefCountPtr<IPooledRenderTarget>& ExternalPooledTexture, TArray<FLinearColor> InData, FVector RegionMin, FVector RegionSize)
 		{
 			TShaderMapRef<FRTSMinimapSplat> ComputeShader(GetGlobalShaderMap(GMaxRHIFeatureLevel));
 			ComputeShader->BuildAndExecuteGraph(RHICmdList, RenderTarget, EntityInputPooledBuffer, ExternalPooledTexture, InData, RegionMin, RegionSize);

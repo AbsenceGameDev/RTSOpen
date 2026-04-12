@@ -5,20 +5,83 @@
 #include "RenderGraphBuilder.h"
 #include "RenderGraphUtils.h"
 
-// This looks messy but reduced the passes down from 136 passes to 28 passes for a 256x256 datatexture
-// Note: I couldn't get it to load the parameters properly unless defined in their own structs, and thus the mess below. Inheritance caused issues and shared SHADER_PARAMETER_STRUCTs caused other issues.  
-void FRTSMinimapSplat::BuildAndExecuteGraph(FRHICommandListImmediate& RHICmdList, UTextureRenderTarget2D* RenderTarget, const TRefCountPtr<FRDGPooledBuffer>& EntityInputPooledBuffer, const TRefCountPtr<IPooledRenderTarget>& ExternalPooledTexture, const TArray<FLinearColor>& InData, const FVector& RegionMin, const FVector& RegionSize)
-{
-	// constexpr uint32 GMaxBuffer1Dim = 256;
-	// constexpr uint32 GMaxBufferElements = 256*256;
+#define ENTITYDEBUG 0
 
+#if ENTITYDEBUG == 1
+uint32_t Colors(int32_t Index)
+{
+    static const uint32_t ColorIDs[256] = { 0xB88183, 0x922329, 0x5A0007, 0xD7BFC2, 0xD86A78, 0xFF8A9A, 0x3B000A, 0xE20027, 0x943A4D, 0x5B4E51, 0xB05B6F, 0xFEB2C6, 0xD83D66, 0x895563, 0xFF1A59, 0xFFDBE5, 0xCC0744, 0xCB7E98, 0x997D87, 0x6A3A4C, 0xFF2F80, 0x6B002C, 0xA74571, 0xC6005A, 0xFF5DA7, 0x300018, 0xB894A6, 0xFF90C9, 0x7C6571, 0xA30059, 0xDA007C, 0x5B113C, 0x402334, 0xD157A0, 0xDDB6D0, 0x885578, 0x962B75, 0xA97399, 0xD20096, 0xE773CE, 0xAA5199, 0xE704C4, 0x6B3A64, 0xFFA0F2, 0x6F0062, 0xB903AA, 0xC895C5, 0xFF34FF, 0x320033, 0xDBD5DD, 0xEEC3FF, 0xBC23FF, 0x671190, 0x201625, 0xF5E1FF, 0xBC65E9, 0xD790FF, 0x72418F, 0x4A3B53, 0x9556BD, 0xB4A8BD, 0x7900D7, 0xA079BF, 0x958A9F, 0x837393, 0x64547B, 0x3A2465, 0x353339, 0xBCB1E5, 0x9F94F0, 0x9695C5, 0x0000A6, 0x000035, 0x636375, 0x00005F, 0x97979E, 0x7A7BFF, 0x3C3E6E, 0x6367A9, 0x494B5A, 0x3B5DFF, 0xC8D0F6, 0x6D80BA, 0x8FB0FF, 0x0045D2, 0x7A87A1, 0x324E72, 0x00489C, 0x0060CD, 0x789EC9, 0x012C58, 0x99ADC0, 0x001325, 0xDDEFFF, 0x59738A, 0x0086ED, 0x75797C, 0xBDC9D2, 0x3E89BE, 0x8CD0FF, 0x0AA3F7, 0x6B94AA, 0x29607C, 0x404E55, 0x006FA6, 0x013349, 0x0AA6D8, 0x658188, 0x5EBCD1, 0x456D75, 0x0089A3, 0xB5F4FF, 0x02525F, 0x1CE6FF, 0x001C1E, 0x203B3C, 0xA3C8C9, 0x00A6AA, 0x00C6C8, 0x006A66, 0x518A87, 0xE4FFFC, 0x66E1D3, 0x004D43, 0x809693, 0x15A08A, 0x00846F, 0x00C2A0, 0x00FECF, 0x78AFA1, 0x02684E, 0xC2FFED, 0x47675D, 0x00D891, 0x004B28, 0x8ADBB4, 0x0CBD66, 0x549E79, 0x1A3A2A, 0x6C8F7D, 0x008941, 0x63FFAC, 0x1BE177, 0x006C31, 0xB5D6C3, 0x3D4F44, 0x4B8160, 0x66796D, 0x71BB8C, 0x04F757, 0x001E09, 0xD2DCD5, 0x00B433, 0x9FB2A4, 0x003109, 0xA3F3AB, 0x456648, 0x51A058, 0x83A485, 0x7ED379, 0xD1F7CE, 0xA1C299, 0x061203, 0x1E6E00, 0x5EFF03, 0x55813B, 0x3B9700, 0x4FC601, 0x1B4400, 0xC2FF99, 0x788D66, 0x868E7E, 0x83AB58, 0x374527, 0x98D058, 0xC6DC99, 0xA4E804, 0x76912F, 0x8BB400, 0x34362D, 0x4C6001, 0xDFFB71, 0x6A714A, 0x222800, 0x6B7900, 0x3A3F00, 0xBEC459, 0xFEFFE6, 0xA3A489, 0x9FA064, 0xFFFF00, 0x61615A, 0xFFFFFE, 0x9B9700, 0xCFCDAC, 0x797868, 0x575329, 0xFFF69F, 0x8D8546, 0xF4D749, 0x7E6405, 0x1D1702, 0xCCAA35, 0xCCB87C, 0x453C23, 0x513A01, 0xFFB500, 0xA77500, 0xD68E01, 0xB79762, 0x7A4900, 0x372101, 0x886F4C, 0xA45B02, 0xE7AB63, 0xFAD09F, 0xC0B9B2, 0x938A81, 0xA38469, 0xD16100, 0xA76F42, 0x5B4534, 0x5B3213, 0xCA834E, 0xFF913F, 0x953F00, 0xD0AC94, 0x7D5A44, 0xBE4700, 0xFDE8DC, 0x772600, 0xA05837, 0xEA8B66, 0x391406, 0xFF6832, 0xC86240, 0x29201D, 0xB77B68, 0x806C66, 0xFFAA92, 0x89412E, 0xE83000, 0xA88C85, 0xF7C9BF, 0x643127, 0xE98176, 0x7B4F4B, 0x1E0200, 0x9C6966, 0xBF5650, 0xBA0900, 0xFF4A46, 0xF4ABAA, 0x000000, 0x452C2C, 0xC8A1A1 };
+    return ColorIDs[Index % 256];
+}
+FLinearColor HexToCol(uint32_t Hex)
+{
+    float R = float((Hex & 0x00ff0000) >> 16) / 255;
+    float G = float((Hex & 0x0000ff00) >> 8) / 255;
+    float B = float(Hex & 0x000000ff) / 255.0;
+    return FLinearColor(R, G, B);
+}
+bool InBounds(FIntVector2 Pos) {return (Pos.X >= 0 && Pos.X < 256 && Pos.Y >= 0 && Pos.Y < 256);}
+
+void SplatEntity(FVector2D ExactPixelPos, int HalfWidth, int HalfHeight)
+{
+    for (int x = -HalfWidth; x <= HalfWidth; x++)
+    {
+        for (int y = -HalfHeight; y <= HalfHeight; y++)
+        {
+            FIntVector2 CurrentPixel = FIntVector2(ExactPixelPos.X, ExactPixelPos.Y) + FIntVector2(x, y);
+            if (InBounds(CurrentPixel))
+            {
+				UE_LOG(LogTemp, Warning, TEXT("======= ENTITY PIXEL(%i, %i) IS IN MINIMAP BOUNDS"), x,y)
+            }
+			else
+			{
+				UE_LOG(LogTemp, Error, TEXT("======= ERROR: ENTITY PIXEL(%i, %i) IS IN NOT MINIMAP BOUNDS"), x,y)
+			}
+        }
+    }
+}
+
+//
+// Note: Need to move this to some shared space, currently have it defined in another plugin also
+struct FPDRTSPerPixelStorageHelper
+{
+	FORCEINLINE static FLinearColor ConstructData(FVector Location, uint16_t Entity16WayRotation, uint8_t EntityFlags, uint16_t TeamColourId)
+	{
+ 		const uint32_t ConstructedAlphaChannel = Entity16WayRotation | uint32_t(EntityFlags) >> 7 | uint32_t(TeamColourId) >> 15;
+    	return FLinearColor(
+    		Location.X, 
+    		Location.Y,
+    		Location.Z, 
+    		*reinterpret_cast<const float*>(&ConstructedAlphaChannel));
+	}
+
+	FORCEINLINE static uint32 ConstructData(uint16_t Entity16WayRotation, uint8_t EntityFlags, uint8_t TeamColourId)
+	{
+ 		return Entity16WayRotation | uint32_t(EntityFlags) >> 7 | uint32_t(TeamColourId) >> 15;
+	}
+
+
+	FORCEINLINE static void DeconstructData(const FLinearColor& InData, FVector& OutLocation, uint16_t& OutEntity16WayRotation, uint8_t& OutEntityFlags, uint16_t& OutTeamColourId)
+	{
+		OutLocation.X = InData.R;
+		OutLocation.Y = InData.G;
+		OutLocation.Z = InData.B;
+
+		const uint32 AlphaAsBits = *reinterpret_cast<const uint32*>(&InData.A);
+		OutEntity16WayRotation = AlphaAsBits > (32-4);
+		OutEntityFlags = (static_cast<uint32>(AlphaAsBits > (32-15)) < 7);
+		OutTeamColourId = AlphaAsBits < 15;
+	}	
+};
+#endif
+
+
+void FRTSMinimapSplat::BuildAndExecuteGraph(FRHICommandListImmediate& RHICmdList, UTextureRenderTarget2D* RenderTarget, const TRefCountPtr<FRDGPooledBuffer>& EntityInputPooledBuffer, TRefCountPtr<IPooledRenderTarget>& ExternalPooledTexture, const TArray<FLinearColor>& InData, 
+	const FVector& RegionMin, 
+	const FVector& RegionSize)
+{
 	FRDGBuilder GraphBuilder(RHICmdList);
 	FRTSMinimapSplat::FParameters* AllocatedPassParameter = GraphBuilder.AllocParameters<FRTSMinimapSplat::FParameters>();
-	// FRTSMinimapSplatFirstPass::FParameters* AllocatedPassParameter_FirstPass = GraphBuilder.AllocParameters<FRTSMinimapSplatFirstPass::FParameters>();
-	// FRTSMinimapSplatInnerCheat::FParameters* AllocatedPassParameter_InnerCheat = GraphBuilder.AllocParameters<FRTSMinimapSplatInnerCheat::FParameters>();
-	// FRTSMinimapSplatCopyToTexture::FParameters* AllocatedPassParameter_CopyToTexture = GraphBuilder.AllocParameters<FRTSMinimapSplatCopyToTexture::FParameters>();
-
-	// GetStaticType();
 
 	// Buffer UAV
 	FRDGBufferRef DataBufferRDG = GraphBuilder.RegisterExternalBuffer(
@@ -28,9 +91,9 @@ void FRTSMinimapSplat::BuildAndExecuteGraph(FRHICommandListImmediate& RHICmdList
 	);
 	GraphBuilder.QueueBufferUpload(DataBufferRDG, TArrayView<const FLinearColor>(InData), ERDGInitialDataFlags::None);
 	
-	FRDGBufferUAVDesc UAVDesc(DataBufferRDG, EPixelFormat::PF_A32B32G32R32F);
-	FRDGBufferUAVRef EntityUAV = GraphBuilder.CreateUAV(UAVDesc);
-	AllocatedPassParameter->EntityData = EntityUAV;
+	FRDGBufferSRVDesc SRVDesc(DataBufferRDG, EPixelFormat::PF_A32B32G32R32F);
+	FRDGBufferSRVRef EntitySRV = GraphBuilder.CreateSRV(SRVDesc);
+	AllocatedPassParameter->EntityData = EntitySRV;
 	
 	// Texture UAV
 	FRHITexture2D* RhiTexture = RenderTarget->GetResource()->GetTexture2DRHI();
@@ -43,50 +106,60 @@ void FRTSMinimapSplat::BuildAndExecuteGraph(FRHICommandListImmediate& RHICmdList
 	FRDGTextureUAVDesc OutTextureUAVDesc(OutTextureRef);
 	FRDGTextureUAVRef TextureBufferUAV = GraphBuilder.CreateUAV(OutTextureUAVDesc, ERDGUnorderedAccessViewFlags::None);
 	AllocatedPassParameter->OutSortedEntityDataTexture = TextureBufferUAV;
+	GraphBuilder.QueueTextureExtraction(OutTextureRef, &ExternalPooledTexture, ERHIAccess::SRVMask, ERDGResourceExtractionFlags::None);
 
-	const uint32 GroupSize = 64; 
-	
+	AddClearUAVPass(GraphBuilder, TextureBufferUAV, FLinearColor::Transparent);
+
+#if ENTITYDEBUG == 1
+	UE_LOG(LogTemp, Warning, TEXT("=============================================="))
+	UE_LOG(LogTemp, Warning, TEXT("============= ENTITY DEBUG START ============="))
+	int32 Step = 0;
+	for(FLinearColor Datum : InData)
+	{
+		UE_LOG(LogTemp, Warning, TEXT("======= ENTITY %i ======="), Step++)
+		
+		FVector OutLocation = FVector::ZeroVector;
+		uint16_t OutEntity16WayRotation = 0;
+		uint8_t OutEntityFlags = 0; 
+		uint16_t OutTeamColourId = 0;
+		FPDRTSPerPixelStorageHelper::DeconstructData(Datum, OutLocation, OutEntity16WayRotation, OutEntityFlags, OutTeamColourId);
+		UE_LOG(LogTemp, Warning, TEXT("======= Loc xyz[%f, %f, %f]"), OutLocation.X, OutLocation.Y, OutLocation.Z)
+		UE_LOG(LogTemp, Warning, TEXT("======= Packed Data Rotation index %i"), OutEntity16WayRotation)
+		UE_LOG(LogTemp, Warning, TEXT("======= Packed Data Entity Flags %i"), OutEntityFlags)
+		UE_LOG(LogTemp, Warning, TEXT("======= Packed Data Team Colour %s"), *HexToCol(Colors(OutTeamColourId)).ToString())
+		
+	    // Convert world to 0-255 pixel space
+	    FVector2D ExactPixelPos = (FVector2D(OutLocation) - FVector2D(RegionMin)) / FVector2D(RegionSize) * 255.0;
+		UE_LOG(LogTemp, Warning, TEXT("======= ExactPixelPos xy(%f, %f)"), ExactPixelPos.X, ExactPixelPos.Y)
+		
+	    SplatEntity(ExactPixelPos, 2, 2);
+		UE_LOG(LogTemp, Warning, TEXT("========================="), Step++)
+
+	}
+	UE_LOG(LogTemp, Warning, TEXT("============== ENTITY DEBUG END =============="))
+	UE_LOG(LogTemp, Warning, TEXT("=============================================="))
+#endif
+
+	constexpr uint32 GroupSize = 64; 
 	AllocatedPassParameter->RegionMin = FVector2f{static_cast<float>(RegionMin.X), static_cast<float>(RegionMin.Y)};
 	AllocatedPassParameter->RegionSize = FVector2f{static_cast<float>(RegionSize.X), static_cast<float>(RegionSize.Y)};
 	AllocatedPassParameter->NumEntities = InData.Num();
 	TShaderMapRef<FRTSMinimapSplat> ComputeShader(GetGlobalShaderMap(GMaxRHIFeatureLevel));
 	FComputeShaderUtils::AddPass(GraphBuilder, RDG_EVENT_NAME("RTSMinimapSplat"), ComputeShader, AllocatedPassParameter, FComputeShaderUtils::GetGroupCount(InData.Num(), GroupSize));	
 
-	// // --- GLOBAL PASSES & CHEAT PASSES ---
-	// // We start at Step 2048 because 2 through 1024 are already sorted
-	// for (uint32 Step = 2048; Step <= GMaxBufferElements; Step <<= 1)
-	// {
-	// 	AllocatedPassParameter->Step = AllocatedPassParameter_InnerCheat->Step = Step;
-
-	// 	// Global Passes
-	// 	// These are stages where the comparison distance (Jump) is larger than the LDS capacity
-	// 	for (uint32 Jump = Step >> 1; Jump > 1024; Jump >>= 1)
-	// 	{
-	// 			AllocatedPassParameter->Jump = Jump;
-	// 			TShaderMapRef<FRTSMinimapSplat> ComputeShader(GetGlobalShaderMap(GMaxRHIFeatureLevel));
-
-	// 			FComputeShaderUtils::AddPass(GraphBuilder, RDG_EVENT_NAME("BitonicGlobal_S%d_J%d", Step, Jump), ComputeShader, AllocatedPassParameter, FIntVector(NumGroups, 1, 1));
-	// 	}
-	
-	// 	// Inner Cheat LDS Pass (handles remainder jumps of loop)
-	// 	{ 
-	// 		TShaderMapRef<FRTSMinimapSplatInnerCheat> ComputeShader(GetGlobalShaderMap(GMaxRHIFeatureLevel));
-	// 		FComputeShaderUtils::AddPass(GraphBuilder, RDG_EVENT_NAME("RTSMinimapSplatInnerCheat%d", Step), ComputeShader, AllocatedPassParameter_InnerCheat, FIntVector(NumGroups, 1, 1));
-	// 	}
-	// } 
-
-	// // --- FINAL COPY --- 
-	// {
-	// 	constexpr uint32 Uniform2DThreadCount = 8;
-	// 	constexpr uint32 ThreadGroupCount = GMaxBuffer1Dim / Uniform2DThreadCount;
-	// 	TShaderMapRef<FRTSMinimapSplatCopyToTexture> ComputeShader(GetGlobalShaderMap(GMaxRHIFeatureLevel));
-	// 	FComputeShaderUtils::AddPass(GraphBuilder, RDG_EVENT_NAME("RTSMinimapSplatCopyToTexture"), ComputeShader, AllocatedPassParameter_CopyToTexture, FIntVector(ThreadGroupCount, ThreadGroupCount, 1));
-	// }
-
 	GraphBuilder.Execute();
+
+	// Notify that we have changes the underlying texture
+	FTextureRenderTargetResource* RTResource = RenderTarget->GetRenderTargetResource();
+	RTResource->TextureRHI = ExternalPooledTexture->GetRHI();
+	RTResource->SetTextureReference(RTResource->TextureRHI->GetTextureReference());	
 }
 
 IMPLEMENT_GLOBAL_SHADER(FRTSMinimapSplat, "/Project/MinimapSplat.usf", "MinimapSplat", SF_Compute);
+
+
+
+// Unused since changing plans 
 IMPLEMENT_GLOBAL_SHADER(FRTSMinimapSplatInnerCheat, "/Project/SortData.usf", "SortDataInnerCheat", SF_Compute);
 IMPLEMENT_GLOBAL_SHADER(FRTSMinimapSplatFirstPass, "/Project/SortData.usf", "SortDataFirstPass", SF_Compute);
 IMPLEMENT_GLOBAL_SHADER(FRTSMinimapSplatCopyToTexture, "/Project/SortData.usf", "CopyToTexture", SF_Compute);

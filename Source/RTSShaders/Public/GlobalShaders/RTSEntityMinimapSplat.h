@@ -15,14 +15,14 @@ public:
    SHADER_USE_PARAMETER_STRUCT(FRTSMinimapSplat, FGlobalShader);
 
    BEGIN_SHADER_PARAMETER_STRUCT(FParameters, )
-      SHADER_PARAMETER_RDG_BUFFER_UAV(RWBuffer<float4>, EntityData)
+      SHADER_PARAMETER_RDG_BUFFER_SRV(StructuredBuffer<float4>, EntityData)
       SHADER_PARAMETER_RDG_TEXTURE_UAV(RWTexture2D<float4>, OutSortedEntityDataTexture)
       SHADER_PARAMETER(int32, NumEntities)
       SHADER_PARAMETER(FVector2f, RegionMin)
       SHADER_PARAMETER(FVector2f, RegionSize)
    END_SHADER_PARAMETER_STRUCT()
 
-   void RTSSHADERS_API BuildAndExecuteGraph(FRHICommandListImmediate &RHICmdList, UTextureRenderTarget2D* RenderTarget, const TRefCountPtr<FRDGPooledBuffer>& EntityInputPooledBuffer, const TRefCountPtr<IPooledRenderTarget>& ExternalPooledTexture, const TArray<FLinearColor>& InData, const FVector& RegionMin, const FVector& RegionSize);
+   void RTSSHADERS_API BuildAndExecuteGraph(FRHICommandListImmediate &RHICmdList, UTextureRenderTarget2D* RenderTarget, const TRefCountPtr<FRDGPooledBuffer>& EntityInputPooledBuffer, TRefCountPtr<IPooledRenderTarget>& ExternalPooledTexture, const TArray<FLinearColor>& InData, const FVector& RegionMin, const FVector& RegionSize);
 
    static bool ShouldCompilePermutation(const FGlobalShaderPermutationParameters& Parameters) 
    {
