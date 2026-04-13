@@ -7,6 +7,8 @@
 #include "ShaderParameterStruct.h"
 #include "ShaderParameterMacros.h"
 #include "Engine/TextureRenderTarget2D.h"
+#include "Subsystems/EngineSubsystem.h"
+#include "Materials/MaterialInstanceDynamic.h"
 
 class FRTSMinimapSplat : public FGlobalShader
 {
@@ -22,7 +24,7 @@ public:
       SHADER_PARAMETER(FVector2f, RegionSize)
    END_SHADER_PARAMETER_STRUCT()
 
-   void RTSSHADERS_API BuildAndExecuteGraph(FRHICommandListImmediate &RHICmdList, UTextureRenderTarget2D* RenderTarget, const TRefCountPtr<FRDGPooledBuffer>& EntityInputPooledBuffer, TRefCountPtr<IPooledRenderTarget>& ExternalPooledTexture, const TArray<FLinearColor>& InData, const FVector& RegionMin, const FVector& RegionSize);
+   void RTSSHADERS_API BuildAndExecuteGraph(FRHICommandListImmediate &RHICmdList, UTextureRenderTarget2D* RenderTarget, const TRefCountPtr<FRDGPooledBuffer>& EntityInputPooledBuffer, const TArray<FLinearColor>& InData, const FVector& RegionMin, const FVector& RegionSize);
 
    static bool ShouldCompilePermutation(const FGlobalShaderPermutationParameters& Parameters) 
    {

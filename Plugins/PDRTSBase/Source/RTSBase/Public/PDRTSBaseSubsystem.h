@@ -25,7 +25,7 @@ class UTextureRenderTarget2D;
 struct FPDWorkUnitDatum;
 
 
-DECLARE_DELEGATE_SevenParams(FRTSBuildGlobalSortEntityShader, FRHICommandListImmediate& /*RHICmdList*/, UTextureRenderTarget2D* /*RenderTarget*/, const TRefCountPtr<FRDGPooledBuffer>& /*EntityInputPooledBuffer*/, TRefCountPtr<IPooledRenderTarget>& /*ExternalPooledTexture*/, TArray<FLinearColor> /*InData*/, FVector RegionMin, FVector RegionSize)
+DECLARE_DELEGATE_SixParams(FRTSBuildGlobalSortEntityShader, FRHICommandListImmediate& /*RHICmdList*/, UTextureRenderTarget2D* /*RenderTarget*/, const TRefCountPtr<FRDGPooledBuffer>& /*EntityInputPooledBuffer*/, TArray<FLinearColor> /*InData*/, FVector RegionMin, FVector RegionSize)
 
 /** @brief Subsystem to handle octree size changes and to act as a manager for the entity workers */
 UCLASS()
@@ -186,8 +186,6 @@ private:
 	class UTextureRenderTarget2D* EntityDataTexture;
 
 	TRefCountPtr<FRDGPooledBuffer> EntityInputPooledBuffer;
-	TRefCountPtr<IPooledRenderTarget> EntityPooledRT;
-
 	bool bHasCreatedPooledBuffers = false;
 };
 

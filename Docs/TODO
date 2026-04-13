@@ -212,22 +212,37 @@ DONE:
 
 April 12th 2026 - Commit#0:
 DONE:
-    ✔ Texture splatting finished, compute shader does what I intended it to now, RT texture gets updated as needed @done(26-04-13 05:14)
+    ✔ Texture splatting finished, compute shader does what I intended it to now, RT texture gets updated as needed @done(26-04-12 05:14)
         TODO:
         ☐ Material system does not force update it's read on the RT texture, need to figure this out also, 
             but for now I am forcing the RT texture to the slate brush that the widget UImage is holding, I get a workable overlay with entity data
-    ✔ Make so the landscape blocks the interact systems default landscape channel @done(26-04-13 05:22)
-    ✔ Update query position for the minimap queries so it queries the landscape from the camera. @done(26-04-13 05:22)
+    ✔ Make so the landscape blocks the interact systems default landscape channel @done(26-04-12 05:22)
+    ✔ Update query position for the minimap queries so it queries the landscape from the camera. @done(26-04-12 05:22)
         TODO:
         - I realize this is not necessary and I will have to remove this becasue the interact component does a landscape trace each tick and I can just source the hit data from it
         - The issue however is that the interact HUD is not being used and having that enables triggers the trace ticks, and I can't remember why it isn't enable so I will have to ensure that first, which will not be in this commit
-    ✔ Removed some comments in the s2h shaders as it was causing unreals shader compiler to cry @done(26-04-13 05:29)
-    ✔ Added an ugly copy of a TRefCountPtr<IPooledRenderTarget> as the target funciton needed a non const version :/ @done(26-04-13 05:29)
+    ✔ Removed some comments in the s2h shaders as it was causing unreals shader compiler to cry @done(26-04-12 05:29)
+    ✔ Added an ugly copy of a TRefCountPtr<IPooledRenderTarget> as the target funciton needed a non const version :/ @done(26-04-12 05:29)
 
 TODO:
     ☐ Need to take into account camera rotation and have it as an option to allow the minimap to rotate along it
         - This could be I rotate the uimage somehow or add an input to the shader for cam rotation or I handle it in the material graph 
 
+
+
+
+April 13th 2026 - Commit#0:
+DONE:
+    ✔ Material system does not force update it's read on the RT texture, need to figure this out also, @done(26-04-13 20:56)
+
+    TODO:
+        ☐ Need to take into account camera rotation and have it as an option to allow the minimap to rotate along it
+        - This could be I rotate the uimage somehow or add an input to the shader for cam rotation or I handle it in the material graph 
+        
+        ✔ Update query position for the minimap queries so it queries the landscape from the camera. @done(26-04-12 05:22)
+            TODO:
+            - I realize this is not necessary and I will have to remove this becasue the interact component does a landscape trace each tick and I can just source the hit data from it
+            - The issue however is that the interact HUD is not being used and having that enables triggers the trace ticks, and I can't remember why it isn't enable so I will have to ensure that first, which will not be in this commit
 
 
 COMING:    

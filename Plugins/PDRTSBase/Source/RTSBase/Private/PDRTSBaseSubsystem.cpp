@@ -349,16 +349,6 @@ void UPDRTSBaseSubsystem::CreateDataBuffer()
 				EntityInputPooledBuffer = AllocatePooledBuffer(BufferDescriptor, TEXT("SortDataBuffer"), ERDGPooledBufferAlignment::PowerOfTwo);
 			}
 			
-			if (false == EntityPooledRT.IsValid())
-			{
-				EntityPooledRT = AllocatePooledTexture(
-					FRDGTextureDesc::Create2D(
-						FIntPoint(GMaxEntityDim, GMaxEntityDim),
-						EPixelFormat::PF_A32B32G32R32F,
-						FClearValueBinding(),
-						TexCreate_UAV),
-					TEXT("RT_MinimapEntityData"));
-			}
 			bHasCreatedPooledBuffers = true;
 		}
 	);
@@ -374,7 +364,6 @@ void UPDRTSBaseSubsystem::UpdateDataTexture()
 	
 	UTextureRenderTarget2D* RenderTargetParam = EntityDataTexture;
 	TRefCountPtr<FRDGPooledBuffer> EntityInputPooledBufferCopy = EntityInputPooledBuffer;
-	TRefCountPtr<IPooledRenderTarget>& TexturePoolRef = EntityPooledRT;
 	FRTSBuildGlobalSortEntityShader BuildEntitySortComputeShaderCopy = BuildEntitySortComputeShader;
 
 	TArray<FLinearColor> InData;
@@ -386,17 +375,14 @@ void UPDRTSBaseSubsystem::UpdateDataTexture()
 		BuildEntitySortComputeShaderCopy,
 		RenderTargetParam,
 		EntityInputPooledBufferCopy,
-		TexturePoolRef,
 		InData,
 		QueryBounds
 	](FRHICommandListImmediate& RHICmdList)
 	{
-		TRefCountPtr<IPooledRenderTarget> TexturePoolCopyNonConst = TexturePoolRef;
 		BuildEntitySortComputeShaderCopy.ExecuteIfBound(
 			RHICmdList,
 			RenderTargetParam,
 			EntityInputPooledBufferCopy,
-			TexturePoolCopyNonConst,
 			InData,
 			QueryBounds.Min,
 			QueryBounds.Size
@@ -413,7 +399,6 @@ void UPDRTSBaseSubsystem::DeleteBuffers()
 		{			
 			bHasCreatedPooledBuffers = false;
 			if (EntityInputPooledBuffer.IsValid()) {EntityInputPooledBuffer.SafeRelease();}
-			if (EntityPooledRT.IsValid()) {EntityPooledRT.SafeRelease();}	
 		}	
 	);
 }

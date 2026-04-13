@@ -1,11 +1,13 @@
 ﻿/* @author: Ario Amin @ Permafrost Development. @copyright: Full BSL(1.1) License included at bottom of the file  */
 #include "Widgets/RTSOMiniMap.h"
 #include "PDRTSBaseSubsystem.h"
-
 #include "Widgets/Slate/SRTSOMiniMap.h"
+
 #include "Components/SizeBox.h"
 #include "Components/Image.h"
 #include "Engine/TextureRenderTarget2D.h"
+
+#include "GlobalShaders/RTSEntityMinimapSplat.h"
 
 TSharedRef<SWidget> URTSOMiniMap::RebuildWidget()
 {
@@ -41,20 +43,8 @@ void URTSOMiniMapUserWidget::NativeConstruct()
 
 void URTSOMiniMapUserWidget::NativeTick(const FGeometry& Geometry, float DeltaTime)
 {
-   if (UNLIKELY(MinimapEntityRT == nullptr)) // UNLIKELY as it will only happen once per game session. TODO: think of a better way to handle this a the NativeConstruct seems to be called before the entity data texture is set on the subsystem
-   {
-      MinimapEntityRT = UPDRTSBaseSubsystem::Get()->GetEntityDataTexture();
-   }
-
-   // Force load RT
-   if (MinimapEntityRT)
-   {  
-      FSlateBrush ConstructedBrush;
-      ConstructedBrush.DrawAs = ESlateBrushDrawType::Image;
-      ConstructedBrush.Tiling = ESlateBrushTileType::NoTile;
-      ConstructedBrush.SetResourceObject(MinimapEntityRT);
-      MinimapMat->SetBrush(ConstructedBrush);
-   }
+   Super::NativeTick(Geometry, DeltaTime);
+   // Reserved for later use
 }
 
 

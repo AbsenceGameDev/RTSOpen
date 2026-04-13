@@ -4,6 +4,8 @@
 #include "Engine/TextureRenderTarget2D.h"
 #include "RenderGraphBuilder.h"
 #include "RenderGraphUtils.h"
+#include "RenderTargetPool.h"
+#include "Materials/Material.h"
 
 #define ENTITYDEBUG 0
 
@@ -75,8 +77,7 @@ struct FPDRTSPerPixelStorageHelper
 };
 #endif
 
-
-void FRTSMinimapSplat::BuildAndExecuteGraph(FRHICommandListImmediate& RHICmdList, UTextureRenderTarget2D* RenderTarget, const TRefCountPtr<FRDGPooledBuffer>& EntityInputPooledBuffer, TRefCountPtr<IPooledRenderTarget>& ExternalPooledTexture, const TArray<FLinearColor>& InData, 
+void FRTSMinimapSplat::BuildAndExecuteGraph(FRHICommandListImmediate& RHICmdList, UTextureRenderTarget2D* RenderTarget, const TRefCountPtr<FRDGPooledBuffer>& EntityInputPooledBuffer, const TArray<FLinearColor>& InData, 
 	const FVector& RegionMin, 
 	const FVector& RegionSize)
 {
@@ -95,18 +96,36 @@ void FRTSMinimapSplat::BuildAndExecuteGraph(FRHICommandListImmediate& RHICmdList
 	FRDGBufferSRVRef EntitySRV = GraphBuilder.CreateSRV(SRVDesc);
 	AllocatedPassParameter->EntityData = EntitySRV;
 	
-	// Texture UAV
-	FRHITexture2D* RhiTexture = RenderTarget->GetResource()->GetTexture2DRHI();
-	FRDGTextureRef OutTextureRef = GraphBuilder.RegisterExternalTexture(
-		ExternalPooledTexture, 
-		*FString(TEXT("RT_MinimapEntityData")),
-		ERDGTextureFlags::None
-	); 
+
+	// TODO: Move block to function: Wrap rendertarget RHI texture inot scene render target item and set up a pool render targer desc
+	FRDGTextureRef OutTextureRef;
+	FTextureRenderTargetResource* RTResource = RenderTarget->GetRenderTargetResource();
+	{
+		FTexture2DRHIRef TextureRHI = RTResource->GetTexture2DRHI();
+
+		FSceneRenderTargetItem Item;
+		Item.TargetableTexture = TextureRHI;
+		Item.ShaderResourceTexture = TextureRHI;
+		
+		FPooledRenderTargetDesc Desc = FPooledRenderTargetDesc::Create2DDesc(
+			FIntPoint(RenderTarget->SizeX, RenderTarget->SizeY), 
+	    	PF_A32B32G32R32F, 
+	    	FClearValueBinding::None, 
+	    	TexCreate_None, 
+	    	TexCreate_ShaderResource | TexCreate_UAV, 
+			false);
+
+		TRefCountPtr<IPooledRenderTarget> PooledRT;
+		GRenderTargetPool.CreateUntrackedElement(Desc, PooledRT, Item);
+
+		OutTextureRef = GraphBuilder.RegisterExternalTexture(PooledRT, TEXT("MinimapRTOuput"));
+	}
+
+
 
 	FRDGTextureUAVDesc OutTextureUAVDesc(OutTextureRef);
 	FRDGTextureUAVRef TextureBufferUAV = GraphBuilder.CreateUAV(OutTextureUAVDesc, ERDGUnorderedAccessViewFlags::None);
 	AllocatedPassParameter->OutSortedEntityDataTexture = TextureBufferUAV;
-	GraphBuilder.QueueTextureExtraction(OutTextureRef, &ExternalPooledTexture, ERHIAccess::SRVMask, ERDGResourceExtractionFlags::None);
 
 	AddClearUAVPass(GraphBuilder, TextureBufferUAV, FLinearColor::Transparent);
 
@@ -145,14 +164,10 @@ void FRTSMinimapSplat::BuildAndExecuteGraph(FRHICommandListImmediate& RHICmdList
 	AllocatedPassParameter->RegionSize = FVector2f{static_cast<float>(RegionSize.X), static_cast<float>(RegionSize.Y)};
 	AllocatedPassParameter->NumEntities = InData.Num();
 	TShaderMapRef<FRTSMinimapSplat> ComputeShader(GetGlobalShaderMap(GMaxRHIFeatureLevel));
-	FComputeShaderUtils::AddPass(GraphBuilder, RDG_EVENT_NAME("RTSMinimapSplat"), ComputeShader, AllocatedPassParameter, FComputeShaderUtils::GetGroupCount(InData.Num(), GroupSize));	
+	FRDGPassRef PassRef = FComputeShaderUtils::AddPass(GraphBuilder, RDG_EVENT_NAME("RTSMinimapSplat"), ComputeShader, AllocatedPassParameter, FComputeShaderUtils::GetGroupCount(InData.Num(), GroupSize));	
 
+	GraphBuilder.SetTextureAccessFinal(OutTextureRef, ERHIAccess::SRVMask);
 	GraphBuilder.Execute();
-
-	// Notify that we have changes the underlying texture
-	FTextureRenderTargetResource* RTResource = RenderTarget->GetRenderTargetResource();
-	RTResource->TextureRHI = ExternalPooledTexture->GetRHI();
-	RTResource->SetTextureReference(RTResource->TextureRHI->GetTextureReference());	
 }
 
 IMPLEMENT_GLOBAL_SHADER(FRTSMinimapSplat, "/Project/MinimapSplat.usf", "MinimapSplat", SF_Compute);

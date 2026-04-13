@@ -1159,10 +1159,10 @@ void AGodHandPawn::BeginPlay()
 	RTSSubSystem->OctreeUserQuery.SetCallingUser(this);
 
 	RTSSubSystem->BuildEntitySortComputeShader = FRTSBuildGlobalSortEntityShader::CreateLambda(
-		[](FRHICommandListImmediate& RHICmdList, UTextureRenderTarget2D* RenderTarget, const TRefCountPtr<FRDGPooledBuffer>& EntityInputPooledBuffer, TRefCountPtr<IPooledRenderTarget>& ExternalPooledTexture, TArray<FLinearColor> InData, FVector RegionMin, FVector RegionSize)
+		[](FRHICommandListImmediate& RHICmdList, UTextureRenderTarget2D* RenderTarget, const TRefCountPtr<FRDGPooledBuffer>& EntityInputPooledBuffer, TArray<FLinearColor> InData, FVector RegionMin, FVector RegionSize)
 		{
 			TShaderMapRef<FRTSMinimapSplat> ComputeShader(GetGlobalShaderMap(GMaxRHIFeatureLevel));
-			ComputeShader->BuildAndExecuteGraph(RHICmdList, RenderTarget, EntityInputPooledBuffer, ExternalPooledTexture, InData, RegionMin, RegionSize);
+			ComputeShader->BuildAndExecuteGraph(RHICmdList, RenderTarget, EntityInputPooledBuffer, InData, RegionMin, RegionSize);
 		});
 	RTSSubSystem->WorldInit(GetWorld());
 	EntityManager = RTSSubSystem->EntityManager;
