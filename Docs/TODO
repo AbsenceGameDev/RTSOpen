@@ -245,6 +245,28 @@ DONE:
             - The issue however is that the interact HUD is not being used and having that enables triggers the trace ticks, and I can't remember why it isn't enable so I will have to ensure that first, which will not be in this commit
 
 
+April 17th 2026 - Commit#0:
+DONE:
+    ✔ Need to take into account camera rotation @done(26-04-17 21:34)
+        ✔ Store camera rotation yaw each tick so the subsystem has access to itm using RWLocks @done(26-04-17 21:34)
+        ✔ Precalculate sinc and cos for the sotred yaw each tick, pass it along to the compute shader, ass threads will need this @done(26-04-17 21:34)
+        ✔ Write a rotation function to ensure our camera rotation is inline with our cosntructed bounds coordinate system, which is: y north, x west @done(26-04-17 21:34)
+
+    ✔ Update critical sections to use RW locks in 'FPDOctreeUserQuery' @done(26-04-17 21:34)
+        - Note, be on the lookout for reader starvations, I don't think RWLocks and their scopelocks take atarvation into account
+
+
+TODOS: 
+    Minimap:
+        ☐ Build some more minimap layers, much like the entity layer, 
+        ☐ Stack all minimap layers untop of a static image
+
+    Interact component and landscape queries:  
+      ✔ Update query position for the minimap queries so it queries the landscape from the camera. @done(26-04-12 05:22)
+          ☐ I realize this is not necessary and I will have to remove this becasue the interact component does a landscape trace each tick and I can just source the hit data from it
+          ☐ The issue however is that the interact HUD is not being used and having that enables triggers the trace ticks, and I can't remember why it isn't enable so I will have to ensure that first, which will not be in this commit
+
+
 COMING:    
 IN PROGRESS : 
     ☐ Debug the sorted output texture, and sort out why the log calls are not showing

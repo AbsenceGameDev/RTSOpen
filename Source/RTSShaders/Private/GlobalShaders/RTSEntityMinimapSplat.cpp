@@ -78,11 +78,14 @@ struct FPDRTSPerPixelStorageHelper
 #endif
 
 void FRTSMinimapSplat::BuildAndExecuteGraph(FRHICommandListImmediate& RHICmdList, UTextureRenderTarget2D* RenderTarget, const TRefCountPtr<FRDGPooledBuffer>& EntityInputPooledBuffer, const TArray<FLinearColor>& InData, 
+	const float CameraYawInRads, 
 	const FVector& RegionMin, 
 	const FVector& RegionSize)
 {
 	FRDGBuilder GraphBuilder(RHICmdList);
 	FRTSMinimapSplat::FParameters* AllocatedPassParameter = GraphBuilder.AllocParameters<FRTSMinimapSplat::FParameters>();
+	AllocatedPassParameter->CosCameraYawLookDirection = FMath::Cos(CameraYawInRads);
+	AllocatedPassParameter->SinCameraYawLookDirection = FMath::Sin(CameraYawInRads);
 
 	// Buffer UAV
 	FRDGBufferRef DataBufferRDG = GraphBuilder.RegisterExternalBuffer(
@@ -162,6 +165,7 @@ void FRTSMinimapSplat::BuildAndExecuteGraph(FRHICommandListImmediate& RHICmdList
 	constexpr uint32 GroupSize = 64; 
 	AllocatedPassParameter->RegionMin = FVector2f{static_cast<float>(RegionMin.X), static_cast<float>(RegionMin.Y)};
 	AllocatedPassParameter->RegionSize = FVector2f{static_cast<float>(RegionSize.X), static_cast<float>(RegionSize.Y)};
+
 	AllocatedPassParameter->NumEntities = InData.Num();
 	TShaderMapRef<FRTSMinimapSplat> ComputeShader(GetGlobalShaderMap(GMaxRHIFeatureLevel));
 	FRDGPassRef PassRef = FComputeShaderUtils::AddPass(GraphBuilder, RDG_EVENT_NAME("RTSMinimapSplat"), ComputeShader, AllocatedPassParameter, FComputeShaderUtils::GetGroupCount(InData.Num(), GroupSize));	

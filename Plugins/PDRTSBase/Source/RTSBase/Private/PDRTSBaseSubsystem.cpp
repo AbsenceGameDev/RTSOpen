@@ -14,6 +14,13 @@
 #include "Interfaces/PDRTSBuildableGhostInterface.h"
 #include "Pawns/PDRTSBaseUnit.h"
 
+#include "HAL/UnrealMemory.h"
+#include "HAL/ThreadingBase.h"
+#include "HAL/PlatformCrt.h"
+#include "Async/Mutex.h"
+#include "Async/UniqueLock.h"
+#include "Misc/ScopeRWLock.h"
+
 #include "Engine/TextureRenderTarget2D.h"
 
 // Shader inc
@@ -22,6 +29,10 @@
 struct FTransformFragment;
 class UMassCrowdRepresentationSubsystem;
 class AMassVisualizer;
+
+
+float UPDRTSBaseSubsystem::PlayerYawAsRad = 0.0;
+FRWLock UPDRTSBaseSubsystem::PlayerDataLock{};
 
 void UPDRTSBaseSubsystem::Initialize(FSubsystemCollectionBase& Collection)
 {
@@ -366,16 +377,47 @@ void UPDRTSBaseSubsystem::UpdateDataTexture()
 	TRefCountPtr<FRDGPooledBuffer> EntityInputPooledBufferCopy = EntityInputPooledBuffer;
 	FRTSBuildGlobalSortEntityShader BuildEntitySortComputeShaderCopy = BuildEntitySortComputeShader;
 
-	TArray<FLinearColor> InData;
-	OctreeUserQuery.MemCpyQueryBuffer<EPDQueryGroups::QUERY_GROUP_MINIMAP>(InData);
+	TArray<FLinearColor> EntitiesInBound;
+	OctreeUserQuery.MemCpyQueryBuffer<EPDQueryGroups::QUERY_GROUP_MINIMAP>(EntitiesInBound);
 	FPDOctreeUserQuery::FBoundsSimple QueryBounds = OctreeUserQuery.GetLatestQueryBounds<EPDQueryGroups::QUERY_GROUP_MINIMAP>();
 	
+
+#define DEBUG true
+#if DEBUG
+
+	UE_LOG(PDLog_RTSBase, Warning, TEXT("==================== UPDRTSBaseSubsystem::UpdateDataTexture ===================="))
+	int32 EntStep = 0;
+	for (const FLinearColor& EntityDatum : EntitiesInBound)
+	{
+		FVector2D EntityWorldPos = FVector2D{EntityDatum.R, EntityDatum.G};
+		FVector2D PixelPos = (EntityWorldPos - FVector2D(QueryBounds.Min)) / FVector2D(QueryBounds.Size) * 255.0;
+
+
+		float CameraYawLookDirection = UPDRTSBaseSubsystem::GetUserRotationCurrentTick();
+		FVector2D Centered = PixelPos - FVector2D(128.0, 128.0);
+		FVector2D RotatedCoord;
+		RotatedCoord.X = (Centered.X * cos(CameraYawLookDirection)) - (Centered.Y * sin(CameraYawLookDirection));
+		RotatedCoord.Y = (Centered.X * sin(CameraYawLookDirection)) + (Centered.Y * cos(CameraYawLookDirection));
+		RotatedCoord += FVector2D(128.0, 128.0);
+		
+
+		UE_LOG(PDLog_RTSBase, Warning, TEXT("=== Entity(%i)"), EntStep)
+		UE_LOG(PDLog_RTSBase, Warning, TEXT("======= Mapped PixelPos(%f, %f)"), PixelPos.X, PixelPos.Y)
+		UE_LOG(PDLog_RTSBase, Warning, TEXT("======= Rotated Mapped PixelPos(%f, %f)"), RotatedCoord.X, RotatedCoord.Y)
+		UE_LOG(PDLog_RTSBase, Warning, TEXT("======= Yaw look Direction: %f PI"), CameraYawLookDirection / PI)
+	
+	}
+	UE_LOG(PDLog_RTSBase, Warning, TEXT("========================================"))
+#endif
+
+
+
 	ENQUEUE_RENDER_COMMAND(UpdateDataTextureCommandName)(
 	[
 		BuildEntitySortComputeShaderCopy,
 		RenderTargetParam,
 		EntityInputPooledBufferCopy,
-		InData,
+		EntitiesInBound,
 		QueryBounds
 	](FRHICommandListImmediate& RHICmdList)
 	{
@@ -383,7 +425,8 @@ void UPDRTSBaseSubsystem::UpdateDataTexture()
 			RHICmdList,
 			RenderTargetParam,
 			EntityInputPooledBufferCopy,
-			InData,
+			EntitiesInBound,
+			UPDRTSBaseSubsystem::GetUserRotationCurrentTick(),
 			QueryBounds.Min,
 			QueryBounds.Size
 		);
@@ -407,6 +450,13 @@ void UPDRTSBaseSubsystem::DeleteBuffers()
 void UPDRTSBaseSubsystem::Tick(float DeltaTime) 
 {
 	// Resered for potential future use
+
+
+	const int32 RotationIndex = ((UPDRTSBaseSubsystem::GetUserRotationCurrentTick() / PI) + 0.5) * 2;
+
+	UE_LOG(PDLog_RTSBase, Warning, TEXT("UPDRTSBaseSubsystem::GetUserRotationCurrentTick -- Yaw in Radians translated to RotIdx: %i"), RotationIndex);
+	UE_LOG(PDLog_RTSBase, Warning, TEXT("UPDRTSBaseSubsystem::GetUserRotationCurrentTick -- Yaw in Radians: %f PI"), UPDRTSBaseSubsystem::GetUserRotationCurrentTick() / PI);
+	UE_LOG(PDLog_RTSBase, Warning, TEXT("UPDRTSBaseSubsystem::GetUserRotationCurrentTick -- Yaw in Degrees: %f"), FMath::RadiansToDegrees(UPDRTSBaseSubsystem::GetUserRotationCurrentTick()));
 }
 
 TStatId UPDRTSBaseSubsystem::GetStatId() const

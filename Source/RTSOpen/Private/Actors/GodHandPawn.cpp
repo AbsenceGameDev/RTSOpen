@@ -192,8 +192,12 @@ void AGodHandPawn::HoverTick(const float DeltaTime)
 
 void AGodHandPawn::RotationTick(float& DeltaTime)
 {
+	// const float RotationWrapped = FMath::Wrap(GetActorRotation().Yaw, 0.0, 360.0);
+	UPDRTSBaseSubsystem::SetUserRotationOnTick(FMath::DegreesToRadians(GetActorRotation().Yaw));
+	
 	// Not currently in rotation
 	if (InstanceState.CurrentRotationLeft <= 0.0) { return; }
+
 	
 	// Current queued rotation direction && Modify the delta-time with the turn rate modifier
 	constexpr double RotationStep = 90.0;
@@ -1159,10 +1163,10 @@ void AGodHandPawn::BeginPlay()
 	RTSSubSystem->OctreeUserQuery.SetCallingUser(this);
 
 	RTSSubSystem->BuildEntitySortComputeShader = FRTSBuildGlobalSortEntityShader::CreateLambda(
-		[](FRHICommandListImmediate& RHICmdList, UTextureRenderTarget2D* RenderTarget, const TRefCountPtr<FRDGPooledBuffer>& EntityInputPooledBuffer, TArray<FLinearColor> InData, FVector RegionMin, FVector RegionSize)
+		[](FRHICommandListImmediate& RHICmdList, UTextureRenderTarget2D* RenderTarget, const TRefCountPtr<FRDGPooledBuffer>& EntityInputPooledBuffer, TArray<FLinearColor> InData, float CameraYawInRadians, FVector RegionMin, FVector RegionSize)
 		{
 			TShaderMapRef<FRTSMinimapSplat> ComputeShader(GetGlobalShaderMap(GMaxRHIFeatureLevel));
-			ComputeShader->BuildAndExecuteGraph(RHICmdList, RenderTarget, EntityInputPooledBuffer, InData, RegionMin, RegionSize);
+			ComputeShader->BuildAndExecuteGraph(RHICmdList, RenderTarget, EntityInputPooledBuffer, InData, CameraYawInRadians, RegionMin, RegionSize);
 		});
 	RTSSubSystem->WorldInit(GetWorld());
 	EntityManager = RTSSubSystem->EntityManager;

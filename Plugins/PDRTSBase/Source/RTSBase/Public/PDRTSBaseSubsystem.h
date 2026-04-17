@@ -13,6 +13,8 @@
 
 #include "GameplayTagContainer.h"
 
+#include "HAL/CriticalSection.h"
+
 #include "Engine/StreamableManager.h"
 #include "Subsystems/EngineSubsystem.h"
 
@@ -25,7 +27,7 @@ class UTextureRenderTarget2D;
 struct FPDWorkUnitDatum;
 
 
-DECLARE_DELEGATE_SixParams(FRTSBuildGlobalSortEntityShader, FRHICommandListImmediate& /*RHICmdList*/, UTextureRenderTarget2D* /*RenderTarget*/, const TRefCountPtr<FRDGPooledBuffer>& /*EntityInputPooledBuffer*/, TArray<FLinearColor> /*InData*/, FVector RegionMin, FVector RegionSize)
+DECLARE_DELEGATE_SevenParams(FRTSBuildGlobalSortEntityShader, FRHICommandListImmediate& /*RHICmdList*/, UTextureRenderTarget2D* /*RenderTarget*/, const TRefCountPtr<FRDGPooledBuffer>& /*EntityInputPooledBuffer*/, TArray<FLinearColor> /*InData*/, float /* CameraYawInRadians */ , FVector /*RegionMin*/, FVector /*RegionSize*/)
 
 /** @brief Subsystem to handle octree size changes and to act as a manager for the entity workers */
 UCLASS()
@@ -38,6 +40,17 @@ public:
 	/** @brief Shorthand to get the subsystem,
 	 * @note as the engine will instantiate these subsystem earlier than anything will reasonably call Get()  */
 	static UPDRTSBaseSubsystem* Get();
+	FORCEINLINE static float GetUserRotationCurrentTick() 
+	{
+		FReadScopeLock ReadLock(UPDRTSBaseSubsystem::PlayerDataLock);
+		return PlayerYawAsRad;
+	}
+	FORCEINLINE static void SetUserRotationOnTick(float YawInRad) 
+	{
+		FWriteScopeLock WriteLock(UPDRTSBaseSubsystem::PlayerDataLock);
+		PlayerYawAsRad = YawInRad;
+	}
+
 
 	// Tickable Interface
 	virtual bool IsTickableWhenPaused() const final { return false; }
@@ -110,6 +123,7 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "Texture", CallInEditor)
 	void DeleteBuffers(); 
 
+	static float PlayerYawAsRad;
 	static constexpr uint32 GMaxEntityDim = 256;
 	static constexpr uint32 GMaxEntityDataSize = GMaxEntityDim * GMaxEntityDim;
 
@@ -187,6 +201,8 @@ private:
 
 	TRefCountPtr<FRDGPooledBuffer> EntityInputPooledBuffer;
 	bool bHasCreatedPooledBuffers = false;
+
+	static FRWLock PlayerDataLock;
 };
 
 

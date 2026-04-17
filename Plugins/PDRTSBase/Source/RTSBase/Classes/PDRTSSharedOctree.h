@@ -10,6 +10,8 @@
 #include "PDRTSCommon.h"
 #include "HAL/UnrealMemory.h"
 #include "Misc/ScopeLock.h"
+#include "Misc/ReadScopeLock.h"
+#include "Misc/ScopeRWLock.h"
 
 #include "PDRTSSharedOctree.generated.h"
 
@@ -367,7 +369,7 @@ using FPDOctreeUserQuery = struct QPDUserQuery_t
 		}
 
 		{
-			FScopeLock Lock(&BufferCS);
+			FWriteScopeLock Lock(BufferRWLock);
 			CurrentBuffer.FindOrAdd(Key);
 			BufferTypeMapping.FindOrAdd(Key, BufferType);		
 		}
@@ -384,7 +386,7 @@ using FPDOctreeUserQuery = struct QPDUserQuery_t
 		}
 
 		{
-			FScopeLock Lock(&BufferCS);
+			FWriteScopeLock Lock(BufferRWLock);
 			CurrentBuffer.FindOrAdd(Key);
 			BufferTypeMapping.FindOrAdd(Key, BufferType);
 		}		
@@ -446,7 +448,7 @@ using FPDOctreeUserQuery = struct QPDUserQuery_t
 		}
 		
 		{
-			FScopeLock Lock(&BufferCS);
+			FWriteScopeLock Lock(BufferRWLock);
 			if (bIsPointWithinQuery)
 			{
 				FLEntityCompound EntityCompound{OptionalEntityHandle, ComparePos, OptionalID};
@@ -480,7 +482,7 @@ using FPDOctreeUserQuery = struct QPDUserQuery_t
 		}
 		
 		{
-			FScopeLock Lock(&BufferCS);
+			FWriteScopeLock Lock(BufferRWLock);
 			if (bIsPointWithinQuery)
 			{
 				CurrentPackedDataBuffer.FindOrAdd(Key).Emplace(MinimapEncodedData);
@@ -497,7 +499,7 @@ using FPDOctreeUserQuery = struct QPDUserQuery_t
 	/** @brief Removes a buffer entry and query archetypes, via key */
 	void RemoveQueryData(const int32 Key)
 	{
-		FScopeLock Lock(&BufferCS);
+		FWriteScopeLock Lock(BufferRWLock);
 
 		QueryArchetypes.Remove(Key);
 		CurrentBuffer.Remove(Key);
@@ -507,7 +509,7 @@ using FPDOctreeUserQuery = struct QPDUserQuery_t
 	 * @note does not remove any key entries */
 	void ClearQueryDataAndSettings(int32 Key)
 	{
-		FScopeLock Lock(&BufferCS);
+		FWriteScopeLock Lock(BufferRWLock);
 
 		QShapeSelector ObjectAsBase = QueryArchetypes.FindOrAdd(Key);
 		TPDQueryBase<double>* BasePtr = ObjectAsBase.Get();
@@ -537,7 +539,7 @@ using FPDOctreeUserQuery = struct QPDUserQuery_t
 	 * @note does not remove any key entry */
 	void ClearQueryBuffer(int32 Key)
 	{
-		FScopeLock Lock(&BufferCS);
+		FWriteScopeLock Lock(BufferRWLock);
 		
 		EBufferType* BufferTypePtr = BufferTypeMapping.Find(Key);
 		if (UNLIKELY(BufferTypePtr == nullptr))
@@ -587,7 +589,7 @@ using FPDOctreeUserQuery = struct QPDUserQuery_t
 	template<EPDQueryGroups TKey, EBufferReadPos TPos>
 	FQueryResult_LocAndId ReadQueryBufferAtPosition(int32 BufferOffset) const
 	{
-		FScopeLock Lock(&BufferCS);
+		FReadScopeLock Lock(BufferRWLock);
 
 		constexpr BufferSelectorConds Conds = GetBufferSelectorConds<TKey>();
 		DefineBufferSelector
@@ -669,7 +671,8 @@ private:
 	}
 
 public:
-	mutable FCriticalSection BufferCS;
+	// mutable FCriticalSection BufferCS;
+	mutable FRWLock BufferRWLock;
 	mutable FCriticalSection ArchetypeCS;
 private:
 
