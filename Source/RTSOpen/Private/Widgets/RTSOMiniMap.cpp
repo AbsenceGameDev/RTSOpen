@@ -1,36 +1,12 @@
 ﻿/* @author: Ario Amin @ Permafrost Development. @copyright: Full BSL(1.1) License included at bottom of the file  */
 #include "Widgets/RTSOMiniMap.h"
 #include "PDRTSBaseSubsystem.h"
-#include "Widgets/Slate/SRTSOMiniMap.h"
 
 #include "Components/SizeBox.h"
 #include "Components/Image.h"
 #include "Engine/TextureRenderTarget2D.h"
 
 #include "GlobalShaders/RTSEntityMinimapSplat.h"
-
-TSharedRef<SWidget> URTSOMiniMap::RebuildWidget()
-{
-   SRTSOMiniMap::FArguments Args;
-   Args._RadarSize = RadarSize; 
-   Args._GenericMinimapIconRectSize = GenericMinimapIconRectSize;
-
-	const TSharedRef<SRTSOMiniMap> SlateMiniMapRef = SArgumentNew(Args, SRTSOMiniMap);
-	SlateMiniMap = SlateMiniMapRef.ToSharedPtr();
-	return SlateMiniMap.ToSharedRef();
-}
-
-void URTSOMiniMap::OnWidgetRebuilt()
-{
-	Super::OnWidgetRebuilt();
-}
-
-void URTSOMiniMap::ReleaseSlateResources(bool bReleaseChildren)
-{
-   SlateMiniMap.Reset();
-   Super::ReleaseSlateResources(bReleaseChildren);
-}
-
 
 void URTSOMiniMapUserWidget::NativeConstruct()
 {
