@@ -267,12 +267,21 @@ TODOS:
           ☐ The issue however is that the interact HUD is not being used and having that enables triggers the trace ticks, and I can't remember why it isn't enable so I will have to ensure that first, which will not be in this commit
 
 
-April 18th 2026 - Commit#0:
+
+
+
+April 18th 2026 - Commit#1:
 DONE:
+    Interact component and landscape queries:  
+        ✔ Made some larger changes in the interaction component as it was 1-2 years since I wrote this initially and I noticed I had not completed the design and I had dug myself into a hoel a bit with not beign able to diversify my traces. @done(26-04-18 17:00)
+            ✔ More acceptable Landscape tracing logic, player never moves so use camera as source, skip comparative traces when doing landscape tracing @done(26-04-18 17:00)
+            ✔ Do not skip tracing if no valid frame found as default, that is why the explcit parameter was for.. @done(26-04-18 17:00)
+            ✔ Trace IDs, so as many different traces possible can be configured to run each tick now, as it was meant but never actually ensured it was fully implemented. @done(26-04-18 17:00)
+        ✔ Update so Minimap query position sources the traces from the interact component @done(26-04-18 17:00)
     
 
-
 TODOS: 
+    ☐ I really need to update header comments soon, I have created a lot of new code and not been dilligent in adding comments to explain reasoning for it existing and usage 
     Minimap:
         ☐ Build some more minimap layers, much like the entity layer, 
             ☐ Object layer? Maybe finish the object query I was doing in the mass processor and use data from it to display on screen 
@@ -282,13 +291,6 @@ TODOS:
                 ☐ Where in the world is the center of the map, important for mapping our multiples to our movement
                 ☐ Source our current camera query bounds center, as that is teh center of our minimap view, and use it to traverse the image layer
         
-
-    Interact component and landscape queries:  
-      ✔ Update query position for the minimap queries so it queries the landscape from the camera. @done(26-04-12 05:22)
-          ☐ I realize this is not necessary and I will have to remove this becasue the interact component does a landscape trace each tick and I can just source the hit data from it
-          ☐ The issue however is that the interact HUD is not being used and having that enables triggers the trace ticks, and I can't remember why it isn't enable so I will have to ensure that first, which will not be in this commit
-
-
 
 
 COMING:    

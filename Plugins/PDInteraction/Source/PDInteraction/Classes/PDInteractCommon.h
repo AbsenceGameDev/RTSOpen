@@ -246,19 +246,30 @@ struct FPDTraceTickSettings
 	GENERATED_BODY()
 
 public:
-	
+	void Setup();
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	FName TraceNameID;
+
 	/** @brief Which type of trace will we perform */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
 	EPDTickTraceType TickTraceType = EPDTickTraceType::TRACE_RADIAL;
 
 	/** @brief Needs to be large enough to hit objects of differing 'per-object' interaction distance limit*/
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
-	int32 MaxTraceDistanceInUnrealUnits = DEFAULT_TRACER_MAX_RADIAL_DISTANCE; 	
+	int32 MaxTraceDistanceInUnrealUnits = DEFAULT_TRACER_MAX_INTERACTION_DISTANCE; 	
 
 	/** @brief Value is interpreted as per seconds. 0.0 will defaults to 'per-frame' for traces */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
 	double TickInterval  = 0.0;
-	
+
+	/** @brief THe collision channel we want to trace against */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	TEnumAsByte<ECollisionChannel> TraceChannel = DEDICATED_INTERACT_CHANNEL_ALT18;
+
+	/** @brief Is generated from the collision channel using 'UEngineTypes::ConvertToObjectType' */
+	UPROPERTY(VisibleInstanceOnly, BlueprintReadOnly)
+	TEnumAsByte<EObjectTypeQuery> GeneratedObjectType = EObjectTypeQuery::ObjectTypeQuery_MAX;
 };
 
 
@@ -271,39 +282,13 @@ struct FPDTraceSettings : public FTableRowBase
 	GENERATED_BODY()
 
 public:
-	void Setup();
-	
 	/** @brief Which type of trace will we perform */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
-	EPDTickTraceType TickTraceType = EPDTickTraceType::TRACE_RADIAL;
+	FText TickSetName = FText::AsCultureInvariant(TEXT("NA"));
 
 	/** @brief This contains settings for different trace types, as 'TickTraceType' can change we just change which settings we are reading from here */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
-	TMap<EPDTickTraceType, FPDTraceTickSettings> TickTraceTypeSettings;
-	
-	/** @brief THe collision channel we want to trace against */
-	UPROPERTY(EditAnywhere, BlueprintReadWrite)
-	TEnumAsByte<ECollisionChannel> TraceChannel = DEDICATED_INTERACT_CHANNEL_ALT18;
-
-	/** @brief Is generated from the collision channel using 'UEngineTypes::ConvertToObjectType' */
-	UPROPERTY(VisibleInstanceOnly, BlueprintReadOnly)
-	TEnumAsByte<EObjectTypeQuery> GeneratedObjectType = EObjectTypeQuery::ObjectTypeQuery_MAX;
-
-	/** @brief Needs to be large enough to hit objects of differing 'per-object' interaction distance limit*/
-	UPROPERTY(EditAnywhere, BlueprintReadWrite)
-	int32 MaxTraceDistanceInUnrealUnits = DEFAULT_TRACER_MAX_INTERACTION_DISTANCE; 
-
-	/** @brief Needs to be large enough to hit objects of differing 'per-object' interaction distance limit*/
-	UPROPERTY(EditAnywhere, BlueprintReadWrite)
-	int32 MaxRadialTraceDistanceInUnrealUnits = DEFAULT_TRACER_MAX_RADIAL_DISTANCE; 	
-	
-	/** @brief Value 0.5 Defaults to 2 traces per second */
-	UPROPERTY(EditAnywhere, BlueprintReadWrite)
-	double RadialTraceTickInterval = 0.5; 
-
-	/** @brief Value 0.0 Defaults to 'per-frame' traces */
-	UPROPERTY(EditAnywhere, BlueprintReadWrite)
-	double LineTraceTickInterval  = 0.0;
+	TArray<FPDTraceTickSettings> TickTraceTypeSettings;
 };
 
 /**
@@ -322,13 +307,17 @@ public:
 	/** @brief Result hit result structure */
 	UPROPERTY(BlueprintReadOnly)
 	FHitResult HitResult;
+
+	UPROPERTY(BlueprintReadOnly)
+	EPDTickTraceType TraceType;
 	
 	/** @brief Equality comparison, compares the resultflags and the hitresults */
 	bool operator==(const FPDTraceResult& Other) const
 	{
 		return ResultFlag == Other.ResultFlag
 		&& HitResult.GetActor() == Other.HitResult.GetActor()
-		&& HitResult.Location.Equals(Other.HitResult.Location);
+		&& HitResult.Location.Equals(Other.HitResult.Location)
+		&& TraceType == Other.TraceType;
 	}
 };
 
@@ -356,7 +345,7 @@ public:
 	/** @brief Clear all trace results */
 	void ClearTraceResults();
 	/** @brief Adds a new trace frame to the buffer */
-	void AddTraceFrame(EPDTraceResult TraceResult, const FHitResult& HitResult);
+	void AddTraceFrame(EPDTraceResult TraceResult, const FHitResult& HitResult, EPDTickTraceType TraceType);
 	
 	/** @brief Radially traced actors */
 	UPROPERTY()

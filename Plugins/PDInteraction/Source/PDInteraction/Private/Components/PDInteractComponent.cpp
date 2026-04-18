@@ -7,6 +7,9 @@
 #include <CollisionQueryParams.h>
 #include <Kismet/KismetSystemLibrary.h>
 
+/* Engine - Components */
+#include "Camera/CameraComponent.h"
+
 #include "GameFramework/GameStateBase.h"
 
 FPDTraceResult DummyTrace;
@@ -33,25 +36,38 @@ void UPDInteractComponent::TickComponent(float DeltaTime, enum ELevelTick TickTy
 		return;
 	}
 
-	switch(TraceSettings.TickTraceType)
+	// UE_LOG(LogTemp, Warning, TEXT("UPDInteractComponent::TickComponent"))
+	
+	CurrentTraceIndex = 0;
+	const int32 TraceLim = TraceSettings.TickTraceTypeSettings.Num();
+	for (int32 TraceIndex = 0; TraceIndex < TraceLim; TraceIndex++)
 	{
-	case EPDTickTraceType::TRACE_RADIAL:
-		PerformRadialTrace(DeltaTime);
-		break;
-	case EPDTickTraceType::TRACE_LINESHAPE:
-		PerformLineShapeTrace(DeltaTime);
-		break;
-	case EPDTickTraceType::TRACE_MAX:
-	default: ;
-		PerformLineShapeTrace(DeltaTime);
-		PerformRadialTrace(DeltaTime);
-		break;
+		CurrentTraceIndex = TraceIndex;
+		const FPDTraceTickSettings& Setting = TraceSettings.TickTraceTypeSettings[TraceIndex];
+
+		switch(Setting.TickTraceType)
+		{
+		case EPDTickTraceType::TRACE_RADIAL:
+			// UE_LOG(LogTemp, Warning, TEXT("UPDInteractComponent::TickComponent -- Radial Tick"))
+			PerformRadialTrace(DeltaTime, Setting);
+			break;
+		case EPDTickTraceType::TRACE_LINESHAPE:
+			// UE_LOG(LogTemp, Warning, TEXT("UPDInteractComponent::TickComponent -- Lineshape Tick"))
+			PerformLineShapeTrace(DeltaTime, Setting);
+			break;
+		case EPDTickTraceType::TRACE_MAX:
+		default: ;
+			// UE_LOG(LogTemp, Warning, TEXT("UPDInteractComponent::TickComponent -- All Tick Types"))
+			PerformLineShapeTrace(DeltaTime, Setting);
+			PerformRadialTrace(DeltaTime, Setting);
+			break;
+		}
 	}
 }
 
 void UPDInteractComponent::FindClosestRadialTraceActor(const FVector& OwnerActorLocation, const AActor*& ClosestInteractable)
 {
-	for (const AActor* TraceActor : TraceBuffer.RadialTraceActors)
+	for (const AActor* TraceActor : TraceBuffer[CurrentTraceIndex].RadialTraceActors)
 	{
 		if (TraceActor == nullptr)
 		{
@@ -72,9 +88,10 @@ void UPDInteractComponent::FindClosestRadialTraceActor(const FVector& OwnerActor
 	}
 }
 
-void UPDInteractComponent::BeginInteraction()
+void UPDInteractComponent::BeginInteraction(FName TraceID)
 {
-	const FPDTraceResult& TraceResult = GetTraceResult(true);
+	const bool bTraceIdxExists = TraceNameToIndexMappings.Contains(TraceID);
+	const FPDTraceResult& TraceResult = bTraceIdxExists ? GetTraceResultByIdx(true, TraceNameToIndexMappings[TraceID]) : FPDTraceResult{EPDTraceResult::TRACE_FAIL};
 	switch (TraceResult.ResultFlag)
 	{
 	case EPDTraceResult::TRACE_SUCCESS:
@@ -82,13 +99,14 @@ void UPDInteractComponent::BeginInteraction()
 	case EPDTraceResult::TRACE_FAIL:
 		return;
 	}
+	
 
 	// First find the closes interactable
 
 	const FVector& OwnerActorLocation = GetOwner()->GetActorLocation();
 
 	const AActor* ClosestInteractable = nullptr;
-	switch (TraceSettings.TickTraceType)
+	switch (TraceResult.TraceType)
 	{
 	case EPDTickTraceType::TRACE_RADIAL:
 		{
@@ -121,51 +139,54 @@ void UPDInteractComponent::BeginInteraction()
 		break;
 	}
 
-	ActiveInteractionTarget = ClosestInteractable;
-	StartInteractionTime = GetWorld()->GetGameState()->GetServerWorldTimeSeconds() ;
+	ActiveInteractionTargets.Emplace(TraceID, ClosestInteractable);
+	ActiveInteractionTimers.Emplace(TraceID);
+	StartInteractionTimes.Emplace(TraceID, GetWorld()->GetGameState()->GetServerWorldTimeSeconds());
 
 	// This is ensured further back in the codepath to be true if the ActiveInteractionTarget is not null
-	const IPDInteractInterface* AsInteractInterface = Cast<IPDInteractInterface>(ActiveInteractionTarget);
+	const IPDInteractInterface* AsInteractInterface = Cast<IPDInteractInterface>(ClosestInteractable);
 	if (AsInteractInterface == nullptr || FMath::IsNearlyZero(AsInteractInterface->GetInteractionTime()))
 	{
 		return;
 	}
 
 	FTimerDelegate InteractionTick;
-	InteractionTick.BindUObject(this, &UPDInteractComponent::TimerInteraction);
-	GetWorld()->GetTimerManager().SetTimer(ActiveInteractionTimer, InteractionTick, 0.1, true);
+	InteractionTick.BindUObject(this, &UPDInteractComponent::TimerInteraction, TraceID);
+	GetWorld()->GetTimerManager().SetTimer(ActiveInteractionTimers[TraceID], InteractionTick, 0.1, true);
 }
 
-void UPDInteractComponent::TimerInteraction()
+void UPDInteractComponent::TimerInteraction(FName TraceID)
 {
-	CurrentInteractionTime = GetWorld()->GetGameState()->GetServerWorldTimeSeconds();
+	const float CurrentInteractionTime = GetWorld()->GetGameState()->GetServerWorldTimeSeconds();
+	CurrentInteractionTimes[TraceID] = CurrentInteractionTime;
 
 	// This is ensured further back in the codepath to be true if the ActiveInteractionTarget is not null
-	const IPDInteractInterface* AsInteractInterface = Cast<IPDInteractInterface>(ActiveInteractionTarget);
+	const IPDInteractInterface* AsInteractInterface = Cast<IPDInteractInterface>(ActiveInteractionTargets[TraceID]);
 
 	if (FMath::IsNearlyZero(AsInteractInterface->GetInteractionTime()))
 	{
-		EndInteraction();
+		EndInteraction(TraceID);
 		return;
 	}
 
 	const double InteractionPercent = (CurrentInteractionTime + SMALL_NUMBER) / AsInteractInterface->GetInteractionTime();
 	if (InteractionPercent + SMALL_NUMBER > 1.0)
 	{
-		EndInteraction();
+		EndInteraction(TraceID);
 		return;
 	}
 }
 
-void UPDInteractComponent::EndInteraction()
+void UPDInteractComponent::EndInteraction(FName TraceID)
 {
-	CurrentInteractionTime = GetWorld()->GetGameState()->GetServerWorldTimeSeconds() - StartInteractionTime;
-	StartInteractionTime = 0.0;
-	GetWorld()->GetTimerManager().ClearTimer(ActiveInteractionTimer);
+	CurrentInteractionTimes[TraceID] = GetWorld()->GetGameState()->GetServerWorldTimeSeconds() - StartInteractionTimes[TraceID];
+	StartInteractionTimes[TraceID] = 0.0;
+	GetWorld()->GetTimerManager().ClearTimer(ActiveInteractionTimers[TraceID]);
 
-	if (ActiveInteractionTarget == nullptr)
+	const AActor* ActiveInteractionTarget = ActiveInteractionTargets[TraceID];
+	if (ActiveInteractionTargets[TraceID] == nullptr)
 	{
-		CurrentInteractionTime = 0;
+		CurrentInteractionTimes[TraceID] = 0;
 		return;
 	}
 
@@ -175,7 +196,7 @@ void UPDInteractComponent::EndInteraction()
 	FPDInteractionParamsWithCustomHandling InteractionParams;
 	InteractionParams.InstigatorActor = GetOwner();
 	InteractionParams.InteractionPercent = FMath::IsNearlyZero(AsInteractInterface->GetInteractionTime())
-		? 1.0 : (CurrentInteractionTime + SMALL_NUMBER) / AsInteractInterface->GetInteractionTime() ;
+		? 1.0 : (CurrentInteractionTimes[TraceID] + SMALL_NUMBER) / AsInteractInterface->GetInteractionTime() ;
 	InteractionParams.InstigatorComponentClass; // @todo
 	InteractionParams.OptionalInteractionTags;  // @todo
 	
@@ -196,20 +217,42 @@ void UPDInteractComponent::EndInteraction()
 	}
 }
 
-const FPDTraceResult& UPDInteractComponent::GetTraceResult(const bool bSearchForValidCachedResults) const
+
+const FPDTraceResult& UPDInteractComponent::GetTraceResult(const bool bSearchForValidCachedResults, const FName TraceID) const
 {
-	if (TraceBuffer.HasValidResults() == false) { return DummyTrace; }
+	const bool bContainsTraceIdx = TraceNameToIndexMappings.Contains(TraceID);
+	// if (false == bContainsTraceIdx) UE_LOG(LogTemp, Warning, TEXT("UPDInteractComponent::GetTraceResult -- Did not find TraceID(%s)"), *TraceID.ToString())
+	return bContainsTraceIdx ? GetTraceResultByIdx(bSearchForValidCachedResults, TraceNameToIndexMappings[TraceID]) : DummyTrace;
+}
+
+
+const FPDTraceResult& UPDInteractComponent::GetTraceResultByIdx(const bool bSearchForValidCachedResults, const int32 TraceIndex) const
+{
+	const FPDTraceBuffer& PerTraceBuffer = TraceBuffer[TraceIndex];
+	if (PerTraceBuffer.Frames.IsEmpty()) 
+	{ 
+		// UE_LOG(LogTemp, Warning, TEXT("UPDInteractComponent::GetTraceResult -- PerTraceBuffer has no frames"))
+		return DummyTrace; 
+	}
 	
-	const FPDTraceResult& PDTraceResult = bSearchForValidCachedResults ? TraceBuffer.GetLastValidResult() : TraceBuffer.GetLastTraceResult();
+	const FPDTraceResult& PDTraceResult = bSearchForValidCachedResults ? PerTraceBuffer.GetLastValidResult() : PerTraceBuffer.GetLastTraceResult();
 	const FHitResult& TraceResult = PDTraceResult.HitResult;
 	
 	const IPDInteractInterface* Interface = Cast<IPDInteractInterface>(TraceResult.GetActor());
 
-	const bool bValidHit = Interface != nullptr && TraceResult.IsValidBlockingHit();
-	const double InteractionDistance = bValidHit ? Interface->GetMaxInteractionDistance() : 0.0f;
-	const double TraceDistance       = bValidHit ? TraceResult.Distance : 1.0f;
-	
-	return TraceDistance < InteractionDistance ? PDTraceResult : DummyTrace; // Do not allow returning items that are traced past their max interaction distance
+	if (TEXT("LandscapeTrace") == TraceSettings.TickTraceTypeSettings[TraceIndex].TraceNameID.ToString())
+	{
+		const bool bValidHit = TraceResult.IsValidBlockingHit();		
+		return bValidHit ? PDTraceResult : DummyTrace; 
+	}
+	else
+	{	
+		const bool bValidHit = Interface != nullptr && TraceResult.IsValidBlockingHit();
+		const double InteractionDistance = bValidHit ? Interface->GetMaxInteractionDistance() : 0.0f;
+		const double TraceDistance       = bValidHit ? TraceResult.Distance : 1.0f;
+		
+		return TraceDistance < InteractionDistance ? PDTraceResult : DummyTrace; // Do not allow returning items that are traced past their max interaction distance
+	}
 }
 
 const FPDTraceSettings& UPDInteractComponent::GetTraceSettings() const
@@ -222,9 +265,10 @@ void UPDInteractComponent::SetTraceSettings(const FPDTraceSettings& NewSettings)
 	TraceSettings = NewSettings;
 }
 
-bool UPDInteractComponent::ContainsValidTraceResults() const
+bool UPDInteractComponent::ContainsValidTraceResults(FName TraceID) const
 {
-	return GetTraceResult(true) != DummyTrace;
+	const bool bTraceIdxExists = TraceNameToIndexMappings.Contains(TraceID);
+	return bTraceIdxExists ? GetTraceResultByIdx(true, TraceNameToIndexMappings[TraceID]) != DummyTrace : false;
 }
 
 TArray<AActor*> UPDInteractComponent::GetAllInteractablesInRadius(double Radius, bool bIgnorePerObjectInteractionDistance)
@@ -238,7 +282,7 @@ TArray<AActor*> UPDInteractComponent::GetAllInteractablesInRadius(double Radius,
 		OwnerPawn,
 		OverridePosition == PD::Interact::Constants::INVALID_WORLD_LOC ? OwnerPawn->GetActorLocation() : OverridePosition,
 		Radius,
-		{TraceSettings.GeneratedObjectType},
+		{TraceSettings.TickTraceTypeSettings[CurrentTraceIndex].GeneratedObjectType},
 		nullptr, 
 		{OwnerPawn},
 		Aggregate);
@@ -289,11 +333,13 @@ void UPDInteractComponent::TraceToTarget(const FVector& TraceEnd, FCollisionQuer
 	TraceToTarget(TraceStart, TraceEnd, TraceParams);
 }
 void UPDInteractComponent::TraceToTarget(const FVector& TraceStart, const FVector& TraceEnd, FCollisionQueryParams& TraceParams)
-{
+{	
 	FHitResult TraceHitResult;
 	bool bInteractTraceResult = false;
-	PerformSimpleTrace(TraceStart, TraceEnd, TraceParams, TraceHitResult, bInteractTraceResult);
-	TraceBuffer.AddTraceFrame(bInteractTraceResult ? EPDTraceResult::TRACE_SUCCESS : EPDTraceResult::TRACE_FAIL, TraceHitResult);
+
+	const FPDTraceTickSettings& CurrentTraceSettings = TraceSettings.TickTraceTypeSettings[CurrentTraceIndex];
+	PerformSimpleTrace(TraceStart, TraceEnd, CurrentTraceSettings.TraceChannel, TraceParams, TraceHitResult, bInteractTraceResult);
+	TraceBuffer[CurrentTraceIndex].AddTraceFrame(bInteractTraceResult ? EPDTraceResult::TRACE_SUCCESS : EPDTraceResult::TRACE_FAIL, TraceHitResult, CurrentTraceSettings.TickTraceType);
 }
 FPDTraceResult UPDInteractComponent::TraceToTargetAndReset(const FVector& TraceEnd)
 {
@@ -318,9 +364,20 @@ FPDTraceResult UPDInteractComponent::TraceToTargetAndReset(const FVector& TraceS
 	if (OwnerPawn == nullptr) { return FPDTraceResult(); }
 	
 	TraceToTarget(TraceStart, TraceEnd, TraceParams);
-	FPDTraceResult InteractTraceResult = GetTraceResult(true);
-	ClearTraceResults();
+	FPDTraceResult InteractTraceResult = GetTraceResultByIdx(true, CurrentTraceIndex);
+	ClearCurrentTraceResult();
 	return InteractTraceResult;
+}
+
+const TArray<AActor*>& UPDInteractComponent::GetFirstRadialTraceResults() const 
+{ 
+	static const TArray<AActor*> DummyReturn;
+	const FPDTraceBuffer* FoundBuffer = TraceBuffer.FindByPredicate(
+		[](const FPDTraceBuffer& Elem) -> bool
+		{
+			return false == Elem.RadialTraceActors.IsEmpty();
+		});
+	return nullptr != FoundBuffer ? FoundBuffer->RadialTraceActors : DummyReturn;
 }
 
 void UPDInteractComponent::Prerequisites()
@@ -336,79 +393,134 @@ void UPDInteractComponent::Prerequisites()
 	const FPDTraceSettings* TraceSettingsPtr = TraceSettingsHandle.GetRow<FPDTraceSettings>("");
 	if (TraceSettingsPtr != nullptr) { TraceSettings = *TraceSettingsPtr; }
 	
-	TraceSettings.Setup();
-	TraceBuffer.Setup();
+	const int32 TraceLim = TraceSettings.TickTraceTypeSettings.Num();
+	TraceBuffer.SetNum(TraceLim);
+
+	int32 TraceIdx = 0;
+	for (FPDTraceTickSettings& PerTraceSetting : TraceSettings.TickTraceTypeSettings) 
+	{
+		PerTraceSetting.Setup();
+		TraceNameToIndexMappings.Emplace(PerTraceSetting.TraceNameID, TraceIdx++);
+	}
+	for (FPDTraceBuffer& PerTraceBuffer : TraceBuffer) 
+	{ 
+		PerTraceBuffer.Setup(); 
+	}
+		
+
 	SetComponentTickEnabled(true);
 }
 
-void UPDInteractComponent::ClearTraceResults()
+void UPDInteractComponent::ClearCurrentTraceResult()
 {
-	TraceBuffer.ClearTraceResults();
+	ClearTraceResult(CurrentTraceIndex);
+}
+void UPDInteractComponent::ClearTraceResult(int32 TraceIdx)
+{
+	if (false == TraceBuffer.IsValidIndex(TraceIdx)) { return; }
+
+	TraceBuffer[TraceIdx].ClearTraceResults();
+}
+void UPDInteractComponent::ClearAllTraceResults()
+{
+	for(FPDTraceBuffer& Buffer : TraceBuffer) {Buffer.ClearTraceResults();}
 }
 
-void UPDInteractComponent::PerformLineShapeTrace_Implementation(double DeltaSeconds)
+
+static bool bLogTrace = false;
+void UPDInteractComponent::PerformLineShapeTrace_Implementation(double DeltaSeconds, const FPDTraceTickSettings& PerTickTraceSettings)
 {
-	TraceBuffer.LineTraceTickTime += DeltaSeconds;
-	const bool bCanTick = TraceBuffer.LineTraceTickTime >= TraceSettings.LineTraceTickInterval && GetOwner<APawn>() != nullptr;
+	TraceBuffer[CurrentTraceIndex].LineTraceTickTime += DeltaSeconds;
+	const bool bCanTick = TraceBuffer[CurrentTraceIndex].LineTraceTickTime >= PerTickTraceSettings.TickInterval && GetOwner<APawn>() != nullptr;
 	if (bCanTick == false) { return; }
-	
+
 	FVector TraceStart, TraceEnd;
 	FCollisionQueryParams TraceParams;
 	FHitResult InteractHitResult;
 	
-	EPDTraceResult TraceResult;
-	PerformComparativeTraces(TraceStart, TraceEnd, TraceParams, InteractHitResult, TraceResult);
-	TraceBuffer.AddTraceFrame(TraceResult, InteractHitResult);
+	// UE_LOG(LogTemp, Warning, TEXT("UPDInteractComponent::PerformLineShapeTrace"))
+	if (TEXT("LandscapeTrace") == PerTickTraceSettings.TraceNameID.ToString())
+	{
+		// bLogTrace = true;
+		// UE_LOG(LogTemp, Warning, TEXT("UPDInteractComponent::PerformLineShapeTrace -- Performing Landscape Trace"))
+		EPDTraceResult TraceResult;
+		PerformCameraTrace(TraceStart, TraceEnd, PerTickTraceSettings, TraceParams, InteractHitResult, TraceResult);
+		TraceBuffer[CurrentTraceIndex].AddTraceFrame(TraceResult, InteractHitResult, PerTickTraceSettings.TickTraceType);
+	}
+	else
+	{
+		// bLogTrace = false;
+		EPDTraceResult TraceResult;
+		PerformComparativeTraces(TraceStart, TraceEnd, PerTickTraceSettings, TraceParams, InteractHitResult, TraceResult);
+		TraceBuffer[CurrentTraceIndex].AddTraceFrame(TraceResult, InteractHitResult, PerTickTraceSettings.TickTraceType);
+	}
 }
 
-void UPDInteractComponent::PerformRadialTrace_Implementation(double DeltaSeconds)
+void UPDInteractComponent::PerformRadialTrace_Implementation(double DeltaSeconds, const FPDTraceTickSettings& PerTickTraceSettings)
 {
-	TraceBuffer.RadialTraceTickTime += DeltaSeconds;
-	const bool bCanTick = TraceBuffer.RadialTraceTickTime >= TraceSettings.RadialTraceTickInterval;
+	TraceBuffer[CurrentTraceIndex].RadialTraceTickTime += DeltaSeconds;
+	const bool bCanTick = TraceBuffer[CurrentTraceIndex].RadialTraceTickTime >= PerTickTraceSettings.TickInterval;
 	if (bCanTick == false) { return; }
 
 	// Clear accumulated time and Store any interactables
-	TraceBuffer.RadialTraceTickTime = 0;
-	TraceBuffer.RadialTraceActors = GetAllInteractablesInRadius(TraceSettings.MaxRadialTraceDistanceInUnrealUnits);
+	TraceBuffer[CurrentTraceIndex].RadialTraceTickTime = 0;
+	TraceBuffer[CurrentTraceIndex].RadialTraceActors = GetAllInteractablesInRadius(PerTickTraceSettings.MaxTraceDistanceInUnrealUnits);
+}
+void UPDInteractComponent::PerformCameraTrace(FVector& TraceStart, FVector& TraceEnd, const FPDTraceTickSettings& PerTickTraceSettings, FCollisionQueryParams& TraceParams, FHitResult& TraceHitResult, EPDTraceResult& TraceResultFlag) const
+{
+	if (Camera == nullptr) 
+	{
+		// if (bLogTrace) UE_LOG(LogTemp, Warning, TEXT("UPDInteractComponent::PerformLineShapeTrace -- Performing Landscape Trace -- Camera is NULL"))
+
+		TraceResultFlag = EPDTraceResult::TRACE_FAIL; 
+		return; 
+	}
+
+	FMinimalViewInfo ViewInfo;
+	Camera->GetCameraView(0.0, ViewInfo);
+
+	TraceStart = ViewInfo.Location;
+	FRotator PawnViewRotation = ViewInfo.Rotation;
+	TraceEnd = TraceStart + (GetMaxTraceDistance(PerTickTraceSettings.TraceNameID) * PawnViewRotation.Vector());	
+
+	bool bTraceResult = false;
+	TracePass(TraceStart, TraceEnd, PerTickTraceSettings.TraceChannel, TraceParams, TraceHitResult, bTraceResult);	
+	TraceResultFlag = bTraceResult ? EPDTraceResult::TRACE_SUCCESS : EPDTraceResult::TRACE_FAIL; 
+	
+	// if (bLogTrace) UE_LOG(LogTemp, Warning, TEXT("UPDInteractComponent::PerformLineShapeTrace -- Performing Landscape Trace -- Trace Start: %s"), *TraceStart.ToString())
+	// if (bLogTrace) UE_LOG(LogTemp, Warning, TEXT("UPDInteractComponent::PerformLineShapeTrace -- Performing Landscape Trace -- Trace End: %s"), *TraceEnd.ToString())
+	// if (bLogTrace) UE_LOG(LogTemp, Warning, TEXT("UPDInteractComponent::PerformLineShapeTrace -- Performing Landscape Trace -- Trace Result: %s"), *FString(bTraceResult ? TEXT("TRACE_SUCCESS") : TEXT("TRACE_FAIL")))
 }
 
-void UPDInteractComponent::PerformComparativeTraces(FVector& TraceStart, FVector& TraceEnd, FCollisionQueryParams& TraceParams, FHitResult& TraceHitResult, EPDTraceResult& TraceResultFlag) const
+void UPDInteractComponent::PerformComparativeTraces(FVector& TraceStart, FVector& TraceEnd, const FPDTraceTickSettings& PerTickTraceSettings, FCollisionQueryParams& TraceParams, FHitResult& TraceHitResult, EPDTraceResult& TraceResultFlag) const
 {
 	APawn* OwnerPawn = GetOwner<APawn>();
 	if (OwnerPawn == nullptr) { return; }
 
-	APlayerController* OwnerPC = Cast<APlayerController>(GetOwner<APawn>()->GetController());
-	if (OwnerPC == nullptr) { return; }
-	
-	FRotator PawnViewRotation;
-	OwnerPC->GetPlayerViewPoint(TraceStart, PawnViewRotation);
-	TraceEnd = TraceStart + (GetMaxTraceDistance() * PawnViewRotation.Vector());
-
 	// Trace 1 (Leading trace)
-	FHitResult CameraTraceResult;
-	bool bTraceResult = false;
-	TracePass(TraceStart, TraceEnd, TraceParams, CameraTraceResult, bTraceResult);
+	PerformCameraTrace(TraceStart, TraceEnd, PerTickTraceSettings, TraceParams, TraceHitResult, TraceResultFlag);
+	const bool bTraceResult = TraceResultFlag == EPDTraceResult::TRACE_SUCCESS;
 
 	// Trace 2 (Comparison trace)	
 	const FVector PawnEyeLocation = OwnerPawn->GetActorLocation() + FVector(0.f,0.f, OwnerPawn->BaseEyeHeight);
 	const FVector TargetEndLocation = 
-		CameraTraceResult.ImpactPoint != PD::Interact::Constants::INVALID_WORLD_LOC ? CameraTraceResult.ImpactPoint :
-		CameraTraceResult.Location    != PD::Interact::Constants::INVALID_WORLD_LOC ? CameraTraceResult.Location    :
+		TraceHitResult.ImpactPoint != PD::Interact::Constants::INVALID_WORLD_LOC ? TraceHitResult.ImpactPoint :
+		TraceHitResult.Location    != PD::Interact::Constants::INVALID_WORLD_LOC ? TraceHitResult.Location    :
 		PD::Interact::Constants::INVALID_WORLD_LOC;
 
 	bool bComparativeTraces = false;
-	TracePass(PawnEyeLocation, TargetEndLocation , TraceParams, TraceHitResult, bComparativeTraces);
+	TracePass(PawnEyeLocation, TargetEndLocation, PerTickTraceSettings.TraceChannel, TraceParams, TraceHitResult, bComparativeTraces);
 
 	// Combine trace results
-	bool bInteractTracesValid   = bTraceResult && bComparativeTraces && TraceHitResult.GetActor() != nullptr && CameraTraceResult.GetActor() != nullptr;
-	bool bCompareInteractTraces = TraceHitResult.GetActor() == CameraTraceResult.GetActor();	
+	bool bInteractTracesValid   = bTraceResult && bComparativeTraces && TraceHitResult.GetActor() != nullptr && TraceHitResult.GetActor() != nullptr;
+	bool bCompareInteractTraces = TraceHitResult.GetActor() == TraceHitResult.GetActor();	
 	TraceResultFlag = bTraceResult ? EPDTraceResult::TRACE_SUCCESS : EPDTraceResult::TRACE_FAIL; 
 	
 	if (bInteractTracesValid && bCompareInteractTraces) { return; }
 	TraceHitResult = FHitResult(); // Clear hit-results if comparison checks or validity checks fail
 }
 
-void UPDInteractComponent::PerformSimpleTrace(const FVector& TraceStart, const FVector& TraceEnd, FCollisionQueryParams& TraceParams, FHitResult& TraceHitResult, bool& bTraceResultFlag) const
+void UPDInteractComponent::PerformSimpleTrace(const FVector& TraceStart, const FVector& TraceEnd, ECollisionChannel TraceChannel, FCollisionQueryParams& TraceParams, FHitResult& TraceHitResult, bool& bTraceResultFlag) const
 {
 	const APawn* OwnerPawn = GetOwner<APawn>();
 
@@ -416,14 +528,14 @@ void UPDInteractComponent::PerformSimpleTrace(const FVector& TraceStart, const F
 	const FVector ViewOffset = FVector(0.f,0.f, OwnerPawn->BaseEyeHeight);
 	const FVector SelectedStart = bTraceFromView ? OwnerPawn->GetActorLocation() + ViewOffset : TraceStart;
 
-	TracePass(SelectedStart, TraceEnd, TraceParams, TraceHitResult, bTraceResultFlag);
+	TracePass(SelectedStart, TraceEnd, TraceChannel, TraceParams, TraceHitResult, bTraceResultFlag);
 	if (bTraceResultFlag == false || TraceHitResult.GetActor() == nullptr)
 	{
 		TraceHitResult = FHitResult(); 
 	}
 }
 
-void UPDInteractComponent::TracePass(const FVector& TraceFromLocation, const FVector& TraceEnd, FCollisionQueryParams& TraceParams, FHitResult& InteractHitResult, bool& bTraceResultFlag) const
+void UPDInteractComponent::TracePass(const FVector& TraceFromLocation, const FVector& TraceEnd,  ECollisionChannel TraceChannel, FCollisionQueryParams& TraceParams, FHitResult& InteractHitResult, bool& bTraceResultFlag) const
 {
 	const APawn* OwnerPawn = GetOwner<APawn>();
 
@@ -435,7 +547,7 @@ void UPDInteractComponent::TracePass(const FVector& TraceFromLocation, const FVe
 	}
 	
 	InteractHitResult = FHitResult(ForceInit);
-	bTraceResultFlag = GetWorld()->SweepSingleByChannel(InteractHitResult, TraceFromLocation, TraceEnd, FQuat::Identity, TraceSettings.TraceChannel, FCollisionShape::MakeBox(FVector(BoxTraceExtent)), TraceParams);
+	bTraceResultFlag = GetWorld()->SweepSingleByChannel(InteractHitResult, TraceFromLocation, TraceEnd, FQuat::Identity, TraceChannel, FCollisionShape::MakeBox(FVector(BoxTraceExtent)), TraceParams);
 }
 
 

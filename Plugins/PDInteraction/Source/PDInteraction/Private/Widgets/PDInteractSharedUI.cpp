@@ -47,7 +47,7 @@ void UPDWRadialInteract_HUD::NativeTick(const FGeometry& MyGeometry, float InDel
 	{
 		return;
 	}
-	TArray<AActor*> Incoming = InteractComponent->GetRadialTraceResults();
+	TArray<AActor*> Incoming = InteractComponent->GetFirstRadialTraceResults();
 
 
 	TArray<AActor*> KeysToRemove{};

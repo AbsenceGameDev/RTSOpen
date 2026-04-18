@@ -7,6 +7,7 @@
 #include "Components/ActorComponent.h"
 #include "PDInteractComponent.generated.h"
 
+class UCameraComponent;
 /**
  * @brief This component has two main functions: \n 1. Handling interaction logic. \n 2. Performing traces per frame, for downstream purposes
  */
@@ -21,25 +22,34 @@ public:
 	/** @brief Calls trace functions. Which trace functions depends on which trace type has been assigned to 'TraceSettings.TickTraceType'*/
 	virtual void TickComponent(float DeltaTime, ELevelTick TickType, FActorComponentTickFunction* ThisTickFunction) override;
 
+
+	/** @brief */
+	void SetCamera(UCameraComponent* InCamera) { Camera = InCamera; }; 
+
 	/** @brief Finds the closest interactable of the actors in the radial trace  */
 	void FindClosestRadialTraceActor(const FVector& OwnerActorLocation, const AActor*& ClosestInteractable);
 
 	/** @brief Registers the start interaction time and sets the interaction timer that accumulates the held time */
 	UFUNCTION(BlueprintCallable)
-	virtual void BeginInteraction();
+	virtual void BeginInteraction(FName TraceID);
 	/** @brief Runs on a timer from the start of an interaction until the end of one */
 	UFUNCTION()
-	virtual void TimerInteraction();
+	virtual void TimerInteraction(FName TraceID);
 	/** @brief Called when an interaction ends, either by completing the interaction or stopping early 
 	 * - Registers the current interaction time
 	 * - calculates total interaction time
 	 * - clears the interaction timer */
 	UFUNCTION(BlueprintCallable)
-	virtual void EndInteraction();
+	virtual void EndInteraction(FName TraceID);
+
 	
 	/** @brief Returns latest trace-result, or enforcing the latest valid in the buffer if one exists */
 	UFUNCTION(BlueprintCallable)
-	const FPDTraceResult& GetTraceResult(bool bSearchForValidCachedResults) const;
+	const FPDTraceResult& GetTraceResult(bool bSearchForValidCachedResults, const FName TraceID) const;	
+	/** @brief Returns latest trace-result, or enforcing the latest valid in the buffer if one exists 
+	 * @note this function is unsafe to call directly, assumes Idx is known to be valid. */
+	UFUNCTION(BlueprintCallable)
+	const FPDTraceResult& GetTraceResultByIdx(bool bSearchForValidCachedResults, const int32 TraceIndex) const; 
 	/** @brief Returns the active trace settings for this component. This contains the tick-type, tick behaviours etc. */
 	UFUNCTION(BlueprintCallable)
 	const FPDTraceSettings& GetTraceSettings() const;
@@ -48,7 +58,7 @@ public:
 	void SetTraceSettings(const FPDTraceSettings& NewSettings);
 	/** @brief Checks if 'TraceBuffer' contains valid trace results */
 	UFUNCTION(BlueprintCallable)
-	bool ContainsValidTraceResults() const;
+	bool ContainsValidTraceResults(FName TraceID) const;
 
 	/** @brief Returns a list of all interactables within the given radius */
 	UFUNCTION(BlueprintCallable)
@@ -77,20 +87,58 @@ public:
 	/** @brief Returns the max trace distance allowed for the trace component no matter which object.
 	 * Object can set per interaction distances within the range [0, GetMaxTraceDistance()] */
 	UFUNCTION(BlueprintCallable)
-	FORCEINLINE double GetMaxTraceDistance(const bool bRadial = false) const
+	FORCEINLINE double GetMaxTraceDistance(const FName TraceID) const
 	{
-		return bRadial ? TraceSettings.MaxRadialTraceDistanceInUnrealUnits : TraceSettings.MaxTraceDistanceInUnrealUnits;
+		const bool bTraceIdxExists = TraceNameToIndexMappings.Contains(TraceID);
+		return bTraceIdxExists 
+			? TraceSettings.TickTraceTypeSettings[TraceNameToIndexMappings[TraceID]].MaxTraceDistanceInUnrealUnits
+			: 0.0;
+	}
+	UFUNCTION(BlueprintCallable)
+	FORCEINLINE double GetMaxTraceDistanceByIdx(const int32 TraceIdx) const
+	{
+		const bool bTraceIdxExists = TraceSettings.TickTraceTypeSettings.IsValidIndex(TraceIdx);
+		return bTraceIdxExists ? TraceSettings.TickTraceTypeSettings[TraceIdx].MaxTraceDistanceInUnrealUnits : 0.0;
 	}
 
 	/** @brief Return the radially traced actor.
 	 * @todo integrate some mass entity tracing into this? Or a subclass of the trace component
 	 * @todo and rewrite the base class slightly to allow smooth integration between the systems on the game module level */
 	UFUNCTION(BlueprintCallable)
-	const TArray<AActor*>& GetRadialTraceResults() const { return TraceBuffer.RadialTraceActors; }
+	const TArray<AActor*>& GetRadialTraceResults(const FName TraceID) const 
+	{ 
+		static const TArray<AActor*> DummyReturn;
+		const bool bTraceIdxExists = TraceNameToIndexMappings.Contains(TraceID);
+		return bTraceIdxExists ? TraceBuffer[TraceNameToIndexMappings[TraceID]].RadialTraceActors : DummyReturn;
+	}
+	UFUNCTION(BlueprintCallable)
+	const TArray<AActor*>& GetRadialTraceResultsByIdx(const int32 TraceIdx) const 
+	{ 
+		static const TArray<AActor*> DummyReturn;
+		const bool bTraceIdxExists = TraceBuffer.IsValidIndex(TraceIdx);
+		return bTraceIdxExists ? TraceBuffer[TraceIdx].RadialTraceActors : DummyReturn;
+	}
+	/** @brief Gets the result from the first valid tracer of Radial type */
+	UFUNCTION(BlueprintCallable)
+	const TArray<AActor*>& GetFirstRadialTraceResults() const;
+
+
 
 	/** @brief Returns a const reference of the trace buffer */
 	UFUNCTION(BlueprintCallable)
-	const FPDTraceBuffer& GetTraceBuffer() const { return TraceBuffer; }
+	const FPDTraceBuffer& GetTraceBuffer(const FName TraceID) const 
+	{ 
+		static const FPDTraceBuffer DummyReturn;
+		const bool bTraceIdxExists = TraceNameToIndexMappings.Contains(TraceID);
+		return bTraceIdxExists ? TraceBuffer[TraceNameToIndexMappings[TraceID]] : DummyReturn; 
+	}
+	UFUNCTION(BlueprintCallable)
+	const FPDTraceBuffer& GetTraceBufferByIdx(const int32 TraceIdx) const 
+	{ 
+		static const FPDTraceBuffer DummyReturn;
+		const bool bTraceIdxExists = TraceBuffer.IsValidIndex(TraceIdx);
+		return bTraceIdxExists ? TraceBuffer[TraceIdx] : DummyReturn; 
+	}	
 
 	/** @brief Set override trace position. This is a temporary override which modifies
 	 * the trace behaviour by translating the trace start position  */
@@ -108,23 +156,30 @@ protected:
 	
 	/** @brief Clear the trace buffer */
 	UFUNCTION(BlueprintCallable)
-	void ClearTraceResults();
+	void ClearCurrentTraceResult();
+	UFUNCTION(BlueprintCallable)
+	void ClearTraceResult(const int32 TraceIdx);	
+	UFUNCTION(BlueprintCallable)
+	void ClearAllTraceResults();
 	
+
 	/** @brief Performs a shape trace along a line/direction */
 	UFUNCTION(BlueprintNativeEvent, BlueprintCallable)
-	void PerformLineShapeTrace(double DeltaSeconds);
+	void PerformLineShapeTrace(double DeltaSeconds, const FPDTraceTickSettings& PerTickTraceSettings);
 
 	/** @brief Performs a radial trace, outwards radially from the start position */
 	UFUNCTION(BlueprintNativeEvent, BlueprintCallable)
-	void PerformRadialTrace(double DeltaSeconds);
+	void PerformRadialTrace(double DeltaSeconds, const FPDTraceTickSettings& PerTickTraceSettings);
 	
+	
+	void PerformCameraTrace(FVector& TraceStart, FVector& TraceEnd, const FPDTraceTickSettings& PerTickTraceSettings, FCollisionQueryParams& TraceParams, FHitResult& TraceHitResult, EPDTraceResult& TraceResultFlag) const;
 	/** @brief Calls TracePass. Performs a comparative trace between the input start/end trace and a trace towards the same hit location with a
 	 * start position on the owning entities location adjusted in z by eye height. Then making sure they both hit the same target */
-	void PerformComparativeTraces(FVector& TraceStart, FVector& TraceEnd, FCollisionQueryParams& TraceParams, FHitResult& TraceHitResult, EPDTraceResult& TraceResultFlag) const;
+	void PerformComparativeTraces(FVector& TraceStart, FVector& TraceEnd, const FPDTraceTickSettings& PerTickTraceSettings, FCollisionQueryParams& TraceParams, FHitResult& TraceHitResult, EPDTraceResult& TraceResultFlag) const;
 	/** @brief Calls TracePass. Performs a simple trace from the given start/end position and parameters. */
-	void PerformSimpleTrace(const FVector& TraceStart, const FVector& TraceEnd, FCollisionQueryParams& TraceParams, FHitResult& TraceHitResult, bool& bTraceResultFlag) const;
+	void PerformSimpleTrace(const FVector& TraceStart, const FVector& TraceEnd, ECollisionChannel TraceChannel, FCollisionQueryParams& TraceParams, FHitResult& TraceHitResult, bool& bTraceResultFlag) const;
 	/** @brief Actual Shape trace-pass. Sweeps the shape along the direction  */
-	void TracePass(const FVector& TraceFromLocation, const FVector& TraceEnd, FCollisionQueryParams& TraceParams, FHitResult& TraceHitResult, bool& bTraceResultFlag) const;
+	void TracePass(const FVector& TraceFromLocation, const FVector& TraceEnd, ECollisionChannel TraceChannel, FCollisionQueryParams& TraceParams, FHitResult& TraceHitResult, bool& bTraceResultFlag) const;
 	
 public:
 	/** @brief Shape extent for shape trace */
@@ -144,27 +199,34 @@ protected:
 	TArray<AActor*> RuntimeIgnoreList{};
 	/** @brief The actual trace buffer which holds trace frame data*/
 	UPROPERTY(VisibleInstanceOnly, BlueprintReadOnly)
-	FPDTraceBuffer TraceBuffer{};
+	TArray<FPDTraceBuffer> TraceBuffer{};
 
 	UPROPERTY(VisibleInstanceOnly, BlueprintReadOnly)
-	const AActor* ActiveInteractionTarget = nullptr;
+	TMap<FName /* TraceID*/, const AActor*> ActiveInteractionTargets;
 	
 	/** @brief THe timer handle for an active interaction, will be cleared after the interaction finishes */
 	UPROPERTY()
-	FTimerHandle ActiveInteractionTimer{};
+	TMap<FName, FTimerHandle> ActiveInteractionTimers{};
 
 	/** @brief The current held interaction time, flushes after an interaction has finished */
 	UPROPERTY(VisibleInstanceOnly, BlueprintReadOnly)
-	double CurrentInteractionTime = 0.0;
+	TMap<FName, double> CurrentInteractionTimes;
 	/** @brief The start held interaction time, flushes after an interaction has finished */
 	UPROPERTY(VisibleInstanceOnly, BlueprintReadOnly)
-	double StartInteractionTime = 0.0;		
+	TMap<FName, double> StartInteractionTimes;
 	
 	/** @brief Dont access directly and Call 'SetOverrideTracePosition' instead. An override position to start the trace from. */
 	FVector OverridePosition;
 	/** @brief Dont access directly and Call 'SetOverrideTracePosition' instead. An override position to start the trace from. */
 	bool bResetOverrideNextFrame = false;
 
+
+private:
+	int32 CurrentTraceIndex = 0;
+	TMap<FName, int32> TraceNameToIndexMappings{};
+
+	UPROPERTY()
+	UCameraComponent* Camera = nullptr;
 };
 
 /**

@@ -382,7 +382,7 @@ void UPDRTSBaseSubsystem::UpdateDataTexture()
 	FPDOctreeUserQuery::FBoundsSimple QueryBounds = OctreeUserQuery.GetLatestQueryBounds<EPDQueryGroups::QUERY_GROUP_MINIMAP>();
 	
 
-#define DEBUG true
+#define DEBUG false
 #if DEBUG
 
 	UE_LOG(PDLog_RTSBase, Warning, TEXT("==================== UPDRTSBaseSubsystem::UpdateDataTexture ===================="))
@@ -409,7 +409,6 @@ void UPDRTSBaseSubsystem::UpdateDataTexture()
 	}
 	UE_LOG(PDLog_RTSBase, Warning, TEXT("========================================"))
 #endif
-
 
 
 	ENQUEUE_RENDER_COMMAND(UpdateDataTextureCommandName)(
@@ -450,13 +449,6 @@ void UPDRTSBaseSubsystem::DeleteBuffers()
 void UPDRTSBaseSubsystem::Tick(float DeltaTime) 
 {
 	// Resered for potential future use
-
-
-	const int32 RotationIndex = ((UPDRTSBaseSubsystem::GetUserRotationCurrentTick() / PI) + 0.5) * 2;
-
-	UE_LOG(PDLog_RTSBase, Warning, TEXT("UPDRTSBaseSubsystem::GetUserRotationCurrentTick -- Yaw in Radians translated to RotIdx: %i"), RotationIndex);
-	UE_LOG(PDLog_RTSBase, Warning, TEXT("UPDRTSBaseSubsystem::GetUserRotationCurrentTick -- Yaw in Radians: %f PI"), UPDRTSBaseSubsystem::GetUserRotationCurrentTick() / PI);
-	UE_LOG(PDLog_RTSBase, Warning, TEXT("UPDRTSBaseSubsystem::GetUserRotationCurrentTick -- Yaw in Degrees: %f"), FMath::RadiansToDegrees(UPDRTSBaseSubsystem::GetUserRotationCurrentTick()));
 }
 
 TStatId UPDRTSBaseSubsystem::GetStatId() const

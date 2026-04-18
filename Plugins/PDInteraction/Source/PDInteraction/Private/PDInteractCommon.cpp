@@ -15,7 +15,7 @@ FString FPDKeyCombination::ConvertToString()
 	return AccumulatedString; 
 }
 
-void FPDTraceSettings::Setup()
+void FPDTraceTickSettings::Setup()
 {
 	GeneratedObjectType = UEngineTypes::ConvertToObjectType(TraceChannel);
 }
@@ -23,7 +23,7 @@ void FPDTraceSettings::Setup()
 void FPDTraceBuffer::Setup()
 {
 	Frames.Empty();
-	AddTraceFrame(EPDTraceResult::TRACE_FAIL, FHitResult(ForceInit));
+	AddTraceFrame(EPDTraceResult::TRACE_FAIL, FHitResult(ForceInit), EPDTickTraceType::TRACE_MAX);
 }
 
 const FPDTraceResult& FPDTraceBuffer::GetLastTraceResult() const
@@ -48,7 +48,7 @@ void FPDTraceBuffer::ClearTraceResults()
 	Frames.Empty();
 }
 
-void FPDTraceBuffer::AddTraceFrame(EPDTraceResult TraceResult, const FHitResult& HitResult)
+void FPDTraceBuffer::AddTraceFrame(EPDTraceResult TraceResult, const FHitResult& HitResult, EPDTickTraceType TraceType)
 {
 	if (Frames.Num() > 10)
 	{
@@ -62,10 +62,10 @@ void FPDTraceBuffer::AddTraceFrame(EPDTraceResult TraceResult, const FHitResult&
 		ValidFrameResetIt = 1; // Don't want it to overflow
 	}
 		
-	Frames.EmplaceFirst(FPDTraceResult{TraceResult, HitResult});
+	Frames.EmplaceFirst(FPDTraceResult{TraceResult, HitResult, TraceType});
 	if (TraceResult != EPDTraceResult::TRACE_SUCCESS) { return; }
 
-	CachedValidFrame = FPDTraceResult{TraceResult, HitResult};
+	CachedValidFrame = FPDTraceResult{TraceResult, HitResult, TraceType};
 }
 
 

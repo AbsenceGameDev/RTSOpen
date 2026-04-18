@@ -150,25 +150,11 @@ void AGodHandPawn::HoverTick(const float DeltaTime)
 	const FVector& QueryLocation = CursorMesh->GetComponentLocation();
 
 	FVector MinimapQueryLocation = QueryLocation;
-	if (ARTSOController* PC = GetController<ARTSOController>(); PC && PC->IsValidLowLevelFast())
-	{	
-		FMinimalViewInfo ViewInfo;
-		Camera->GetCameraView(DeltaTime, ViewInfo);
-		constexpr float TraceLength = 100000000.0;
-		const FVector EndLocation = ViewInfo.Location + (ViewInfo.Rotation.Vector() * TraceLength);
-		FHitResult Hit;
-
-		FCollisionQueryParams QueryParams;
-		QueryParams.AddIgnoredActor(this);
-		QueryParams.AddIgnoredActor(PC);
-
-		FCollisionShape CollisionShape = FCollisionShape::MakeBox(FVector(20.0));
-		GetWorld()->SweepSingleByChannel(Hit, ViewInfo.Location, EndLocation, ViewInfo.Rotation.Quaternion(), PC->DedicatedLandscapeTraceChannel, CollisionShape, QueryParams);
-		MinimapQueryLocation = Hit.Location;
-	}
-	RTSSubsystem->OctreeUserQuery.UpdateQueryPosition(EPDQueryGroups::QUERY_GROUP_MINIMAP, MinimapQueryLocation);
+	
+	
+	const FPDTraceResult& TraceResult = InteractComponent->GetTraceResult(true, TEXT("LandscapeTrace"));
+	RTSSubsystem->OctreeUserQuery.UpdateQueryPosition(EPDQueryGroups::QUERY_GROUP_MINIMAP, TraceResult.HitResult.Location);
 	RTSSubsystem->OctreeUserQuery.UpdateQueryPosition(EPDQueryGroups::QUERY_GROUP_HOVERSELECTION, QueryLocation);
-
 	
 	
 	AActor* ClosestActor = FindClosestInteractableActor();
@@ -1121,6 +1107,7 @@ AGodHandPawn::AGodHandPawn()
 	Camera     = CreateDefaultSubobject<UCameraComponent>(TEXT("Camera"));
 	Camera->SetupAttachment(Springarm);
 	Camera->FieldOfView = 25.0f;
+	InteractComponent->SetCamera(Camera);
 	
 	CursorMesh = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("CursorMesh"));
 	CursorMesh->SetupAttachment(SceneRoot);
