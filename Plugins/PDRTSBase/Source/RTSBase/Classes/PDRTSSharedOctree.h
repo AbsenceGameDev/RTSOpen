@@ -10,7 +10,6 @@
 #include "PDRTSCommon.h"
 #include "HAL/UnrealMemory.h"
 #include "Misc/ScopeLock.h"
-#include "Misc/ReadScopeLock.h"
 #include "Misc/ScopeRWLock.h"
 
 #include "PDRTSSharedOctree.generated.h"
@@ -647,7 +646,7 @@ using FPDOctreeUserQuery = struct QPDUserQuery_t
 		}
 
 		{ //Lock
-			FScopeLock Lock(&BufferCS);
+			FWriteScopeLock Lock(BufferRWLock);
 			
 			TBufferSelector* BufferPtr;
 			if constexpr (Conds.bIsMinimapGroup) { BufferPtr = CurrentPackedDataBuffer.Find(TKey);}
@@ -671,7 +670,6 @@ private:
 	}
 
 public:
-	// mutable FCriticalSection BufferCS;
 	mutable FRWLock BufferRWLock;
 	mutable FCriticalSection ArchetypeCS;
 private:

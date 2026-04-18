@@ -267,6 +267,30 @@ TODOS:
           ☐ The issue however is that the interact HUD is not being used and having that enables triggers the trace ticks, and I can't remember why it isn't enable so I will have to ensure that first, which will not be in this commit
 
 
+April 18th 2026 - Commit#0:
+DONE:
+    
+
+
+TODOS: 
+    Minimap:
+        ☐ Build some more minimap layers, much like the entity layer, 
+            ☐ Object layer? Maybe finish the object query I was doing in the mass processor and use data from it to display on screen 
+        ☐ Stack all minimap layers untop of a static image, 
+            ☐ Make the image to the world
+                ☐ Either be 1:1 scale with the world or a Whole multiple of it
+                ☐ Where in the world is the center of the map, important for mapping our multiples to our movement
+                ☐ Source our current camera query bounds center, as that is teh center of our minimap view, and use it to traverse the image layer
+        
+
+    Interact component and landscape queries:  
+      ✔ Update query position for the minimap queries so it queries the landscape from the camera. @done(26-04-12 05:22)
+          ☐ I realize this is not necessary and I will have to remove this becasue the interact component does a landscape trace each tick and I can just source the hit data from it
+          ☐ The issue however is that the interact HUD is not being used and having that enables triggers the trace ticks, and I can't remember why it isn't enable so I will have to ensure that first, which will not be in this commit
+
+
+
+
 COMING:    
 IN PROGRESS : 
     ☐ Debug the sorted output texture, and sort out why the log calls are not showing
