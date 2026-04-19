@@ -4,6 +4,10 @@ The license has custom usage rights witch permits anyone from using this in an c
 
 
 
+## Notes
+This README has not been updated ever. The below is vastly outdate. Buildsystem Pinger System and such for the entity is partially done. Will take a weekend in the near future to update this README properly and ensure it contains the current vs. planned functionalities of the project.
+
+
 ## TODO 
 
 - PRIO 0 . CREATE PROGRESSION SYSTEM PLUGIN (PSEUDO-CODE/Design ideas)
