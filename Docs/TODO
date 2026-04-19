@@ -293,6 +293,23 @@ TODOS:
         
 
 
+April 19th 2026 - Commit#1:
+DONE:
+    ✔ Updated header comments in: PDRTSBaseSubsystem.h, RTSOMiniMap.h @done(26-04-19 07:54)    
+
+TODOS: 
+    ☐ I really need to update more header comments soon, I have created a lot of new code and not been dilligent in adding comments to explain reasoning for it existing and usage 
+    Minimap:
+        ☐ Build some more minimap layers, much like the entity layer, 
+            ☐ Object layer? Maybe finish the object query I was doing in the mass processor and use data from it to display on screen 
+        ☐ Stack all minimap layers untop of a static image, 
+            ☐ Make the image to the world
+                ☐ Either be 1:1 scale with the world or a Whole multiple of it
+                ☐ Where in the world is the center of the map, important for mapping our multiples to our movement
+                ☐ Source our current camera query bounds center, as that is teh center of our minimap view, and use it to traverse the image layer
+        
+
+
 COMING:    
 IN PROGRESS : 
     ☐ Debug the sorted output texture, and sort out why the log calls are not showing

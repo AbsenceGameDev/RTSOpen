@@ -11,7 +11,8 @@ class UTextureRenderTarget2D;
 
 
 /**
- * 
+ * @brief Layers some 256x256 RT textures on topo of eachother, the RT textures acts as layers to be placed on the minimap
+ * @note Only the Entity Layer is complete, neew to add more UImage objects for each new layer, I suspect I will need an Interactable layer atleast and a baselayer which acts a painted base the minimap layers traverse on
  */
 UCLASS(Blueprintable)
 class RTSOPEN_API URTSOMiniMapUserWidget : public UUserWidget
@@ -19,17 +20,21 @@ class RTSOPEN_API URTSOMiniMapUserWidget : public UUserWidget
 public:
 	GENERATED_BODY()
 
+	/** @brief  Stores a pointer to the Entity RT for now */
    virtual void NativeConstruct() override;
+	/** @brief Reserved for later use. Does nothing now */
    virtual void NativeTick(const FGeometry& Geometry, float DeltaTime) override;
 
 public:
-
+	/** @brief  The UImage that holds the material that displays the entity data layer RT */
    UPROPERTY(BlueprintReadWrite, Meta = (BindWidget))
    class UImage* MinimapMat = nullptr;
 
+	/** @brief  Sizebox to contain the minimap */
    UPROPERTY(BlueprintReadWrite, Meta = (BindWidget))
    USizeBox* MinimapSizeBox = nullptr;
 
+	/** @brief Reserved for later use. */
    UPROPERTY()
    UTextureRenderTarget2D* MinimapEntityRT = nullptr;
 };

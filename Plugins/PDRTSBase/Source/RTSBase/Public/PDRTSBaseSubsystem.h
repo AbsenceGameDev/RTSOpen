@@ -29,7 +29,10 @@ struct FPDWorkUnitDatum;
 
 DECLARE_DELEGATE_SevenParams(FRTSBuildGlobalSortEntityShader, FRHICommandListImmediate& /*RHICmdList*/, UTextureRenderTarget2D* /*RenderTarget*/, const TRefCountPtr<FRDGPooledBuffer>& /*EntityInputPooledBuffer*/, TArray<FLinearColor> /*InData*/, float /* CameraYawInRadians */ , FVector /*RegionMin*/, FVector /*RegionSize*/)
 
-/** @brief Subsystem to handle octree size changes and to act as a manager for the entity workers */
+/** @brief RTS Subsystem 
+ * - Handles octree size changes
+ * - Acts as a manager for the entity workers, assigning jobs etc
+ * - Manages sending entity data to a compute shader */
 UCLASS()
 class PDRTSBASE_API UPDRTSBaseSubsystem 
 	: public UEngineSubsystem
@@ -40,11 +43,14 @@ public:
 	/** @brief Shorthand to get the subsystem,
 	 * @note as the engine will instantiate these subsystem earlier than anything will reasonably call Get()  */
 	static UPDRTSBaseSubsystem* Get();
+
+	/** @brief ReadLocked getter for the PlayerYawAsRad */
 	FORCEINLINE static float GetUserRotationCurrentTick() 
 	{
 		FReadScopeLock ReadLock(UPDRTSBaseSubsystem::PlayerDataLock);
 		return PlayerYawAsRad;
 	}
+	/** @brief WriteLocked setter for the PlayerYawAsRad */
 	FORCEINLINE static void SetUserRotationOnTick(float YawInRad) 
 	{
 		FWriteScopeLock WriteLock(UPDRTSBaseSubsystem::PlayerDataLock);
@@ -109,24 +115,30 @@ public:
 	/** @brief Does some portable iso-approved 'hacks' to fetch the all the mass ISM's */
 	static const TArray<TObjectPtr<UInstancedStaticMeshComponent>>& GetMassISMs(const UWorld* InWorld);
 	
-	/** @brief  */
+	/** @brief Reserved for other usagesm currently only calls UpdateDataTexture */
 	void GenerateEntityMapData();
 
 	UTextureRenderTarget2D* GetEntityDataTexture() { return EntityDataTexture; };
 
+	/** @brief Finds the linked RT texture in the subsystem OR generates a transient RT texture if none is found */
 	UFUNCTION(BlueprintCallable, Category = "Texture", CallInEditor)
 	void CreateDataTexture();
+	/** @brief Allocates a pooled buffer that we can pass into RDG */
 	UFUNCTION(BlueprintCallable, Category = "Texture", CallInEditor)
 	void CreateDataBuffer();
+	/** @brief Copies whatever entites has been queried by the query object and send it to the RDG to pass it into the buffer and to then pass it into MinimapSplat.usf */
 	UFUNCTION(BlueprintCallable, Category = "Texture", CallInEditor)
 	void UpdateDataTexture();
+	/** @brief Releases the buffer created for the minimap entity splatting */
 	UFUNCTION(BlueprintCallable, Category = "Texture", CallInEditor)
 	void DeleteBuffers(); 
 
+	/** @brief Need to know the players camera yaw to pass it into the MinimapSplat.usf */
 	static float PlayerYawAsRad;
+	/** @brief Max dimension for the RT texture used in MinimapSplat.usf */
 	static constexpr uint32 GMaxEntityDim = 256;
+	/** @brief Max pixel count for the RT texture used in MinimapSplat.usf */
 	static constexpr uint32 GMaxEntityDataSize = GMaxEntityDim * GMaxEntityDim;
-
 
 public:		
 	/** @brief Work tables used by subsystem to organize ai-jobs */
@@ -188,20 +200,19 @@ public:
 	/** @brief  (User) Query Shape structure */
 	FPDOctreeUserQuery OctreeUserQuery{};
 
-	// TArray<FLinearColor> EntityShaderInputData;
-
+	/** @brief Delegate that we pass inot the render thread */
 	FRTSBuildGlobalSortEntityShader BuildEntitySortComputeShader;
 	
 private:
-	FRDGBufferRef EntityInputBuffer;
-
 	/** @brief  */
 	UPROPERTY()
 	class UTextureRenderTarget2D* EntityDataTexture;
 
+	/** @brief Reference to the pooled buffer of entity data */
 	TRefCountPtr<FRDGPooledBuffer> EntityInputPooledBuffer;
 	bool bHasCreatedPooledBuffers = false;
 
+	/** @brief Static ReadWrite lock. Wanted to prioritize writers while letting readers not block other readers */
 	static FRWLock PlayerDataLock;
 };
 
