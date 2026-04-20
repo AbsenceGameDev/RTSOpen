@@ -204,7 +204,7 @@ public:
 	FRTSBuildGlobalSortEntityShader BuildEntitySortComputeShader;
 	
 private:
-	/** @brief  */
+	/** @brief The RT texture we are splatting our entities unto */
 	UPROPERTY()
 	class UTextureRenderTarget2D* EntityDataTexture;
 

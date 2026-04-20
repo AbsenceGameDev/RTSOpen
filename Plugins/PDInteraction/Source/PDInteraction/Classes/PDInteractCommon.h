@@ -308,6 +308,7 @@ public:
 	UPROPERTY(BlueprintReadOnly)
 	FHitResult HitResult;
 
+	/** @brief The trace type that this result was created for */
 	UPROPERTY(BlueprintReadOnly)
 	EPDTickTraceType TraceType;
 	
@@ -456,8 +457,6 @@ namespace PD::Interactable::Behaviour
 {
 	using Availability = ERTSResourceAvailability;
 	using Requirements = ERTSResourceRequirement;
-
-	
 }
 
 /** @brief Global/Fallback resource settings */

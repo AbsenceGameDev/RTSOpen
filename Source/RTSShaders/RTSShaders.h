@@ -24,6 +24,7 @@ public:
 		return FModuleManager::Get().IsModuleLoaded("RTSShaders");
 	}
 
+   /** @brief Maps out games physical shader directory to a virtual path that can be used by hlsl scripts */
    virtual void StartupModule() final override;
    virtual void ShutdownModule() final override;
 };

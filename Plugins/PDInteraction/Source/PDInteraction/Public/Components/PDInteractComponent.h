@@ -23,7 +23,7 @@ public:
 	virtual void TickComponent(float DeltaTime, ELevelTick TickType, FActorComponentTickFunction* ThisTickFunction) override;
 
 
-	/** @brief */
+	/** @brief Assign the camera we will be using for our tracing view/rot transform */
 	void SetCamera(UCameraComponent* InCamera) { Camera = InCamera; }; 
 
 	/** @brief Finds the closest interactable of the actors in the radial trace  */
@@ -222,9 +222,12 @@ protected:
 
 
 private:
+	/** @brief The index of the most recent trace type. Updates each frame and indicates which index is currently being processed */
 	int32 CurrentTraceIndex = 0;
+	/** @brief Map ID Names to indices in the array */
 	TMap<FName, int32> TraceNameToIndexMappings{};
 
+	/** @brief Camera used for view loc/rot data */
 	UPROPERTY()
 	UCameraComponent* Camera = nullptr;
 };
