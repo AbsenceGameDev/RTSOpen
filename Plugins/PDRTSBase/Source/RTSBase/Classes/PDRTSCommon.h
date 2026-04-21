@@ -84,6 +84,7 @@ namespace PD::Constants
 }
 
 
+/** @brief  */
 struct FQueryResult_LocAndId
 {
 	FVector Location = PD::Constants::INVALID_WORLD_LOC;
@@ -93,6 +94,7 @@ struct FQueryResult_LocAndId
 	bool IsValid() {return !FMath::IsNearlyEqual(Location.X, PD::Constants::Limits::Double);}
 };
 
+/** @brief  */
 enum class EBufferReadPos : uint8
 {
 	INDEX,
@@ -106,7 +108,6 @@ namespace PD::Mass
 	/** @brief Invalid FMassEntityHandle. Compared against and then returned as a dummy in failed functions */
 	const FMassEntityHandle InvalidHandle = FMassEntityHandle{0, 0};
 }
-
 
 
 /** @brief Query groups */

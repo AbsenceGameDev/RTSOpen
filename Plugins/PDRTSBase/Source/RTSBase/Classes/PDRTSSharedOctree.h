@@ -202,8 +202,10 @@ struct FLEntityCompound
 	int32 OwnerID;
 };
 
+/** @brief Helper struct to encode our entity data as pixel data */
 struct FPDRTSPerPixelStorageHelper
 {
+	/** @brief Encode our entity data as pixel data */
 	FORCEINLINE static FLinearColor ConstructData(FVector Location, uint16_t Entity16WayRotation, uint8_t EntityFlags, uint16_t TeamColourId)
 	{
  		const uint32_t ConstructedAlphaChannel = Entity16WayRotation | uint32_t(EntityFlags) >> 7 | uint32_t(TeamColourId) >> 15;
@@ -214,12 +216,14 @@ struct FPDRTSPerPixelStorageHelper
     		*reinterpret_cast<const float*>(&ConstructedAlphaChannel));
 	}
 
+	/** @brief Encode some entity data as alpha channel data */
 	FORCEINLINE static uint32 ConstructData(uint16_t Entity16WayRotation, uint8_t EntityFlags, uint8_t TeamColourId)
 	{
  		return Entity16WayRotation | uint32_t(EntityFlags) >> 7 | uint32_t(TeamColourId) >> 15;
 	}
 
 
+	/** @brief Deconstruct pixel data into entity data  */
 	FORCEINLINE static void DeconstructData(const FLinearColor& InData, FVector& OutLocation, uint16_t& OutEntity16WayRotation, uint8_t& OutEntityFlags, uint16_t& OutTeamColourId)
 	{
 		OutLocation.X = InData.R;
@@ -281,6 +285,7 @@ using FPDOctreeUserQuery = struct QPDUserQuery_t
 		};
 	};
 
+	/** @brief Buffer type selector used creating and/or modifying user query buffers.  */
 	enum class EBufferType : uint8 
 	{
 		INVALID = 0,
@@ -428,7 +433,7 @@ using FPDOctreeUserQuery = struct QPDUserQuery_t
 	}	
 	
 	/** @brief Performs an "overlap" query on a given position, optionally stores an ownerID and entity handle if point is within shape.
-	 * @note Stores the result in a buffer  */
+	 * @note Stores the result in a RWLocked buffer  */
 	void UpdateQueryOverlapBuffer(const int32 Key, const FVector& ComparePos, const FMassEntityHandle OptionalEntityHandle, const int32 OptionalID)
 	{
 		bool bIsPointWithinQuery = false;
@@ -463,6 +468,8 @@ using FPDOctreeUserQuery = struct QPDUserQuery_t
 		}		
 	}
 
+	/** @brief Performs an "overlap" query on a given position, with the option to store encoded entity pixel if point is in the query .
+	 * @note Stores the result in a RWLocked buffer  */	
 	void UpdateQueryOverlapBuffer(const int32 Key, const FVector& ComparePos, const FLinearColor& MinimapEncodedData)
 	{
 		bool bIsPointWithinQuery = false;
@@ -561,8 +568,8 @@ using FPDOctreeUserQuery = struct QPDUserQuery_t
 		}
 	}
 
+	/** @brief  Calling user unused, @todo perhaps time to deprecate and/or remove s */
 	FORCEINLINE void SetCallingUser(AActor* Caller) { CallingUser = Caller;}
-
 
 	using BufferSelectorConds = struct BufferSelectorConds_t
 	{
@@ -570,7 +577,8 @@ using FPDOctreeUserQuery = struct QPDUserQuery_t
 		bool bIsInvalid;
 		bool bIsOther;
 	};
-
+	
+	/** @brief Buffer selector conditions used to clean up some std::conditionals  */
 	template<EPDQueryGroups TKey = EPDQueryGroups::INVALID_QUERY_GROUP>
 	static constexpr BufferSelectorConds GetBufferSelectorConds()
 	{
@@ -579,12 +587,11 @@ using FPDOctreeUserQuery = struct QPDUserQuery_t
 			constexpr bool bIsOther = !bIsMinimapGroup && !bIsInvalid;
 			constexpr BufferSelectorConds Conds{bIsMinimapGroup, bIsInvalid, bIsOther};
 			return Conds;
-	}
-
+	}	
 #define DefineBufferSelector \
 		using TBufferSelector = std::conditional_t<Conds.bIsMinimapGroup, TArray<FLinearColor>, std::conditional_t<Conds.bIsOther, TArray<FLEntityCompound>, void>>;
 
-	#define IsBufferValidReadPos ((TPos == EBufferReadPos::INDEX && BufferPtr->IsValidIndex(BufferOffset)) || BufferPtr->IsValidIndex(BufferPtr->Num() - 1 - BufferOffset))
+#define IsBufferValidReadPos ((TPos == EBufferReadPos::INDEX && BufferPtr->IsValidIndex(BufferOffset)) || BufferPtr->IsValidIndex(BufferPtr->Num() - 1 - BufferOffset))
 	template<EPDQueryGroups TKey, EBufferReadPos TPos>
 	FQueryResult_LocAndId ReadQueryBufferAtPosition(int32 BufferOffset) const
 	{

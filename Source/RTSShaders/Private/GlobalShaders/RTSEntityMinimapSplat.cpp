@@ -179,9 +179,9 @@ IMPLEMENT_GLOBAL_SHADER(FRTSMinimapSplat, "/Project/MinimapSplat.usf", "MinimapS
 
 
 // Unused since changing plans 
-IMPLEMENT_GLOBAL_SHADER(FRTSMinimapSplatInnerCheat, "/Project/SortData.usf", "SortDataInnerCheat", SF_Compute);
-IMPLEMENT_GLOBAL_SHADER(FRTSMinimapSplatFirstPass, "/Project/SortData.usf", "SortDataFirstPass", SF_Compute);
-IMPLEMENT_GLOBAL_SHADER(FRTSMinimapSplatCopyToTexture, "/Project/SortData.usf", "CopyToTexture", SF_Compute);
+IMPLEMENT_GLOBAL_SHADER(FRTSMinimapSortInnerCheat, "/Project/SortData.usf", "SortDataInnerCheat", SF_Compute);
+IMPLEMENT_GLOBAL_SHADER(FRTSMinimapSortFirstPass, "/Project/SortData.usf", "SortDataFirstPass", SF_Compute);
+IMPLEMENT_GLOBAL_SHADER(FRTSMinimapSortCopyToTexture, "/Project/SortData.usf", "CopyToTexture", SF_Compute);
 
 
 /**

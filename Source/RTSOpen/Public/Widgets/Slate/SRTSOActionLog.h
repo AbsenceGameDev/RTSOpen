@@ -108,7 +108,7 @@ public:
 	virtual void UpdateChildSlot(void* OpaqueData);
 	void UpdateArray();
 
-	/** @brief  */
+	/** @brief Adds a new action in front of the event list and then updates the event list to keep it in the expected size limits.  */	
 	virtual void UpdateAddNewActionEvent(TSharedPtr<FRTSOActionLogEvent>);
 	static FSlateColor GetFontColour(const FGameplayTag& StyleTag);
 

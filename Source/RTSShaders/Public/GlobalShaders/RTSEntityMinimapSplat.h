@@ -10,6 +10,7 @@
 #include "Subsystems/EngineSubsystem.h"
 #include "Materials/MaterialInstanceDynamic.h"
 
+/** @brief Splat Compute Shader */
 class FRTSMinimapSplat : public FGlobalShader
 {
 public:
@@ -34,11 +35,12 @@ public:
    }
 };
 
-class FRTSMinimapSplatFirstPass : public FRTSMinimapSplat
+/** @brief Inital pass in the entity-sort compute shader. Handles and inital groupsize buffer of 1024 bits */
+class FRTSMinimapSortFirstPass : public FGlobalShader
 {
 public:
-   DECLARE_EXPORTED_GLOBAL_SHADER(FRTSMinimapSplatFirstPass, RTSSHADERS_API);
-   SHADER_USE_PARAMETER_STRUCT(FRTSMinimapSplatFirstPass, FRTSMinimapSplat);   
+   DECLARE_EXPORTED_GLOBAL_SHADER(FRTSMinimapSortFirstPass, RTSSHADERS_API);
+   SHADER_USE_PARAMETER_STRUCT(FRTSMinimapSortFirstPass, FGlobalShader);   
    BEGIN_SHADER_PARAMETER_STRUCT(FParameters, )
       SHADER_PARAMETER_RDG_BUFFER_UAV(RWBuffer<float4>, EntityData)
       SHADER_PARAMETER_RDG_TEXTURE_UAV(RWTexture2D<float4>, OutSortedEntityDataTexture)
@@ -52,11 +54,12 @@ public:
    }
 };
 
-class FRTSMinimapSplatInnerCheat : public FRTSMinimapSplat
+/** @brief Inner passes of the entity-sort compute shader. Processes each group until it can cheat and reuse the groupbuffer for the remainder, does this for each step to cut down the RDG passes from ~200 to ~20 */
+class FRTSMinimapSortInnerCheat : public FGlobalShader
 {
 public:
-   DECLARE_EXPORTED_GLOBAL_SHADER(FRTSMinimapSplatInnerCheat, RTSSHADERS_API);
-   SHADER_USE_PARAMETER_STRUCT(FRTSMinimapSplatInnerCheat, FRTSMinimapSplat); 
+   DECLARE_EXPORTED_GLOBAL_SHADER(FRTSMinimapSortInnerCheat, RTSSHADERS_API);
+   SHADER_USE_PARAMETER_STRUCT(FRTSMinimapSortInnerCheat, FGlobalShader); 
    BEGIN_SHADER_PARAMETER_STRUCT(FParameters, )
       SHADER_PARAMETER_RDG_BUFFER_UAV(RWBuffer<float4>, EntityData)
       SHADER_PARAMETER_RDG_TEXTURE_UAV(RWTexture2D<float4>, OutSortedEntityDataTexture)
@@ -70,11 +73,12 @@ public:
    }   
 };
 
-class FRTSMinimapSplatCopyToTexture : public FRTSMinimapSplat
+/** @brief Last pass of the sorting shader: Copies the data from the buffers into the texture  */
+class FRTSMinimapSortCopyToTexture : public FGlobalShader
 {
 public:
-   DECLARE_EXPORTED_GLOBAL_SHADER(FRTSMinimapSplatCopyToTexture, RTSSHADERS_API);
-   SHADER_USE_PARAMETER_STRUCT(FRTSMinimapSplatCopyToTexture, FRTSMinimapSplat);
+   DECLARE_EXPORTED_GLOBAL_SHADER(FRTSMinimapSortCopyToTexture, RTSSHADERS_API);
+   SHADER_USE_PARAMETER_STRUCT(FRTSMinimapSortCopyToTexture, FGlobalShader);
    BEGIN_SHADER_PARAMETER_STRUCT(FParameters, )
       SHADER_PARAMETER_RDG_BUFFER_UAV(RWBuffer<float4>, EntityData)
       SHADER_PARAMETER_RDG_TEXTURE_UAV(RWTexture2D<float4>, OutSortedEntityDataTexture)
