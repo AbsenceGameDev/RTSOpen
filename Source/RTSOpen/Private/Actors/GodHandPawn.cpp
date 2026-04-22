@@ -986,14 +986,15 @@ void AGodHandPawn::OnItemUpdate(const FPDItemNetDatum& BuildableResourceDatum)
 int32 AGodHandPawn::GetBuilderID_Implementation()
 {
 	AController* PC = GetController();
-	if (PC == nullptr && CachedActorID == INDEX_NONE)
+	if (PC == nullptr && CachedActorID == FPDPersistentID::INVALID_ID)
 	{
 		UE_LOG(PDLog_RTSO, Warning, TEXT("AGodHandPawn(%s)::GetBuilderID() \n PC == nullptr and CachedActorID == INDEX_NONE"), *GetName());
 		return INDEX_NONE;
 	}
 
 	// If controller has become invalidated temporarily but cached index still remains, just return it so upon reconnection we can hook it back up 
-	const bool bRefreshActorID = PC == nullptr || PC->GetClass() == nullptr || PC->GetClass()->ImplementsInterface(UPDRTSBuilderInterface::StaticClass()) == false;
+	const bool bPCValid = PC != nullptr && PC->GetClass() != nullptr && PC->GetClass()->ImplementsInterface(UPDRTSBuilderInterface::StaticClass());
+	const bool bRefreshActorID = bPCValid && CachedActorID == FPDPersistentID::INVALID_ID;
 	CachedActorID = bRefreshActorID ? IPDRTSBuilderInterface::Execute_GetBuilderID(PC) : CachedActorID;
 	return CachedActorID;
 }
@@ -1363,6 +1364,8 @@ void AGodHandPawn::SelectActionMenuEntry_Implementation(ERTSBuildableActionMenuM
 						ARTSOBaseGM::GatherEntityToSpawn(*GetWorld(), ConstructedEntityData, EntitiesToSpawn, RTSSubsystem, SpawnerSystem);
 					}
 
+					
+
 					// Dispatch spawning of entities
 					for (const TTuple<const FMassEntityTemplateID, ARTSOBaseGM::FEntityCompoundTuple>& EntityTypeCompound : EntitiesToSpawn)
 					{
@@ -1375,7 +1378,7 @@ void AGodHandPawn::SelectActionMenuEntry_Implementation(ERTSBuildableActionMenuM
 								FString::Printf(TEXT("OwnerID(%i) -- Successfully Spawning entity of type %s "),
 									IPDRTSBuilderInterface::Execute_GetBuilderID(this), *ActionTag.GetTagName().ToString())}; 
 							URTSActionLogSubsystem::DispatchEvent(InstigatorID, NewActionEvent);		
-						}						
+						}
 					}
 				}
 				else

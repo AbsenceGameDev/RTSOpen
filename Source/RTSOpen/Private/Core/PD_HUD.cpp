@@ -42,10 +42,10 @@ void APD_HUD::BeginPlay()
 
 void APD_HUD::DrawRadarMinimap()
 {
-	DrawRadar(FLinearColor::Gray);
-	DrawOwnerOnMiniMap();
-	DrawActorsOnMiniMap();
-	DrawEntitiesOnMiniMap();
+	// DrawRadar(FLinearColor::Gray);
+	// DrawOwnerOnMiniMap();
+	// DrawActorsOnMiniMap();
+	// DrawEntitiesOnMiniMap();
 }
 
 void APD_HUD::DrawSelectionMarquee()
@@ -67,7 +67,7 @@ void APD_HUD::DrawHUD()
 	// @todo Moved to slate widget
 	// //
 	// // Draw Minimap
-	// DrawRadarMinimap();
+	// DrawRadarMinimap(); // todo, remove, won't make sense with the current layered RT texture appraoch
 	
 	//
 	// Draw Marquee for entity selection

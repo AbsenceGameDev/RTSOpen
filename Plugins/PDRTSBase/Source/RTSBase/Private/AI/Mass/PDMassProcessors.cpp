@@ -485,11 +485,11 @@ void UPDOctreeProcessor::DebugDrawCells()
 					2);
 		});
 	}
-	else if (bSentChaosCommand && GEngine != nullptr)
-	{
-		bSentChaosCommand = false;
-		GEngine->HandleDeferCommand(TEXT("p.Chaos.DebugDraw.Enabled 0"), *GLog); 
-	}
+	// else if (bSentChaosCommand && GEngine != nullptr)
+	// {
+	// 	bSentChaosCommand = false;
+	// 	GEngine->HandleDeferCommand(TEXT("p.Chaos.DebugDraw.Enabled 0"), *GLog); 
+	// }
 #endif
 }
 

@@ -288,7 +288,7 @@ public:
 
 	/** @brief Cached owner ID, to avoid having to call the interface multiple times in fast paths @todo @refactor Set default value*/
 	UPROPERTY()
-	int32 CachedActorID;
+	int32 CachedActorID = FPDPersistentID::INVALID_ID;
 
 	/** @brief Camera interpolation target */
 	UPROPERTY()
