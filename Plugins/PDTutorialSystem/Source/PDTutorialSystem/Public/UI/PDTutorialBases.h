@@ -30,7 +30,7 @@ public:
 	TArray<FPDTutorialDatum> TutorialSequence;
 };
 
-/** @brief  */
+/** @brief  TODO: Get back to this after finishing up some of the other systems*/
 UCLASS(Abstract)
 class PDTUTORIALSYSTEM_API UPDTransientMessageTutorialBase : public UUserWidget
 {

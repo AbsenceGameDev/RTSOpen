@@ -10,7 +10,7 @@
 
 DECLARE_DELEGATE_TwoParams(FOnStringValueSelected, FString /*SelectedString*/, UWidget* /*Caller*/)
 
-/** @brief */
+/** @brief Selectable dropdown list of string options with callbacks bound so user can use as onlclick events. Wraps the list in an expandable area */
 class RTSOPEN_API SRTSOStringSelector : public SCompoundWidget
 {
 public:
@@ -24,28 +24,29 @@ public:
 		SLATE_ARGUMENT(UWidget*, Caller)
 	SLATE_END_ARGS()
 
-	/** @brief */
+	/** @brief Assings some values fomr InArgs and calls UpdateOption */
 	void Construct(const FArguments& InArgs);
-	/** @brief */
+	/** @brief Simple wrapper function to open the expandable area via animation*/
 	void UpdateExpandableArea(bool bOpen);
 
-	/** @brief */
+	/** @brief Generates a listview over the input options */
 	void UpdateOptions(TArray<TSharedPtr<FString>>* InOptionsArray);
 
-	/** @brief */
+	/** @brief Generates the listentry widget */
 	TSharedRef<ITableRow> MakeListViewWidget_SettingOptionsSelector(TSharedPtr<FString> InItem, const TSharedRef<STableViewBase>& OwnerTable) const;
-	/** @brief */
+	/** @brief Calls a user bound delegate when this is called, this is called when an entry in the list has been selected */
 	void OnOptionSelected_SettingOptionsSelector(TSharedPtr<FString> InItem, ESelectInfo::Type InSelectInfo);
 
-	/** @brief */
+	/** @brief Copy of user delegate */
    FOnStringValueSelected OnStringValueSelected;
 
-	/** @brief */
+	/** @brief Local copy of options array */
 	TArray<TSharedPtr<FString>>* OptionsArray;
 
 	/** @brief Cached pointer to the caller stringselector */
    class UWidget* Caller = nullptr;
 
+	/** @brief Wraps our list, for a more user friendly appearance in the options menu this is mostly used in */
    TSharedPtr<class SExpandableArea> ExpandableArea;  
 };
 

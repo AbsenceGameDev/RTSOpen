@@ -10,7 +10,8 @@
 
 DECLARE_DELEGATE_ThreeParams(FOnVectorValueUpdated, UE::Math::TVector4<double> /*UpdatedValue*/, PD::Settings::VectorType /*Type*/, UWidget* /*Caller*/)
 
-/** @brief */
+/** @brief 
+ * @todo Document this class but for now this will work as a descr.: Basically a vector representation so players can change vector values via the options menu */
 class RTSOPEN_API SRTSOVectorBase : public SCompoundWidget
 {
 public:

@@ -1222,6 +1222,8 @@ public:
 };
 
 #if WITH_EDITOR
+/** @brief 
+ * @todo Remember to document this class */
 class FRTSOBinderDetailRowBuilder : public IDetailCustomNodeBuilder, public TSharedFromThis<FRTSOBinderDetailRowBuilder>
 {
 public:

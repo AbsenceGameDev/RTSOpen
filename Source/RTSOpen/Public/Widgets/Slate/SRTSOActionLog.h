@@ -123,7 +123,7 @@ public:
 	FSlateFontInfo TimestampFont;	
 	
 	static constexpr int32 DEFAULT_MAX_LIMIT = 50;
-	/** @brief */
+	/** @brief Will limit the output window with these many entries, fading the furthest out*/
 	int32 MaxActionEntryCount = DEFAULT_MAX_LIMIT;
 	
 	/** @brief Array 'View' that is used to display the data related to this editor widget */
@@ -148,12 +148,12 @@ class URTSOActionLogInnerWidget : public UWidget
 
 public:
 	
-	/** @brief */
+	/** @brief Creates or updates the slate widget and sissngs entries if there are caches entries */
 	virtual TSharedRef<SWidget> RebuildWidget() override;
-	/** @brief */
+	/** @brief Releases the inner slate widget and the slate widget assinged as this UWidgets SWidget base */
 	virtual void ReleaseSlateResources(bool bReleaseChildren) override;
 
-	/** @brief  */
+	/** @brief Adds a new event pushing it top of the queue and rebuilding the visuals of the list  */
 	virtual void UpdateAddNewActionEvent(TSharedPtr<FRTSOActionLogEvent>);
 	
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)

@@ -84,7 +84,7 @@ namespace PD::Constants
 }
 
 
-/** @brief  */
+/** @brief Light OctTree query result struct */
 struct FQueryResult_LocAndId
 {
 	FVector Location = PD::Constants::INVALID_WORLD_LOC;
