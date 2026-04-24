@@ -53,17 +53,18 @@ Business Source License 1.1
 Parameters
 
 Licensor:             Ario Amin (@ Permafrost Development)
-Licensed Work:        RTSOpen (Source available on github)
-                      The Licensed Work is (c) 2024 Ario Amin (@ Permafrost Development)
-Additional Use Grant: You may make free use of the Licensed Work in a commercial product or service provided these three additional conditions as met; 
+Licensed Work:        RTSOpen (version 0.1.0, Source available on github)
+                      The Licensed Work is (c) 2026 Ario Amin (@ Permafrost Development)
+Additional Use Grant: You may make free use of the Licensed Work in a commercial product or service provided these additional conditions as met; 
                       1. Must give attributions to the original author of the Licensed Work, in 'Credits' if that is applicable.
-                      2. The Licensed Work must be Compiled before being redistributed.
-                      3. The Licensed Work Source may be linked but may not be packaged into the product or service being sold
+                      2. The Licensed Work must be 'Compiled' before being redistributed.
+                      3. The Licensed Work 'Source' may be linked but may not be packaged into the product or service being sold
                       4. Must not be resold or repackaged or redistributed as another product, is only allowed to be used within a commercial or non-commercial game project.
-                      5. Teams with yearly budgets larger than 100000 USD must contact the owner for a custom license or buy the framework from a marketplace it has been made available on.
+                      5. Teams whose 'Total Finances' exceed $100,000 USD for the most recent 12-month period must contact the owner for a custom license or buy the framework from a marketplace it has been made available on.
 
                       "Credits" indicate a scrolling screen with attributions. This is usually in a products end-state
 
+                      "Total Finances" means the largest of your aggregate gross revenues, entire budget, or funding (no matter the source).
                       "Package" means the collection of files distributed by the Licensor, and derivatives of that collection
                       and/or of those files..   
 
@@ -72,7 +73,7 @@ Additional Use Grant: You may make free use of the Licensed Work in a commercial
                       "Compiled" form means the compiled bytecode, object code, binary, or any other
                       form resulting from mechanical transformation or translation of the Source form.
 
-Change Date:          2028-04-17
+Change Date:          2030-04-26
 
 Change License:       Apache License, Version 2.0
 
