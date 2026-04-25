@@ -10,8 +10,9 @@
 
 DECLARE_DELEGATE_ThreeParams(FOnVectorValueUpdated, UE::Math::TVector4<double> /*UpdatedValue*/, PD::Settings::VectorType /*Type*/, UWidget* /*Caller*/)
 
-/** @brief 
- * @todo Document this class but for now this will work as a descr.: Basically a vector representation so players can change vector values via the options menu */
+/** 
+ * @brief Sets up numeric vector input boxes, can differentiate between 2d and 3d vectors of Integer and Floating point types or represented as a colour picker 
+ **/
 class RTSOPEN_API SRTSOVectorBase : public SCompoundWidget
 {
 public:
@@ -25,19 +26,19 @@ public:
       SLATE_ARGUMENT(UWidget*, Caller)
    SLATE_END_ARGS()
 
-	/** @brief */
+	/** @brief Assigns vector typem callback delegate and caller object via the InArgs*/
 	void Construct(const FArguments& InArgs);
 
-	/** @brief */
+	/** @brief Generates different numeric vector boxes or a colour picker based on the cached value of VectorType */
    TSharedRef<SWidget> GenerateVectorBox();
 
-	/** @brief */
+	/** @brief Actual function that generates our colour picker and sets up some labda delegates */
    TSharedRef<SWidget> GenerateColourPicker();   
 
-	/** @brief */
+	/** @brief Wrapper function to expand our SExpandableArea */
 	void UpdateExpandableArea(bool bOpen);
 
-	/** @brief */
+	/** @brief Updates our ActionWidget slate widget based on the input NewVectorType and stores values in VectorType*/
 	void UpdateType(PD::Settings::VectorType NewVectorType);
 
    TOptional<FVector> ResolveVec3() const;
