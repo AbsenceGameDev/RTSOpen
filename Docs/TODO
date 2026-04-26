@@ -318,6 +318,12 @@ DONE:
     ✔ More missing header comments @done(26-04-23 18:12)
 
 
+April 26th 2026 - Commit#0:
+DONE:
+    ✔ Add another building type (Storage), and some supporting changes to expose build inventory as needed @done(26-04-26 21:01)
+TODO: 
+    ☐ Extend statetree with moving picked up inventory to
+
 
 
 COMING:    

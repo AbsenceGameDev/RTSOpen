@@ -6,6 +6,7 @@
 #include "Actors/RTSOController.h"
 #include "Pawns/PDRTSBaseUnit.h"
 #include "PDRTSCommon.h"
+#include "Actors/Interactables/Buildings/RTSOInteractableBuildingBase.h"
 
 /* Permadev - Subsystems */
 #include "PDRTSBaseSubsystem.h"
@@ -244,9 +245,15 @@ void AGodHandPawn::BuildableGhostTick(float DeltaTime)
 		CurrentGhost = GetWorld()->SpawnActor(ActorClassToSpawn, &SteppedLocation);
 		CurrentGhost->SetOwner(this);
 
+		
+		UE_LOG(PDLog_RTSO, Log, TEXT("AGodHandPawn::TickGhost -- Spawned buildable ghost"))
 		if (ActorClassToSpawn->ImplementsInterface(UPDRTSBuildableGhostInterface::StaticClass()))
 		{
+			UE_LOG(PDLog_RTSO, Log, TEXT("AGodHandPawn::TickGhost -- Calling OnSpawnedAsBuildableGhost"))
 			IPDRTSBuildableGhostInterface::Execute_OnSpawnedAsGhost(CurrentGhost, CurrentBuildableTag, true, false);
+
+			// ARTSOInteractableBuildingBase* AsInteractableBuilding = Cast<ARTSOInteractableBuildingBase>(CurrentGhost); 
+			// AsInteractableBuilding->ReturnBuildableInventories().LightInventoryAsMain;
 		}
 	}
 
@@ -269,7 +276,7 @@ void AGodHandPawn::BuildableGhostTick(float DeltaTime)
 			{
 				if (OverlappedActor == CurrentGhost) { continue; }
 				
-				UE_LOG(PDLog_RTSO, Warning, TEXT("AGodHandPawn::TickGhost -- Encroachment -- Comparing with found component"))
+				UE_LOG(PDLog_RTSO, Log, TEXT("AGodHandPawn::TickGhost -- Encroachment -- Comparing with found component"))
 				if (OverlappedActor->GetClass()->ImplementsInterface(UPDRTSBuildableGhostInterface::StaticClass()))
 				{
 					UE_LOG(PDLog_RTSO, Warning, TEXT("AGodHandPawn::TickGhost -- Encroachment -- Failed check, is overlapping actor"))

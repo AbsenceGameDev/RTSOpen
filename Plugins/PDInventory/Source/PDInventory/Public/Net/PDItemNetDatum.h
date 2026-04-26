@@ -32,11 +32,11 @@ struct FPDLightItemDatum
 	GENERATED_BODY();
 	
 	/** @brief The tag associated with the item */
-	UPROPERTY(BlueprintReadWrite)
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
 	FGameplayTag ItemTag{};
 	
 	/** @brief The total item count this entity carries*/
-	UPROPERTY(BlueprintReadWrite)
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
 	int32 TotalItemCount = INDEX_NONE;
 
 	// Stack-count need to be extrapolated from the subsystem

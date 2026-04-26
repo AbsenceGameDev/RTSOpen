@@ -39,6 +39,7 @@ UE_DEFINE_GAMEPLAY_TAG(TAG_BUILD_ActionContext_WorkerHut0, "BUILD.ActionContext.
 UE_DEFINE_GAMEPLAY_TAG(TAG_BUILD_ActionContext_WorkerHut1, "BUILD.ActionContext.WorkerHut1");
 UE_DEFINE_GAMEPLAY_TAG(TAG_BUILD_ActionContext_Barracks0, "BUILD.ActionContext.Barracks0");
 UE_DEFINE_GAMEPLAY_TAG(TAG_BUILD_ActionContext_Barracks1, "BUILD.ActionContext.Barracks1");
+UE_DEFINE_GAMEPLAY_TAG(TAG_BUILD_ActionContext_Storage0, "BUILD.ActionContext.Storage0");
 
 
 /**
