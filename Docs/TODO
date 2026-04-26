@@ -322,8 +322,17 @@ April 26th 2026 - Commit#0:
 DONE:
     ✔ Add another building type (Storage), and some supporting changes to expose build inventory as needed @done(26-04-26 21:01)
 TODO: 
-    ☐ Extend statetree with moving picked up inventory to
+    ☐ Extend statetree with moving picked up inventory and bringing it either to storage (physical bank) or to a players bank (infinite storage pool) 
 
+
+
+April 26th 2026 - Commit#1:
+DONE:
+    ✔ Buildings with TAG_BUILD_ActionContext_Storage0 as instigator tag will start sending out a ping for an entity job using the same tag @done(26-04-26 23:18)
+        TODO: 
+            ☐ This was a long while ago since I wrote the entity job logic and am still reading through all the parts of it to remember how everything ties in together, will make some further updates eitehr today or tomorrow on this
+TODO: 
+    ☐ Extend statetree with moving picked up inventory and bringing it either to storage (physical bank) or to a players bank (infinite storage pool) 
 
 
 COMING:    

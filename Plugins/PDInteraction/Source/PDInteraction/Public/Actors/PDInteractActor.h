@@ -8,9 +8,9 @@
 
 #include "PDInteractActor.generated.h"
 
-/** @brief Constant to make some runtime calculations a bit faster */
+/** @brief Constexpr to ensure compiler optmizes this even in some nested monstrosity */
 constexpr double UNREALUNITS_PERMETRE = 100.0; /* UU == cm, 100 uu == 1m*/
-/** @brief Constant to make some runtime calculations a bit faster */
+/** @brief Constexpr to ensure compiler optmizes this even in some nested monstrosity */
 constexpr double INVERSE_UU = 1 / UNREALUNITS_PERMETRE; /* UU == cm, 100 uu == 1m*/
 
 class USceneComponent;

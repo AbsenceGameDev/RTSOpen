@@ -2,18 +2,20 @@
 
 #include "Actors/Interactables/Buildings/RTSOInteractableBuildingBase.h"
 
-#include "MassEntitySubsystem.h"
+#include "RTSOpenCommon.h"
 #include "PDBuildCommon.h"
 #include "PDBuilderSubsystem.h"
 #include "PDInventorySubsystem.h"
 #include "PDRTSCommon.h"
 #include "PDRTSPingerSubsystem.h"
-#include "RTSOpenCommon.h"
-#include "Actors/GodHandPawn.h"
 #include "AI/Mass/RTSOMassFragments.h"
-#include "Components/BoxComponent.h"
+#include "Actors/GodHandPawn.h"
 #include "Components/PDInventoryComponent.h"
+#include "Pawns/PDRTSBaseUnit.h"
 #include "Widgets/Slate/SRTSOActionLog.h"
+
+#include "MassEntitySubsystem.h"
+#include "Components/BoxComponent.h"
 
 ARTSOInteractableBuildingBase::ARTSOInteractableBuildingBase()
 {
@@ -556,6 +558,16 @@ void ARTSOInteractableBuildingBase::OnSpawnedAsMain_Implementation(const FGamepl
 		
 		return;
 	}
+
+	// Note: Storages send buildablecontext tags to tell entities they are available to store physical or monetary resources
+	if (InstigatorBuildableTag == TAG_BUILD_ActionContext_Storage0)
+	{
+		const int32 InstigatorID = IPDRTSBuilderInterface::Execute_GetBuilderID(GetOwner());
+		constexpr double PingInterval = 10.0; // @todo make configurable or use passthrough value
+		const FPDEntityPingDatum ConstructedDatum = {this, InstigatorBuildableTag, InstigatorID, PingInterval};
+		UPDEntityPinger::EnablePingStatic(ConstructedDatum);
+	}
+
 }
 
 void ARTSOInteractableBuildingBase::Tick(float DeltaTime)

@@ -81,9 +81,9 @@ EStateTreeRunStatus FRTSOTask_Interact::EnterState(FStateTreeExecutionContext& C
 		// call interact function on interactables
 		
 		FPDInteractionParamsWithCustomHandling Params;
-		// Temp.CustomInteractionProcessor.BindDynamic(this, );
-		// Temp.InstigatorComponentClass = UPDRTSBaseUnit::StaticClass();
-		// Temp.OptionalInteractionTags;
+		// Params.CustomInteractionProcessor.BindDynamic(this, );
+		// Params.InstigatorComponentClass = UPDRTSBaseUnit::StaticClass();
+		// Params.OptionalInteractionTags;
 
 		AController* InstigatorController = Cast<AController>(
 			RTSSubsystem.SharedOwnerIDMappings.Contains(EntityBase.OwnerID)
@@ -106,9 +106,14 @@ EStateTreeRunStatus FRTSOTask_Interact::EnterState(FStateTreeExecutionContext& C
 		
 	}
 
-	if (EntitySubsystem.GetEntityManager().IsEntityValid(OtherEntityHandle))
+	if (EntityManager.IsEntityValid(OtherEntityHandle))
 	{
 		// @todo interact with other entity
+		const FRTSOActionLogEvent NewActionEvent{
+			FString::Printf(TEXT("EntityID(%i) -- @TODO: Interact with EntityID(%i) "),
+				MassContext.GetEntity().Index, OtherEntityHandle.Index)}; 
+		URTSActionLogSubsystem::DispatchEvent(EntityBase.OwnerID, NewActionEvent); // @todo pass message colouring, drive messages from table 		
+
 		return EStateTreeRunStatus::Succeeded;
 	}
 	
