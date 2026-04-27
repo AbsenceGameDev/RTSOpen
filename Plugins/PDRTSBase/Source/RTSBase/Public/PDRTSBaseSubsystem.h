@@ -5,6 +5,7 @@
 #include "CoreMinimal.h"
 #include "PDRTSSharedOctree.h"
 #include "AI/Mass/PDMassFragments.h"
+#include "PDRTSSharedHashGrid.h"
 
 #include "Tickable.h"
 #include "MassEntityConfigAsset.h"
@@ -36,6 +37,15 @@ struct PDRTSBASE_API FPDRTSTSetActorWrapper
 
 	UPROPERTY()
 	TSet<const AActor*> Actors;	
+};
+
+USTRUCT()
+struct PDRTSBASE_API FPDRTSTSetTagWrapper
+{
+	GENERATED_BODY()
+
+	UPROPERTY()
+	TSet<FGameplayTag> Tags;	
 };
 
 DECLARE_DELEGATE_SevenParams(FRTSBuildGlobalSortEntityShader, FRHICommandListImmediate& /*RHICmdList*/, UTextureRenderTarget2D* /*RenderTarget*/, const TRefCountPtr<FRDGPooledBuffer>& /*EntityInputPooledBuffer*/, TArray<FLinearColor> /*InData*/, float /* CameraYawInRadians */ , FVector /*RegionMin*/, FVector /*RegionSize*/)
@@ -128,7 +138,15 @@ public:
 	/** @brief  */
 	void UntrackResource(const FGameplayTag& ResourceType, const AActor* TrackedActor); 
 	/** @brief  */
+	void UntrackAllFromResourceActor(const FGameplayTag& ResourceType, const AActor* TrackedActor); 
+	/** @brief  */
+	void UpdateResources(const AActor* TrackedActor); 
+
+	/** @brief  */
 	const FPDRTSTSetActorWrapper& GetResourceActors(const FGameplayTag& ResourceType);
+	/** @brief  */
+	void ProcessResourceActors(FSimpleDelegate ProcessDelegate);
+
 
 	/** @brief Does some portable iso-approved 'hacks' to fetch the all the mass ISM's */
 	static const TArray<TObjectPtr<UInstancedStaticMeshComponent>>& GetMassISMs(const UWorld* InWorld);
@@ -226,6 +244,9 @@ private:
 	/** @brief */
 	UPROPERTY()
 	TMap<FGameplayTag /*resource/item tag*/, FPDRTSTSetActorWrapper> TrackedResourceGroups;
+	TMap<FPDGridCell /*Gridcell*/, FPDRTSTSetActorWrapper> TrackedResourceGroupsPerGridCell;
+	UPROPERTY()
+	TMap<const AActor*, FPDGridCell> TrackedResourceToGridCell;
 	mutable FRWLock ResourceRWLock;
 
 

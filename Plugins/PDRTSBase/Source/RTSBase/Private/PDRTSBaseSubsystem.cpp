@@ -251,12 +251,40 @@ void UPDRTSBaseSubsystem::TrackResource(const FGameplayTag& ResourceType, const 
 {
 	FWriteScopeLock Lock(ResourceRWLock);
 	TrackedResourceGroups.FindOrAdd(ResourceType).Actors.FindOrAdd(TrackedActor);
+	
+	FPDGridCell ActorGridCell = UPDHashGridSubsystem::Get()->GetCellIndex(TrackedActor->GetActorLocation());
+	TrackedResourceGroupsPerGridCell.FindOrAdd(ActorGridCell).Actors.FindOrAdd(TrackedActor);
+	TrackedResourceToGridCell.FindOrAdd(TrackedActor) = ActorGridCell;
 }
 void UPDRTSBaseSubsystem::UntrackResource(const FGameplayTag& ResourceType, const AActor* TrackedActor)
 {
 	FWriteScopeLock Lock(ResourceRWLock);
 	TrackedResourceGroups.FindOrAdd(ResourceType).Actors.Remove(TrackedActor);
 }
+
+void UPDRTSBaseSubsystem::UntrackAllFromResourceActor(const FGameplayTag& ResourceType, const AActor* TrackedActor)
+{
+	FWriteScopeLock Lock(ResourceRWLock);
+	TrackedResourceGroups.FindOrAdd(ResourceType).Actors.Remove(TrackedActor);
+
+	FPDGridCell ActorGridCell = UPDHashGridSubsystem::Get()->GetCellIndex(TrackedActor->GetActorLocation());
+	TrackedResourceGroupsPerGridCell.FindOrAdd(ActorGridCell).Actors.Remove(TrackedActor);	
+}
+
+void UPDRTSBaseSubsystem::UpdateResources(const AActor* TrackedActor)
+{
+	FWriteScopeLock Lock(ResourceRWLock);
+	FPDGridCell* OldGridCellPtr = TrackedResourceToGridCell.Find(TrackedActor);
+	if (OldGridCellPtr)
+	{
+		TrackedResourceGroupsPerGridCell.FindOrAdd(*OldGridCellPtr).Actors.Remove(TrackedActor);
+
+		FPDGridCell NewActorGridCell = UPDHashGridSubsystem::Get()->GetCellIndex(TrackedActor->GetActorLocation());
+		TrackedResourceGroupsPerGridCell.FindOrAdd(NewActorGridCell).Actors.Add(TrackedActor);
+	}
+
+}
+
 const FPDRTSTSetActorWrapper& UPDRTSBaseSubsystem::GetResourceActors(const FGameplayTag& ResourceType)
 {
 	static const FPDRTSTSetActorWrapper StaticDummy;
@@ -264,6 +292,12 @@ const FPDRTSTSetActorWrapper& UPDRTSBaseSubsystem::GetResourceActors(const FGame
 	const FPDRTSTSetActorWrapper* FoundEntry = TrackedResourceGroups.Find(ResourceType);
 	return nullptr != FoundEntry ? *FoundEntry : StaticDummy;
 }
+void UPDRTSBaseSubsystem::ProcessResourceActors(FSimpleDelegate ProcessDelegate)
+{
+	FReadScopeLock Lock(ResourceRWLock);
+
+}
+
 
 
 void UPDRTSBaseSubsystem::OnDeveloperSettingsChanged(UObject* SettingsToChange, FPropertyChangedEvent& PropertyEvent)

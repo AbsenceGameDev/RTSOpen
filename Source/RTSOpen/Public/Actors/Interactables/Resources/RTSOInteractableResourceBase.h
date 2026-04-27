@@ -3,6 +3,7 @@
 
 #include "CoreMinimal.h"
 #include "PDInventorySubsystem.h"
+#include "PDRTSSharedHashGrid.h"
 #include "Actors/PDInteractActor.h"
 #include "AI/Mass/RTSOMassFragments.h"
 #include "Interfaces/RTSOConversationInterface.h"
@@ -121,6 +122,10 @@ private:
 	/** @brief @todo This is not being incremented anywhere, no rules how to handle it. Must resolve this */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Meta = (AllowPrivateAccess="true"))
 	int32 TagOrder = 0;
+
+	/** @brief */
+	UPROPERTY()
+	FPDGridCell PreviousGridCell;
 	
 };
 

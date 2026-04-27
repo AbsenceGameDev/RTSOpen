@@ -365,6 +365,20 @@ TODO:
 
 
 
+April 27th 2026 - Commit#3:
+DONE: 
+    Entity storage/bank task prerequisites: 
+        ✔ Updated Resource tracking to also ensure any resources that have moved one or more gridcells will update their mappings @done(26-04-27 10:29)
+
+IN PROGRESS: 
+    Entity storage/bank task prerequisites: 
+        ☐ Spatial hash on tracked resources & Spatial hash on entities location and find closest resources
+            ☐ If resource has been gathered at the point the entity reaches the place, find new location
+            ☐ If no resources can be found, log error in ActionLog
+    Extend statetree/Entity task: 
+        ☐ Program a new task for moving picked up inventory and bringing it either to storage (physical bank) or to a players bank (infinite storage pool), needed to test and finish the pinger system
+
+
 
 COMING:    
 IN PROGRESS : 

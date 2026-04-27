@@ -53,6 +53,16 @@ void ARTSOInteractableResourceBase::Tick(float DeltaTime)
 	Super::Tick(DeltaTime);
 
 	RefreshTickAcc += DeltaTime;
+
+	FPDGridCell CurrentGridCell = UPDHashGridSubsystem::GetCellIndexStatic(GetActorLocation());
+	const bool bShouldUpdateGridCellMapping = CurrentGridCell != PreviousGridCell;
+	if (bShouldUpdateGridCellMapping)
+	{
+		UPDRTSBaseSubsystem* RTSSubsystem = UPDRTSBaseSubsystem::Get();
+		RTSSubsystem->UpdateResources(this);
+
+		PreviousGridCell = CurrentGridCell;
+	}
 }
 
 void ARTSOInteractableResourceBase::BeginDestroy()
@@ -60,7 +70,7 @@ void ARTSOInteractableResourceBase::BeginDestroy()
 	UPDRTSBaseSubsystem* RTSSubsystem = UPDRTSBaseSubsystem::Get();
 	for (const TPair<FGameplayTag, int32 /*count*/>& ResourceReward : TradeArchetype)
 	{
-		RTSSubsystem->UntrackResource(ResourceReward.Key, this);
+		RTSSubsystem->UntrackAllFromResourceActor(ResourceReward.Key, this);
 	}	
 	
 	Super::BeginDestroy();
@@ -249,6 +259,17 @@ void ARTSOInteractableResourceBase::OnInteract_Implementation(
 	{
 		bool bMustWaitForRegen = false;
 		ProcessTradeIfLimitedInventory(InteractionParams, InteractResult, InstigatorInvComponent, InstigatorInventoryFragment, InvSubsystem, bMustWaitForRegen);
+
+		const TMap<FGameplayTag, FPDLightItemDatum>& Items = InventoryFragment.Handler.GetItems();
+		UPDRTSBaseSubsystem* RTSSubsystem = UPDRTSBaseSubsystem::Get();
+		for (auto&[ResourceType, ItemDatum] : Items)
+		{
+			if (ItemDatum.TotalItemCount <= 0)
+			{
+				RTSSubsystem->UntrackResource(ResourceType, this);
+			}
+		}
+
 		if (InventoryFragment.Handler.IsEmpty() && bMustWaitForRegen == false)
 		{
 			ARTSOInteractableResourceBase* MutableThis = const_cast<ARTSOInteractableResourceBase*>(this);

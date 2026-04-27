@@ -49,6 +49,8 @@ struct FRTSOLightInventoryFragmentHandler
 
 	/** @brief Gets item count, via tag */
 	int32 GetItemCount(const FGameplayTag& Key) const;
+	const TMap<FGameplayTag, FPDLightItemDatum>& GetItems() const { return Inner;};
+
 	bool IsEmpty() const;
 
 	/** @brief Copies the inventory fragment handler. Assigns others inner to our inner */
