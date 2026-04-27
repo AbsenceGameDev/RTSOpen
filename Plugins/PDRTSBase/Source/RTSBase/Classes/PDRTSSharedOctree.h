@@ -60,67 +60,6 @@ struct FPDEntityOctreeSemantics
 	};
 };
 
-/** @brief Buildable actor Octree cell data */
-struct PDRTSBASE_API FPDActorOctreeCell
-{
-	/** @brief Tracked Entity */
-	uint32 ActorInstanceID = 0;
-
-	/** @brief Tracked Entity Owner */
-	int32 OwnerID = INDEX_NONE;
-
-	/** @brief Flag used when starting a game, when we perform a pass on all world entities without valid owners
-	 * to decide if they belong to the owner of the given actor cell  */
-	uint8 bFirstCellAccess = false;
-
-	/** @brief The gameplaytag of this actor (buildable) */
-	FGameplayTag BuildingType = FGameplayTag{};		
-
-	/** @brief Found idle units within buildables sphere of inlfluence.
-	 *  @note Sphere of influence is hardcoded for now to be 5 times the buildable actor extent
-	 *  @todo Make sphere of influence fully configurable */
-	TDeque<FMassEntityHandle> IdleUnits;
-	
-	/** @brief Cell Bounds */
-	FBoxCenterAndExtent Bounds{};
-
-	/** @brief Cell ID */
-	TSharedPtr<FOctreeElementId2> SharedCellID;
-};
-
-
-/** @brief Boilerplate TOctree2 functional structure */
-struct FPDActorOctreeSemantics 
-{
-	/** @brief anonymous enum, won't collide. Tells the octree how many elements we can store per leaf node  */
-	enum { MaxElementsPerLeaf = 128 };
-	/** @brief anonymous enum, won't collide. Tells the octree our minimum limit for inclusive elements per node */
-	enum { MinInclusiveElementsPerNode = 7 };
-	/** @brief anonymous enum, won't collide. Tells the octree how deep our nodes can get */
-	enum { MaxNodeDepth = 12 };
-
-	/** @brief Leaf element allocator */
-	typedef TInlineAllocator<MaxElementsPerLeaf> ElementAllocator;
-
-	/** @brief Returns the bounding box of the give cell */
-	FORCEINLINE static const FBoxCenterAndExtent& GetBoundingBox(const FPDActorOctreeCell& Element)
-	{
-		return Element.Bounds;
-	}
-
-	/** @brief Octree Cell comparison */
-	FORCEINLINE static bool AreElementsEqual(const FPDActorOctreeCell& A, const FPDActorOctreeCell& B)
-	{
-		return A.ActorInstanceID == B.ActorInstanceID;
-	}
-
-	/** @brief Octree Cell ID assignment */
-	FORCEINLINE static void SetElementId(const FPDActorOctreeCell& Element, FOctreeElementId2 Id)
-	{
-		*Element.SharedCellID = Id;
-	};
-};
-
 /** @brief Boilerplate Entity namespace, defines an octree sub-class. */
 namespace PD::Mass
 {
@@ -165,21 +104,21 @@ namespace PD::Mass
 		
 	}
 
-	namespace Actor
-	{
-		/** Actor octree declaration  */		
-		class Octree final
-			: public FOctreeBase
-			  , public TOctree2<FPDActorOctreeCell, FPDActorOctreeSemantics>
-		{
-		public:
-			Octree() = default;
-			Octree(const FVector& InOrigin, FVector::FReal InExtent)
-				: TOctree2(InOrigin, InExtent) {}
+	// namespace Actor
+	// {
+	// 	/** Actor octree declaration  */		
+	// 	class Octree final
+	// 		: public FOctreeBase
+	// 		  , public TOctree2<FPDActorOctreeCell, FPDActorOctreeSemantics>
+	// 	{
+	// 	public:
+	// 		Octree() = default;
+	// 		Octree(const FVector& InOrigin, FVector::FReal InExtent)
+	// 			: TOctree2(InOrigin, InExtent) {}
 			
-			virtual bool SetupOctreeWithNewWorld(UWorld* NewWorld) override; // final inferred from class being final
-		};		
-	}	
+	// 		virtual bool SetupOctreeWithNewWorld(UWorld* NewWorld) override; // final inferred from class being final
+	// 	};		
+	// }	
 }
 
 /** @brief Spatial Entity Query compound,

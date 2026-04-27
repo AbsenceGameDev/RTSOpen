@@ -379,6 +379,25 @@ IN PROGRESS:
         ☐ Program a new task for moving picked up inventory and bringing it either to storage (physical bank) or to a players bank (infinite storage pool), needed to test and finish the pinger system
 
 
+April 27th 2026 - Commit#4:
+- Fix infinite loop or stall that I just noticed by tomorrrow today. Either an infinite loop or a read/write lock that has stalled  
+DONE: 
+    Entity storage/bank task prerequisites: 
+        ✔ Spatial hash on tracked resources & Spatial hash on entities location and find closest resources @done(26-04-27 14:11)
+            ✔ If resource has been gathered at the point the entity reaches the place, find new location @done(26-04-27 14:11)
+            ✔ Removed old octree building tracking system, for this purpose a hashgrid makes much more sense and is much fewer wasted cycles in the massprocessors (important for large entity counts) @done(26-04-27 14:13)
+
+IN PROGRESS: 
+    Entity storage/bank task prerequisites: 
+            ☐ If no resources can be found, log error in ActionLog
+    Extend statetree/Entity task: 
+        ☐ Program a new task for moving picked up inventory and bringing it either to storage (physical bank) or to a players bank (infinite storage pool), needed to test and finish the pinger system
+TODO: 
+    Extend statetree/Entity task: 
+       ☐ Finish the changes needed to dispatch the list of items needed in FRTSOTask_BringBackResource::EnterState
+
+
+
 
 COMING:    
 IN PROGRESS : 

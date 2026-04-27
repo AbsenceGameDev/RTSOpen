@@ -75,6 +75,12 @@ struct FRTSOLightInventoryFragment : public FMassFragment
 	GENERATED_BODY();
 	
 	FRTSOLightInventoryFragment() : Handler(Inner) {};
+	
+	/** @brief If we have nothing in our list at all we count  */
+	bool HasFiniteSpace() 
+	{
+		
+	}
 
 	/** @brief Assigns the other fragments inner to our inner. then overwrite the handler with a new handler bound to the new inner */
 	FRTSOLightInventoryFragment& operator=(const FRTSOLightInventoryFragment& Other)
@@ -90,6 +96,16 @@ struct FRTSOLightInventoryFragment : public FMassFragment
 
 	/** @brief Inventory fragment handler.*/
 	FRTSOLightInventoryFragmentHandler Handler;
+};
+
+USTRUCT(BlueprintType)
+struct FRTSOInventoryDefaultRow : public FTableRowBase
+{
+	GENERATED_BODY();
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	FRTSOLightInventoryFragment InventoryConfig{};
+
 };
 
 /** @brief Base and extended classes are unused for now, will likely remove fully. Reserved Subclass */

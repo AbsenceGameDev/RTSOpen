@@ -517,6 +517,7 @@ void UPDOctreeProcessor::Execute(FMassEntityManager& EntityManager, FMassExecuti
 		RTSSubsystem = UPDRTSBaseSubsystem::Get();
 	}
 	UPDBuilderSubsystem* BuilderSubsystem = UPDBuilderSubsystem::Get();
+	UPDHashGridSubsystem* HashGridSubsystem = UPDHashGridSubsystem::Get();
 
 	// Clear previous buffer
 	RTSSubsystem->OctreeUserQuery.ClearQueryBuffer(EPDQueryGroups::QUERY_GROUP_MINIMAP);
@@ -525,18 +526,16 @@ void UPDOctreeProcessor::Execute(FMassEntityManager& EntityManager, FMassExecuti
 	// RTSSubsystem->EntityShaderInputData.Empty(); // TODO: Replace this, or rather update the QUERY_GROUP_MINIMAP
 
 	// Clear all tracked cells for now
-	BuilderSubsystem->WorldBuildActorOctree.FindAllElements(
-		[](const FPDActorOctreeCell& Cell)
-		{
-			const_cast<FPDActorOctreeCell&>(Cell).IdleUnits.Empty();
-		});
-	
+	BuilderSubsystem->ClearWorldBuildEntityHashGridHandles();
+
+
 	//
 	// From testing, each entity chunk holds max 140 entities 
 	UpdateOctreeElementsQuery.ForEachEntityChunk(EntityManager, Context,
-		[this, BuilderSubsystem](FMassExecutionContext& LambdaContext)
+		[this, BuilderSubsystem, HashGridSubsystem](FMassExecutionContext& LambdaContext)
 	{
-		const PD::Mass::Actor::Octree& BuildableOctree = BuilderSubsystem->WorldBuildActorOctree;
+		BuilderSubsystem->WriterLock_WorldBuildEntityHashGrid();
+
 		QUICK_SCOPE_CYCLE_COUNTER(STAT_OctreeCellExecution)
 		PD::Mass::Entity::Octree& Octree = RTSSubsystem->WorldEntityOctree;
 		const int32 NumEntities = LambdaContext.GetNumEntities();
@@ -598,38 +597,12 @@ void UPDOctreeProcessor::Execute(FMassEntityManager& EntityManager, FMassExecuti
 				CurrentLocation, Entity, RTSEntity.OwnerID);
 
 			//
-			// @todo - Mark idle entities as available in our pool
-			// Bounds test the current entity with the buildable octree's 'area of influence' bounds
-			BuildableOctree.FindElementsWithBoundsTest(CopyCurrentOctreeElement.Bounds,
-				[&, UnitAction, Entity , SelectedUserCountLimit = BuilderSubsystem->UnitPingLimitBuilding](const FPDActorOctreeCell& Cell)
-				{
-					// Overwrite entity OwnerID in case all three conditions are met:
-					// 1. If this is at first spawn of the buildable (DONE)
-					// 2. The buildable in question is a Base/Fort type, (TODO, need to design a way to make this dynamic and not hardcoded)
-					// 3. The overlapping entity has no set owner  (DONE
-					if (Cell.bFirstCellAccess
-						&& RTSEntity.OwnerID == INDEX_NONE
-						&& (Cell.BuildingType == TAG_BUILD_ActionContext_Base0|| Cell.BuildingType == TAG_BUILD_ActionContext_Base1))
-					{
-						RTSEntity.OwnerID = Cell.OwnerID; // Update owner if withing bases range of influence
-					}
-					
-					const bool bIsSameOwner = Cell.OwnerID == RTSEntity.OwnerID;
-					if (bIsSameOwner && Cell.IdleUnits.Num() < SelectedUserCountLimit) // If same owner, and still room to ping for more units 
-					{
-						if (UnitAction.ActionTag != TAG_AI_Job_Idle)
-						{
-							return;
-						}
-						
-						const_cast<FPDActorOctreeCell&>(Cell).IdleUnits.EmplaceLast(Entity);
-					}
-					else // not same owner
-					{
-						// reserved
-					}
-					
-				});
+			// @done - Only Mark idle entities as available in our pool if they are in the same hashgrid
+			const FPDGridCell EntityCell = HashGridSubsystem->GetCellIndex(CurrentLocation);
+			if (UnitAction.ActionTag == TAG_AI_Job_Idle || false == UnitAction.ActionTag.IsValid())
+			{
+				BuilderSubsystem->AddWorldBuildEntityHashGridHandles(EntityCell, Entity);
+			}
 
 			
 			// I expect standing still more than moving around, hence a 'likely' hint here
@@ -643,117 +616,34 @@ void UPDOctreeProcessor::Execute(FMassEntityManager& EntityManager, FMassExecuti
 			CopyCurrentOctreeElement.Bounds.Center = FVector4(CurrentLocation, 0);
 			Octree.AddElement(CopyCurrentOctreeElement);
 		}
+		BuilderSubsystem->WriterUnlock_WorldBuildEntityHashGrid();
 
 		RTSSubsystem->GenerateEntityMapData();
 
 	});
-	// AsyncTask(ENamedThreads::GameThread, 
-	// 	 [EntityShaderInputData = RTSSubsystem->EntityShaderInputData]()
-	// 	 {
-	// 		GEngine->AddOnScreenDebugMessage(INDEX_NONE, 0, FColor::Green, FString::Printf(TEXT("Amount of Entity Data Sent to GPU: %i"), EntityShaderInputData.Num()));
 
-	// 		int32 EntLocalID = INDEX_NONE;
-	// 		for (const FLinearColor& EntityDatum : EntityShaderInputData)
-	// 		{
-	// 			++EntLocalID;
-	// 			EntityDatum;
+#ifdef DEBUG_PIXELENCODED_DATA	
+	AsyncTask(ENamedThreads::GameThread, 
+		 [EntityShaderInputData = RTSSubsystem->EntityShaderInputData]()
+		 {
+			GEngine->AddOnScreenDebugMessage(INDEX_NONE, 0, FColor::Green, FString::Printf(TEXT("Amount of Entity Data Sent to GPU: %i"), EntityShaderInputData.Num()));
 
-	// 			FVector RetLocation; 
-	// 			uint16_t RetEntity16WayRotation; 
-	// 			uint8_t RetEntityFlags; 
-	// 			uint8_t RetTeamColourId;
-	// 			FPDRTSPerPixelStorageHelper::DeconstructData(EntityDatum, RetLocation, RetEntity16WayRotation, RetEntityFlags, RetTeamColourId);
-	// 			GEngine->AddOnScreenDebugMessage(INDEX_NONE, 0, FColor::Green, FString::Printf(TEXT("EntityId(%i) - DeconstructedData: Loc(%s), 16WayRot(%i), EntFlags(%x), TeamId(%i) "), EntLocalID, *RetLocation.ToCompactString(), static_cast<int32>(RetEntity16WayRotation), static_cast<int32>(RetEntityFlags), static_cast<int32>(RetTeamColourId)));
-	// 		}
-
-	// 	 });
-
-	//
-	// Poor mans threading
-	AsyncTask(ENamedThreads::AnyBackgroundHiPriTask,
-		[]()
-		{
-			UPDBuilderSubsystem* BuilderSubsystem = UPDBuilderSubsystem::Get();
-			PD::Mass::Actor::Octree& BuildableOctree = BuilderSubsystem->WorldBuildActorOctree;
-			BuilderSubsystem->BlockMutationOfBuildableTrackingData();
-			
-			for (const int32 RemoveUID : BuilderSubsystem->RemoveBuildableQueue_FirstBuffer)
+			int32 EntLocalID = INDEX_NONE;
+			for (const FLinearColor& EntityDatum : EntityShaderInputData)
 			{
-				if (BuilderSubsystem->ActorsToCells.Contains(RemoveUID) == false ) { continue; }
-				BuilderSubsystem->ActorsToCells[RemoveUID].Reset();
-				BuilderSubsystem->ActorsToCells.Remove(RemoveUID);
+				++EntLocalID;
+				EntityDatum;
+
+				FVector RetLocation; 
+				uint16_t RetEntity16WayRotation; 
+				uint8_t RetEntityFlags; 
+				uint8_t RetTeamColourId;
+				FPDRTSPerPixelStorageHelper::DeconstructData(EntityDatum, RetLocation, RetEntity16WayRotation, RetEntityFlags, RetTeamColourId);
+				GEngine->AddOnScreenDebugMessage(INDEX_NONE, 0, FColor::Green, FString::Printf(TEXT("EntityId(%i) - DeconstructedData: Loc(%s), 16WayRot(%i), EntFlags(%x), TeamId(%i) "), EntLocalID, *RetLocation.ToCompactString(), static_cast<int32>(RetEntity16WayRotation), static_cast<int32>(RetEntityFlags), static_cast<int32>(RetTeamColourId)));
 			}
+		 });
+#endif
 
-			for (const FPDActorCompound& ActorCompound : BuilderSubsystem->WorldBuildActorArrays)
-			{
-				if (ActorCompound.WorldActorsPtr == nullptr) { continue; }
-
-				TArray<AActor*>& BuildableActorArray = *ActorCompound.WorldActorsPtr;
-				const int32 SelectedOwnerID = ActorCompound.OwnerID;
-				for (const AActor* SelectedPlayersBuildable : BuildableActorArray)
-				{
-					// Below if-cond is a temporary WA @todo Sporadic bug: Resolve the data-race that might be caused this when removing a buildable from the world
-					if (SelectedPlayersBuildable == nullptr) { continue; }
-					
-					const FPDBuildable* Buildable = BuilderSubsystem->GetBuildableWithActionsFromClassStatic(
-						SelectedPlayersBuildable->GetClass());
-					if (Buildable == nullptr)
-					{
-						UE_LOG(PDLog_BuildSystem, Error,TEXT("UPDOctreeProcessor::Execute -- AsyncTask -- Buildable actor is invalid, skipping"))
-						continue;
-					}
-							
-					if (SelectedPlayersBuildable == nullptr || SelectedPlayersBuildable->IsValidLowLevelFast() == false)
-					{
-						// was probably just removed
-						continue;
-					}
-					
-					const TSharedPtr<FOctreeElementId2>* CellSharedID = BuilderSubsystem->ActorsToCells.Find(SelectedPlayersBuildable->GetUniqueID());
-					if (UNLIKELY(CellSharedID == nullptr)) // add new cell
-					{
-						FPDActorOctreeCell NewOctreeElement;
-
-						FVector Origin{};
-						FVector Extent{};
-						SelectedPlayersBuildable->GetActorBounds(false, Origin, Extent);
-
-					
-						NewOctreeElement.SharedCellID = MakeShared<FOctreeElementId2, ESPMode::ThreadSafe>();
-						NewOctreeElement.OwnerID = SelectedOwnerID;
-						NewOctreeElement.bFirstCellAccess = true;
-						NewOctreeElement.BuildingType = Buildable->BuildableTag;
-						NewOctreeElement.ActorInstanceID = SelectedPlayersBuildable->GetUniqueID();
-						NewOctreeElement.Bounds = FBoxCenterAndExtent(SelectedPlayersBuildable->GetActorLocation(), Extent * 5); // @todo 'Extent * 5' is a Crude area of influence, fix soon
-						BuilderSubsystem->ActorsToCells.FindOrAdd(SelectedPlayersBuildable->GetUniqueID()) = NewOctreeElement.SharedCellID;
-
-						BuildableOctree.AddElement(NewOctreeElement);				
-					}
-					else // Move existing cell
-					{
-						//
-						// @DONE If it does not find a cell here, the actor must have been destroyed,
-						// handled via BuilderSubsystem->RemoveBuildableQueue some further up this functiom
-						
-						const FOctreeElementId2* CellID = CellSharedID->Get(); 
-						FPDActorOctreeCell CopyCurrentOctreeElement = BuildableOctree.GetElementById(*CellID);
-				
-						BuildableOctree.RemoveElement(*CellID);
-				
-						CopyCurrentOctreeElement.bFirstCellAccess = false;
-						CopyCurrentOctreeElement.OwnerID = SelectedOwnerID;
-						CopyCurrentOctreeElement.BuildingType = Buildable->BuildableTag; // only needed in case we have upgraded buildable type for the given actor, which might never happen, assess if we actually need this
-						CopyCurrentOctreeElement.ActorInstanceID = SelectedPlayersBuildable->GetUniqueID();
-						CopyCurrentOctreeElement.Bounds.Center = FVector4(SelectedPlayersBuildable->GetActorLocation(), 0);
-
-						BuildableOctree.AddElement(CopyCurrentOctreeElement);
-					}
-				}
-			}
-			BuilderSubsystem->ResumeMutationOfBuildableTrackingData();
-		}
-		);
-	
 	DebugDrawCells();
 }
 

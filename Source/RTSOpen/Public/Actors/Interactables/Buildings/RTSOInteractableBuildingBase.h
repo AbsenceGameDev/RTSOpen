@@ -25,7 +25,7 @@ struct FRTSOBuildableInventories
 
 	/** @brief Main inventory  */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
-	FRTSOLightInventoryFragment LightInventoryAsMain{};	
+	FRTSOLightInventoryFragment StorageInventory{};	
 };
 
 
@@ -107,6 +107,8 @@ public:
 	
 	/** @brief Returns tbe buildings own light inventory constructs. One for finished stage and one for the ghosts each build stage  */
 	virtual FRTSOBuildableInventories& ReturnBuildableInventories();
+	virtual FRTSOLightInventoryFragment& GetCurrentInventory();
+	FRTSOLightInventoryFragment CalculateFreeInventorySpace();
 
 private:
 	/** @brief Refreshes ghosts settings, if they have been marked as stale */
@@ -134,6 +136,10 @@ public:
 	bool CurrentStateFinishedProgressing = false;
 	/** @brief Active progress current state  */
 	bool RunningStateProgressFunction = true;
+
+	/** @brief Handle to default inventory, relevant for all builings that has storage limits. If not set then the building can hold infinite */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Meta = (RowType="/Script/RTSOpen.RTSOInventoryDefaultRow"))
+	FDataTableRowHandle TargetInventoryLimit{};
 
 private:
 	/** @brief light inventory constructs. */

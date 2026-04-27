@@ -14,6 +14,7 @@
 
 // PD UI
 #include "Widgets/Slate/SRTSOActionLog.h"
+#include "Actors/Interactables/Buildings/RTSOInteractableBuildingBase.h"
 
 // Mass
 #include "MassEntitySubsystem.h"
@@ -67,6 +68,7 @@ bool FRTSOTask_BringBackResource::Link(FStateTreeLinker& Linker)
 	Linker.LinkExternalData(MassSignalSubsystemHandle);
 	Linker.LinkExternalData(MoveParametersHandle);
 	Linker.LinkExternalData(RTSDataHandle);	
+	Linker.LinkExternalData(ActionHandle);
 
 	return FMassStateTreeTaskBase::Link(Linker);
 }
@@ -79,27 +81,54 @@ EStateTreeRunStatus FRTSOTask_BringBackResource::EnterState(FStateTreeExecutionC
 	const FMassMovementParameters& MoveParameters = Context.GetExternalData(MoveParametersHandle);
 	FPDMFragment_RTSEntityBase& RTSData = Context.GetExternalData(RTSDataHandle);
 	const FTransformFragment& TransformFragment = Context.GetExternalData(TransformHandle);
-	const FRTSOLightInventoryFragment& InventoryFragment = Context.GetExternalData(InventoryHandle);
-
-
-	// TODO, if the entity does not have resources we must dispatch it bringing resources and go there first
-	// - Note: For that we would need one of our subsystem to aggregate all resources and map them unto their octree location hash and tell only entities in said hash / grid segment of the octree 
+	const FRTSOLightInventoryFragment& EntityInventoryFragment = Context.GetExternalData(InventoryHandle);
+	const FPDMFragment_Action& ActionFragment = Context.GetExternalData(ActionHandle);
 	
-	// // Thoughts/pseudocode:
-	// int32 TaskCounter = 0;
-	// for (const auto& ItemTag : TagsFromPing) 
-	// {
-	//    Count = InventoryFragment.Handler.GetItemCount(ItemTag);
-	//    if (Count <= 0) 
-	// 	  {
-	//         
-	//        AddGatherResourceTask(ItemTag); 
-	//    }
-	// }
-	// if (TaskCounter == 0)
-	// {
-	// 	 // Then Trigger Move directly to Storage to drop thigns off
-	// }
+
+
+	ARTSOInteractableBuildingBase* AsBuildingBase = Cast<ARTSOInteractableBuildingBase>(ActionFragment.OptTargets.ActionTargetAsActor);
+	if (AsBuildingBase)
+	{
+		FRTSOLightInventoryFragment BuildingAvailableInventorySpace = AsBuildingBase->CalculateFreeInventorySpace();
+
+		bool bCantAfford = false;
+		TMap<FGameplayTag, int32> MissingItems;
+		for (auto&[ResourceType, ItemDatum] : BuildingAvailableInventorySpace.Handler.GetItems())
+		{
+			int32 DeltaItemStorage = ItemDatum.TotalItemCount - EntityInventoryFragment.Handler.GetItemCount(ResourceType);
+			const bool bCantAffordItem = DeltaItemStorage > 0;
+			if (bCantAffordItem)
+			{
+				MissingItems.Emplace(ResourceType, DeltaItemStorage);
+			}
+		}
+
+		// 
+		// TODO: Finish the changes needed to dispatch the list of items needed
+		if (bCantAfford)
+		{
+			// TODO Dispatch fetching item
+			// TODO, if the entity does not have resources we must dispatch it bringing resources and go there first
+			// - Note: For that we would need one of our subsystem to aggregate all resources and map them unto their octree location hash and tell only entities in said hash / grid segment of the octree 
+			
+			// Thoughts/pseudocode:
+			int32 TaskCounter = 0;
+			for (const auto&[ResourceType, MissingItemCount] : MissingItems) 
+			{
+				//    Count = InventoryFragment.Handler.GetItemCount(ResourceType);
+				//    if (Count <= 0) 
+				// 	  {
+						
+				//        AddGatherResourceTask(ItemTag); 
+				//    }
+			}
+			if (TaskCounter == 0)
+			{
+				 // Then Trigger Move directly to Storage to drop thigns off
+			}
+		}
+	}
+
 	
 	return FPDMTaskStatics::TriggerMove<FRTSOTask_BringBackResource>(this, Context, EntitySubsystem, MoveTarget, MoveParameters, RTSData, TransformFragment);
 }

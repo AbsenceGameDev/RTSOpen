@@ -4,7 +4,12 @@
 
 #include "CoreMinimal.h"
 #include "PDRTSSharedOctree.h"
+#include "PDRTSSharedHashGrid.h"
 #include "AI/Mass/PDMassFragments.h"
+
+#include "HAL/UnrealMemory.h"
+#include "Misc/ScopeLock.h"
+#include "Misc/ScopeRWLock.h"
 
 #include "GameplayTagContainer.h"
 #include "PDBuildCommon.h"
@@ -94,6 +99,32 @@ public:
 	/** @brief Request to remove a user adn their pointer to their buildable array */
 	void RemoveBuildActorArray(int32 OwnerID);
 	
+
+	const TDeque<FMassEntityHandle> CopyWorldBuildEntityHashGridHandles(FPDGridCell ActorCell) const
+	{
+		FReadScopeLock Lock(EntityHashgridRWLock);
+		const TDeque<FMassEntityHandle>* DataPtr = WorldBuildEntityHashGrid.Find(ActorCell);
+		return DataPtr != nullptr ? *DataPtr : TDeque<FMassEntityHandle>{};
+	}; 
+	void ClearWorldBuildEntityHashGridHandles()
+	{
+		FWriteScopeLock Lock(EntityHashgridRWLock);
+		WorldBuildEntityHashGrid.Empty();
+	}
+	void AddWorldBuildEntityHashGridHandles(FPDGridCell EntityCell, FMassEntityHandle Entity)
+	{
+		FWriteScopeLock Lock(EntityHashgridRWLock);
+		WorldBuildEntityHashGrid.FindOrAdd(EntityCell).EmplaceFirst(Entity);
+	}
+	void WriterLock_WorldBuildEntityHashGrid()
+	{
+		EntityHashgridRWLock.WriteLock();
+	}
+	void WriterUnlock_WorldBuildEntityHashGrid()
+	{
+		EntityHashgridRWLock.WriteUnlock();		
+	}	
+
 public:	
 
 	/** @brief Build context tables held by subsystem for others to fetch */
@@ -127,11 +158,12 @@ public:
 	/** @brief Mapped for fast access. Mapped upon subsystem loading the developer settings 'UPDRTSSubsystemSettings' */
 	TMap<FPDBuildableData*, FGameplayTag> BuildableData_WTagReverse{};	
 
-	
+protected:	
 	/** @brief The actual octree our buildable actors will make use of*/
-	PD::Mass::Actor::Octree WorldBuildActorOctree;
-	TMap<int32 /*UID*/, TSharedPtr<FOctreeElementId2>> ActorsToCells;
+	TMap<FPDGridCell, TDeque<FMassEntityHandle>> WorldBuildEntityHashGrid;
+	mutable FRWLock EntityHashgridRWLock;
 
+public:
 	bool bIsProcessingBuildableRemovalQueue = false;
 	TDeque<int32 /*UID*/> RemoveBuildableQueue_FirstBuffer{};  // First  buffer, tells our processor which UIDs to flush and remove their cells
 	TDeque<int32 /*UID*/> RemoveBuildableQueue_SecondBuffer{}; // Second buffer, while processing first buffer, use this so we don't get race conditions

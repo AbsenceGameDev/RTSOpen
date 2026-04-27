@@ -190,11 +190,18 @@ TArray<FMassEntityHandle> UPDRTSBaseSubsystem::FindIdleEntitiesOfType(TArray<FGa
 	}
 
 	// 1. Get cell of related octree
-	const FPDActorOctreeCell& Cell = BuilderSubsystem->WorldBuildActorOctree.GetElementById(*BuilderSubsystem->ActorsToCells.FindRef(ActorToBuild->GetUniqueID()).Get());
+	const FPDGridCell ActorCell = UPDHashGridSubsystem::GetCellIndexStatic(ActorToBuild->GetActorLocation());
+	const TDeque<FMassEntityHandle> HandlesCopy = BuilderSubsystem->CopyWorldBuildEntityHashGridHandles(ActorCell); 
 	// 2. Iterate that cells entities, pick max 50 that are idle and eligible
-	TDeque<FMassEntityHandle> HandlesCopy = Cell.IdleUnits;
+	constexpr int32 MaxPingCount = 50;
+	int32 PingCount = 0;
 	for (const FMassEntityHandle& EntityHandle : HandlesCopy)
 	{
+		if (MaxPingCount < PingCount)
+		{
+			break;
+		}
+
 		const UWorld* World = ActorToBuild->GetWorld();
 		if (RTSBaseSubsystem->EntityManager->IsEntityValid(EntityHandle) == false
 			|| RTSBaseSubsystem->WorldToEntityHandler.Contains(World) == false)
@@ -209,6 +216,7 @@ TArray<FMassEntityHandle> UPDRTSBaseSubsystem::FindIdleEntitiesOfType(TArray<FGa
 			if (EntityBase->EntityType != EligibleType) { continue; }
 			
 			RetArray.Emplace(EntityHandle);
+			PingCount++;
 			break;
 		}
 	}

@@ -48,18 +48,6 @@ bool PD::Mass::FOctreeBase::SetupOctreeWithNewWorld(UWorld* NewWorld)
 	return true;
 }
 
-bool PD::Mass::Actor::Octree::SetupOctreeWithNewWorld(UWorld* NewWorld)
-{
-	const bool bWasSetup = FOctreeBase::SetupOctreeWithNewWorld(NewWorld);
-
-	if (bWasSetup)
-	{
-		const float UniformBounds = GetDefault<UPDOctreeSettings>()->ActorOctreeSettings.OctreeUniformBounds;
-		*this = PD::Mass::Actor::Octree(FVector::ZeroVector, UniformBounds);
-	}
-	return bWasSetup;
-}
-
 bool PD::Mass::Entity::Octree::SetupOctreeWithNewWorld(UWorld* NewWorld)
 {
 	const bool bWasSetup = FOctreeBase::SetupOctreeWithNewWorld(NewWorld);

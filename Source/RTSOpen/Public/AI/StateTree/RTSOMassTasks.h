@@ -132,6 +132,7 @@ protected:
 	TStateTreeExternalDataHandle<UMassEntitySubsystem> EntitySubsystemHandle; /**<@ingroup ExternalHandles*/
 	TStateTreeExternalDataHandle<UPDInteractSubsystem> InteractSubsystemHandle; /**<@ingroup ExternalHandles*/
 	TStateTreeExternalDataHandle<FRTSOLightInventoryFragment> InventoryHandle; /**<@ingroup ExternalHandles*/
+	TStateTreeExternalDataHandle<FPDMFragment_Action> ActionHandle; /**<@ingroup ExternalHandles*/
 
 	TStateTreeExternalDataHandle<UMassSignalSubsystem> MassSignalSubsystemHandle; /**<@ingroup ExternalHandles*/
 	TStateTreeExternalDataHandle<FTransformFragment> TransformHandle; /**<@ingroup ExternalHandles*/

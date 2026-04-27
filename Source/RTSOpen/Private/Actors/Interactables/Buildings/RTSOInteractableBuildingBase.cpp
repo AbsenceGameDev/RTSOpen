@@ -303,6 +303,37 @@ FRTSOBuildableInventories& ARTSOInteractableBuildingBase::ReturnBuildableInvento
 {
 	return BuildableInventories;
 }
+FRTSOLightInventoryFragment& ARTSOInteractableBuildingBase::GetCurrentInventory()
+{
+	if(bIsGhost_noSerialize)
+	{
+		return BuildableInventories.LightInventoriesPerGhostStage.IsValidIndex(CurrentTransitionState.CurrentStageIdx) 
+			? BuildableInventories.LightInventoriesPerGhostStage[CurrentTransitionState.CurrentStageIdx]
+			: false == BuildableInventories.LightInventoriesPerGhostStage.IsEmpty() 
+				? BuildableInventories.LightInventoriesPerGhostStage[0]
+				: BuildableInventories.LightInventoriesPerGhostStage.Emplace_GetRef();
+	}
+
+	return BuildableInventories.StorageInventory;
+}
+
+// note: @todo This should be cached everytime it changes, and then just reported back when asked 
+FRTSOLightInventoryFragment ARTSOInteractableBuildingBase::CalculateFreeInventorySpace()
+{
+	FRTSOLightInventoryFragment DeltaItems;
+	const FRTSOLightInventoryFragment& BuildingInventory = GetCurrentInventory();
+	const FRTSOInventoryDefaultRow* InventoryLimit = TargetInventoryLimit.GetRow<FRTSOInventoryDefaultRow>(TEXT("FRTSOTask_BringBackResource::EnterState"));	
+	if (InventoryLimit)
+	{
+		DeltaItems.Handler.AddItems(InventoryLimit->InventoryConfig.Handler.GetItems());
+	}
+
+	for (auto& [ItemTag, ItemDatum] : BuildingInventory.Handler.GetItems())
+	{
+		DeltaItems.Handler.RemoveItem(ItemTag, ItemDatum.TotalItemCount);
+	}
+	return DeltaItems;
+}
 
 template<bool TIsGhost>
 void ARTSOInteractableBuildingBase::ProcessSpawn()

@@ -252,7 +252,7 @@ void AGodHandPawn::BuildableGhostTick(float DeltaTime)
 			IPDRTSBuildableGhostInterface::Execute_OnSpawnedAsGhost(CurrentGhost, CurrentBuildableTag, true, false);
 
 			// ARTSOInteractableBuildingBase* AsInteractableBuilding = Cast<ARTSOInteractableBuildingBase>(CurrentGhost); 
-			// AsInteractableBuilding->ReturnBuildableInventories().LightInventoryAsMain;
+			// AsInteractableBuilding->ReturnBuildableInventories().StorageInventory;
 		}
 	}
 
