@@ -1,21 +1,33 @@
 ﻿/* @author: Ario Amin @ Permafrost Development. @copyright: Full BSL(1.1) License included at bottom of the file  */
+
+// PD Definitions
+#include "PDRTSBaseSubsystem.h"
+#include "RTSOpenCommon.h"
+#include "Interfaces/PDInteractInterface.h"
+#include "Interfaces/RTSOActionLogInterface.h"
+
+// PDAI
+#include "Pawns/PDRTSBaseUnit.h"
 #include "AI/StateTree/RTSOMassTasks.h"
 #include "AI/Mass/PDMassFragments.h"
+#include "AI/Mass/RTSOMassFragments.h"
 
+// PD UI
+#include "Widgets/Slate/SRTSOActionLog.h"
+
+// Mass
 #include "MassEntitySubsystem.h"
 #include "MassSignalSubsystem.h"
 #include "MassStateTreeExecutionContext.h"
-#include "PDRTSBaseSubsystem.h"
-#include "RTSOpenCommon.h"
+#include "MassCommonFragments.h"
+#include "MassMovementFragments.h"
+#include "MassEntityView.h"
+#include "MassNavigationFragments.h"
+#include "NavigationPath.h"
 
+// StateTree 
 #include "StateTreeExecutionContext.h"
 #include "StateTreeLinker.h"
-#include "AI/Mass/RTSOMassFragments.h"
-#include "Interfaces/PDInteractInterface.h"
-#include "Interfaces/RTSOActionLogInterface.h"
-#include "Pawns/PDRTSBaseUnit.h"
-#include "Widgets/Slate/SRTSOActionLog.h"
-
 
 bool FRTSOTask_ActionLog::Link(FStateTreeLinker& Linker)
 {
@@ -50,29 +62,64 @@ bool FRTSOTask_BringBackResource::Link(FStateTreeLinker& Linker)
 {
 	Linker.LinkExternalData(EntitySubsystemHandle);
 	Linker.LinkExternalData(InventoryHandle);
+	Linker.LinkExternalData(MoveTargetHandle);
+	Linker.LinkExternalData(TransformHandle);
+	Linker.LinkExternalData(MassSignalSubsystemHandle);
+	Linker.LinkExternalData(MoveParametersHandle);
+	Linker.LinkExternalData(RTSDataHandle);	
+
 	return FMassStateTreeTaskBase::Link(Linker);
 }
 
 EStateTreeRunStatus FRTSOTask_BringBackResource::EnterState(FStateTreeExecutionContext& Context, const FStateTreeTransitionResult& Transition) const
 {
 
-
-	return EStateTreeRunStatus::Running;
+	UMassEntitySubsystem& EntitySubsystem = Context.GetExternalData(EntitySubsystemHandle);
+	FMassMoveTargetFragment& MoveTarget = Context.GetExternalData(MoveTargetHandle);
+	const FMassMovementParameters& MoveParameters = Context.GetExternalData(MoveParametersHandle);
+	FPDMFragment_RTSEntityBase& RTSData = Context.GetExternalData(RTSDataHandle);
+	const FTransformFragment& TransformFragment = Context.GetExternalData(TransformHandle);
+	
+	return FPDMTaskStatics::TriggerMove<FRTSOTask_BringBackResource>(this, Context, EntitySubsystem, MoveTarget, MoveParameters, RTSData, TransformFragment);
 }
 
 EStateTreeRunStatus FRTSOTask_BringBackResource::Tick(FStateTreeExecutionContext& Context, const float DeltaTime) const
 {
+	FMassMoveTargetFragment& MoveTarget = Context.GetExternalData(MoveTargetHandle);
+	FPDMFragment_RTSEntityBase& RTSData = Context.GetExternalData(RTSDataHandle);
+	
+	EStateTreeRunStatus InnerMoveState = FPDMTaskStatics::TickMove<FRTSOTask_BringBackResource>(this, Context, DeltaTime, MoveTarget, RTSData);
 
-	bool bTODO_REPLACE = true;
-	if (bTODO_REPLACE)
+	bool bStartInteraction = InnerMoveState == EStateTreeRunStatus::Succeeded;
+	if (bStartInteraction)
 	{
-		return InnerInteraction(Context);
+		const FInstanceDataType& InstanceData = Context.GetInstanceData(*this);
+		const FMassEntityHandle& OtherEntityHandle = InstanceData.PotentialEntityHandle;
+		const IPDInteractInterface* OtherInteractable = Cast<IPDInteractInterface>(InstanceData.PotentialInteractableActor);
+		const UMassEntitySubsystem& EntitySubsystem = Context.GetExternalData(EntitySubsystemHandle);
+		
+		return FRTSOTask_Interact::TaskInteract(this, Context, OtherEntityHandle, OtherInteractable, EntitySubsystem);
 	}
 
 	return EStateTreeRunStatus::Running;
 }
 void FRTSOTask_BringBackResource::ExitState(FStateTreeExecutionContext& Context, const FStateTreeTransitionResult& Transition) const
 {
+}
+
+void FRTSOTask_BringBackResource::OnPathSelected(FPDMFragment_RTSEntityBase& RTSData, bool bShouldUseSharedNavigation, const FVector& LastPoint) const
+{
+	const FRTSOActionLogEvent NewActionEvent{
+		FString::Printf(TEXT("Entity Group ID(%i) -- Moving To Target [%4.2f ,%4.2f, %4.2f] "),
+			RTSData.SelectionGroupIndex, LastPoint.X, LastPoint.Y, LastPoint.Z)}; 
+	if (bShouldUseSharedNavigation)
+	{
+		URTSActionLogSubsystem::DispatchBatchedEvent(RTSData.OwnerID, RTSData.SelectionGroupIndex, NewActionEvent);
+	}
+	else
+	{
+		URTSActionLogSubsystem::DispatchEvent(RTSData.OwnerID, NewActionEvent);		
+	}
 }
 
 
@@ -87,18 +134,28 @@ bool FRTSOTask_Interact::Link(FStateTreeLinker& Linker)
 
 EStateTreeRunStatus FRTSOTask_Interact::EnterState(FStateTreeExecutionContext& Context, const FStateTreeTransitionResult& Transition) const
 {
-	return InnerInteraction(Context);
-}
-EStateTreeRunStatus FRTSOTask_Interact::InnerInteraction(FStateTreeExecutionContext& Context) const
-{
-	// const UPDRTSBaseSubsystem& RTSSubsystem = *UPDRTSBaseSubsystem::Get();
-
-	const FMassStateTreeExecutionContext& MassContext = static_cast<FMassStateTreeExecutionContext&>(Context);
-
 	const FInstanceDataType& InstanceData = Context.GetInstanceData(*this);
 	const FMassEntityHandle& OtherEntityHandle = InstanceData.PotentialEntityHandle;
 	const IPDInteractInterface* OtherInteractable = Cast<IPDInteractInterface>(InstanceData.PotentialInteractableActor);
 	const UMassEntitySubsystem& EntitySubsystem = Context.GetExternalData(EntitySubsystemHandle);
+
+	return TaskInteract(this, Context, OtherEntityHandle, OtherInteractable, EntitySubsystem);
+}
+
+template<typename TPDMassType>
+EStateTreeRunStatus FRTSOTask_Interact::TaskInteract(
+	const TPDMassType* This,
+	FStateTreeExecutionContext& Context, 
+	const FMassEntityHandle& OtherEntityHandle,
+	const IPDInteractInterface* OtherInteractable,
+	const UMassEntitySubsystem& EntitySubsystem
+)
+{
+	const auto& InstanceData = Context.GetInstanceData(*This);
+
+	const FMassStateTreeExecutionContext& MassContext = static_cast<FMassStateTreeExecutionContext&>(Context);
+
+
 	UPDRTSBaseSubsystem& RTSSubsystem = *UPDRTSBaseSubsystem::Get();
 	
 	UPDRTSBaseUnit** UnitHandlerDoublePtr = RTSSubsystem.WorldToEntityHandler.Find(EntitySubsystem.GetWorld());

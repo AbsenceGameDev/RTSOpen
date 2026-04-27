@@ -6,6 +6,19 @@
 #include "MassStateTreeTypes.h"
 #include "PDRTSCommon.h"
 #include "AI/Mass/PDMassFragments.h"
+
+
+#include "MassCommonFragments.h"
+#include "MassEntitySubsystem.h"
+#include "MassMovementFragments.h"
+#include "MassEntityView.h"
+#include "MassNavigationFragments.h"
+#include "MassSignalSubsystem.h"
+#include "MassStateTreeExecutionContext.h"
+#include "StateTreeExecutionContext.h"
+#include "NavigationPath.h"
+#include "StateTreeLinker.h"
+
 #include "PDMassTasks.generated.h"
 
 class UNavigationPath;
@@ -70,6 +83,7 @@ struct FPDMStuckMovementConditions
 };
 
 
+
 //
 /// MOVETOHANDLE
 
@@ -95,6 +109,26 @@ struct FPDMTaskData_MoveToHandle
 	/** @brief Settings to control our parameters when we should abort a movement */
 	UPROPERTY(EditAnywhere, Category = "Data")
 	FPDMStuckMovementConditions StuckMovementRules{};
+};
+
+/**
+ * @brief Bring back resources to bank or storage task.
+ * @details Walks towards the target and attempts to call Execute_OnInteract if the given target os of storage type (or proxy object if the target's an entity) has an interface of type IPDInteractInterface 
+ */
+
+/** @brief Instance data for entity running FPDMTask_PlayAnimation */
+USTRUCT()
+struct FPDMTaskData_BringBackResource : public FPDMTaskData_MoveToHandle
+{
+	GENERATED_BODY()
+
+	/** @brief Potential Interaction Target: MassEntity */
+	UPROPERTY(VisibleAnywhere, Category = Input)
+	FMassEntityHandle PotentialEntityHandle;
+
+	/** @brief Potential Interaction Target: Actor */
+	UPROPERTY(VisibleAnywhere, Category = Input)
+	AActor* PotentialInteractableActor;	
 };
 
 /** @brief Reference-bound parameter structure related to an entities navpath */
@@ -154,6 +188,7 @@ struct FPDMPathParameters
 	const UNavigationPath* NavPath = nullptr;
 };
 
+
 /**
  * @brief Task to move to a given target, either another entity or a world actor.
  * @note Works by generating a path for the movement processor to read from
@@ -166,31 +201,6 @@ struct PDRTSBASE_API FPDMTask_MoveToTarget : public FMassStateTreeTaskBase
 	/* Macro helper to declare the required task functions */
 	DECLARE_TASK_BODY(MoveToHandle)
 
-	
-	template<typename TPDMassTask>
-	static FORCEINLINE EStateTreeRunStatus TriggerMove(
-		const TPDMassTask* This,
-		FStateTreeExecutionContext& Context,
-		UMassEntitySubsystem& EntitySubsystem,
-		FMassMoveTargetFragment& MoveTarget,
-		const FMassMovementParameters& MoveParameters,
-		FPDMFragment_RTSEntityBase& RTSData,
-		const FTransformFragment& TransformFragment
-	);
-
-	template<typename TPDMassTask>
-	static FORCEINLINE EStateTreeRunStatus TickMove(
-		const TPDMassTask* This,
-		FStateTreeExecutionContext& Context, 
-		const float DeltaTime,
-		FMassMoveTargetFragment& MoveTarget,
-		FPDMFragment_RTSEntityBase& RTSData);
-
-
-	/** @brief Resolves the navpath at current path index for priority pathing, @bug Navpath generates invalid points, commented out for the moment, will resolve issue within a couple of commits  */
-	static void ProcessNewPriorityPath(const FPDMPathParameters& Params);
-	/** @brief Resolves the navpath at current path index for shared pathing, @bug Navpath generates invalid points, commented out for the moment, will resolve issue within a couple of commits */
-	static void ProcessNewSharedPath(const FPDMPathParameters& Params);
 	virtual void OnPathSelected(FPDMFragment_RTSEntityBase& RTSData, bool bShouldUseSharedNavigation, const FVector& LastPoint) const;
 
 	/* Links/handles */
@@ -316,6 +326,164 @@ protected:
 	TStateTreeExternalDataHandle<FMassMoveTargetFragment> MoveTargetHandle;
 	TStateTreeExternalDataHandle<UMassSignalSubsystem> MassSignalSubsystemHandle;
 	TStateTreeExternalDataHandle<FPDMFragment_EntityAnimation> AnimationHandle;
+};
+
+
+struct PDRTSBASE_API FPDMTaskStatics 
+{
+	/** @brief Resolves the navpath at current path index for priority pathing, @bug Navpath generates invalid points, commented out for the moment, will resolve issue within a couple of commits  */
+	static void ProcessNewPriorityPath(const FPDMPathParameters& Params)
+	{
+		const FVector& StartLocation = Params.TransformFragment.GetTransform().GetLocation();
+		const FVector& TargetLocation = Params.ResolveLocation();
+
+		// @todo debug why the generated path is not functioning, debugging it showed it provides a valid location
+		// UNavigationPath* Navpath = UNavigationSystemV1::FindPathToLocationSynchronously(Params.EntitySubsystem.GetWorld(), StartLocation, TargetLocation);
+		// if (Navpath != nullptr && Navpath->PathPoints.IsEmpty() == false)
+		// {
+		// 	UE_LOG(PDLog_RTSBase, Warning, TEXT("FPDMTask_MoveToTarget::ProcessNewPriorityPath -- NavPath Generated"))
+		//
+		// 	TArray<FVector>& PathPoints = Navpath->PathPoints;
+		// 	PathPoints[0] = StartLocation;
+		// 	PathPoints.Last() = TargetLocation;
+		//
+		// 	Params.InstanceData.NavPath = std::move(PathPoints);
+		// 	Params.InstanceData.CurrentNavPathIndex = 0;
+		// 	Params.MoveTarget.Center = Params.InstanceData.NavPath[Params.InstanceData.CurrentNavPathIndex];
+		// 	
+		// 	{
+		// 		int32 Step = 0;
+		// 		for (const FVector& PathPoint : Params.InstanceData.NavPath)
+		// 		{
+		// 			DrawBoxAndTextChaos(PathPoint, FQuat::Identity, FVector(5), FString::Printf(TEXT("Point(%i)"), Step++), FColor::Cyan);
+		// 		}			
+		// 	}
+		// 	
+		// }
+		// else
+		{
+			UE_LOG(PDLog_RTSBase, Warning, TEXT("FPDMTask_MoveToTarget::ProcessNewPriorityPath -- Failed being generated"))
+			Params.MoveTarget.Center = TargetLocation;
+		}
+	}
+
+
+	/** @brief Resolves the navpath at current path index for shared pathing, @bug Navpath generates invalid points, commented out for the moment, will resolve issue within a couple of commits */
+	static void ProcessNewSharedPath(const FPDMPathParameters& Params)
+	{
+		const FVector& StartLocation = Params.TransformFragment.GetTransform().GetLocation();
+
+		if (Params.NavPath->PathPoints.IsEmpty() == false)
+		{
+			UE_LOG(PDLog_RTSBase, Warning, TEXT("FPDMTask_MoveToTarget::ProcessNewSharedPath -- NavPath Generated"))
+
+			TArray<FVector> PathPoints = Params.NavPath->PathPoints;
+			PathPoints[0] = StartLocation;
+
+			Params.InstanceData.NavPath = std::move(PathPoints);
+			Params.InstanceData.CurrentNavPathIndex = 0;
+			Params.MoveTarget.Center = Params.InstanceData.NavPath[Params.InstanceData.CurrentNavPathIndex];
+		}
+		else
+		{
+			UE_LOG(PDLog_RTSBase, Warning, TEXT("FPDMTask_MoveToTarget::ProcessNewSharedPath -- Failed being generated"))
+			Params.MoveTarget.Center = Params.ResolveLocation();
+		}
+	}
+
+	template<typename TPDMassTask>
+	static EStateTreeRunStatus TriggerMove(
+		const TPDMassTask* This,
+		FStateTreeExecutionContext& Context,
+		UMassEntitySubsystem& EntitySubsystem,
+		FMassMoveTargetFragment& MoveTarget,
+		const FMassMovementParameters& MoveParameters,
+		FPDMFragment_RTSEntityBase& RTSData,
+		const FTransformFragment& TransformFragment
+	)
+	{
+		// UMassEntitySubsystem& EntitySubsystem = Context.GetExternalData(EntitySubsystemHandle);
+		const FMassStateTreeExecutionContext& MassContext = static_cast<FMassStateTreeExecutionContext&>(Context);
+		const FMassEntityView EntityView(EntitySubsystem.GetEntityManager(), MassContext.GetEntity());
+
+		auto& InstanceData = Context.GetInstanceData(*This);
+		const FMassEntityHandle& ActionTargetAsEntity = InstanceData.OptTargets.ActionTargetAsEntity;
+		const FPDMFragment_SharedEntity& SharedEntity = EntityView.GetSharedFragmentData<FPDMFragment_SharedEntity>();
+
+		const bool bIsEntityValid = EntitySubsystem.GetEntityManager().IsEntityValid(ActionTargetAsEntity);
+		if (InstanceData.OptTargets.IsValidCompoundByManager(EntitySubsystem.GetEntityManager()) == false)
+		{
+			UE_LOG(PDLog_RTSBase, Warning, TEXT("FPDMTask_MoveToTarget::EnterState -- OptTargets had no valid targets or targetlocations"))
+			return EStateTreeRunStatus::Failed;
+		}
+
+		const bool bShouldUseSharedNavigation =
+			RTSData.QueuedUnitPath.IsEmpty()
+			&& RTSData.SelectionGroupIndex != INDEX_NONE
+			&& SharedEntity.SharedNavData.Contains(RTSData.OwnerID)
+			&& SharedEntity.SharedNavData.Find(RTSData.OwnerID)->SelectionGroupNavData.Contains(RTSData.SelectionGroupIndex);
+
+		const UNavigationPath* NavPath =
+			bShouldUseSharedNavigation ? *SharedEntity.SharedNavData.Find(RTSData.OwnerID)->SelectionGroupNavData.Find(RTSData.SelectionGroupIndex) : nullptr;
+
+		const bool bShouldOverwriteQueuedPath = NavPath == nullptr && RTSData.QueuedUnitPath.IsEmpty() == false ?
+			RTSData.QueuedUnitPath.Last() == PD::Constants::INVALID_WORLD_LOC : false;
+
+		const FPDMPathParameters
+			PathParams(InstanceData, MoveTarget, TransformFragment, EntitySubsystem, bIsEntityValid, InstanceData.OptTargets, NavPath);
+
+		NavPath == nullptr ?
+			ProcessNewPriorityPath(PathParams)
+			: ProcessNewSharedPath(PathParams);
+
+		const FVector& LastPoint = PathParams.MoveTarget.Center;
+		This->OnPathSelected(RTSData, bShouldUseSharedNavigation, LastPoint);
+
+		if (bShouldOverwriteQueuedPath) { RTSData.QueuedUnitPath = InstanceData.NavPath; }
+
+		MoveTarget.SlackRadius = 100.f;
+		MoveTarget.DesiredSpeed.Set(MoveParameters.DefaultDesiredSpeed);
+		MoveTarget.CreateNewAction(EMassMovementAction::Move, *Context.GetWorld());
+		MoveTarget.IntentAtGoal = EMassMovementAction::Stand;
+
+		return EStateTreeRunStatus::Running;
+	}
+
+	template<typename TPDMassTask>
+	static EStateTreeRunStatus TickMove(
+		const TPDMassTask* This,
+		FStateTreeExecutionContext& Context, 
+		const float DeltaTime, 
+		FMassMoveTargetFragment& MoveTarget,
+		FPDMFragment_RTSEntityBase& RTSData)
+	{
+		auto& InstanceData = Context.GetInstanceData(*This);
+
+		// Abort if moving slower than our conditions/task parameters allow
+		switch (InstanceData.StuckMovementRules.ShouldContinueMovement(DeltaTime))
+		{
+		case EStateTreeRunStatus::Failed:
+			return EStateTreeRunStatus::Failed;
+			default: break;
+		}
+
+		if (MoveTarget.DistanceToGoal <= MoveTarget.SlackRadius)
+		{
+			// Get new center if we are not at last index yet 
+			if (InstanceData.CurrentNavPathIndex < (InstanceData.NavPath.Num() - 1) )
+			{
+				InstanceData.CurrentNavPathIndex++;
+				MoveTarget.Center = InstanceData.NavPath[InstanceData.CurrentNavPathIndex];
+				RTSData.QueuedUnitPath.Empty(); // clear it when doe if it was the active path
+				return EStateTreeRunStatus::Running;
+			}
+
+			MoveTarget.CreateNewAction(EMassMovementAction::Stand, *Context.GetWorld());
+			return EStateTreeRunStatus::Succeeded;
+		}
+
+		return EStateTreeRunStatus::Running;
+	}
 };
 
 

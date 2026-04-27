@@ -342,6 +342,12 @@ DONE:
 IN PROGRESS: 
     ☐ Extend statetree with moving picked up inventory and bringing it either to storage (physical bank) or to a players bank (infinite storage pool) 
 
+April 27th 2026 - Commit#1:
+IN PROGRESS: 
+    Extend statetree/Entity task: 
+        ☐ Program a new task for moving picked up inventory and bringing it either to storage (physical bank) or to a players bank (infinite storage pool), needed to test and finish the pinger system
+
+
 
 
 COMING:    

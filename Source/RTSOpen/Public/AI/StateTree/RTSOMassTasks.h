@@ -92,7 +92,15 @@ struct RTSOPEN_API FRTSOTask_Interact : public FMassStateTreeTaskBase
 	/** @brief Triggers OnInteract on the actor, (and/or entity proxy when the function is finished), if it turns out to be a valid interactable
 	 * @todo write actual logic for interaction with other entity. use proxy such as the RTSBaseUnit (ISM subclass)
 	 * @todo @backlog have some notes in there which I've not fully decided on, revise at some point */
-	EStateTreeRunStatus InnerInteraction(FStateTreeExecutionContext& Context) const;
+	template<typename TPDMassType>
+	static EStateTreeRunStatus TaskInteract(
+		const TPDMassType* This,
+		FStateTreeExecutionContext& Context,
+		const FMassEntityHandle& OtherEntityHandle,
+		const IPDInteractInterface* OtherInteractable,
+		const UMassEntitySubsystem& EntitySubsystem);
+	
+	/** @brief Accesses linked data and calls InnerInteraction */
 	virtual EStateTreeRunStatus EnterState(FStateTreeExecutionContext& Context, const FStateTreeTransitionResult& Transition) const override;
 
 	/** @defgroup ExternalHandles */
@@ -107,41 +115,12 @@ struct RTSOPEN_API FRTSOTask_Interact : public FMassStateTreeTaskBase
  * @details Walks towards the target and attempts to call Execute_OnInteract if the given target os of storage type (or proxy object if the target's an entity) has an interface of type IPDInteractInterface 
  */
 
-/** @brief Instance data for entity running FPDMTask_PlayAnimation */
-USTRUCT()
-struct RTSOPEN_API FPDMTaskData_BringBackResource
-{
-	GENERATED_BODY()
-
-	/** @brief Potential Interaction Target: MassEntity */
-	UPROPERTY(VisibleAnywhere, Category = Input)
-	FMassEntityHandle PotentialEntityHandle;
-
-	/** @brief Potential Interaction Target: Actor */
-	UPROPERTY(VisibleAnywhere, Category = Input)
-	AActor* PotentialInteractableActor;	
-
-	/** @brief Result of the candidates search request (Input) */
-	UPROPERTY(EditAnywhere, Category = Input)
-	FPDTargetCompound OptTargets;	
-
-	/** @brief Result of the candidates search request (Input) */
-	UPROPERTY(VisibleAnywhere, Category = "Parameter")
-	TArray<FVector> NavPath;
-	
-	/** @brief Result of the candidates search request (Input) */
-	UPROPERTY(VisibleAnywhere, Category = "Data")
-	int16 CurrentNavPathIndex;
-	
-	/** @brief Settings to control our parameters when we should abort a movement */
-	UPROPERTY(EditAnywhere, Category = "Data")
-	FPDMStuckMovementConditions StuckMovementRules{};
-};
-
 USTRUCT()
 struct RTSOPEN_API FRTSOTask_BringBackResource final : public FRTSOTask_Interact
 {
 	GENERATED_BODY()
+
+	FRTSOTask_BringBackResource(){};
 
 	DECLARE_TASK_BODY(BringBackResource)
 
@@ -153,6 +132,12 @@ protected:
 	TStateTreeExternalDataHandle<UMassEntitySubsystem> EntitySubsystemHandle; /**<@ingroup ExternalHandles*/
 	TStateTreeExternalDataHandle<UPDInteractSubsystem> InteractSubsystemHandle; /**<@ingroup ExternalHandles*/
 	TStateTreeExternalDataHandle<FRTSOLightInventoryFragment> InventoryHandle; /**<@ingroup ExternalHandles*/
+
+	TStateTreeExternalDataHandle<UMassSignalSubsystem> MassSignalSubsystemHandle; /**<@ingroup ExternalHandles*/
+	TStateTreeExternalDataHandle<FTransformFragment> TransformHandle; /**<@ingroup ExternalHandles*/
+	TStateTreeExternalDataHandle<FMassMoveTargetFragment> MoveTargetHandle; /**<@ingroup ExternalHandles*/
+	TStateTreeExternalDataHandle<FMassMovementParameters> MoveParametersHandle; /**<@ingroup ExternalHandles*/
+	TStateTreeExternalDataHandle<FPDMFragment_RTSEntityBase> RTSDataHandle; /**<@ingroup ExternalHandles*/
 };
 
 
