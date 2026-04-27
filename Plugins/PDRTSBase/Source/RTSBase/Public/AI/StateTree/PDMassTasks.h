@@ -166,6 +166,27 @@ struct PDRTSBASE_API FPDMTask_MoveToTarget : public FMassStateTreeTaskBase
 	/* Macro helper to declare the required task functions */
 	DECLARE_TASK_BODY(MoveToHandle)
 
+	
+	template<typename TPDMassTask>
+	static FORCEINLINE EStateTreeRunStatus TriggerMove(
+		const TPDMassTask* This,
+		FStateTreeExecutionContext& Context,
+		UMassEntitySubsystem& EntitySubsystem,
+		FMassMoveTargetFragment& MoveTarget,
+		const FMassMovementParameters& MoveParameters,
+		FPDMFragment_RTSEntityBase& RTSData,
+		const FTransformFragment& TransformFragment
+	);
+
+	template<typename TPDMassTask>
+	static FORCEINLINE EStateTreeRunStatus TickMove(
+		const TPDMassTask* This,
+		FStateTreeExecutionContext& Context, 
+		const float DeltaTime,
+		FMassMoveTargetFragment& MoveTarget,
+		FPDMFragment_RTSEntityBase& RTSData);
+
+
 	/** @brief Resolves the navpath at current path index for priority pathing, @bug Navpath generates invalid points, commented out for the moment, will resolve issue within a couple of commits  */
 	static void ProcessNewPriorityPath(const FPDMPathParameters& Params);
 	/** @brief Resolves the navpath at current path index for shared pathing, @bug Navpath generates invalid points, commented out for the moment, will resolve issue within a couple of commits */

@@ -553,18 +553,17 @@ void ARTSOInteractableBuildingBase::OnSpawnedAsMain_Implementation(const FGamepl
 	// Update material
 	if (MainMat == nullptr || MainMat->IsValidLowLevelFast() == false)
 	{
-		// Output error level log
-		UE_LOG(PDLog_RTSO, Error, TEXT("ARTSOInteractableBuildingBase::OnSpawnedAsMain -- Material Instance member 'MainMat' is not set"))
-		
+		UE_LOG(PDLog_RTSO, Error, TEXT("ARTSOInteractableBuildingBase::OnSpawnedAsMain -- Material Instance member 'MainMat' is not set"))	
 		return;
 	}
 
 	// Note: Storages send buildablecontext tags to tell entities they are available to store physical or monetary resources
 	if (InstigatorBuildableTag == TAG_BUILD_ActionContext_Storage0)
 	{
+		// JobTag = TAG_AI_Job_BringBackResource; // @note: Keeping job_tag as WalkToTarget for now, potentially no need for it's own tag
 		const int32 InstigatorID = IPDRTSBuilderInterface::Execute_GetBuilderID(GetOwner());
 		constexpr double PingInterval = 10.0; // @todo make configurable or use passthrough value
-		const FPDEntityPingDatum ConstructedDatum = {this, InstigatorBuildableTag, InstigatorID, PingInterval};
+		const FPDEntityPingDatum ConstructedDatum = {this, TAG_AI_Job_BringBackResource, InstigatorID, PingInterval};
 		UPDEntityPinger::EnablePingStatic(ConstructedDatum);
 	}
 

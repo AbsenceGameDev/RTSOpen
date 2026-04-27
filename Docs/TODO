@@ -335,6 +335,15 @@ TODO:
     ☐ Extend statetree with moving picked up inventory and bringing it either to storage (physical bank) or to a players bank (infinite storage pool) 
 
 
+
+April 27th 2026 - Commit#0:
+DONE:
+    ✔ Making some needed changes to avoid remaking MoveToTarget code and allowing it to be used for the new task triggered by the pinging subsystem @done(26-04-27 04:50)
+IN PROGRESS: 
+    ☐ Extend statetree with moving picked up inventory and bringing it either to storage (physical bank) or to a players bank (infinite storage pool) 
+
+
+
 COMING:    
 IN PROGRESS : 
     ☐ Debug the sorted output texture, and sort out why the log calls are not showing

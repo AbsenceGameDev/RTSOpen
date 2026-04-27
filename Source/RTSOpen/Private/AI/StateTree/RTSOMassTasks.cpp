@@ -44,6 +44,40 @@ EStateTreeRunStatus FRTSOTask_ActionLog::EnterState(FStateTreeExecutionContext& 
 	return FMassStateTreeTaskBase::EnterState(Context, Transition);
 }
 
+//
+// BRING BACK RESOURCES INTERACT TASK
+bool FRTSOTask_BringBackResource::Link(FStateTreeLinker& Linker)
+{
+	Linker.LinkExternalData(EntitySubsystemHandle);
+	Linker.LinkExternalData(InventoryHandle);
+	return FMassStateTreeTaskBase::Link(Linker);
+}
+
+EStateTreeRunStatus FRTSOTask_BringBackResource::EnterState(FStateTreeExecutionContext& Context, const FStateTreeTransitionResult& Transition) const
+{
+
+
+	return EStateTreeRunStatus::Running;
+}
+
+EStateTreeRunStatus FRTSOTask_BringBackResource::Tick(FStateTreeExecutionContext& Context, const float DeltaTime) const
+{
+
+	bool bTODO_REPLACE = true;
+	if (bTODO_REPLACE)
+	{
+		return InnerInteraction(Context);
+	}
+
+	return EStateTreeRunStatus::Running;
+}
+void FRTSOTask_BringBackResource::ExitState(FStateTreeExecutionContext& Context, const FStateTreeTransitionResult& Transition) const
+{
+}
+
+
+//
+// GENERIC INTERACT TASK
 bool FRTSOTask_Interact::Link(FStateTreeLinker& Linker)
 {
 	Linker.LinkExternalData(EntitySubsystemHandle);
@@ -52,6 +86,10 @@ bool FRTSOTask_Interact::Link(FStateTreeLinker& Linker)
 }
 
 EStateTreeRunStatus FRTSOTask_Interact::EnterState(FStateTreeExecutionContext& Context, const FStateTreeTransitionResult& Transition) const
+{
+	return InnerInteraction(Context);
+}
+EStateTreeRunStatus FRTSOTask_Interact::InnerInteraction(FStateTreeExecutionContext& Context) const
 {
 	// const UPDRTSBaseSubsystem& RTSSubsystem = *UPDRTSBaseSubsystem::Get();
 
@@ -71,7 +109,6 @@ EStateTreeRunStatus FRTSOTask_Interact::EnterState(FStateTreeExecutionContext& C
 
 	FPDMFragment_RTSEntityBase& EntityBase = EntityManager.GetFragmentDataChecked<FPDMFragment_RTSEntityBase>(MassContext.GetEntity());
 	FPDMFragment_Action& Action = EntityManager.GetFragmentDataChecked<FPDMFragment_Action>(MassContext.GetEntity());
-	
 
 	UPDRTSBaseUnit* UnitHandler = *UnitHandlerDoublePtr;
 	UnitHandler->OnTaskFinished(MassContext.GetEntity()); // Make sure to use this on other tasks

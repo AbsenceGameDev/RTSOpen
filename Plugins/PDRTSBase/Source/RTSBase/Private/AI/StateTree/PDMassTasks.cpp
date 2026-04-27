@@ -143,19 +143,35 @@ void FPDMTask_MoveToTarget::OnPathSelected(FPDMFragment_RTSEntityBase& RTSData, 
 
 //
 // @todo I need a shared fragment for movement navpaths
+
 EStateTreeRunStatus FPDMTask_MoveToTarget::EnterState(FStateTreeExecutionContext& Context, const FStateTreeTransitionResult& Transition) const
 {
 	UMassEntitySubsystem& EntitySubsystem = Context.GetExternalData(EntitySubsystemHandle);
-	const FMassStateTreeExecutionContext& MassContext = static_cast<FMassStateTreeExecutionContext&>(Context);
-	const FMassEntityView EntityView(EntitySubsystem.GetEntityManager(), MassContext.GetEntity());
-	
-	FInstanceDataType& InstanceData = Context.GetInstanceData(*this);
 	FMassMoveTargetFragment& MoveTarget = Context.GetExternalData(MoveTargetHandle);
 	const FMassMovementParameters& MoveParameters = Context.GetExternalData(MoveParametersHandle);
 	FPDMFragment_RTSEntityBase& RTSData = Context.GetExternalData(RTSDataHandle);
 	const FTransformFragment& TransformFragment = Context.GetExternalData(TransformHandle);
-	const FMassEntityHandle& ActionTargetAsEntity = InstanceData.OptTargets.ActionTargetAsEntity;
 	
+	return FPDMTask_MoveToTarget::TriggerMove<FPDMTask_MoveToTarget>(this, Context, EntitySubsystem, MoveTarget, MoveParameters, RTSData, TransformFragment);
+}
+
+template<typename TPDMassTask>
+EStateTreeRunStatus FPDMTask_MoveToTarget::TriggerMove(
+	const TPDMassTask* This,
+	FStateTreeExecutionContext& Context,
+	UMassEntitySubsystem& EntitySubsystem,
+	FMassMoveTargetFragment& MoveTarget,
+	const FMassMovementParameters& MoveParameters,
+	FPDMFragment_RTSEntityBase& RTSData,
+	const FTransformFragment& TransformFragment
+)
+{
+	// UMassEntitySubsystem& EntitySubsystem = Context.GetExternalData(EntitySubsystemHandle);
+	const FMassStateTreeExecutionContext& MassContext = static_cast<FMassStateTreeExecutionContext&>(Context);
+	const FMassEntityView EntityView(EntitySubsystem.GetEntityManager(), MassContext.GetEntity());
+	
+	FInstanceDataType& InstanceData = Context.GetInstanceData(*This);
+	const FMassEntityHandle& ActionTargetAsEntity = InstanceData.OptTargets.ActionTargetAsEntity;
 	const FPDMFragment_SharedEntity& SharedEntity = EntityView.GetSharedFragmentData<FPDMFragment_SharedEntity>();
 	
 	const bool bIsEntityValid = EntitySubsystem.GetEntityManager().IsEntityValid(ActionTargetAsEntity);
@@ -185,7 +201,7 @@ EStateTreeRunStatus FPDMTask_MoveToTarget::EnterState(FStateTreeExecutionContext
 		: ProcessNewSharedPath(PathParams);
 
 	const FVector& LastPoint = PathParams.MoveTarget.Center;
-	OnPathSelected(RTSData, bShouldUseSharedNavigation, LastPoint);
+	This->OnPathSelected(RTSData, bShouldUseSharedNavigation, LastPoint);
 	
 	if (bShouldOverwriteQueuedPath) { RTSData.QueuedUnitPath = InstanceData.NavPath; }
 	
@@ -197,13 +213,26 @@ EStateTreeRunStatus FPDMTask_MoveToTarget::EnterState(FStateTreeExecutionContext
 	return EStateTreeRunStatus::Running;
 }
 
+
 EStateTreeRunStatus FPDMTask_MoveToTarget::Tick(FStateTreeExecutionContext& Context, const float DeltaTime) const
 {
-	FInstanceDataType& InstanceData = Context.GetInstanceData(*this);
-	
 	// When entity reaches target, mark as complete
 	FMassMoveTargetFragment& MoveTarget = Context.GetExternalData(MoveTargetHandle);
 	FPDMFragment_RTSEntityBase& RTSData = Context.GetExternalData(RTSDataHandle);
+
+	return FPDMTask_MoveToTarget::TickMove(this, Context, DeltaTime, MoveTarget, RTSData);
+}
+
+template<typename TPDMassTask>
+EStateTreeRunStatus FPDMTask_MoveToTarget::TickMove(
+	const TPDMassTask* This,
+	FStateTreeExecutionContext& Context, 
+	const float DeltaTime, 
+	FMassMoveTargetFragment& MoveTarget,
+	FPDMFragment_RTSEntityBase& RTSData)
+{
+	FInstanceDataType& InstanceData = Context.GetInstanceData(*This);
+	
 
 	// Abort if moving slower than our conditions/task parameters allow
 	switch (InstanceData.StuckMovementRules.ShouldContinueMovement(DeltaTime))
