@@ -790,8 +790,8 @@ void UPDOctreeEntityObserver::Execute(FMassEntityManager& EntityManager, FMassEx
 		TMutFragment<FPDOctreeFragment>& OctreeList         = MUTVIEW(LambdaContext, FPDOctreeFragment);
 		TMutFragment<FAgentRadiusFragment>& RadiusFragments = MUTVIEW(LambdaContext, FAgentRadiusFragment);
 
-		const bool bRadiiValid = RadiusFragments.Num() > 0;
 		const int32 EntityCount = LambdaContext.GetNumEntities();
+		const bool bRadiiValid = RadiusFragments.IsValidIndex(EntityCount - 1);
 		PD::Mass::Entity::Octree& Octree = RTSSubsystem->WorldEntityOctree;
 		
 		for (int32 Step = 0; Step < EntityCount; ++Step)

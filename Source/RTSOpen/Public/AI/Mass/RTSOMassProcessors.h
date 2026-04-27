@@ -37,6 +37,29 @@ public:
 
 
 /**
+ * @brief Initializes RTS entities animation data. Reserved Subclass
+ */
+UCLASS()
+class RTSOPEN_API URTSOResourceHashGridProcessor : public UPDOctreeEntityObserver
+{
+	GENERATED_BODY()
+
+public:
+	URTSOResourceHashGridProcessor() : Super() {};
+	
+	/** @brief Reserved */
+	virtual void Execute(FMassEntityManager& EntityManager, FMassExecutionContext& Context) override;
+	/** @brief Reserved */
+	virtual void ConfigureQueries() override { Super::ConfigureQueries(); }
+	/** @brief Reserved */
+	virtual void Initialize(UObject& Owner) override { Super::Initialize(Owner); }
+
+	/** @brief Reserved */
+	TObjectPtr<UPDInteractSubsystem> InteractionSubsystem;
+};
+
+
+/**
 Business Source License 1.1
 
 Parameters

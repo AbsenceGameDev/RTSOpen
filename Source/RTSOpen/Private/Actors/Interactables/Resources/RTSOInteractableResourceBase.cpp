@@ -3,6 +3,7 @@
 
 #include "MassEntitySubsystem.h"
 #include "PDInventorySubsystem.h"
+#include "PDRTSBaseSubsystem.h"
 #include "PDItemCommon.h"
 #include "PDRTSCommon.h"
 #include "AI/Mass/RTSOMassFragments.h"
@@ -34,10 +35,13 @@ void ARTSOInteractableResourceBase::BeginPlay()
 	}
 	MissionProgressionTagsToGive = ProgressionTagSetsToGrant;
 
+	UPDRTSBaseSubsystem* RTSSubsystem = UPDRTSBaseSubsystem::Get();
 	
 	for (const TPair<FGameplayTag, int32 /*count*/>& ResourceReward : TradeArchetype)
 	{
 		InventoryFragment.Handler.AddItem(ResourceReward.Key, ResourceReward.Value);
+
+		RTSSubsystem->TrackResource(ResourceReward.Key, this);
 	}
 
 	EntitySubsystem = GetWorld()->GetSubsystem<UMassEntitySubsystem>();
@@ -50,6 +54,18 @@ void ARTSOInteractableResourceBase::Tick(float DeltaTime)
 
 	RefreshTickAcc += DeltaTime;
 }
+
+void ARTSOInteractableResourceBase::BeginDestroy()
+{
+	UPDRTSBaseSubsystem* RTSSubsystem = UPDRTSBaseSubsystem::Get();
+	for (const TPair<FGameplayTag, int32 /*count*/>& ResourceReward : TradeArchetype)
+	{
+		RTSSubsystem->UntrackResource(ResourceReward.Key, this);
+	}	
+	
+	Super::BeginDestroy();
+}
+
 
 void ARTSOInteractableResourceBase::AddTagToCaller_Implementation(AActor* Caller, const FGameplayTag& NewTag)
 {

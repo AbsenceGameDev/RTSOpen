@@ -1,6 +1,29 @@
 /* @author: Ario Amin @ Permafrost Development. @copyright: Full BSL(1.1) License included at bottom of the file  */
 #include "AI/Mass/RTSOMassProcessors.h"
+#include "PDRTSSharedHashGrid.h"
 
+
+void URTSOResourceHashGridProcessor::Execute(FMassEntityManager& EntityManager, FMassExecutionContext& Context)
+{
+   Super::Execute(EntityManager, Context);
+
+
+	AsyncTask(ENamedThreads::GameThread, 
+   [&]()
+   {
+      //  
+
+      // Poor persons Resource observer, will map resources into hashgrids
+      AsyncTask(ENamedThreads::AnyNormalThreadHiPriTask, 
+      [&]()
+      {
+         UPDHashGridSubsystem* HashgridSubsystem = UPDHashGridSubsystem::Get();
+         // HashgridSubsystem->GetCellIndex();
+      });
+   });
+   
+
+}
 
 /**
 Business Source License 1.1

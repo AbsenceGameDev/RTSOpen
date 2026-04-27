@@ -79,6 +79,11 @@ EStateTreeRunStatus FRTSOTask_BringBackResource::EnterState(FStateTreeExecutionC
 	const FMassMovementParameters& MoveParameters = Context.GetExternalData(MoveParametersHandle);
 	FPDMFragment_RTSEntityBase& RTSData = Context.GetExternalData(RTSDataHandle);
 	const FTransformFragment& TransformFragment = Context.GetExternalData(TransformHandle);
+
+
+	// TODO, if the entity does not have resources we must dispatch it bringing resources and go there first
+	// - Note: For that we would need one of our subsystem to aggregate all resources and map them unto their octree location hash and tell only entities in said hash / grid segment of the octree 
+
 	
 	return FPDMTaskStatics::TriggerMove<FRTSOTask_BringBackResource>(this, Context, EntitySubsystem, MoveTarget, MoveParameters, RTSData, TransformFragment);
 }

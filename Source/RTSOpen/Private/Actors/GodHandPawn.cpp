@@ -229,9 +229,8 @@ void AGodHandPawn::BuildableGhostTick(float DeltaTime)
 	}
 
 	// Let UPDHashGridSubsystem calculate stepped position, collision is our source of truth for our location
-	const FVector& TrueLocation = Collision->GetComponentLocation();
 	const UPDHashGridSubsystem* HashGridSubsystem = UPDHashGridSubsystem::Get();
-	const FVector SteppedLocation = HashGridSubsystem->GetCellVector(TrueLocation);
+	const FVector SteppedLocation = HashGridSubsystem->StepLocationConst(Collision->GetComponentLocation());
 	const TSubclassOf<AActor> ActorClassToSpawn = CurrentBuildableData->ActorToSpawn;
 	
 	if (CurrentGhost == nullptr || CurrentGhost->GetClass() != ActorClassToSpawn)

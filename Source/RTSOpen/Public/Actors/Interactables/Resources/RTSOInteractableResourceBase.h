@@ -39,6 +39,9 @@ public:
 	virtual void BeginPlay() override;
 	/** @brief Ticks usage the cooldown. @todo move into a progression/stat system*/
 	virtual void Tick(float DeltaTime) override;
+
+	/** @brief Untracks the actor from the resource tracker */
+	virtual void BeginDestroy() override;
 	
 	/** @brief Overridden but solely calls super. Reserved for later use */
 	virtual void AddTagToCaller_Implementation(AActor* Caller, const FGameplayTag& NewTag) override;

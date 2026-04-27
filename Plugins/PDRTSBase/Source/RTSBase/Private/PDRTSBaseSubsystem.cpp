@@ -247,6 +247,24 @@ void UPDRTSBaseSubsystem::WorldDeinit(const UWorld* World)
 	DeleteBuffers();
 }
 
+void UPDRTSBaseSubsystem::TrackResource(const FGameplayTag& ResourceType, const AActor* TrackedActor)
+{
+	FWriteScopeLock Lock(ResourceRWLock);
+	TrackedResourceGroups.FindOrAdd(ResourceType).Actors.FindOrAdd(TrackedActor);
+}
+void UPDRTSBaseSubsystem::UntrackResource(const FGameplayTag& ResourceType, const AActor* TrackedActor)
+{
+	FWriteScopeLock Lock(ResourceRWLock);
+	TrackedResourceGroups.FindOrAdd(ResourceType).Actors.Remove(TrackedActor);
+}
+const FPDRTSTSetActorWrapper& UPDRTSBaseSubsystem::GetResourceActors(const FGameplayTag& ResourceType)
+{
+	static const FPDRTSTSetActorWrapper StaticDummy;
+	FReadScopeLock Lock(ResourceRWLock);
+	const FPDRTSTSetActorWrapper* FoundEntry = TrackedResourceGroups.Find(ResourceType);
+	return nullptr != FoundEntry ? *FoundEntry : StaticDummy;
+}
+
 
 void UPDRTSBaseSubsystem::OnDeveloperSettingsChanged(UObject* SettingsToChange, FPropertyChangedEvent& PropertyEvent)
 {

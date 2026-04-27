@@ -113,6 +113,15 @@ public:
 	void OnDeveloperSettingsChanged(UObject* SettingsToChange, const FPropertyChangedEvent& PropertyEvent);
 #endif
 
+	inline static FVector StepLocation(const FVector& TrueLocation)
+	{
+		return UPDHashGridSubsystem::Get()->GetCellVector(TrueLocation);
+	}
+	inline FVector StepLocationConst(const FVector& TrueLocation) const
+	{
+		return UPDHashGridSubsystem::Get()->GetCellVector(TrueLocation);
+	}
+
 	/** @brief  Floor vector and return as gridcell index */
     inline static struct FPDGridCell FloorVectorC(const FVector&& LocationToCell)
     {

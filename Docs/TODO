@@ -347,6 +347,22 @@ IN PROGRESS:
     Extend statetree/Entity task: 
         ☐ Program a new task for moving picked up inventory and bringing it either to storage (physical bank) or to a players bank (infinite storage pool), needed to test and finish the pinger system
 
+April 27th 2026 - Commit#2:
+DONE: 
+    Entity storage/bank task prerequisites: 
+        ✔ Resource tracking, all resource actors are now tracked based on their resource types, actor can exists in multiple entries and is untracked upon destruction @done(26-04-27 08:39)
+            ✔ RW Locks for accessing/modifying this data @done(26-04-27 08:39)
+
+IN PROGRESS: 
+    Entity storage/bank task prerequisites: 
+        ☐ Spatial hash on tracked resources & Spatial hash on entities location and find closest resources
+            ☐ If resource has been gathered at the point the entity reaches the place, find new location
+            ☐ If no resources can be found, log error in ActionLog
+
+TODO: 
+    Extend statetree/Entity task: 
+        ☐ Program a new task for moving picked up inventory and bringing it either to storage (physical bank) or to a players bank (infinite storage pool), needed to test and finish the pinger system
+
 
 
 

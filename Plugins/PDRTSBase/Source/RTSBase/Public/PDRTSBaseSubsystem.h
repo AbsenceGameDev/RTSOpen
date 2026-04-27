@@ -14,6 +14,9 @@
 #include "GameplayTagContainer.h"
 
 #include "HAL/CriticalSection.h"
+#include "HAL/UnrealMemory.h"
+#include "Misc/ScopeLock.h"
+#include "Misc/ScopeRWLock.h"
 
 #include "Engine/StreamableManager.h"
 #include "Subsystems/EngineSubsystem.h"
@@ -26,6 +29,14 @@ class UMassEntitySubsystem;
 class UTextureRenderTarget2D;
 struct FPDWorkUnitDatum;
 
+USTRUCT()
+struct PDRTSBASE_API FPDRTSTSetActorWrapper
+{
+	GENERATED_BODY()
+
+	UPROPERTY()
+	TSet<const AActor*> Actors;	
+};
 
 DECLARE_DELEGATE_SevenParams(FRTSBuildGlobalSortEntityShader, FRHICommandListImmediate& /*RHICmdList*/, UTextureRenderTarget2D* /*RenderTarget*/, const TRefCountPtr<FRDGPooledBuffer>& /*EntityInputPooledBuffer*/, TArray<FLinearColor> /*InData*/, float /* CameraYawInRadians */ , FVector /*RegionMin*/, FVector /*RegionSize*/)
 
@@ -112,6 +123,13 @@ public:
 	/** @brief Releases pooled buffers */
 	void WorldDeinit(const UWorld* World);
 
+	/** @brief  */
+	void TrackResource(const FGameplayTag& ResourceType, const AActor* TrackedActor); 
+	/** @brief  */
+	void UntrackResource(const FGameplayTag& ResourceType, const AActor* TrackedActor); 
+	/** @brief  */
+	const FPDRTSTSetActorWrapper& GetResourceActors(const FGameplayTag& ResourceType);
+
 	/** @brief Does some portable iso-approved 'hacks' to fetch the all the mass ISM's */
 	static const TArray<TObjectPtr<UInstancedStaticMeshComponent>>& GetMassISMs(const UWorld* InWorld);
 	
@@ -196,14 +214,21 @@ public:
 	/** @brief This will be useful on a server or shared screen environment */
 	UPROPERTY(EditAnywhere)
 	TMap<AActor* /*OwningActor*/, int32 /*OwnerID*/> SharedOwnerIDBackMappings;
+
 	
 	/** @brief  (User) Query Shape structure */
 	FPDOctreeUserQuery OctreeUserQuery{};
-
+	
 	/** @brief Delegate that we pass inot the render thread */
 	FRTSBuildGlobalSortEntityShader BuildEntitySortComputeShader;
 	
 private:
+	/** @brief */
+	UPROPERTY()
+	TMap<FGameplayTag /*resource/item tag*/, FPDRTSTSetActorWrapper> TrackedResourceGroups;
+	mutable FRWLock ResourceRWLock;
+
+
 	/** @brief The RT texture we are splatting our entities unto */
 	UPROPERTY()
 	class UTextureRenderTarget2D* EntityDataTexture;
