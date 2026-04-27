@@ -397,6 +397,20 @@ TODO:
        ☐ Finish the changes needed to dispatch the list of items needed in FRTSOTask_BringBackResource::EnterState
 
 
+April 28th 2026 - Commit#0:
+DONE: 
+    ✔ Fix infinite loop or stall that I just noticed by tomorrrow today. Either an infinite loop or a read/write lock that has stalled @done(26-04-28 01:04)
+        - Note. Stall was due to a recursive writelock :facepalm:
+    ✔ BeginDestroy called after subsystem has been destoryed, so one of the rare occasions this subssystem actually needs to be nullptr checked @done(26-04-28 01:41)
+IN PROGRESS: 
+    Entity storage/bank task prerequisites: 
+            ☐ If no resources can be found, log error in ActionLog
+    Extend statetree/Entity task: 
+        ☐ Program a new task for moving picked up inventory and bringing it either to storage (physical bank) or to a players bank (infinite storage pool), needed to test and finish the pinger system
+TODO: 
+    Extend statetree/Entity task: 
+       ☐ Finish the changes needed to dispatch the list of items needed in FRTSOTask_BringBackResource::EnterState
+
 
 
 COMING:    

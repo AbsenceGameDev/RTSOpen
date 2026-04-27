@@ -111,18 +111,23 @@ public:
 		FWriteScopeLock Lock(EntityHashgridRWLock);
 		WorldBuildEntityHashGrid.Empty();
 	}
-	void AddWorldBuildEntityHashGridHandles(FPDGridCell EntityCell, FMassEntityHandle Entity)
+	void AddWorldBuildEntityHashGridHandles_ThreadUnsafe(FPDGridCell EntityCell, FMassEntityHandle Entity)
+	{
+		// FWriteScopeLock Lock(EntityHashgridRWLock);
+		WorldBuildEntityHashGrid.FindOrAdd(EntityCell).EmplaceFirst(Entity);
+	}
+	void AddWorldBuildEntityHashGridHandles_ThreadSafe(FPDGridCell EntityCell, FMassEntityHandle Entity)
 	{
 		FWriteScopeLock Lock(EntityHashgridRWLock);
 		WorldBuildEntityHashGrid.FindOrAdd(EntityCell).EmplaceFirst(Entity);
-	}
+	}	
 	void WriterLock_WorldBuildEntityHashGrid()
 	{
 		EntityHashgridRWLock.WriteLock();
 	}
 	void WriterUnlock_WorldBuildEntityHashGrid()
 	{
-		EntityHashgridRWLock.WriteUnlock();		
+		EntityHashgridRWLock.WriteUnlock();
 	}	
 
 public:	
@@ -158,10 +163,10 @@ public:
 	/** @brief Mapped for fast access. Mapped upon subsystem loading the developer settings 'UPDRTSSubsystemSettings' */
 	TMap<FPDBuildableData*, FGameplayTag> BuildableData_WTagReverse{};	
 
+	mutable FRWLock EntityHashgridRWLock;
 protected:	
 	/** @brief The actual octree our buildable actors will make use of*/
 	TMap<FPDGridCell, TDeque<FMassEntityHandle>> WorldBuildEntityHashGrid;
-	mutable FRWLock EntityHashgridRWLock;
 
 public:
 	bool bIsProcessingBuildableRemovalQueue = false;

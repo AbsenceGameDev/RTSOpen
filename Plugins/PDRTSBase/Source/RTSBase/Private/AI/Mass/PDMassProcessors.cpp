@@ -523,18 +523,16 @@ void UPDOctreeProcessor::Execute(FMassEntityManager& EntityManager, FMassExecuti
 	RTSSubsystem->OctreeUserQuery.ClearQueryBuffer(EPDQueryGroups::QUERY_GROUP_MINIMAP);
 	RTSSubsystem->OctreeUserQuery.ClearQueryBuffer(EPDQueryGroups::QUERY_GROUP_HOVERSELECTION); // Hover Selection Group
 	BuilderSubsystem->OctreeBuildSystemEntityQuery.ClearQueryBuffer(EPDQueryGroups::QUERY_GROUP_BUILDABLE_ACTORS); // @todo finish impl. making use of this query group
-	// RTSSubsystem->EntityShaderInputData.Empty(); // TODO: Replace this, or rather update the QUERY_GROUP_MINIMAP
 
 	// Clear all tracked cells for now
 	BuilderSubsystem->ClearWorldBuildEntityHashGridHandles();
-
 
 	//
 	// From testing, each entity chunk holds max 140 entities 
 	UpdateOctreeElementsQuery.ForEachEntityChunk(EntityManager, Context,
 		[this, BuilderSubsystem, HashGridSubsystem](FMassExecutionContext& LambdaContext)
 	{
-		BuilderSubsystem->WriterLock_WorldBuildEntityHashGrid();
+		FWriteScopeLock Lock(BuilderSubsystem->EntityHashgridRWLock);
 
 		QUICK_SCOPE_CYCLE_COUNTER(STAT_OctreeCellExecution)
 		PD::Mass::Entity::Octree& Octree = RTSSubsystem->WorldEntityOctree;
@@ -584,8 +582,6 @@ void UPDOctreeProcessor::Execute(FMassEntityManager& EntityManager, FMassExecuti
 		        // bool bReserved1 = EntityFlags == 0b00000001;
 				uint16_t TeamID = RTSEntity.OwnerID % INT16_MAX;
 				PackedData = FPDRTSPerPixelStorageHelper::ConstructData(CurrentLocation, RoundedIndex, EntityFlags, TeamID);
-				
-				// RTSSubsystem->EntityShaderInputData.Emplace(PerPixelStorage);
 			}
 			
 			const FMassEntityHandle Entity = LambdaContext.GetEntity(EntityListIdx);			
@@ -601,7 +597,7 @@ void UPDOctreeProcessor::Execute(FMassEntityManager& EntityManager, FMassExecuti
 			const FPDGridCell EntityCell = HashGridSubsystem->GetCellIndex(CurrentLocation);
 			if (UnitAction.ActionTag == TAG_AI_Job_Idle || false == UnitAction.ActionTag.IsValid())
 			{
-				BuilderSubsystem->AddWorldBuildEntityHashGridHandles(EntityCell, Entity);
+				BuilderSubsystem->AddWorldBuildEntityHashGridHandles_ThreadUnsafe(EntityCell, Entity);
 			}
 
 			
@@ -616,8 +612,6 @@ void UPDOctreeProcessor::Execute(FMassEntityManager& EntityManager, FMassExecuti
 			CopyCurrentOctreeElement.Bounds.Center = FVector4(CurrentLocation, 0);
 			Octree.AddElement(CopyCurrentOctreeElement);
 		}
-		BuilderSubsystem->WriterUnlock_WorldBuildEntityHashGrid();
-
 		RTSSubsystem->GenerateEntityMapData();
 
 	});

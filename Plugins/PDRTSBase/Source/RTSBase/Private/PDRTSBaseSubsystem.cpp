@@ -273,6 +273,11 @@ void UPDRTSBaseSubsystem::UntrackResource(const FGameplayTag& ResourceType, cons
 void UPDRTSBaseSubsystem::UntrackAllFromResourceActor(const FGameplayTag& ResourceType, const AActor* TrackedActor)
 {
 	FWriteScopeLock Lock(ResourceRWLock);
+	UntrackAllFromResourceActor_Unsafe(ResourceType, TrackedActor);
+}
+
+void UPDRTSBaseSubsystem::UntrackAllFromResourceActor_Unsafe(const FGameplayTag& ResourceType, const AActor* TrackedActor)
+{
 	TrackedResourceGroups.FindOrAdd(ResourceType).Actors.Remove(TrackedActor);
 
 	FPDGridCell ActorGridCell = UPDHashGridSubsystem::Get()->GetCellIndex(TrackedActor->GetActorLocation());

@@ -140,6 +140,8 @@ public:
 	/** @brief  */
 	void UntrackAllFromResourceActor(const FGameplayTag& ResourceType, const AActor* TrackedActor); 
 	/** @brief  */
+	void UntrackAllFromResourceActor_Unsafe(const FGameplayTag& ResourceType, const AActor* TrackedActor); 	
+	/** @brief  */
 	void UpdateResources(const AActor* TrackedActor); 
 
 	/** @brief  */

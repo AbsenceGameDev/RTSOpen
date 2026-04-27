@@ -67,11 +67,13 @@ void ARTSOInteractableResourceBase::Tick(float DeltaTime)
 
 void ARTSOInteractableResourceBase::BeginDestroy()
 {
-	UPDRTSBaseSubsystem* RTSSubsystem = UPDRTSBaseSubsystem::Get();
-	for (const TPair<FGameplayTag, int32 /*count*/>& ResourceReward : TradeArchetype)
+	if (UPDRTSBaseSubsystem* RTSSubsystem = UPDRTSBaseSubsystem::Get())
 	{
-		RTSSubsystem->UntrackAllFromResourceActor(ResourceReward.Key, this);
-	}	
+		for (const TPair<FGameplayTag, int32 /*count*/>& ResourceReward : TradeArchetype)
+		{
+			RTSSubsystem->UntrackAllFromResourceActor(ResourceReward.Key, this);
+		}	
+	}
 	
 	Super::BeginDestroy();
 }
