@@ -285,7 +285,7 @@ void UPDRTSBaseSubsystem::TrackResource(const FGameplayTag& ResourceType, const 
 	FWriteScopeLock Lock(ResourceRWLock);
 	TrackedResourceGroups.FindOrAdd(ResourceType).Actors.FindOrAdd(TrackedActor);
 	
-	FPDGridCell ActorGridCell = UPDHashGridSubsystem::Get()->GetCellIndex(TrackedActor->GetActorLocation());
+	FPDGridCell ActorGridCell = UPDHashGridSubsystem::StaticCell(TrackedActor->GetActorLocation(), ResourceGridSize);
 	TrackedResourceToGridCell.FindOrAdd(TrackedActor) = ActorGridCell;
 	TrackedResourceGroupsPerGridCell.FindOrAdd(ActorGridCell).Actors.FindOrAdd(TrackedActor);
 }
@@ -303,7 +303,7 @@ void UPDRTSBaseSubsystem::UntrackAllFromResourceActor(const FGameplayTag& Resour
 
 void UPDRTSBaseSubsystem::UntrackAllFromResourceActor_Unsafe(const FGameplayTag& ResourceType, const AActor* TrackedActor)
 {
-	FPDGridCell ActorGridCell = UPDHashGridSubsystem::Get()->GetCellIndex(TrackedActor->GetActorLocation());
+	FPDGridCell ActorGridCell = UPDHashGridSubsystem::StaticCell(TrackedActor->GetActorLocation(), ResourceGridSize);
 	TryRemoveTrackedResourceEntry(ResourceType, TrackedActor);
 	TryRemoveTrackedCellEntry(ActorGridCell, TrackedActor);
 }
@@ -316,7 +316,7 @@ void UPDRTSBaseSubsystem::UpdateResources(const AActor* TrackedActor)
 	{
 		TryRemoveTrackedCellEntry(*OldGridCellPtr, TrackedActor);
 
-		FPDGridCell NewActorGridCell = UPDHashGridSubsystem::Get()->GetCellIndex(TrackedActor->GetActorLocation());
+		FPDGridCell NewActorGridCell = UPDHashGridSubsystem::StaticCell(TrackedActor->GetActorLocation(), ResourceGridSize);
 		TrackedResourceGroupsPerGridCell.FindOrAdd(NewActorGridCell).Actors.Add(TrackedActor);
 	}
 }

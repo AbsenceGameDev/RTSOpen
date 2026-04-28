@@ -173,31 +173,35 @@ public:
 	/** @brief  Calculate cell index */
     inline FPDGridCell GetCellIndex(const FVector& LocationToCell) const
     {
-        return FloorVectorC(LocationToCell / UniformCellSize);
+        return StaticCell(LocationToCell, UniformCellSize);
     }
 
 	/** @brief  Calculate cell-clamped vector */
 	inline FVector GetCellVector(const FVector& LocationToCell) const
     {
-    	// Bring it back to proper world space dims by 
-    	return FloorVectorV(LocationToCell / UniformCellSize) * UniformCellSize;
+    	return StaticVector(LocationToCell, UniformCellSize);
     }	
 
     /** @brief Slow if used often, instead cache a pointer to the subsystem and call it 'GetCellIndex' instead  */
 	static inline FPDGridCell GetCellIndexStatic(const FVector& LocationToCell)
     {
-    	const double CellSize = UPDHashGridSubsystem::Get()->UniformCellSize;
-    	
-    	return FloorVectorC(LocationToCell / CellSize);
+    	return StaticCell(LocationToCell, UPDHashGridSubsystem::Get()->UniformCellSize);
     }
 
 	/** @brief Slow if used often, instead cache a pointer to the subsystem and call it 'GetCellIndex' instead  */
 	static inline FVector GetCellVectorStatic(const FVector& LocationToCell)
     {
-    	const double CellSize = UPDHashGridSubsystem::Get()->UniformCellSize;
-    	
-    	return FloorVectorV(LocationToCell / CellSize) * CellSize; // Bring it back to proper world space dims
-    }		
+    	return StaticVector(LocationToCell, UPDHashGridSubsystem::Get()->UniformCellSize);
+    }
+
+	static inline FPDGridCell StaticCell(const FVector& LocationToCell, const double CellSize)
+    {
+    	return FloorVectorC(LocationToCell / CellSize); 
+    }
+	static inline FVector StaticVector(const FVector& LocationToCell, const double CellSize)
+    {
+    	return FloorVectorV(LocationToCell / CellSize) * CellSize; // Bring it back to proper world space dims by 
+    }
 
 	/** @brief Uniform cell size instance data, value is dictated by the value in the developer settings */
 	UPROPERTY()

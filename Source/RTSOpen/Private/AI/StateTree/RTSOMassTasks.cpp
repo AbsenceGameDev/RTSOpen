@@ -115,6 +115,7 @@ bool FRTSOTask_BringBackResource::Link(FStateTreeLinker& Linker)
 	return FMassStateTreeTaskBase::Link(Linker);
 }
 
+// @note @todo remmeber to check if entnity is marked as non_idle or bus, can't remember if I ever put that in before the hiatus from the project
 EStateTreeRunStatus FRTSOTask_BringBackResource::EnterState(FStateTreeExecutionContext& Context, const FStateTreeTransitionResult& Transition) const
 {
 
@@ -154,29 +155,24 @@ EStateTreeRunStatus FRTSOTask_BringBackResource::EnterState(FStateTreeExecutionC
 		// TODO: Finish the changes needed to dispatch the list of items needed
 		if (bCantAfford)
 		{
-			// TODO Dispatch fetching item
-			// TODO, if the entity does not have resources we must dispatch it bringing resources and go there first
-			// - Note: For that we would need one of our subsystem to aggregate all resources and map them unto their octree location hash and tell only entities in said hash / grid segment of the octree 
-			
-			// Thoughts/pseudocode:
+			const FVector& EntityLocation = TransformFragment.GetTransform().GetLocation();
 			int32 TaskCounter = 0;
 			for (const auto&[ResourceType, MissingItemCount] : MissingItems) 
 			{
 				if (MissingItemCount > 0) 
 				{
-					FPDGridCell TODO_DUMMY_CELL__GET_ENTITY_CELL_AFTER_SLEEP{};
-					FindAmountOfResourceActorsNearGridCell(EntityHandle, TODO_DUMMY_CELL__GET_ENTITY_CELL_AFTER_SLEEP, ResourceType, MissingItemCount);
+					FPDGridCell EntityAsResourceCell = UPDHashGridSubsystem::StaticCell(EntityLocation, UPDRTSBaseSubsystem::ResourceGridSize);
+					FindAmountOfResourceActorsNearGridCell(EntityHandle, EntityAsResourceCell, ResourceType, MissingItemCount);
 					++TaskCounter;
 				}
 			}
 			PathLimit = TaskCounter;
 			if (TaskCounter != 0)
 			{
-				// @todo: also check if overwriting the movetarget here is one and done or if I need to do something else in the moveto processor
+				// @done: also check if overwriting the movetarget here is one and done or if I need to do something else in the moveto processor -- Looks like we are fine, just need to handle things in the tick here below
 				FPDRTSTGatherTargetsWrapper* ResourceTargets = RTSSubsystem->GetEntityResourceTargets(EntityHandle);
 				const FRTSEntityResourceGatherTarget& FirstPath = ResourceTargets->Targets[CurrentPathIndex++];
-				MoveTarget.Center = FirstPath.Target->GetActorLocation();
-
+				
 				FRTSOTask_BringBackResource::FInstanceDataType& InstanceData = Context.GetInstanceData(*this);
 				FPDTargetCompound CachedOptTargets = InstanceData.OptTargets;
 				InstanceData.OptTargets = FPDTargetCompound{FMassEntityHandle{0, 0}, FMassInt16Vector{}, const_cast<AActor*>(FirstPath.Target)}; // We only read from this actor pointer after this point, so the const cast should not cause problems
@@ -184,7 +180,6 @@ EStateTreeRunStatus FRTSOTask_BringBackResource::EnterState(FStateTreeExecutionC
 				EStateTreeRunStatus TriggerMoveResult = FPDMTaskStatics::TriggerMove<FRTSOTask_BringBackResource>(this, Context, EntitySubsystem, MoveTarget, MoveParameters, RTSData, TransformFragment);
 				InstanceData.OptTargets = CachedOptTargets;
 
-				// TODO: Also update the 'FPDMTaskStatics::TriggerMove' in the 'FRTSOTask_BringBackResource' tick, each time we get close enough to interact 
 				return TriggerMoveResult;
 			}
 		}
@@ -207,58 +202,46 @@ EStateTreeRunStatus FRTSOTask_BringBackResource::Tick(FStateTreeExecutionContext
 	const FMassStateTreeExecutionContext& MassContext = static_cast<FMassStateTreeExecutionContext&>(Context);
 	const FTransformFragment& TransformFragment = Context.GetExternalData(TransformHandle);
 
-
 	//
 	// Should ensure that we are on our way to a resource or not, and if we are, as sson as we trigger the interaction we move on to the next resource
-
-	const bool bAtStorageBuilding = CurrentPathIndex >= PathLimit;
-	const bool bHasReachedFinalResourceTarget = CurrentPathIndex == PathLimit - 1;
-	if (bHasReachedFinalResourceTarget)
+	EStateTreeRunStatus TickMoveResult = FPDMTaskStatics::TickMove<FRTSOTask_BringBackResource>(this, Context, DeltaTime, MoveTarget, RTSData);
+	switch(TickMoveResult)
 	{
+	case EStateTreeRunStatus::Succeeded:
+		{
+			FMassEntityHandle ThisEntity = MassContext.GetEntity();
+			//Interacting first, does not matter if it is the resource or storage building
+			EStateTreeRunStatus InteractResult = FRTSOTask_Interact::TaskInteract(this, Context, OtherEntityHandle, OtherInteractable, EntitySubsystem);
+			if (InteractResult != EStateTreeRunStatus::Succeeded)
+			{
+				// Log error
+				const FRTSOActionLogEvent NewActionEvent{
+					FString::Printf(TEXT("Entity(%i) -- BBR::Tick -- Fail interact with %s"),
+						ThisEntity.AsNumber(), *InstanceData.PotentialInteractableActor->GetName())}; 
+			}
+			
+			UPDRTSBaseSubsystem* RTSSubsystem = UPDRTSBaseSubsystem::Get();
+			FPDRTSTGatherTargetsWrapper* ResourceTargets = RTSSubsystem->GetEntityResourceTargets(MassContext.GetEntity());
+			const bool bIsAtStorageBuilding = CurrentPathIndex >= ResourceTargets->Targets.Num();
+			if (bIsAtStorageBuilding)
+			{
+				return EStateTreeRunStatus::Succeeded;
+			}
+			const FRTSEntityResourceGatherTarget& CurrentPath = ResourceTargets->Targets[CurrentPathIndex++];
+			
+			FPDTargetCompound CachedOptTargets = InstanceData.OptTargets;
+			InstanceData.OptTargets = FPDTargetCompound{FMassEntityHandle{0,0}, FMassInt16Vector{}, const_cast<AActor*>(CurrentPath.Target)}; 
 		
-		FRTSOTask_Interact::TaskInteract(this, Context, OtherEntityHandle, OtherInteractable, EntitySubsystem);
+			EStateTreeRunStatus TriggerNextMoveResult = FPDMTaskStatics::TriggerMove<FRTSOTask_BringBackResource>(this, Context, EntitySubsystem, MoveTarget, MoveParameters, RTSData, TransformFragment);
+			InstanceData.OptTargets = CachedOptTargets;
+
+			return EStateTreeRunStatus::Running;
+		}
+		break;
+
+	default:
+		return TickMoveResult;
 	}
-
-	if (false == bAtStorageBuilding && false == bHasReachedFinalResourceTarget)
-	{
-		UPDRTSBaseSubsystem* RTSSubsystem = UPDRTSBaseSubsystem::Get();
-
-		FPDRTSTGatherTargetsWrapper* ResourceTargets = RTSSubsystem->GetEntityResourceTargets(MassContext.GetEntity());
-		const FRTSEntityResourceGatherTarget& CurrentPath = ResourceTargets->Targets[CurrentPathIndex++];
-		MoveTarget.Center = CurrentPath.Target->GetActorLocation();
-
-		FPDTargetCompound CachedOptTargets = InstanceData.OptTargets;
-		InstanceData.OptTargets = FPDTargetCompound{FMassEntityHandle{0,0}, FMassInt16Vector{}, const_cast<AActor*>(CurrentPath.Target)}; 
-
-		EStateTreeRunStatus TriggerNextMoveResult = FPDMTaskStatics::TriggerMove<FRTSOTask_BringBackResource>(this, Context, EntitySubsystem, MoveTarget, MoveParameters, RTSData, TransformFragment);
-		InstanceData.OptTargets = CachedOptTargets;
-	
-	}
-
-
-
-
-
-
-
-
-
-	// Inital scribbles
-	
-	EStateTreeRunStatus InnerMoveState = FPDMTaskStatics::TickMove<FRTSOTask_BringBackResource>(this, Context, DeltaTime, MoveTarget, RTSData);
-
-	bool bStartInteraction = InnerMoveState == EStateTreeRunStatus::Succeeded;
-	if (bStartInteraction)
-	{
-		// const FInstanceDataType& InstanceData = Context.GetInstanceData(*this);
-		// const FMassEntityHandle& OtherEntityHandle = InstanceData.PotentialEntityHandle;
-		// const IPDInteractInterface* OtherInteractable = Cast<IPDInteractInterface>(InstanceData.PotentialInteractableActor);
-		// const UMassEntitySubsystem& EntitySubsystem = Context.GetExternalData(EntitySubsystemHandle);
-		
-		return FRTSOTask_Interact::TaskInteract(this, Context, OtherEntityHandle, OtherInteractable, EntitySubsystem);
-	}
-
-	return EStateTreeRunStatus::Running;
 }
 void FRTSOTask_BringBackResource::ExitState(FStateTreeExecutionContext& Context, const FStateTreeTransitionResult& Transition) const
 {
