@@ -146,6 +146,9 @@ protected:
 	TStateTreeExternalDataHandle<FMassMoveTargetFragment> MoveTargetHandle; /**<@ingroup ExternalHandles*/
 	TStateTreeExternalDataHandle<FMassMovementParameters> MoveParametersHandle; /**<@ingroup ExternalHandles*/
 	TStateTreeExternalDataHandle<FPDMFragment_RTSEntityBase> RTSDataHandle; /**<@ingroup ExternalHandles*/
+
+	mutable int32 CurrentPathIndex = 0;
+	mutable int32 PathLimit = 0;
 };
 
 
