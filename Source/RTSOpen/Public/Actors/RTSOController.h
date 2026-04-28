@@ -182,6 +182,10 @@ class RTSOPEN_API ARTSOController
 	/** @brief Marquee drawing/selection logic */
 	UFUNCTION(BlueprintCallable) void MarqueeSelection(EMarqueeSelectionEvent SelectionEvent);
 	
+	/** @brief Pass to widget via BP for now */
+	UFUNCTION(BlueprintNativeEvent) void UpdateEntityCount(int32 TotalEntityCount) const;
+
+
 	/** @brief Sets up a conversation with necessary prerequisites.
 	 * @details 1. Sets camera manager view-target.
 	 * 2. Activates the mapping context 'TAG_CTRL_Ctxt_ConversationMode' and deactivates 'TAG_CTRL_Ctxt_WorkerUnitMode' & 'TAG_CTRL_Ctxt_BaseInput'

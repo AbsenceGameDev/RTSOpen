@@ -36,7 +36,8 @@ ARTSOBaseGM::ARTSOBaseGM(const FObjectInitializer& ObjectInitializer)
 void ARTSOBaseGM::BeginPlay()
 {
 	Super::BeginPlay();
-	
+
+	TotalEntitiesSpawned = 0;
 	GameSave = Cast<URTSOpenSaveGame>(UGameplayStatics::CreateSaveGameObject(URTSOpenSaveGame::StaticClass()));
 	
 	URTSOBaseGI* GI = Cast<URTSOBaseGI>(GetWorld()->GetGameInstance());
@@ -1157,6 +1158,7 @@ void ARTSOBaseGM::GatherEntityToSpawn(
 }
 
 void ARTSOBaseGM::DispatchEntitySpawning(
+	const ARTSOController* Caller,
 	const TTuple<const FMassEntityTemplateID, FEntityCompoundTuple>& EntityTypeCompound,
 	const FMassEntityManager* EntityManager,
 	UMassSpawnerSubsystem* SpawnerSystem)
@@ -1197,6 +1199,12 @@ void ARTSOBaseGM::DispatchEntitySpawning(
 		// // @todo make use of or remove
 		// WorldEntityData.Health;	
 	}
+
+	TotalEntitiesSpawned += Step;
+	if (nullptr != Caller)
+	{
+		Caller->UpdateEntityCount(TotalEntitiesSpawned);
+	}
 }
 
 
@@ -1226,7 +1234,7 @@ void ARTSOBaseGM::LoadEntities_Implementation(const TArray<FRTSSavedWorldUnits>&
 	for (const TTuple<const FMassEntityTemplateID, FEntityCompoundTuple>&
 		EntityTypeCompound :  EntitiesToSpawn)
 	{
-		DispatchEntitySpawning(EntityTypeCompound, EntityManager, SpawnerSystem);
+		DispatchEntitySpawning(Cast<ARTSOController>(GetWorld()->GetFirstPlayerController()), EntityTypeCompound, EntityManager, SpawnerSystem);
 	}
 }
 

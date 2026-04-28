@@ -50,6 +50,7 @@ TAutoConsoleVariable<bool> UPDOctreeProcessor::CVarDrawCells(
 UPDMProcessor_InitializeEntities::UPDMProcessor_InitializeEntities()
 {
 	ObservedType = FPDMFragment_RTSEntityBase::StaticStruct();
+	// bRequiresGameThreadExecution = false;
 	Operation = EMassObservedOperation::Add;
 }
 
@@ -90,6 +91,7 @@ void UPDMProcessor_InitializeEntities::Execute(FMassEntityManager& EntityManager
 
 UPDMProcessor_EntityCosmetics::UPDMProcessor_EntityCosmetics()
 {
+	// bRequiresGameThreadExecution = false;
 	bAutoRegisterWithProcessingPhases = true;
 	ExecutionFlags = static_cast<int32>(EProcessorExecutionFlags::All);
 	ExecutionOrder.ExecuteAfter.Add(UE::Mass::ProcessorGroupNames::Representation);
@@ -311,6 +313,7 @@ void UPDMProcessor_EntityCosmetics::UpdateISMVertexAnimation(FMassInstancedStati
 // move (to) target
 UPDProcessor_MoveTarget::UPDProcessor_MoveTarget()
 {
+	// bRequiresGameThreadExecution = false;
 	ExecutionOrder.ExecuteBefore.Add(UE::Mass::ProcessorGroupNames::Avoidance);
 }
 
@@ -400,6 +403,7 @@ namespace PD::Mass::Crowd
 UPDMProcessor_LODVisualization::UPDMProcessor_LODVisualization()
 {
 	bAutoRegisterWithProcessingPhases = true;
+	// bRequiresGameThreadExecution = false;
 
 	ExecutionFlags = static_cast<int32>(EProcessorExecutionFlags::Client | EProcessorExecutionFlags::Standalone);
 
@@ -444,6 +448,7 @@ void UPDMProcessor_LODCollector::ConfigureQueries()
 
 UPDOctreeProcessor::UPDOctreeProcessor()
 {
+	// bRequiresGameThreadExecution = false;
 	ExecutionOrder.ExecuteAfter.Add(UE::Mass::ProcessorGroupNames::Movement);
 	ExecutionFlags = static_cast<int32>(EProcessorExecutionFlags::All);
 }
@@ -743,6 +748,7 @@ void UPDGridCellDeinitObserver::Execute(FMassEntityManager& EntityManager, FMass
 
 UPDCollisionSignalProcessor::UPDCollisionSignalProcessor()
 {
+	// bRequiresGameThreadExecution = false;
 	ExecutionOrder.ExecuteAfter.Add(UPDOctreeProcessor::StaticClass()->GetFName());
 	ExecutionOrder.ExecuteAfter.Add(UE::Mass::ProcessorGroupNames::Movement);
 	ExecutionFlags = static_cast<int32>(EProcessorExecutionFlags::All);

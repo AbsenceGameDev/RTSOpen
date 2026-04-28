@@ -797,6 +797,12 @@ void ARTSOController::MarqueeSelection(EMarqueeSelectionEvent SelectionEvent)
 	}
 }
 
+void ARTSOController::UpdateEntityCount_Implementation(int32 TotalEntityCount) const
+{
+	// Reserved for now
+}
+
+
 void ARTSOController::OnBeginConversation(const FClientConversationMessagePayload& Payload, AActor* PotentialCallbackActor)
 {
 	if (ConversationWidget == nullptr) { return; }

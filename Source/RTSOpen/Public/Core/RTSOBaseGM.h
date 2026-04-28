@@ -189,6 +189,7 @@ public:
 
 	/** @brief  Dispatches the given entity from 'EntityTypeCompound' via the UMassSpawnerSubsystem */
 	static void DispatchEntitySpawning(
+		const class ARTSOController* Caller,
 		const TTuple<const FMassEntityTemplateID, FEntityCompoundTuple>& EntityTypeCompound,
 		const FMassEntityManager* EntityManager,
 		UMassSpawnerSubsystem* SpawnerSystem);
@@ -208,6 +209,9 @@ public:
 	/** @brief Flag, has finished async */
 	bool bHasSavedDataAsync = false;
 	
+	/** @brief  */
+	inline static int32 TotalEntitiesSpawned = 0;
+
 	/** @brief Reserved use, for when inventory items lists grow large we want to avoid costly search operations */
 	const TMap<int32, FRTSSavedItems>* MapPointer = nullptr;
 

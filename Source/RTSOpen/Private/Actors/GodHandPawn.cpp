@@ -1354,7 +1354,6 @@ void AGodHandPawn::SelectActionMenuEntry_Implementation(ERTSBuildableActionMenuM
 					UPDRTSBaseSubsystem* RTSSubsystem = UPDRTSBaseSubsystem::Get();
 					UMassSpawnerSubsystem* SpawnerSystem = UWorld::GetSubsystem<UMassSpawnerSubsystem>(GetWorld());
 					if (EntityManager == nullptr) { return; }
-				
 
 					TMap<const FMassEntityTemplateID, ARTSOBaseGM::FEntityCompoundTuple> EntitiesToSpawn{};
 
@@ -1370,12 +1369,10 @@ void AGodHandPawn::SelectActionMenuEntry_Implementation(ERTSBuildableActionMenuM
 						ARTSOBaseGM::GatherEntityToSpawn(*GetWorld(), ConstructedEntityData, EntitiesToSpawn, RTSSubsystem, SpawnerSystem);
 					}
 
-					
-
 					// Dispatch spawning of entities
 					for (const TTuple<const FMassEntityTemplateID, ARTSOBaseGM::FEntityCompoundTuple>& EntityTypeCompound : EntitiesToSpawn)
 					{
-						ARTSOBaseGM::DispatchEntitySpawning(EntityTypeCompound, EntityManager, SpawnerSystem);
+						ARTSOBaseGM::DispatchEntitySpawning(PC, EntityTypeCompound, EntityManager, SpawnerSystem);
 						
 						if (GetController()->GetClass()->ImplementsInterface(UPDRTSBuilderInterface::StaticClass()))
 						{
@@ -1393,10 +1390,6 @@ void AGodHandPawn::SelectActionMenuEntry_Implementation(ERTSBuildableActionMenuM
 					// @todo Assign the given tag to the message datatable so this resolves to something
 					UPDUserMessageSubsystem::Get()->SendMessageToUser_Server(TAG_MSG_Actions_CannotAffordAction, GetController<APlayerController>());
 				}
-				
-
-
-				
 				break;
 			}
 
