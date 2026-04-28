@@ -322,7 +322,7 @@ FRTSOLightInventoryFragment ARTSOInteractableBuildingBase::CalculateFreeInventor
 {
 	FRTSOLightInventoryFragment DeltaItems;
 	const FRTSOLightInventoryFragment& BuildingInventory = GetCurrentInventory();
-	const FRTSOInventoryDefaultRow* InventoryLimit = TargetInventoryLimit.GetRow<FRTSOInventoryDefaultRow>(TEXT("FRTSOTask_BringBackResource::EnterState"));	
+	const FRTSOInventoryDefaultRow* InventoryLimit = TargetInventoryLimit.GetRow<FRTSOInventoryDefaultRow>(TEXT("ARTSOInteractableBuildingBase::CalculateFreeInventorySpace"));	
 	if (InventoryLimit)
 	{
 		DeltaItems.Handler.AddItems(InventoryLimit->InventoryConfig.Handler.GetItems());

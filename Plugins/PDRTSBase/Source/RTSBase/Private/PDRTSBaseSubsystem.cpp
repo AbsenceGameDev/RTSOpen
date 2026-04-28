@@ -255,19 +255,44 @@ void UPDRTSBaseSubsystem::WorldDeinit(const UWorld* World)
 	DeleteBuffers();
 }
 
+void UPDRTSBaseSubsystem::TryRemoveTrackedResourceEntry(const FGameplayTag& ResourceType, const AActor* TrackedActor)
+{
+	if (FPDRTSTSetActorWrapper* OldResourceTypeMapping = TrackedResourceGroups.Find(ResourceType)
+		; OldResourceTypeMapping != nullptr)
+	{
+		OldResourceTypeMapping->Actors.Remove(TrackedActor);
+		if (OldResourceTypeMapping->Actors.IsEmpty())
+		{
+			TrackedResourceGroups.Remove(ResourceType);
+		}
+	}
+}
+void UPDRTSBaseSubsystem::TryRemoveTrackedCellEntry(FPDGridCell GridCell, const AActor* TrackedActor)
+{
+	if (FPDRTSTSetActorWrapper* OldResourceTypeMapping = TrackedResourceGroupsPerGridCell.Find(GridCell)
+		; OldResourceTypeMapping != nullptr)
+	{
+		OldResourceTypeMapping->Actors.Remove(TrackedActor);
+		if (OldResourceTypeMapping->Actors.IsEmpty())
+		{
+			TrackedResourceGroupsPerGridCell.Remove(GridCell);
+		}
+	}
+}
+
 void UPDRTSBaseSubsystem::TrackResource(const FGameplayTag& ResourceType, const AActor* TrackedActor)
 {
 	FWriteScopeLock Lock(ResourceRWLock);
 	TrackedResourceGroups.FindOrAdd(ResourceType).Actors.FindOrAdd(TrackedActor);
 	
 	FPDGridCell ActorGridCell = UPDHashGridSubsystem::Get()->GetCellIndex(TrackedActor->GetActorLocation());
-	TrackedResourceGroupsPerGridCell.FindOrAdd(ActorGridCell).Actors.FindOrAdd(TrackedActor);
 	TrackedResourceToGridCell.FindOrAdd(TrackedActor) = ActorGridCell;
+	TrackedResourceGroupsPerGridCell.FindOrAdd(ActorGridCell).Actors.FindOrAdd(TrackedActor);
 }
 void UPDRTSBaseSubsystem::UntrackResource(const FGameplayTag& ResourceType, const AActor* TrackedActor)
 {
 	FWriteScopeLock Lock(ResourceRWLock);
-	TrackedResourceGroups.FindOrAdd(ResourceType).Actors.Remove(TrackedActor);
+	TryRemoveTrackedResourceEntry(ResourceType, TrackedActor);
 }
 
 void UPDRTSBaseSubsystem::UntrackAllFromResourceActor(const FGameplayTag& ResourceType, const AActor* TrackedActor)
@@ -278,10 +303,9 @@ void UPDRTSBaseSubsystem::UntrackAllFromResourceActor(const FGameplayTag& Resour
 
 void UPDRTSBaseSubsystem::UntrackAllFromResourceActor_Unsafe(const FGameplayTag& ResourceType, const AActor* TrackedActor)
 {
-	TrackedResourceGroups.FindOrAdd(ResourceType).Actors.Remove(TrackedActor);
-
 	FPDGridCell ActorGridCell = UPDHashGridSubsystem::Get()->GetCellIndex(TrackedActor->GetActorLocation());
-	TrackedResourceGroupsPerGridCell.FindOrAdd(ActorGridCell).Actors.Remove(TrackedActor);	
+	TryRemoveTrackedResourceEntry(ResourceType, TrackedActor);
+	TryRemoveTrackedCellEntry(ActorGridCell, TrackedActor);
 }
 
 void UPDRTSBaseSubsystem::UpdateResources(const AActor* TrackedActor)
@@ -290,21 +314,66 @@ void UPDRTSBaseSubsystem::UpdateResources(const AActor* TrackedActor)
 	FPDGridCell* OldGridCellPtr = TrackedResourceToGridCell.Find(TrackedActor);
 	if (OldGridCellPtr)
 	{
-		TrackedResourceGroupsPerGridCell.FindOrAdd(*OldGridCellPtr).Actors.Remove(TrackedActor);
+		TryRemoveTrackedCellEntry(*OldGridCellPtr, TrackedActor);
 
 		FPDGridCell NewActorGridCell = UPDHashGridSubsystem::Get()->GetCellIndex(TrackedActor->GetActorLocation());
 		TrackedResourceGroupsPerGridCell.FindOrAdd(NewActorGridCell).Actors.Add(TrackedActor);
 	}
-
 }
 
-const FPDRTSTSetActorWrapper& UPDRTSBaseSubsystem::GetResourceActors(const FGameplayTag& ResourceType)
+
+void UPDRTSBaseSubsystem::AddEntityResourceTarget(FMassEntityHandle MassEntity, const FRTSEntityResourceGatherTarget& ResourceTarget)
 {
-	static const FPDRTSTSetActorWrapper StaticDummy;
+	FWriteScopeLock Lock(EntityResourceTaskLock);
+	EntitiesCurrentResourceTargets.FindOrAdd(MassEntity).Targets.EmplaceLast(ResourceTarget);
+}
+FPDRTSTGatherTargetsWrapper* UPDRTSBaseSubsystem::GetEntityResourceTargets(FMassEntityHandle MassEntity)
+{
+	FReadScopeLock Lock(EntityResourceTaskLock);
+	return EntitiesCurrentResourceTargets.Find(MassEntity);
+	
+}
+void UPDRTSBaseSubsystem::RemoveEntityResourceTarget(FMassEntityHandle MassEntity)
+{
+	FWriteScopeLock Lock(EntityResourceTaskLock);
+	EntitiesCurrentResourceTargets.Remove(MassEntity);
+
+}
+void UPDRTSBaseSubsystem::RemoveAllFEntityResourceTargets()
+{
+	FWriteScopeLock Lock(EntityResourceTaskLock);
+	EntitiesCurrentResourceTargets.Empty();
+}
+
+
+const FPDRTSTSetActorWrapper* UPDRTSBaseSubsystem::GetResourceActors(const FGameplayTag& ResourceType)
+{
 	FReadScopeLock Lock(ResourceRWLock);
 	const FPDRTSTSetActorWrapper* FoundEntry = TrackedResourceGroups.Find(ResourceType);
-	return nullptr != FoundEntry ? *FoundEntry : StaticDummy;
+	return FoundEntry;
 }
+const FPDRTSTSetActorWrapper* UPDRTSBaseSubsystem::GetResourceActorsAtGridCell(FPDGridCell GridCell)
+{
+	FReadScopeLock Lock(ResourceRWLock);
+	const FPDRTSTSetActorWrapper* FoundEntry = TrackedResourceGroupsPerGridCell.Find(GridCell);
+	return FoundEntry;
+}
+
+TSet<const AActor*> UPDRTSBaseSubsystem::GetResourceActorsAtGridCellWithResourceType(const FGameplayTag& ResourceType, FPDGridCell GridCell)
+{
+	TSet<const AActor*> Intersection;
+	FReadScopeLock Lock(ResourceRWLock);
+	const FPDRTSTSetActorWrapper* FoundResourceMappedEntry = TrackedResourceGroups.Find(ResourceType);
+	const FPDRTSTSetActorWrapper* FoundGridCellMappedEntry = TrackedResourceGroupsPerGridCell.Find(GridCell);
+	if (FoundResourceMappedEntry && FoundGridCellMappedEntry)
+	{
+		Intersection = FoundResourceMappedEntry->Actors.Intersect(FoundGridCellMappedEntry->Actors);
+	}
+
+	return Intersection;
+}
+
+
 void UPDRTSBaseSubsystem::ProcessResourceActors(FSimpleDelegate ProcessDelegate)
 {
 	FReadScopeLock Lock(ResourceRWLock);

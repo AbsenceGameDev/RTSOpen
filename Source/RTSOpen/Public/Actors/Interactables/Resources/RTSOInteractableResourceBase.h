@@ -64,6 +64,13 @@ public:
 		FRTSOLightInventoryFragment* InstigatorInventoryFragment,
 		UPDInventorySubsystem* InvSubsystem,
 		bool& bMustWaitForRegeneration) const;
+
+	FORCEINLINE const FRTSOLightInventoryFragment& GetInventoryFragment() const
+	{
+		return InventoryFragment;
+	}
+
+	
 	
 	/** @brief Handles interaction with the calling (mass) entity or calling actor.
 	 * @details Gives the callers inventory component or inventory fragment the items listed in 'LinkedItemResources' */

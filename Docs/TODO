@@ -415,7 +415,7 @@ TODO:
 
 April 28th 2026 - Commit#1:
 DONE: 
-    ✔ Wrote some code to dispaly total spawned entity count on the crude debug view wigdet @done(26-04-28 04:58)
+    ✔ Wrote some code to display total spawned entity count on the crude debug view wigdet @done(26-04-28 04:58)
 
 IN PROGRESS: 
     Entity storage/bank task prerequisites: 
@@ -426,6 +426,21 @@ TODO:
     Extend statetree/Entity task: 
        ☐ Finish the changes needed to dispatch the list of items needed in FRTSOTask_BringBackResource::EnterState       
 
+
+April 28th 2026 - Commit#1:
+DONE: 
+    
+IN PROGRESS: 
+    Entity storage/bank task prerequisites: 
+            ☐ If no resources can be found, log error in ActionLog
+    Extend statetree/Entity task: 
+        ☐ Program a new task for moving picked up inventory and bringing it either to storage (physical bank) or to a players bank (infinite storage pool), needed to test and finish the pinger system
+TODO: 
+    Extend statetree/Entity task: 
+       ☐ Finish the changes needed to dispatch the list of items needed in FRTSOTask_BringBackResource::EnterState              
+@todo: Also update the 'FPDMTaskStatics::TriggerMove' in the 'FRTSOTask_BringBackResource' tick, each time we get close enough to interact 
+@todo: also check if overwriting the movetarget here is one and done or if I need to do something else in the moveto processor
+@todo: Update TODO_DUMMY_CELL__GET_ENTITY_CELL_AFTER_SLEEP
 
 COMING:    
 IN PROGRESS : 

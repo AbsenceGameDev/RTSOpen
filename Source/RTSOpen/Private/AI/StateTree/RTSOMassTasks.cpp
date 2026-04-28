@@ -15,6 +15,7 @@
 // PD UI
 #include "Widgets/Slate/SRTSOActionLog.h"
 #include "Actors/Interactables/Buildings/RTSOInteractableBuildingBase.h"
+#include "Actors/Interactables/Resources/RTSOInteractableResourceBase.h"
 
 // Mass
 #include "MassEntitySubsystem.h"
@@ -59,6 +60,47 @@ EStateTreeRunStatus FRTSOTask_ActionLog::EnterState(FStateTreeExecutionContext& 
 
 //
 // BRING BACK RESOURCES INTERACT TASK
+
+
+// @note Some more mapped data and I won't need to have to search like this at all
+FPDRTSTSetActorWrapper FRTSOTask_BringBackResource::FindAmountOfResourceActorsNearGridCell(const FMassEntityHandle& EntityHandle, FPDGridCell GridCell, const FGameplayTag& ResourceType, int32 TargetResourceAmount) const
+{
+	UPDRTSBaseSubsystem* RTSSubsystem = UPDRTSBaseSubsystem::Get();
+	RTSSubsystem->RemoveEntityResourceTarget(EntityHandle);
+
+
+	bool bFoundViableResourceActor = false;
+
+
+	// @note THIS ONLY LOOKS AT THE CURRENT GRIDCELL; NEED TO WRITE A FUNCTION THAT ITERATES OUTWARD FROM THIS GRIDCELL AND LOOKS THERE
+	// OR POTENTIALLY MAPPING THINGS IN THE SUBSYSTEM ENOUGH THAT I DO NOT HAVE TO SEARCH
+	FPDRTSTSetActorWrapper ViableTargets;
+	{
+		int32 Remainder = TargetResourceAmount;
+		TSet<const AActor*> ActorSet = RTSSubsystem->GetResourceActorsAtGridCellWithResourceType(ResourceType, GridCell);
+		for (const AActor* Actor : ActorSet)
+		{
+			if (const ARTSOInteractableResourceBase* AsResource = Cast<ARTSOInteractableResourceBase>(Actor))
+			{
+				const int32 ActorsTotalItemCount = AsResource->GetInventoryFragment().Handler.GetItems().FindRef(ResourceType).TotalItemCount;
+				if (ActorsTotalItemCount <= 0) {continue;}
+				
+				ViableTargets.Actors.Emplace(Actor);
+				
+				Remainder -= ActorsTotalItemCount;
+				FRTSEntityResourceGatherTarget GatherTarget = FRTSEntityResourceGatherTarget{Actor, (Remainder >= 0 ? INDEX_NONE : ActorsTotalItemCount)};
+				
+				RTSSubsystem->AddEntityResourceTarget(EntityHandle, GatherTarget);
+
+				if (Remainder <= 0) {break;}
+			}
+		}
+	}
+
+	return ViableTargets;
+}
+
+
 bool FRTSOTask_BringBackResource::Link(FStateTreeLinker& Linker)
 {
 	Linker.LinkExternalData(EntitySubsystemHandle);
@@ -76,14 +118,18 @@ bool FRTSOTask_BringBackResource::Link(FStateTreeLinker& Linker)
 EStateTreeRunStatus FRTSOTask_BringBackResource::EnterState(FStateTreeExecutionContext& Context, const FStateTreeTransitionResult& Transition) const
 {
 
+	UPDRTSBaseSubsystem* RTSSubsystem = UPDRTSBaseSubsystem::Get();
 	UMassEntitySubsystem& EntitySubsystem = Context.GetExternalData(EntitySubsystemHandle);
 	FMassMoveTargetFragment& MoveTarget = Context.GetExternalData(MoveTargetHandle);
 	const FMassMovementParameters& MoveParameters = Context.GetExternalData(MoveParametersHandle);
 	FPDMFragment_RTSEntityBase& RTSData = Context.GetExternalData(RTSDataHandle);
 	const FTransformFragment& TransformFragment = Context.GetExternalData(TransformHandle);
 	const FRTSOLightInventoryFragment& EntityInventoryFragment = Context.GetExternalData(InventoryHandle);
-	const FPDMFragment_Action& ActionFragment = Context.GetExternalData(ActionHandle);
-	
+	FPDMFragment_Action& ActionFragment = Context.GetExternalData(ActionHandle);
+
+	const FMassStateTreeExecutionContext& MassContext = static_cast<FMassStateTreeExecutionContext&>(Context);
+	const FMassEntityHandle& EntityHandle = MassContext.GetEntity();	
+				
 
 
 	ARTSOInteractableBuildingBase* AsBuildingBase = Cast<ARTSOInteractableBuildingBase>(ActionFragment.OptTargets.ActionTargetAsActor);
@@ -100,6 +146,7 @@ EStateTreeRunStatus FRTSOTask_BringBackResource::EnterState(FStateTreeExecutionC
 			if (bCantAffordItem)
 			{
 				MissingItems.Emplace(ResourceType, DeltaItemStorage);
+				bCantAfford = false;
 			}
 		}
 
@@ -115,16 +162,25 @@ EStateTreeRunStatus FRTSOTask_BringBackResource::EnterState(FStateTreeExecutionC
 			int32 TaskCounter = 0;
 			for (const auto&[ResourceType, MissingItemCount] : MissingItems) 
 			{
-				//    Count = InventoryFragment.Handler.GetItemCount(ResourceType);
-				//    if (Count <= 0) 
-				// 	  {
-						
-				//        AddGatherResourceTask(ItemTag); 
-				//    }
+				if (MissingItemCount > 0) 
+				{
+					FPDGridCell TODO_DUMMY_CELL__GET_ENTITY_CELL_AFTER_SLEEP{};
+					FindAmountOfResourceActorsNearGridCell(EntityHandle, TODO_DUMMY_CELL__GET_ENTITY_CELL_AFTER_SLEEP, ResourceType, MissingItemCount);
+					++TaskCounter;
+				}
 			}
-			if (TaskCounter == 0)
+			if (TaskCounter != 0)
 			{
-				 // Then Trigger Move directly to Storage to drop thigns off
+				// @todo: also check if overwriting the movetarget here is one and done or if I need to do something else in the moveto processor
+				FPDRTSTGatherTargetsWrapper* ResourceTargets = RTSSubsystem->GetEntityResourceTargets(EntityHandle);
+				const FRTSEntityResourceGatherTarget& FirstPath = ResourceTargets->Targets[0];
+				MoveTarget.Center = FirstPath.Target->GetActorLocation();
+
+				// ActionFragment.OptTargets.ActionTargetAsActor;
+
+
+				// TODO: Also update the 'FPDMTaskStatics::TriggerMove' in the 'FRTSOTask_BringBackResource' tick, each time we get close enough to interact 
+				return FPDMTaskStatics::TriggerMove<FRTSOTask_BringBackResource>(this, Context, EntitySubsystem, MoveTarget, MoveParameters, RTSData, TransformFragment);
 			}
 		}
 	}

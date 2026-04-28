@@ -4,9 +4,12 @@
 #include "CoreMinimal.h"
 #include "MassEntityTypes.h"
 #include "MassStateTreeTypes.h"
+#include "MassEntityTypes.h"
+#include "GameplayTags.h"
 #include "StateTreeTypes.h"
 #include "StateTreeInstanceData.h"
 #include "AI/StateTree/PDMassTasks.h"
+#include "PDRTSSharedHashGrid.h"
 #include "RTSOMassTasks.generated.h"
 
 struct FRTSOLightInventoryFragment;
@@ -112,7 +115,11 @@ struct RTSOPEN_API FRTSOTask_Interact : public FMassStateTreeTaskBase
 
 /**
  * @brief Bring back resources to bank or storage task.
- * @details Walks towards the target and attempts to call Execute_OnInteract if the given target os of storage type (or proxy object if the target's an entity) has an interface of type IPDInteractInterface 
+ * @details Walks towards the target and attempts to call Execute_OnInteract if the given target os of storage type (or proxy object if the target's an entity) has an interface of type IPDInteractInterface
+ * 
+ * @note Will need a way for an entity given this task to efficiently mark some resources closeby and pick them up, then any other entity won't be pick the same resource unless the resource has enough to supply them both
+ * @done Further thoughts are that is we want more then one entity to pick up from a resource it must be calculated to be enough left that it's needs are met
+ * @donr Something like: struct FRTSEntityResourceGatherTarget { AActor* Target; int32 CountNeeded = -1;}; 
  */
 
 USTRUCT()
@@ -124,8 +131,8 @@ struct RTSOPEN_API FRTSOTask_BringBackResource final : public FRTSOTask_Interact
 
 	DECLARE_TASK_BODY(BringBackResource)
 
-
 	void OnPathSelected(FPDMFragment_RTSEntityBase& RTSData, bool bShouldUseSharedNavigation, const FVector& LastPoint) const;
+	struct FPDRTSTSetActorWrapper FindAmountOfResourceActorsNearGridCell(const FMassEntityHandle& EntityHandle, FPDGridCell GridCell, const FGameplayTag& ResourceType, int32 TargetResourceAmount) const;
 
 protected:	
 	/** @defgroup ExternalHandles */

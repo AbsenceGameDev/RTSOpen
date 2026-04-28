@@ -65,6 +65,30 @@ struct PDRTSBASE_API FPDGridCell : public FIntVector
 		    && this->Y == OtherCell.Y
 		    && this->Z == OtherCell.Z;
 	}
+	/** @brief this->XYZ must be equal to Other.XYZ */
+	bool operator!=(const FPDGridCell & OtherCell) const
+	{
+		return false == (*this == OtherCell);
+	}
+
+	/** @brief this->XYZ must be lower to Other.XYZ */
+	bool operator<(const FPDGridCell & OtherCell) const
+	{
+		return this->X <= OtherCell.X
+		    && this->Y <= OtherCell.Y
+		    && this->Z <= OtherCell.Z
+			&& *this != OtherCell;
+	}
+	/** @brief this->XYZ must be higher to Other.XYZ */
+	bool operator>(const FPDGridCell & OtherCell) const
+	{
+		return this->X >= OtherCell.X
+		    && this->Y >= OtherCell.Y
+		    && this->Z >= OtherCell.Z
+			&& *this != OtherCell;
+	}
+
+
 	FPDGridCell& operator+=(const FPDGridCell& OtherCell) 
 	{
 		*this = *this + OtherCell;

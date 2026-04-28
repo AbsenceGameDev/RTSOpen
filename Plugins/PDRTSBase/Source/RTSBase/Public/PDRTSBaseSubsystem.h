@@ -30,13 +30,55 @@ class UMassEntitySubsystem;
 class UTextureRenderTarget2D;
 struct FPDWorkUnitDatum;
 
+UENUM()
+enum class ERTSEntityResourceCountState : uint8
+{
+	ENeedsAllResources,
+	ENeedsSpecificCount,
+	Undefined
+};
+
+USTRUCT()
+struct PDRTSBASE_API FRTSEntityResourceGatherTarget
+{
+	GENERATED_BODY()
+public:
+	FRTSEntityResourceGatherTarget(const AActor* InTarget, int32 InCount) : Target(InTarget), CountNeeded(InCount) 
+	{
+		State = InCount < 0 ? ERTSEntityResourceCountState::ENeedsAllResources : ERTSEntityResourceCountState::ENeedsSpecificCount;
+	}
+
+	FRTSEntityResourceGatherTarget(const AActor* InTarget) : Target(InTarget), CountNeeded(INDEX_NONE) 
+	{
+		State = ERTSEntityResourceCountState::ENeedsAllResources;
+	}
+
+	FRTSEntityResourceGatherTarget() : Target(nullptr), CountNeeded(INDEX_NONE) 
+	{
+		State = ERTSEntityResourceCountState::ENeedsAllResources;
+	}
+
+	inline ERTSEntityResourceCountState GetCount(int32& OutCount) 
+	{
+		OutCount = CountNeeded;
+		return State;
+	}
+
+	UPROPERTY()
+	const AActor* Target; 
+private:
+	ERTSEntityResourceCountState State = ERTSEntityResourceCountState::Undefined;
+	UPROPERTY()
+	int32 CountNeeded = -1;
+}; 
+
 USTRUCT()
 struct PDRTSBASE_API FPDRTSTSetActorWrapper
 {
 	GENERATED_BODY()
 
 	UPROPERTY()
-	TSet<const AActor*> Actors;	
+	TSet<const AActor*> Actors;
 };
 
 USTRUCT()
@@ -47,6 +89,16 @@ struct PDRTSBASE_API FPDRTSTSetTagWrapper
 	UPROPERTY()
 	TSet<FGameplayTag> Tags;	
 };
+
+USTRUCT()
+struct PDRTSBASE_API FPDRTSTGatherTargetsWrapper
+{
+	GENERATED_BODY()
+
+
+	TDeque<FRTSEntityResourceGatherTarget> Targets;	
+};
+
 
 DECLARE_DELEGATE_SevenParams(FRTSBuildGlobalSortEntityShader, FRHICommandListImmediate& /*RHICmdList*/, UTextureRenderTarget2D* /*RenderTarget*/, const TRefCountPtr<FRDGPooledBuffer>& /*EntityInputPooledBuffer*/, TArray<FLinearColor> /*InData*/, float /* CameraYawInRadians */ , FVector /*RegionMin*/, FVector /*RegionSize*/)
 
@@ -134,6 +186,11 @@ public:
 	void WorldDeinit(const UWorld* World);
 
 	/** @brief  */
+	void TryRemoveTrackedResourceEntry(const FGameplayTag& ResourceType, const AActor* TrackedActor);
+	/** @brief  */
+	void TryRemoveTrackedCellEntry(FPDGridCell GridCell, const AActor* TrackedActor);
+
+	/** @brief  */
 	void TrackResource(const FGameplayTag& ResourceType, const AActor* TrackedActor); 
 	/** @brief  */
 	void UntrackResource(const FGameplayTag& ResourceType, const AActor* TrackedActor); 
@@ -144,8 +201,24 @@ public:
 	/** @brief  */
 	void UpdateResources(const AActor* TrackedActor); 
 
+
 	/** @brief  */
-	const FPDRTSTSetActorWrapper& GetResourceActors(const FGameplayTag& ResourceType);
+	void AddEntityResourceTarget(FMassEntityHandle MassEntity, const FRTSEntityResourceGatherTarget& ResourceTarget); 
+	/** @brief  */
+	FPDRTSTGatherTargetsWrapper* GetEntityResourceTargets(FMassEntityHandle MassEntity);
+	/** @brief  */
+	void RemoveEntityResourceTarget(FMassEntityHandle MassEntity); 
+	/** @brief  */
+	void RemoveAllFEntityResourceTargets(); 
+
+
+	/** @brief  */
+	const FPDRTSTSetActorWrapper* GetResourceActors(const FGameplayTag& ResourceType);
+	/** @brief  */
+	const FPDRTSTSetActorWrapper* GetResourceActorsAtGridCell(FPDGridCell GridCell);
+	/** @brief  @todo A bit inefficient, think of bulking these calls for a set ot GridCells and make a new function*/
+	TSet<const AActor*> GetResourceActorsAtGridCellWithResourceType(const FGameplayTag& ResourceType, FPDGridCell GridCell);
+	
 	/** @brief  */
 	void ProcessResourceActors(FSimpleDelegate ProcessDelegate);
 
@@ -246,10 +319,15 @@ private:
 	/** @brief */
 	UPROPERTY()
 	TMap<FGameplayTag /*resource/item tag*/, FPDRTSTSetActorWrapper> TrackedResourceGroups;
-	TMap<FPDGridCell /*Gridcell*/, FPDRTSTSetActorWrapper> TrackedResourceGroupsPerGridCell;
+	TSortedMap<FPDGridCell /*Gridcell*/, FPDRTSTSetActorWrapper> TrackedResourceGroupsPerGridCell;
+	TMap<int32, FPDGridCell> GridCellOrder;
 	UPROPERTY()
 	TMap<const AActor*, FPDGridCell> TrackedResourceToGridCell;
 	mutable FRWLock ResourceRWLock;
+
+	UPROPERTY()
+	TMap<FMassEntityHandle, FPDRTSTGatherTargetsWrapper> EntitiesCurrentResourceTargets;
+
 
 
 	/** @brief The RT texture we are splatting our entities unto */
@@ -262,6 +340,9 @@ private:
 
 	/** @brief Static ReadWrite lock. Wanted to prioritize writers while letting readers not block other readers */
 	static FRWLock PlayerDataLock;
+
+	/** @brief Static ReadWrite lock. Wanted to prioritize writers while letting readers not block other readers */
+	mutable FRWLock EntityResourceTaskLock;	
 };
 
 
