@@ -320,14 +320,19 @@ FRTSOLightInventoryFragment& ARTSOInteractableBuildingBase::GetCurrentInventory(
 // note: @todo This should be cached everytime it changes, and then just reported back when asked 
 FRTSOLightInventoryFragment ARTSOInteractableBuildingBase::CalculateFreeInventorySpace()
 {
-	FRTSOLightInventoryFragment DeltaItems;
-	const FRTSOLightInventoryFragment& BuildingInventory = GetCurrentInventory();
-	const FRTSOInventoryDefaultRow* InventoryLimit = TargetInventoryLimit.GetRow<FRTSOInventoryDefaultRow>(TEXT("ARTSOInteractableBuildingBase::CalculateFreeInventorySpace"));	
-	if (InventoryLimit)
+	if (false == bHasInitializedInv)
 	{
-		DeltaItems.Handler.AddItems(InventoryLimit->InventoryConfig.Handler.GetItems());
+		if (FRTSOInventoryDefaultRow* InventoryLimitPtr = TargetInventoryLimit.GetRow<FRTSOInventoryDefaultRow>(TEXT("ARTSOInteractableBuildingBase::CalculateFreeInventorySpace")))
+		{
+			InventoryLimit = *InventoryLimitPtr;
+		}
+		bHasInitializedInv = true;
 	}
-
+	
+	FRTSOLightInventoryFragment DeltaItems;
+	DeltaItems.Handler.AddItems(InventoryLimit.InventoryConfig.Handler.GetItems());
+	
+	const FRTSOLightInventoryFragment& BuildingInventory = GetCurrentInventory();
 	for (auto& [ItemTag, ItemDatum] : BuildingInventory.Handler.GetItems())
 	{
 		DeltaItems.Handler.RemoveItem(ItemTag, ItemDatum.TotalItemCount);

@@ -178,6 +178,9 @@ private:
 	static inline FName BoxcompName = "Boxcomp"; 
 	/** @return Static name used as selector in BuildableCollisionSettings and GhostCollisionSettings */
 	static inline FName MeshName = "Mesh";
+
+	bool bHasInitializedInv = false;
+	FRTSOInventoryDefaultRow InventoryLimit{};	
 };
 
 /** @brief RefreshStaleSettings<true>(), Calls RefreshStaleSettings_Ghost */

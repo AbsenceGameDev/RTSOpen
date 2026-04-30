@@ -475,6 +475,19 @@ IN PROGRESS:
 @todo Update 'ARTSOInteractableBuildingBase::ProcessIfWorkersRequired' call to Pinger subssytem and make so our jobtag is a TAG_AI_Job_BringBackResource 
     I will however need to write some code that retriggers the ghoststage stuff and it seems I do not actually have fully hooked in the inventory system or the system that handles in world banks 
 
+'April 30th 2026 - Commit#1:
+DONE: 
+    ✔ Set some default inventory limits @done(26-04-30 10:22)
+    
+IN PROGRESS: 
+
+    Entity storage/bank task prerequisites: 
+            ☐ If no resources can be found, log error in ActionLog
+
+@todo Update 'ARTSOInteractableBuildingBase::ProcessIfWorkersRequired' call to Pinger subssytem and make so our jobtag is a TAG_AI_Job_BringBackResource 
+    I will however need to write some code that retriggers the ghoststage stuff and it seems I do not actually have fully hooked in the inventory system or the system that handles in world banks 
+
+
 
 
 COMING:    
