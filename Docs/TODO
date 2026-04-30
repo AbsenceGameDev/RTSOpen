@@ -456,9 +456,24 @@ DONE:
 IN PROGRESS: 
     Entity storage/bank task prerequisites: 
             ☐ If no resources can be found, log error in ActionLog
-
 @todo Remmeber to check if entity is marked as non_idle or bus, can't remember if I ever put that in before the hiatus from the project
 @todo Trigger the actual task transition via entities job tag? 
+
+
+
+April 30th 2026 - Commit#0:
+DONE: 
+    ✔ Trigger the actual task transition via entities job tag? @done(26-04-30 08:09)
+        ✔ Replace old task condition logic with something far more versatile @done(26-04-30 08:09)
+        ✔ Ensure we unassign task and go back to Idle after delivering resources, the pinger system will just reping any idlers if needed @done(26-04-30 08:09)
+    
+IN PROGRESS: 
+
+    Entity storage/bank task prerequisites: 
+            ☐ If no resources can be found, log error in ActionLog
+
+@todo Update 'ARTSOInteractableBuildingBase::ProcessIfWorkersRequired' call to Pinger subssytem and make so our jobtag is a TAG_AI_Job_BringBackResource 
+    I will however need to write some code that retriggers the ghoststage stuff and it seems I do not actually have fully hooked in the inventory system or the system that handles in world banks 
 
 
 

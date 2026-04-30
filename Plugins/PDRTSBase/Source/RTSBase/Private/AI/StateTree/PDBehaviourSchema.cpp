@@ -69,14 +69,22 @@ void UPDBehaviourSchema::PostEditChangeChainProperty(FPropertyChangedChainEvent&
 }
 #endif
 
-bool FHandleValidityTagCondition::TestCondition(FStateTreeExecutionContext& Context) const
+
+bool FJobHandlerCondition::TestCondition(FStateTreeExecutionContext& Context) const
 {
 	const UMassEntitySubsystem* EntitySubsystem = Context.GetWorld()->GetSubsystem<UMassEntitySubsystem>();
 	const FInstanceDataType& InstanceData = Context.GetInstanceData(*this);
-	
-	return InstanceData.ActionTest.ActionTag.IsValid() && InstanceData.ActionTest.OptTargets.IsValidCompoundByManager(EntitySubsystem->GetEntityManager());
-}
 
+	const bool bEntityActionTagValid = InstanceData.ActionTest.ActionTag.IsValid();
+	const bool bIsGenericInteractTask = 
+		bEntityActionTagValid 
+		&& false == InstanceData.ActionTest.ActionTag.MatchesTagExact(TAG_AI_Job_BringBackResource)
+		&& false == InstanceData.ActionTest.ActionTag.MatchesTagExact(TAG_AI_Job_Idle);
+	const bool bHasValidTargetAsGenericTask = bIsGenericInteractTask ? InstanceData.ActionTest.OptTargets.IsValidCompoundByManager(EntitySubsystem->GetEntityManager()) : true;
+	const bool bTagFound = bEntityActionTagValid && InstanceData.JobTagsToCompare.HasTagExact(InstanceData.ActionTest.ActionTag);
+
+	return bTagFound && bHasValidTargetAsGenericTask;
+}
 
 /**
 Business Source License 1.1

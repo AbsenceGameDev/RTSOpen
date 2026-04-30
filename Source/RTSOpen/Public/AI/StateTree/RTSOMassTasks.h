@@ -95,7 +95,7 @@ struct RTSOPEN_API FRTSOTask_Interact : public FMassStateTreeTaskBase
 	/** @brief Triggers OnInteract on the actor, (and/or entity proxy when the function is finished), if it turns out to be a valid interactable
 	 * @todo write actual logic for interaction with other entity. use proxy such as the RTSBaseUnit (ISM subclass)
 	 * @todo @backlog have some notes in there which I've not fully decided on, revise at some point */
-	template<typename TPDMassType>
+	template<typename TPDMassType, bool TFinishActualJobTask>
 	static EStateTreeRunStatus TaskInteract(
 		const TPDMassType* This,
 		FStateTreeExecutionContext& Context,

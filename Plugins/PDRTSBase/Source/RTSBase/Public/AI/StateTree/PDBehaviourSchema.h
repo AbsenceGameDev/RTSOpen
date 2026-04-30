@@ -5,6 +5,7 @@
 #include "PDMassEvaluators.h"
 #include "StateTreeConditionBase.h"
 #include "GameFramework/Actor.h"
+#include "StateTreeAnyEnum.h"
 #include "PDBehaviourSchema.generated.h"
 
 struct FStateTreeExternalDataDesc;
@@ -97,24 +98,36 @@ struct PDRTSBASE_API FHandleValidityConditionInstanceData
 };
 
 /**
- * @brief State tree condition. Checks if input action is a valid action
+ * @brief State tree condition instance data
  */
-USTRUCT(DisplayName="Is Valid Action")
-struct PDRTSBASE_API FHandleValidityTagCondition : public FStateTreeConditionBase
+USTRUCT()
+struct PDRTSBASE_API FJobHandlerConditionInstanceData
 {
 	GENERATED_BODY()
 
-	FHandleValidityTagCondition() = default;
+	/** @brief Input data for the state tree condition. Is used to pass through data to the condition FHandleValidityTagCondition */
+	UPROPERTY(EditAnywhere, Category = Input)
+	FPDMFragment_Action ActionTest;
+
+	UPROPERTY(EditAnywhere, Category = Parameter)
+	FGameplayTagContainer JobTagsToCompare;
+};
+
+USTRUCT(DisplayName="Job Checker")
+struct PDRTSBASE_API FJobHandlerCondition : public FStateTreeConditionBase
+{
+	GENERATED_BODY()
+
+	FJobHandlerCondition() = default;
 
 	/** @brief Instance data shorthand */
-	using FInstanceDataType = FHandleValidityConditionInstanceData;
+	using FInstanceDataType = FJobHandlerConditionInstanceData;
 	
 	/** @brief Returns the static struct of the instance data shorthand */
 	virtual const UStruct* GetInstanceDataType() const override { return FInstanceDataType::StaticStruct(); }
 	/** @brief Checks that the tag is valid and checks that at-least one of the targets in the target compound is valid*/
 	virtual bool TestCondition(FStateTreeExecutionContext& Context) const override;
 };
-
 
 /**
 Business Source License 1.1

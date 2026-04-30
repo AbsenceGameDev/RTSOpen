@@ -115,7 +115,7 @@ bool FRTSOTask_BringBackResource::Link(FStateTreeLinker& Linker)
 	return FMassStateTreeTaskBase::Link(Linker);
 }
 
-// @note @todo remmeber to check if entnity is marked as non_idle or bus, can't remember if I ever put that in before the hiatus from the project
+// @note @todo remember to check if entity is marked as non_idle or busy, can't remember if I ever put that in before the hiatus from the project
 EStateTreeRunStatus FRTSOTask_BringBackResource::EnterState(FStateTreeExecutionContext& Context, const FStateTreeTransitionResult& Transition) const
 {
 
@@ -211,7 +211,7 @@ EStateTreeRunStatus FRTSOTask_BringBackResource::Tick(FStateTreeExecutionContext
 		{
 			FMassEntityHandle ThisEntity = MassContext.GetEntity();
 			//Interacting first, does not matter if it is the resource or storage building
-			EStateTreeRunStatus InteractResult = FRTSOTask_Interact::TaskInteract(this, Context, OtherEntityHandle, OtherInteractable, EntitySubsystem);
+			EStateTreeRunStatus InteractResult = FRTSOTask_Interact::TaskInteract<FRTSOTask_BringBackResource, false>(this, Context, OtherEntityHandle, OtherInteractable, EntitySubsystem);
 			if (InteractResult != EStateTreeRunStatus::Succeeded)
 			{
 				// Log error
@@ -245,6 +245,14 @@ EStateTreeRunStatus FRTSOTask_BringBackResource::Tick(FStateTreeExecutionContext
 }
 void FRTSOTask_BringBackResource::ExitState(FStateTreeExecutionContext& Context, const FStateTreeTransitionResult& Transition) const
 {
+	const FMassStateTreeExecutionContext& MassContext = static_cast<FMassStateTreeExecutionContext&>(Context);
+	UMassEntitySubsystem& EntitySubsystem = Context.GetExternalData(EntitySubsystemHandle);
+	UPDRTSBaseSubsystem* RTSSubsystem = UPDRTSBaseSubsystem::Get();
+
+	UPDRTSBaseUnit** UnitHandlerDoublePtr = RTSSubsystem->WorldToEntityHandler.Find(EntitySubsystem.GetWorld());
+	if (UnitHandlerDoublePtr && (*UnitHandlerDoublePtr)) { (*UnitHandlerDoublePtr)->OnTaskFinished(MassContext.GetEntity()); }
+
+	Super::ExitState(Context, Transition);
 }
 
 void FRTSOTask_BringBackResource::OnPathSelected(FPDMFragment_RTSEntityBase& RTSData, bool bShouldUseSharedNavigation, const FVector& LastPoint) const
@@ -279,10 +287,10 @@ EStateTreeRunStatus FRTSOTask_Interact::EnterState(FStateTreeExecutionContext& C
 	const IPDInteractInterface* OtherInteractable = Cast<IPDInteractInterface>(InstanceData.PotentialInteractableActor);
 	const UMassEntitySubsystem& EntitySubsystem = Context.GetExternalData(EntitySubsystemHandle);
 
-	return TaskInteract(this, Context, OtherEntityHandle, OtherInteractable, EntitySubsystem);
+	return TaskInteract<FRTSOTask_Interact, true>(this, Context, OtherEntityHandle, OtherInteractable, EntitySubsystem);
 }
 
-template<typename TPDMassType>
+template<typename TPDMassType, bool TFinishActualJobTask>
 EStateTreeRunStatus FRTSOTask_Interact::TaskInteract(
 	const TPDMassType* This,
 	FStateTreeExecutionContext& Context, 
@@ -308,7 +316,11 @@ EStateTreeRunStatus FRTSOTask_Interact::TaskInteract(
 	FPDMFragment_Action& Action = EntityManager.GetFragmentDataChecked<FPDMFragment_Action>(MassContext.GetEntity());
 
 	UPDRTSBaseUnit* UnitHandler = *UnitHandlerDoublePtr;
-	UnitHandler->OnTaskFinished(MassContext.GetEntity()); // Make sure to use this on other tasks
+
+	if constexpr (TFinishActualJobTask)
+	{
+		UnitHandler->OnTaskFinished(MassContext.GetEntity()); // Make sure to use this on other tasks
+	}
 	
 	if (OtherInteractable != nullptr)
 	{
