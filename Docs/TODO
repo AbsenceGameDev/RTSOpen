@@ -507,6 +507,15 @@ IN PROGRESS:
     I will however need to write some code that retriggers the ghoststage stuff and it seems I do not actually have fully hooked in the inventory system or the system that handles in world banks 
 
 
+May 1st 2026 - Commit#1:
+TODO: 
+    ☐ Enable building costs again, and test harvesting general resources 
+    ☐ Need to mock up some in-game, non-debug, widgets: 
+        - 1. For showing resources that a selected entity is carrying
+        - 2. For showing resources that a selected building or resource-actor is holding
+        - 3. For showing resources in the current player persistent inventory
+        - 4. For showing how much a building costs to build (this may already exist in the building context buttons, may need to ensure this)
+        - 5. Genral Entity Action preview widget, so a selected entities current action may be known
 
 
 
