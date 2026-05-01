@@ -478,6 +478,25 @@ IN PROGRESS:
 'April 30th 2026 - Commit#1:
 DONE: 
     ✔ Set some default inventory limits @done(26-04-30 10:22)
+        - NOTE to also test this
+IN PROGRESS: 
+
+    Entity storage/bank task prerequisites: 
+            ☐ If no resources can be found, log error in ActionLog
+
+@todo Update 'ARTSOInteractableBuildingBase::ProcessIfWorkersRequired' call to Pinger subssytem and make so our jobtag is a TAG_AI_Job_BringBackResource 
+    I will however need to write some code that retriggers the ghoststage stuff and it seems I do not actually have fully hooked in the inventory system or the system that handles in world banks 
+
+
+
+'May 1st 2026 - Commit#0:
+DONE: 
+    ✔ Finally had what I needed to start testing the pinger system and the BringBakResource task, some issues regarding entity searching in cells @done(26-05-01 12:01)
+    ✔ Unified the use of resource grid size on all gridell operations regarding resource gathering @done(26-05-01 12:01)
+    ✔ Unified the use of resource grid size on all gridell operations regarding resource gathering @done(26-05-01 12:01)
+    ✔ Annat @done(26-05-01 12:01)
+
+
     
 IN PROGRESS: 
 
@@ -486,6 +505,7 @@ IN PROGRESS:
 
 @todo Update 'ARTSOInteractableBuildingBase::ProcessIfWorkersRequired' call to Pinger subssytem and make so our jobtag is a TAG_AI_Job_BringBackResource 
     I will however need to write some code that retriggers the ghoststage stuff and it seems I do not actually have fully hooked in the inventory system or the system that handles in world banks 
+
 
 
 

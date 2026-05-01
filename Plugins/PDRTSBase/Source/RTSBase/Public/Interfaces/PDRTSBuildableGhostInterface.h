@@ -24,8 +24,8 @@ class PDRTSBASE_API IPDRTSBuildableGhostInterface
 public:
 	/** @brief Call when we want to spawn a buildable as a ghost */
 	UFUNCTION(BlueprintNativeEvent, CallInEditor, Category = "Actor|Interface|Ghost")
-	void OnSpawnedAsGhost(const FGameplayTag& BuildableTag, bool bIsPreviewGhost, bool bInRequiresWorkersToBuild);
-	virtual void OnSpawnedAsGhost_Implementation(const FGameplayTag& BuildableTag, bool bIsPreviewGhost, bool bInRequiresWorkersToBuild)
+	void OnSpawnedAsGhost(const FGameplayTag& BuildableTag, const FGameplayTag& BuildContextTag, bool bIsPreviewGhost, bool bInRequiresWorkersToBuild);
+	virtual void OnSpawnedAsGhost_Implementation(const FGameplayTag& BuildableTag, const FGameplayTag& BuildContextTag, bool bIsPreviewGhost, bool bInRequiresWorkersToBuild)
 	{
 	}
 
@@ -54,8 +54,8 @@ public:
 
 	/** @brief Call when we want to spawn a buildable as a completed building */
 	UFUNCTION(BlueprintNativeEvent, CallInEditor, Category = "Actor|Interface|Ghost")
-	void OnSpawnedAsMain(const FGameplayTag& BuildableTag);
-	virtual void OnSpawnedAsMain_Implementation(const FGameplayTag& BuildableTag)
+	void OnSpawnedAsMain(const FGameplayTag& BuildableTag, const FGameplayTag& BuildContextTag);
+	virtual void OnSpawnedAsMain_Implementation(const FGameplayTag& BuildableTag, const FGameplayTag& BuildContextTag)
 	{
 	}
 

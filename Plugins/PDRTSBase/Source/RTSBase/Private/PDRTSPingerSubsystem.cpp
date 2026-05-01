@@ -147,17 +147,22 @@ TArray<uint8> UPDEntityPinger::EnablePing(const FPDEntityPingDatum& PingDatum)
 		UE_LOG(PDLog_RTSBase, Warning, TEXT("FPDEntityPinger::EnablePing -- World is not initialized yet"));
 		return TArray<uint8>{};
 	}
+	UE_LOG(PDLog_RTSBase, Log, TEXT("UPDEntityPinger::Ping -- Attempt to dispatch first Ping at freq(%f.2) for datum(%s:%s)"), PingDatum.Interval, *PingDatum.WorldActor->GetName(), *PingDatum.JobTag.ToString())
 	
 	FTimerHandle& PingHandleRef = PingDataAndHandles.FindOrAdd(PingDatum);
+	PingDataAndHandlesReverse.FindOrAdd(PingHandleRef) = PingDatum;
 	const auto InnerPing =
-		[&]()
+		[&, LambdaWorld = World, LambdaDatum = PingDatum]()
 		{
-			if (World == nullptr || World->IsValidLowLevelFast() == false)
+			// UWorld* LambdaWorld = PingDatum.WorldActor ? PingDatum.WorldActor->GetWorld() : nullptr;
+			if (LambdaWorld == nullptr || LambdaWorld->IsValidLowLevelFast() == false)
 			{
+				UE_LOG(PDLog_RTSBase, Error, TEXT("UPDEntityPinger::Ping Delegate -- WORLD INVALID"))
 				return;
 			}
+			UE_LOG(PDLog_RTSBase, Log, TEXT("UPDEntityPinger::Ping Delegate -- WORLD VALID. PING PREPARING TO PROCESSED"))
 				
-			Ping(World, PingDatum);
+			Ping(World, LambdaDatum);
 		};
 
 	const FTimerDelegate OnPingDlgt = FTimerDelegate::CreateLambda(InnerPing);
@@ -176,12 +181,14 @@ void UPDEntityPinger::Ping_Implementation(UWorld* World, const FPDEntityPingDatu
 	AsyncTask(ENamedThreads::GameThread,
 		[ConstPingDatum = PingDatum, InWorld = World]()
 		{
+			UE_LOG(LogTemp, VeryVerbose, TEXT("ARTSOInteractableBuildingBase::Ping"))
+
 			const UPDBuilderSubsystem* BuilderSubsystem = UPDBuilderSubsystem::Get();
 			const FGameplayTag FallBackEntityTag = TAG_AI_Type_BuilderUnit_Novice ; // @todo, pass into here from somewhere else 
 			TArray<FGameplayTag> SelectedUnitTypes{FallBackEntityTag};
 			if (ConstPingDatum.WorldActor == nullptr || BuilderSubsystem->Buildable_WClass.Contains(ConstPingDatum.WorldActor->GetClass()) == false)
 			{
-				UE_LOG(PDLog_BuildSystem, Warning, TEXT("UPDEntityPinger::Ping() Was called with world actor : %s, Actor class is not a spawn type of any entry of a registered FPDBuildable data-table"), ConstPingDatum.WorldActor == nullptr ? *FString("INVALID ACTOR") : *ConstPingDatum.WorldActor->GetName() )
+				UE_LOG(PDLog_BuildSystem, VeryVerbose, TEXT("UPDEntityPinger::Ping() Was called with world actor : %s, Actor class is not a spawn type of any entry of a registered FPDBuildable data-table"), ConstPingDatum.WorldActor == nullptr ? *FString("INVALID ACTOR") : *ConstPingDatum.WorldActor->GetName() )
 			}
 			else
 			{
@@ -190,6 +197,9 @@ void UPDEntityPinger::Ping_Implementation(UWorld* World, const FPDEntityPingDatu
 
 			TArray<FMassEntityHandle> Handles =
 				UPDRTSBaseSubsystem::FindIdleEntitiesOfType(SelectedUnitTypes, ConstPingDatum.WorldActor, ConstPingDatum.OwnerID);
+
+			UE_LOG(LogTemp, VeryVerbose, TEXT("ARTSOInteractableBuildingBase::Ping -- Found %i idle entities near ping actor"), Handles.Num())
+
 
 			ParallelFor(Handles.Num(),
 				[InHandles = Handles, ConstPingDatum, InWorld](const int32 Idx)

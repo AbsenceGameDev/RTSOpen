@@ -551,10 +551,11 @@ bool ARTSOInteractableBuildingBase::GetGhostAsEncroached_Implementation()
 	return bIsEncroachedGhost;
 }
 
-void ARTSOInteractableBuildingBase::OnSpawnedAsGhost_Implementation(const FGameplayTag& BuildableTag, bool bInIsPreviewGhost, bool bInRequiresWorkersToBuild)
+void ARTSOInteractableBuildingBase::OnSpawnedAsGhost_Implementation(const FGameplayTag& BuildableTag, const FGameplayTag& BuildContextTag, bool bInIsPreviewGhost, bool bInRequiresWorkersToBuild)
 {
-	IPDRTSBuildableGhostInterface::OnSpawnedAsGhost_Implementation(BuildableTag, bInIsPreviewGhost, bInRequiresWorkersToBuild);
-	InstigatorBuildableTag = BuildableTag;
+	IPDRTSBuildableGhostInterface::OnSpawnedAsGhost_Implementation(BuildableTag, BuildContextTag, bInIsPreviewGhost, bInRequiresWorkersToBuild);
+	if (BuildableTag.IsValid()) {InstigatorBuildableTag = BuildableTag;}
+	if (BuildContextTag.IsValid()) {SpawnBuildContextTag = BuildContextTag;}	
 
 	// Update material
 	if (GhostMat == nullptr || GhostMat->IsValidLowLevelFast() == false)
@@ -580,22 +581,19 @@ void ARTSOInteractableBuildingBase::OnSpawnedAsGhost_Implementation(const FGamep
 	}
 }
 
-void ARTSOInteractableBuildingBase::OnSpawnedAsMain_Implementation(const FGameplayTag& BuildableTag)
+void ARTSOInteractableBuildingBase::OnSpawnedAsMain_Implementation(const FGameplayTag& BuildableTag, const FGameplayTag& BuildContextTag)
 {
-	IPDRTSBuildableGhostInterface::OnSpawnedAsMain_Implementation(BuildableTag);
-	InstigatorBuildableTag = BuildableTag;
+	IPDRTSBuildableGhostInterface::OnSpawnedAsMain_Implementation(BuildableTag, BuildContextTag);
+
+	if (BuildableTag.IsValid()) {InstigatorBuildableTag = BuildableTag;}
+	if (BuildContextTag.IsValid()) {SpawnBuildContextTag = BuildContextTag;}
 	ProcessSpawn<false>();
 	
-	// Update material
-	if (MainMat == nullptr || MainMat->IsValidLowLevelFast() == false)
-	{
-		UE_LOG(PDLog_RTSO, Error, TEXT("ARTSOInteractableBuildingBase::OnSpawnedAsMain -- Material Instance member 'MainMat' is not set"))	
-		return;
-	}
-
 	// Note: Storages send buildablecontext tags to tell entities they are available to store physical or monetary resources
-	if (InstigatorBuildableTag == TAG_BUILD_ActionContext_Storage0)
+	UE_LOG(PDLog_RTSO, Warning, TEXT("ARTSOInteractableBuildingBase::OnSpawnedAsMain -- BuildableTag(%s)"), *BuildableTag.ToString())
+	if (BuildableTag.ToString().Contains("Craftable.Storage"))
 	{
+		UE_LOG(PDLog_RTSO, Warning, TEXT("ARTSOInteractableBuildingBase::OnSpawnedAsMain -- Found storage type"))
 		// JobTag = TAG_AI_Job_BringBackResource; // @note: Keeping job_tag as WalkToTarget for now, potentially no need for it's own tag
 		const int32 InstigatorID = IPDRTSBuilderInterface::Execute_GetBuilderID(GetOwner());
 		constexpr double PingInterval = 10.0; // @todo make configurable or use passthrough value
@@ -603,6 +601,12 @@ void ARTSOInteractableBuildingBase::OnSpawnedAsMain_Implementation(const FGamepl
 		UPDEntityPinger::EnablePingStatic(ConstructedDatum);
 	}
 
+	// Update material
+	if (MainMat == nullptr || MainMat->IsValidLowLevelFast() == false)
+	{
+		UE_LOG(PDLog_RTSO, Error, TEXT("ARTSOInteractableBuildingBase::OnSpawnedAsMain -- Material Instance member 'MainMat' is not set"))	
+		return;
+	}
 }
 
 void ARTSOInteractableBuildingBase::Tick(float DeltaTime)

@@ -82,6 +82,9 @@ bool FJobHandlerCondition::TestCondition(FStateTreeExecutionContext& Context) co
 		&& false == InstanceData.ActionTest.ActionTag.MatchesTagExact(TAG_AI_Job_Idle);
 	const bool bHasValidTargetAsGenericTask = bIsGenericInteractTask ? InstanceData.ActionTest.OptTargets.IsValidCompoundByManager(EntitySubsystem->GetEntityManager()) : true;
 	const bool bTagFound = bEntityActionTagValid && InstanceData.JobTagsToCompare.HasTagExact(InstanceData.ActionTest.ActionTag);
+	
+	// UE_LOG(LogTemp, Warning, TEXT("FJobHandlerCondition::TestCondition -- bTagFound(%i) && bHasValidTargetAsGenericTask(%i)"), bTagFound, bHasValidTargetAsGenericTask)
+	// UE_LOG(LogTemp, Warning, TEXT("FJobHandlerCondition::TestCondition -- TagFound => %s"), *InstanceData.ActionTest.ActionTag.ToString())
 
 	return bTagFound && bHasValidTargetAsGenericTask;
 }

@@ -97,8 +97,8 @@ public:
 	virtual TArray<UStaticMeshComponent*> GetGhostMeshes_Implementation() override;
 	virtual void SetGhostAsEncroached_Implementation(bool bIsEncroached) override;
 	virtual bool GetGhostAsEncroached_Implementation() override;
-	virtual void OnSpawnedAsGhost_Implementation(const FGameplayTag& BuildableTag, bool bInIsPreviewGhost, bool bInRequiresWorkersToBuild) override;
-	virtual void OnSpawnedAsMain_Implementation(const FGameplayTag& BuildableTag)  override;
+	virtual void OnSpawnedAsGhost_Implementation(const FGameplayTag& BuildableTag, const FGameplayTag& BuildContextTag, bool bInIsPreviewGhost, bool bInRequiresWorkersToBuild) override;
+	virtual void OnSpawnedAsMain_Implementation(const FGameplayTag& BuildableTag, const FGameplayTag& BuildContextTag)  override;
 	virtual void TransitionFromGhostToMain_Implementation() override;
 	void Internal_ProgressGhostStage(const bool bForceProgressThroughStage, const bool bChainAll);
 	virtual void ProgressGhostStage_Implementation(const bool bChainAll) override;
@@ -165,6 +165,10 @@ private:
 	/** @brief What buildable tag spawned us, gets set when spawned */
 	UPROPERTY(VisibleInstanceOnly, BlueprintReadOnly, Meta = (AllowPrivateAccess="true"))
 	FGameplayTag InstigatorBuildableTag{};
+
+	/** @brief The building context from which we were spawned */
+	UPROPERTY(VisibleInstanceOnly, BlueprintReadOnly, Meta = (AllowPrivateAccess="true"))
+	FGameplayTag SpawnBuildContextTag{};
 
 	/** @return true if the building a preview ghost, false if it is a placed ghost or not a ghost at all */
 	UPROPERTY(VisibleInstanceOnly, BlueprintReadOnly, Meta = (AllowPrivateAccess="true"))

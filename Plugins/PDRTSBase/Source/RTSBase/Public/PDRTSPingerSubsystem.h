@@ -142,6 +142,7 @@ public:
 	/** @brief The pings we are managing, at 10k actors to ping we'll still only take up */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Build|Procedures")
 	TMap<FPDEntityPingDatum, FTimerHandle> PingDataAndHandles{};
+	TMap<FTimerHandle, FPDEntityPingDatum> PingDataAndHandlesReverse{};
 };
 
 /**

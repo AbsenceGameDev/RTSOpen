@@ -271,7 +271,7 @@ void UPDBuilderSubsystem::ProcessGhostStage(
 		
 		if (MutableGhostDatum.CurrentStageIdx > GhostData.StageAssets.Num())
 		{
-			IPDRTSBuildableGhostInterface::Execute_OnSpawnedAsMain(GhostActor, BuildableTag);
+			IPDRTSBuildableGhostInterface::Execute_OnSpawnedAsMain(GhostActor, BuildableTag, FGameplayTag::EmptyTag);
 		}			
 	}
 }

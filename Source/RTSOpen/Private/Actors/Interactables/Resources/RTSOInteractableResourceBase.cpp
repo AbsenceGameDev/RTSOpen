@@ -54,7 +54,9 @@ void ARTSOInteractableResourceBase::Tick(float DeltaTime)
 
 	RefreshTickAcc += DeltaTime;
 
-	FPDGridCell CurrentGridCell = UPDHashGridSubsystem::GetCellIndexStatic(GetActorLocation());
+	//FPDGridCell CurrentGridCell = UPDHashGridSubsystem::GetCellIndexStatic(GetActorLocation());
+	FPDGridCell CurrentGridCell = UPDHashGridSubsystem::StaticCell(GetActorLocation(), UPDRTSBaseSubsystem::ResourceGridSize);
+
 	const bool bShouldUpdateGridCellMapping = CurrentGridCell != PreviousGridCell;
 	if (bShouldUpdateGridCellMapping)
 	{

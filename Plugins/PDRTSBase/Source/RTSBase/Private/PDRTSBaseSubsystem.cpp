@@ -38,7 +38,11 @@ void UPDRTSBaseSubsystem::Initialize(FSubsystemCollectionBase& Collection)
 {
 	Super::Initialize(Collection);
 	LoadAndProcessTables();
+
+	UPDRTSSubsystemSettings* Settings = GetMutableDefault<UPDRTSSubsystemSettings>();
+	ResourceGridSize = Settings->ResourceGridSize;
 }
+
 
 void UPDRTSBaseSubsystem::LoadAndProcessTables()
 {
@@ -190,11 +194,15 @@ TArray<FMassEntityHandle> UPDRTSBaseSubsystem::FindIdleEntitiesOfType(TArray<FGa
 	}
 
 	// 1. Get cell of related octree
-	const FPDGridCell ActorCell = UPDHashGridSubsystem::GetCellIndexStatic(ActorToBuild->GetActorLocation());
+	// const FPDGridCell ActorCell = UPDHashGridSubsystem::GetCellIndexStatic(ActorToBuild->GetActorLocation());
+	const FPDGridCell BuildingPadding{FIntVector{0, 0, -1}}; // @note @todo this is a rickety bridge, the buildingpadding offset only makes sense now because the location is in the middle of hte air, othewrwis 
+	const FPDGridCell ActorCell = UPDHashGridSubsystem::StaticCell(ActorToBuild->GetActorLocation(), UPDRTSBaseSubsystem::ResourceGridSize) + BuildingPadding;
+
 	const TDeque<FMassEntityHandle> HandlesCopy = BuilderSubsystem->CopyWorldBuildEntityHashGridHandles(ActorCell); 
 	// 2. Iterate that cells entities, pick max 50 that are idle and eligible
 	constexpr int32 MaxPingCount = 50;
 	int32 PingCount = 0;
+
 	for (const FMassEntityHandle& EntityHandle : HandlesCopy)
 	{
 		if (MaxPingCount < PingCount)
@@ -213,7 +221,10 @@ TArray<FMassEntityHandle> UPDRTSBaseSubsystem::FindIdleEntitiesOfType(TArray<FGa
 		{
 			// 3. Only select those of requested type(s)
 			const FPDMFragment_RTSEntityBase* EntityBase = RTSBaseSubsystem->EntityManager->GetFragmentDataPtr<FPDMFragment_RTSEntityBase>(EntityHandle);
-			if (EntityBase->EntityType != EligibleType) { continue; }
+			if (EntityBase->EntityType != EligibleType) 
+			{ 
+				continue; 
+			}
 			
 			RetArray.Emplace(EntityHandle);
 			PingCount++;
@@ -384,6 +395,12 @@ void UPDRTSBaseSubsystem::ProcessResourceActors(FSimpleDelegate ProcessDelegate)
 
 void UPDRTSBaseSubsystem::OnDeveloperSettingsChanged(UObject* SettingsToChange, FPropertyChangedEvent& PropertyEvent)
 {
+	UPDRTSSubsystemSettings* AsSettings = Cast<UPDRTSSubsystemSettings>(SettingsToChange);
+	if (AsSettings)
+	{
+		ResourceGridSize = AsSettings->ResourceGridSize;
+	}
+
 	const FArrayProperty* ArrayProperty = CastField<FArrayProperty>(PropertyEvent.Property);
 	if (ArrayProperty == nullptr) { return; }
 
@@ -393,7 +410,7 @@ void UPDRTSBaseSubsystem::OnDeveloperSettingsChanged(UObject* SettingsToChange, 
 	if(ObjectProperty->PropertyClass != UDataTable::StaticClass()) { return; }
 
 	WorkTables.Empty(); // clear array and refill with edited properties.
-	for(const TSoftObjectPtr<UDataTable>& TablePath : Cast<UPDRTSSubsystemSettings>(SettingsToChange)->WorkTables)
+	for(const TSoftObjectPtr<UDataTable>& TablePath : AsSettings->WorkTables)
 	{
 		UDataTable* ResolvedTable = TablePath.LoadSynchronous();
 		WorkTables.Emplace(ResolvedTable);

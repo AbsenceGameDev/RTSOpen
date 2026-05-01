@@ -163,14 +163,14 @@ void AGodHandPawn::HoverTick(const float DeltaTime)
 	if (ClosestActor != nullptr && ClosestActor != InstanceState.HoveredActor)
 	{
 		InstanceState.HoveredActor = ClosestActor;
-		UE_LOG(PDLog_RTSO, Warning, TEXT("HoverTick - Found New Hover Actor"))
+		// UE_LOG(PDLog_RTSO, Warning, TEXT("HoverTick - Found New Hover Actor"))
 	}
 	
 	const FMassEntityHandle ClosestEntity = FindClosestMassEntity();
 	if (ClosestEntity.Index != 0 && InstanceState.SelectedWorkerUnitHandle.Index != ClosestEntity.Index)
 	{
-		// Not functionally relevant, keep here in case we want to put something here
-		UE_LOG(PDLog_RTSO, Warning, TEXT("HoverTick - Found New Unit ISM"))
+		// // Not functionally relevant, keep here in case we want to put something here
+		// UE_LOG(PDLog_RTSO, Warning, TEXT("HoverTick - Found New Unit ISM"))
 	}
 
 	// Dont overwrite in case we are dragging a path from this
@@ -249,7 +249,7 @@ void AGodHandPawn::BuildableGhostTick(float DeltaTime)
 		if (ActorClassToSpawn->ImplementsInterface(UPDRTSBuildableGhostInterface::StaticClass()))
 		{
 			UE_LOG(PDLog_RTSO, Log, TEXT("AGodHandPawn::TickGhost -- Calling OnSpawnedAsBuildableGhost"))
-			IPDRTSBuildableGhostInterface::Execute_OnSpawnedAsGhost(CurrentGhost, CurrentBuildableTag, true, false);
+			IPDRTSBuildableGhostInterface::Execute_OnSpawnedAsGhost(CurrentGhost, CurrentBuildableTag, CurrentBuildContextTag, true, false);
 
 			// ARTSOInteractableBuildingBase* AsInteractableBuilding = Cast<ARTSOInteractableBuildingBase>(CurrentGhost); 
 			// AsInteractableBuilding->ReturnBuildableInventories().StorageInventory;
@@ -275,10 +275,10 @@ void AGodHandPawn::BuildableGhostTick(float DeltaTime)
 			{
 				if (OverlappedActor == CurrentGhost) { continue; }
 				
-				UE_LOG(PDLog_RTSO, Log, TEXT("AGodHandPawn::TickGhost -- Encroachment -- Comparing with found component"))
+				// UE_LOG(PDLog_RTSO, Log, TEXT("AGodHandPawn::TickGhost -- Encroachment -- Comparing with found component"))
 				if (OverlappedActor->GetClass()->ImplementsInterface(UPDRTSBuildableGhostInterface::StaticClass()))
 				{
-					UE_LOG(PDLog_RTSO, Warning, TEXT("AGodHandPawn::TickGhost -- Encroachment -- Failed check, is overlapping actor"))
+					// UE_LOG(PDLog_RTSO, Warning, TEXT("AGodHandPawn::TickGhost -- Encroachment -- Failed check, is overlapping actor"))
 					bIsEncroached = true;
 					break;
 				}
@@ -645,7 +645,7 @@ void AGodHandPawn::SpawnFromGhost(bool bBuildable, bool bRequiresWorkersToBuild)
 	BuilderSubsystem->AddBuildActorArray( IPDRTSBuilderInterface::Execute_GetBuilderID(this), &SpawnedBuildings);
 	
 	AsyncTask(ENamedThreads::GameThread,
-	[&,  InBuildableTag = CurrentBuildableTag , bInBuildable = bBuildable, bInRequiresWorkersToBuild = bRequiresWorkersToBuild ,InSpawnTransform = InitialSpawnTransform, InGhost = CurrentGhost, InSpawnedBuildable = SpawnedBuildable]()
+	[&,  InBuildableTag = CurrentBuildableTag, InContextTag = CurrentBuildContextTag, bInBuildable = bBuildable, bInRequiresWorkersToBuild = bRequiresWorkersToBuild ,InSpawnTransform = InitialSpawnTransform, InGhost = CurrentGhost, InSpawnedBuildable = SpawnedBuildable]()
 	{
 		if (InSpawnedBuildable == nullptr || InSpawnedBuildable->IsValidLowLevelFast() == false)
 		{
@@ -661,7 +661,7 @@ void AGodHandPawn::SpawnFromGhost(bool bBuildable, bool bRequiresWorkersToBuild)
 		{
 			if (bInBuildable)
 			{
-				IPDRTSBuildableGhostInterface::Execute_OnSpawnedAsMain(InSpawnedBuildable, InBuildableTag);
+				IPDRTSBuildableGhostInterface::Execute_OnSpawnedAsMain(InSpawnedBuildable, InBuildableTag, InContextTag);
 				
 				const UPDBuilderSubsystemSettings* BuilderSettings = GetDefault<UPDBuilderSubsystemSettings>();
 				switch (BuilderSettings->DefaultBuildSystemBehaviours.CameraBehaviour)
@@ -678,7 +678,7 @@ void AGodHandPawn::SpawnFromGhost(bool bBuildable, bool bRequiresWorkersToBuild)
 			}
 			else
 			{
-				IPDRTSBuildableGhostInterface::Execute_OnSpawnedAsGhost(InSpawnedBuildable, InBuildableTag, false, bInRequiresWorkersToBuild);
+				IPDRTSBuildableGhostInterface::Execute_OnSpawnedAsGhost(InSpawnedBuildable, InBuildableTag, InContextTag, false, bInRequiresWorkersToBuild);
 			}
 		}
 		else
@@ -1224,22 +1224,22 @@ void AGodHandPawn::SelectBuildMenuEntry_Implementation(ERTSBuildMenuModules Acti
 	case ERTSBuildMenuModules::SelectBuildable:
 		CurrentBuildableData = BuilderSubsystem->GetBuildableData(ActionTag); // If null clear current
 		CurrentBuildableTag = ActionTag;
-		UE_LOG(PDLog_RTSO, Warning, TEXT("AGodHandPawn::NewAction - Selected Buildable"))
+		UE_LOG(PDLog_RTSO, Warning, TEXT("AGodHandPawn::NewAction - Selected Buildable (%s)"), *ActionTag.ToString())
 		break;
 	case ERTSBuildMenuModules::SelectContext:
 		CurrentBuildContext = BuilderSubsystem->GetBuildContextEntry(ActionTag); // If null clear current
 		CurrentBuildContextTag = ActionTag; 
-		UE_LOG(PDLog_RTSO, Warning, TEXT("AGodHandPawn::NewAction - Selected BuildContext"))
+		UE_LOG(PDLog_RTSO, Warning, TEXT("AGodHandPawn::NewAction - Selected BuildContext (%s)"), *ActionTag.ToString())
 		break;
 	case ERTSBuildMenuModules::DeselectBuildable:
 		CurrentBuildableData = nullptr;
 		CurrentBuildableTag = FGameplayTag::EmptyTag; 
-		UE_LOG(PDLog_RTSO, Warning, TEXT("AGodHandPawn::NewAction - Deelected Buildable"))
+		UE_LOG(PDLog_RTSO, Warning, TEXT("AGodHandPawn::NewAction - Deelected Buildable (%s)"), *ActionTag.ToString())
 		break;
 	case ERTSBuildMenuModules::DeselectContext:
 		CurrentBuildContext = nullptr;
 		CurrentBuildContextTag = FGameplayTag::EmptyTag; 
-		UE_LOG(PDLog_RTSO, Warning, TEXT("AGodHandPawn::NewAction - Deselected BuildContext"))
+		UE_LOG(PDLog_RTSO, Warning, TEXT("AGodHandPawn::NewAction - Deselected BuildContext (%s)"), *ActionTag.ToString())
 		break;
 	}
 }
@@ -1359,6 +1359,7 @@ void AGodHandPawn::SelectActionMenuEntry_Implementation(ERTSBuildableActionMenuM
 
 					// Gather entities to spawn
 					FRTSSavedWorldUnits ConstructedEntityData{};
+					ConstructedEntityData.CurrentAction.ActionTag = TAG_AI_Job_Idle;
 					ConstructedEntityData.EntityUnitTag = ActionTag;
 					ConstructedEntityData.OwnerID = IPDRTSBuilderInterface::Execute_GetBuilderID(this);
 					
@@ -1444,7 +1445,7 @@ void AGodHandPawn::PossessedBy(AController* NewController)
 // Boilerplate - Collisions
 void AGodHandPawn::OnCollisionBeginOverlap(UPrimitiveComponent* OverlappedComponent, AActor* OtherActor, UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bFromSweep, const FHitResult & SweepResult)
 {
-	UE_LOG(PDLog_RTSO, Warning, TEXT("AGodHandPawn::OnCollisionBeginOverlap"))
+	UE_LOG(PDLog_RTSO, VeryVerbose, TEXT("AGodHandPawn::OnCollisionBeginOverlap"))
 	
 	// neither an ai or any interactable
 	if (Cast<IPDInteractInterface>(OtherActor) == nullptr) { return; }

@@ -186,6 +186,9 @@ public:
 	
 	UPROPERTY(Config, EditAnywhere, Category = "Worker AI Subsystem")
 	TSoftObjectPtr<UTextureRenderTarget2D> EntityDataTexture = nullptr;
+
+	UPROPERTY(Config, EditAnywhere, Category = "Worker AI Subsystem")
+	float ResourceGridSize = 20000;
 };
 
 

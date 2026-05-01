@@ -245,7 +245,7 @@ public:
 	void DeleteBuffers(); 
 
 	/** @brief  */
-	inline static float ResourceGridSize = 500;
+	inline static float ResourceGridSize = 20000;
 	/** @brief Need to know the players camera yaw to pass it into the MinimapSplat.usf */
 	static float PlayerYawAsRad;
 	/** @brief Max dimension for the RT texture used in MinimapSplat.usf */

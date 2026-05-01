@@ -599,9 +599,10 @@ void UPDOctreeProcessor::Execute(FMassEntityManager& EntityManager, FMassExecuti
 
 			//
 			// @done - Only Mark idle entities as available in our pool if they are in the same hashgrid
-			const FPDGridCell EntityCell = HashGridSubsystem->GetCellIndex(CurrentLocation);
+			const FPDGridCell EntityCell = UPDHashGridSubsystem::StaticCell(CurrentLocation, UPDRTSBaseSubsystem::ResourceGridSize);
 			if (UnitAction.ActionTag == TAG_AI_Job_Idle || false == UnitAction.ActionTag.IsValid())
 			{
+				// UE_LOG(LogTemp, Warning, TEXT("Adding entity(%i) to GridCell(%s)"), Entity.AsNumber(), *EntityCell.ToString())
 				BuilderSubsystem->AddWorldBuildEntityHashGridHandles_ThreadUnsafe(EntityCell, Entity);
 			}
 

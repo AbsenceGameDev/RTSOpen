@@ -222,7 +222,7 @@ EStateTreeRunStatus FRTSOTask_BringBackResource::Tick(FStateTreeExecutionContext
 			
 			UPDRTSBaseSubsystem* RTSSubsystem = UPDRTSBaseSubsystem::Get();
 			FPDRTSTGatherTargetsWrapper* ResourceTargets = RTSSubsystem->GetEntityResourceTargets(MassContext.GetEntity());
-			const bool bIsAtStorageBuilding = CurrentPathIndex >= ResourceTargets->Targets.Num();
+			const bool bIsAtStorageBuilding = ResourceTargets == nullptr ? true : CurrentPathIndex >= ResourceTargets->Targets.Num();
 			if (bIsAtStorageBuilding)
 			{
 				return EStateTreeRunStatus::Succeeded;
