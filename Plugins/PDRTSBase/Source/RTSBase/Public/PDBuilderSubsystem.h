@@ -103,18 +103,188 @@ public:
 	const TDeque<FMassEntityHandle> CopyWorldBuildEntityHashGridHandles(FPDGridCell ActorCell) const
 	{
 		FReadScopeLock Lock(EntityHashgridRWLock);
+		return CopyWorldBuildEntityHashGridHandles_Unsafe(ActorCell);
+	}; 
+
+private:
+	const TDeque<FMassEntityHandle> CopyWorldBuildEntityHashGridHandles_Unsafe(FPDGridCell ActorCell) const
+	{
 		const TDeque<FMassEntityHandle>* DataPtr = WorldBuildEntityHashGrid.Find(ActorCell);
 		return DataPtr != nullptr ? *DataPtr : TDeque<FMassEntityHandle>{};
 	}; 
+
+	const TDeque<FMassEntityHandle> BuildEntityListFromSelectedCells(const TSet<FPDGridCell>& Neighbours) const
+	{
+		TDeque<FMassEntityHandle> CopiedEntityHandles;
+		if (false == Neighbours.IsEmpty())
+		{
+			for (const FPDGridCell& Neighbour : Neighbours)
+			{
+				for (const FMassEntityHandle& EntityHandle : CopyWorldBuildEntityHashGridHandles_Unsafe(Neighbour))
+				{
+					CopiedEntityHandles.EmplaceLast(EntityHandle);
+				}
+			}
+		}		
+		return CopiedEntityHandles;
+	}	
+
+public:	
+
+	/** @brief 
+	 * @todo Need to also add some distance limits perhaps, so my check can be filtered and entities never being a cell further than a max cell index offset away. 
+	 * Something like 'FPDGridCell OffsetLimit/SearchBounds'. 
+	 * @todo I need to clean this up further*/
+	const TDeque<FMassEntityHandle> CopyWorldBuildEntityHashGridHandlesDepthSearch(FPDGridCell ActorCell, int32 SearchDepth, bool bForceDepth = false) const
+	{
+		FReadScopeLock Lock(EntityHashgridRWLock);
+		
+		// Case: Forced depth in all search depth levels
+		if (bForceDepth)
+		{
+			TSet<FPDGridCell> Neighbours;
+			{
+				TSet<FPDGridCell> AllPotentialNeighbours;
+				AllPotentialNeighbours.Emplace(ActorCell);
+				
+				Neighbours = FindAllPotentialNeighours(ActorCell);
+				AllPotentialNeighbours.Append(Neighbours);
+				
+				for(int32 SearchStep = 1; SearchStep < SearchDepth; SearchStep++)
+				{
+					TSet<FPDGridCell> NextNeighbours;
+					for (const FPDGridCell& Neighbour : Neighbours)
+					{
+						NextNeighbours.Append(FindAllPotentialNeighours(Neighbour));
+					}
+					Neighbours = NextNeighbours;
+					AllPotentialNeighbours.Append(NextNeighbours);
+				}
+
+				TSet<FPDGridCell> AllValidNeighbours;
+				for (const FPDGridCell& PotentialNeighbour : AllPotentialNeighbours)
+				{
+					AllValidNeighbours.Append(FindValidNeighours(PotentialNeighbour));
+				}
+
+				AllValidNeighbours.Add(ActorCell);
+				return BuildEntityListFromSelectedCells(AllValidNeighbours);
+			}
+		}
+
+
+
+		//
+		// Case: 0 or less search depth, no forced depth except first depth incase actor cell is empty
+		if (SearchDepth <= 0)
+		{
+			const TDeque<FMassEntityHandle>& EntitiesInCell = CopyWorldBuildEntityHashGridHandles_Unsafe(ActorCell);
+			if (EntitiesInCell.IsEmpty())
+			{
+				{
+					TSet<FPDGridCell> ValidNeighbours = FindValidNeighoursAsSet(ActorCell);
+					return BuildEntityListFromSelectedCells(ValidNeighbours);
+				}
+
+				{ // Force one more full depth if we can't find any valid entities. @todo rething this all, a bit ricketo for now
+					TSet<FPDGridCell> ValidNeighbours;
+					TSet<FPDGridCell> AllPotentialNeighbours;
+					AllPotentialNeighbours.Append(FindAllPotentialNeighours(ActorCell));
+					for (const FPDGridCell& PotentialNeighbour : AllPotentialNeighbours)
+					{
+						ValidNeighbours.Append(FindValidNeighours(PotentialNeighbour));
+					}
+										
+					return BuildEntityListFromSelectedCells(ValidNeighbours);
+				}
+
+			}
+			return EntitiesInCell;
+		}
+
+
+		//
+		// Case: 1 or more search depth, no forced depth except first depth incase first actor cell is empty
+		TDeque<FMassEntityHandle> FinalDeque;
+		const TDeque<FMassEntityHandle>* DataPtr = WorldBuildEntityHashGrid.Find(ActorCell);
+		FinalDeque = (DataPtr != nullptr ? *DataPtr : TDeque<FMassEntityHandle>{});
+
+		
+		TSet<FPDGridCell> FirstValidNeighbours;
+		if (false == WorldBuildEntityHashGridNeighbours.Contains(ActorCell))
+		{
+
+			{ // Force one more full depth if we can't find any valid entities. @todo rething this all, a bit ricketo for now
+				TSet<FPDGridCell> AllPotentialNeighbours;
+				AllPotentialNeighbours.Append(FindAllPotentialNeighours(ActorCell));
+				for (const FPDGridCell& PotentialNeighbour : AllPotentialNeighbours)
+				{
+					const TArray<FPDGridCell>& Neighbours = FindValidNeighours(PotentialNeighbour);
+					FirstValidNeighbours.Append(Neighbours);
+				}
+			}
+
+			if (FirstValidNeighbours.IsEmpty())
+			{
+				return FinalDeque;
+			}
+		}
+
+		//
+		// crude depth search
+		TSet<FPDGridCell> Neighbours; 
+		Neighbours.Append(WorldBuildEntityHashGridNeighbours[ActorCell]);
+		Neighbours.Append(FirstValidNeighbours);
+
+		for(int32 SearchStep = 1; SearchStep < SearchDepth; SearchStep++)
+		{
+			TSet<FPDGridCell> NextNeighbours;
+			for (const FPDGridCell& Neighbour : Neighbours)
+			{
+				const TDeque<FMassEntityHandle>* FoundGridCellMappedEntry = WorldBuildEntityHashGrid.Find(Neighbour);
+				if (FoundGridCellMappedEntry)
+				{
+					for (const FMassEntityHandle& Handle : *FoundGridCellMappedEntry)
+					{
+						FinalDeque.EmplaceLast(Handle);
+					}
+				}
+
+				const TArray<FPDGridCell>* PotentialNeighbours = WorldBuildEntityHashGridNeighbours.Find(Neighbour);
+				if (PotentialNeighbours)
+				{
+					NextNeighbours.Append(*PotentialNeighbours);
+				}
+			}
+			Neighbours = NextNeighbours;
+		}
+
+		return FinalDeque;
+	};
+
 	void ClearWorldBuildEntityHashGridHandles()
 	{
 		FWriteScopeLock Lock(EntityHashgridRWLock);
 		WorldBuildEntityHashGrid.Empty();
+		WorldBuildEntityHashGridNeighbours.Empty();
 	}
 	void AddWorldBuildEntityHashGridHandles_ThreadUnsafe(FPDGridCell EntityCell, FMassEntityHandle Entity)
 	{
-		// FWriteScopeLock Lock(EntityHashgridRWLock);
 		WorldBuildEntityHashGrid.FindOrAdd(EntityCell).EmplaceFirst(Entity);
+
+		// Will only try to update neighbours whenever we have an invalid neighbour registered or none at all. 
+		// @note: Will inevitably stay stale after the first non-empty state if we only add enighbours but never remove them
+		TArray<FPDGridCell>* NeighboursPtr = WorldBuildEntityHashGridNeighbours.Find(EntityCell);
+		if (NeighboursPtr)
+		{
+			if (false == IsSelectionValid(*NeighboursPtr) )
+			{
+				*NeighboursPtr = FindValidNeighours(EntityCell);
+			}
+			return;
+		}
+		WorldBuildEntityHashGridNeighbours.Emplace(EntityCell, FindValidNeighours(EntityCell));
+		
 	}
 	void AddWorldBuildEntityHashGridHandles_ThreadSafe(FPDGridCell EntityCell, FMassEntityHandle Entity)
 	{
@@ -167,6 +337,70 @@ public:
 protected:	
 	/** @brief The actual octree our buildable actors will make use of*/
 	TMap<FPDGridCell, TDeque<FMassEntityHandle>> WorldBuildEntityHashGrid;
+	TMap<FPDGridCell /*Gridcell*/, TArray<FPDGridCell> /*Neighbours*/> WorldBuildEntityHashGridNeighbours;
+	TArray<FPDGridCell> FindValidNeighours(const FPDGridCell& GridCell) const
+	{
+		return FindValidNeighoursAsSet(GridCell).Array();
+	}
+	TSet<FPDGridCell> FindValidNeighoursAsSet(const FPDGridCell& GridCell) const
+	{
+		TSet<FPDGridCell> FoundNeighbours;
+		constexpr int32 MaxNeighbourDim = 3;
+		FPDGridCell StartGridCell = GridCell - FPDGridCell::Construct(-1);
+
+		// Likely inefficient in a tight loop, rewrite into flat 1dim loop whenever it becomes a problem
+		for (int32 CellStepsX = 0; CellStepsX < MaxNeighbourDim; CellStepsX++)
+		{
+			int32 CurrentX = CellStepsX;
+			for (int32 CellStepsY = 0; CellStepsY < MaxNeighbourDim; CellStepsY++)
+			{
+				for (int32 CellStepsZ = 0; CellStepsZ < MaxNeighbourDim; CellStepsZ++)
+				{
+					FPDGridCell PotentialNeighbour = StartGridCell + FPDGridCell::Construct(CellStepsX, CellStepsY, CellStepsZ);
+					if(PotentialNeighbour == GridCell) {continue;}
+					if (nullptr != WorldBuildEntityHashGridNeighbours.Find(PotentialNeighbour)) { FoundNeighbours.Emplace(PotentialNeighbour); }
+				}
+			}
+		}
+		return FoundNeighbours;
+	}
+
+	TSet<FPDGridCell> FindAllPotentialNeighours(const FPDGridCell& GridCell) const
+	{
+		TSet<FPDGridCell> FoundNeighbours;
+		constexpr int32 MaxNeighbourDim = 3;
+		FPDGridCell StartGridCell = GridCell - FPDGridCell::Construct(-1);
+
+		// Likely inefficient in a tight loop, rewrite into flat 1dim loop whenever it becomes a problem
+		for (int32 CellStepsX = 0; CellStepsX < MaxNeighbourDim; CellStepsX++)
+		{
+			int32 CurrentX = CellStepsX;
+			for (int32 CellStepsY = 0; CellStepsY < MaxNeighbourDim; CellStepsY++)
+			{
+				for (int32 CellStepsZ = 0; CellStepsZ < MaxNeighbourDim; CellStepsZ++)
+				{
+					FPDGridCell PotentialNeighbour = StartGridCell + FPDGridCell::Construct(CellStepsX, CellStepsY, CellStepsZ);
+					if(PotentialNeighbour == GridCell) {continue;}
+					FoundNeighbours.Emplace(PotentialNeighbour);
+				}
+			}
+		}
+		return FoundNeighbours;
+	}	
+
+	bool IsSelectionValid(const TArray<FPDGridCell>& GridCellArray)
+	{
+		for(const FPDGridCell& GridCell : GridCellArray)
+		{
+			if(false == WorldBuildEntityHashGridNeighbours.Contains(GridCell))
+			{
+				return false;
+			}
+		}
+
+		return false == GridCellArray.IsEmpty();
+	}
+
 
 public:
 	bool bIsProcessingBuildableRemovalQueue = false;

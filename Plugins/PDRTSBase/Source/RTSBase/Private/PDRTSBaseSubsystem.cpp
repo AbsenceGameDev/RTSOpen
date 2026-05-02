@@ -195,10 +195,10 @@ TArray<FMassEntityHandle> UPDRTSBaseSubsystem::FindIdleEntitiesOfType(TArray<FGa
 
 	// 1. Get cell of related octree
 	// const FPDGridCell ActorCell = UPDHashGridSubsystem::GetCellIndexStatic(ActorToBuild->GetActorLocation());
-	const FPDGridCell BuildingPadding{FIntVector{0, 0, -1}}; // @note @todo this is a rickety bridge, the buildingpadding offset only makes sense now because the location is in the middle of hte air, othewrwis 
+	const FPDGridCell BuildingPadding = FPDGridCell::Construct(0, 0, -1); // @note @todo this is a rickety bridge, the buildingpadding offset only makes sense now because the location is in the middle of hte air, othewrwis 
 	const FPDGridCell ActorCell = UPDHashGridSubsystem::StaticCell(ActorToBuild->GetActorLocation(), UPDRTSBaseSubsystem::ResourceGridSize) + BuildingPadding;
 
-	const TDeque<FMassEntityHandle> HandlesCopy = BuilderSubsystem->CopyWorldBuildEntityHashGridHandles(ActorCell); 
+	const TDeque<FMassEntityHandle> HandlesCopy = BuilderSubsystem->CopyWorldBuildEntityHashGridHandlesDepthSearch(ActorCell, 2); 
 	// 2. Iterate that cells entities, pick max 50 that are idle and eligible
 	constexpr int32 MaxPingCount = 50;
 	int32 PingCount = 0;
@@ -268,6 +268,11 @@ void UPDRTSBaseSubsystem::WorldDeinit(const UWorld* World)
 
 void UPDRTSBaseSubsystem::TryRemoveTrackedResourceEntry(const FGameplayTag& ResourceType, const AActor* TrackedActor)
 {
+	FWriteScopeLock Lock(ResourceRWLock);
+	TryRemoveTrackedResourceEntry_Unsafe(ResourceType, TrackedActor);
+}
+void UPDRTSBaseSubsystem::TryRemoveTrackedResourceEntry_Unsafe(const FGameplayTag& ResourceType, const AActor* TrackedActor)
+{
 	if (FPDRTSTSetActorWrapper* OldResourceTypeMapping = TrackedResourceGroups.Find(ResourceType)
 		; OldResourceTypeMapping != nullptr)
 	{
@@ -280,6 +285,11 @@ void UPDRTSBaseSubsystem::TryRemoveTrackedResourceEntry(const FGameplayTag& Reso
 }
 void UPDRTSBaseSubsystem::TryRemoveTrackedCellEntry(FPDGridCell GridCell, const AActor* TrackedActor)
 {
+	FWriteScopeLock Lock(ResourceRWLock);
+	TryRemoveTrackedCellEntry_Unsafe(GridCell, TrackedActor);
+}
+void UPDRTSBaseSubsystem::TryRemoveTrackedCellEntry_Unsafe(FPDGridCell GridCell, const AActor* TrackedActor)
+{
 	if (FPDRTSTSetActorWrapper* OldResourceTypeMapping = TrackedResourceGroupsPerGridCell.Find(GridCell)
 		; OldResourceTypeMapping != nullptr)
 	{
@@ -287,6 +297,12 @@ void UPDRTSBaseSubsystem::TryRemoveTrackedCellEntry(FPDGridCell GridCell, const 
 		if (OldResourceTypeMapping->Actors.IsEmpty())
 		{
 			TrackedResourceGroupsPerGridCell.Remove(GridCell);
+
+			for (const FPDGridCell& Neighbour : FindValidNeighours(GridCell))
+			{
+				TrackedResourceGroupsPerGridCellNeighbours[Neighbour].Remove(GridCell);
+			}
+			TrackedResourceGroupsPerGridCellNeighbours.Remove(GridCell);
 		}
 	}
 }
@@ -299,6 +315,8 @@ void UPDRTSBaseSubsystem::TrackResource(const FGameplayTag& ResourceType, const 
 	FPDGridCell ActorGridCell = UPDHashGridSubsystem::StaticCell(TrackedActor->GetActorLocation(), ResourceGridSize);
 	TrackedResourceToGridCell.FindOrAdd(TrackedActor) = ActorGridCell;
 	TrackedResourceGroupsPerGridCell.FindOrAdd(ActorGridCell).Actors.FindOrAdd(TrackedActor);
+
+	TrackedResourceGroupsPerGridCellNeighbours.FindOrAdd(ActorGridCell) = FindValidNeighours(ActorGridCell);
 }
 void UPDRTSBaseSubsystem::UntrackResource(const FGameplayTag& ResourceType, const AActor* TrackedActor)
 {
@@ -314,9 +332,10 @@ void UPDRTSBaseSubsystem::UntrackAllFromResourceActor(const FGameplayTag& Resour
 
 void UPDRTSBaseSubsystem::UntrackAllFromResourceActor_Unsafe(const FGameplayTag& ResourceType, const AActor* TrackedActor)
 {
+	FWriteScopeLock Lock(ResourceRWLock);
 	FPDGridCell ActorGridCell = UPDHashGridSubsystem::StaticCell(TrackedActor->GetActorLocation(), ResourceGridSize);
-	TryRemoveTrackedResourceEntry(ResourceType, TrackedActor);
-	TryRemoveTrackedCellEntry(ActorGridCell, TrackedActor);
+	TryRemoveTrackedResourceEntry_Unsafe(ResourceType, TrackedActor);
+	TryRemoveTrackedCellEntry_Unsafe(ActorGridCell, TrackedActor);
 }
 
 void UPDRTSBaseSubsystem::UpdateResources(const AActor* TrackedActor)
@@ -325,10 +344,12 @@ void UPDRTSBaseSubsystem::UpdateResources(const AActor* TrackedActor)
 	FPDGridCell* OldGridCellPtr = TrackedResourceToGridCell.Find(TrackedActor);
 	if (OldGridCellPtr)
 	{
-		TryRemoveTrackedCellEntry(*OldGridCellPtr, TrackedActor);
-
-		FPDGridCell NewActorGridCell = UPDHashGridSubsystem::StaticCell(TrackedActor->GetActorLocation(), ResourceGridSize);
-		TrackedResourceGroupsPerGridCell.FindOrAdd(NewActorGridCell).Actors.Add(TrackedActor);
+		TryRemoveTrackedCellEntry_Unsafe(*OldGridCellPtr, TrackedActor);
+		{
+			FPDGridCell NewActorGridCell = UPDHashGridSubsystem::StaticCell(TrackedActor->GetActorLocation(), ResourceGridSize);
+			TrackedResourceGroupsPerGridCell.FindOrAdd(NewActorGridCell).Actors.Add(TrackedActor);
+			TrackedResourceGroupsPerGridCellNeighbours.FindOrAdd(NewActorGridCell) = FindValidNeighours(NewActorGridCell);
+		}		
 	}
 }
 
@@ -366,22 +387,80 @@ const FPDRTSTSetActorWrapper* UPDRTSBaseSubsystem::GetResourceActors(const FGame
 const FPDRTSTSetActorWrapper* UPDRTSBaseSubsystem::GetResourceActorsAtGridCell(FPDGridCell GridCell)
 {
 	FReadScopeLock Lock(ResourceRWLock);
+	return GetResourceActorsAtGridCell_Unsafe(GridCell);
+}
+
+const FPDRTSTSetActorWrapper* UPDRTSBaseSubsystem::GetResourceActorsAtGridCell_Unsafe(FPDGridCell GridCell)
+{
 	const FPDRTSTSetActorWrapper* FoundEntry = TrackedResourceGroupsPerGridCell.Find(GridCell);
 	return FoundEntry;
 }
 
-TSet<const AActor*> UPDRTSBaseSubsystem::GetResourceActorsAtGridCellWithResourceType(const FGameplayTag& ResourceType, FPDGridCell GridCell)
+TSet<const AActor*> UPDRTSBaseSubsystem::GetResourceActorsAtGridCellWithResourceType(const FRTSOFindResourcesParameters& SearchParams)
 {
 	TSet<const AActor*> Intersection;
 	FReadScopeLock Lock(ResourceRWLock);
-	const FPDRTSTSetActorWrapper* FoundResourceMappedEntry = TrackedResourceGroups.Find(ResourceType);
-	const FPDRTSTSetActorWrapper* FoundGridCellMappedEntry = TrackedResourceGroupsPerGridCell.Find(GridCell);
+	const FPDRTSTSetActorWrapper* FoundResourceMappedEntry = TrackedResourceGroups.Find(SearchParams.ResourceType);
+	const FPDRTSTSetActorWrapper* FoundGridCellMappedEntry = TrackedResourceGroupsPerGridCell.Find(SearchParams.GridCell);
 	if (FoundResourceMappedEntry && FoundGridCellMappedEntry)
 	{
 		Intersection = FoundResourceMappedEntry->Actors.Intersect(FoundGridCellMappedEntry->Actors);
 	}
-
+	
 	return Intersection;
+}
+
+TSet<const AActor*> UPDRTSBaseSubsystem::GetResourceActorsNearGridCellWithResourceType(const FRTSOFindResourcesParameters& SearchParams)
+{
+	if (SearchParams.SearchDepth <= 0)
+	{
+		return GetResourceActorsAtGridCellWithResourceType(SearchParams);
+	}
+	
+	//
+	// Iterate both directions from starting cell
+	static constexpr int32 MaxIntersectionElement = 40000; 
+	TSet<const AActor*> Intersection;
+	Intersection.Reserve(MaxIntersectionElement);
+
+	FReadScopeLock Lock(ResourceRWLock);
+	const FPDRTSTSetActorWrapper* FoundResourceMappedEntry = TrackedResourceGroups.Find(SearchParams.ResourceType);
+	const FPDRTSTSetActorWrapper* FoundGridCellMappedEntry = TrackedResourceGroupsPerGridCell.Find(SearchParams.GridCell);
+	if (FoundResourceMappedEntry && FoundGridCellMappedEntry)
+	{
+		Intersection.Append(FoundResourceMappedEntry->Actors.Intersect(FoundGridCellMappedEntry->Actors));
+	}
+
+	if (false == TrackedResourceGroupsPerGridCellNeighbours.Contains(SearchParams.GridCell))
+	{
+		return Intersection;
+	}
+
+	//
+	// crude depth search
+	TArray<FPDGridCell> Neighbours = TrackedResourceGroupsPerGridCellNeighbours[SearchParams.GridCell];
+	for(int32 SearchStep = 1; SearchStep < SearchParams.SearchDepth; SearchStep++)
+	{
+		TArray<FPDGridCell> NextNeighbours;
+		for (const FPDGridCell& Neighbour : Neighbours)
+		{
+			FoundGridCellMappedEntry = TrackedResourceGroupsPerGridCell.Find(Neighbour);
+			if (FoundResourceMappedEntry && FoundGridCellMappedEntry)
+			{
+				Intersection.Append(FoundResourceMappedEntry->Actors.Intersect(FoundGridCellMappedEntry->Actors));
+			}
+
+			TArray<FPDGridCell>* PotentialNeighbours = TrackedResourceGroupsPerGridCellNeighbours.Find(Neighbour);
+			if (PotentialNeighbours)
+			{
+				NextNeighbours.Append(*PotentialNeighbours);
+			}
+		}
+		Neighbours = NextNeighbours;
+	}
+
+
+	return Intersection;	
 }
 
 

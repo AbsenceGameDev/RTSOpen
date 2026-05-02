@@ -121,7 +121,6 @@ struct RTSOPEN_API FRTSOTask_Interact : public FMassStateTreeTaskBase
  * @done Further thoughts are that is we want more then one entity to pick up from a resource it must be calculated to be enough left that it's needs are met
  * @donr Something like: struct FRTSEntityResourceGatherTarget { AActor* Target; int32 CountNeeded = -1;}; 
  */
-
 USTRUCT()
 struct RTSOPEN_API FRTSOTask_BringBackResource final : public FRTSOTask_Interact
 {
@@ -132,7 +131,7 @@ struct RTSOPEN_API FRTSOTask_BringBackResource final : public FRTSOTask_Interact
 	DECLARE_TASK_BODY(BringBackResource)
 
 	void OnPathSelected(FPDMFragment_RTSEntityBase& RTSData, bool bShouldUseSharedNavigation, const FVector& LastPoint) const;
-	struct FPDRTSTSetActorWrapper FindAmountOfResourceActorsNearGridCell(const FMassEntityHandle& EntityHandle, FPDGridCell GridCell, const FGameplayTag& ResourceType, int32 TargetResourceAmount) const;
+	static struct FPDRTSTSetActorWrapper FindAmountOfResourceActorsNearGridCell(const FMassEntityHandle& EntityHandle, const FRTSOFindResourcesParameters& Params); // FPDGridCell GridCell, const FGameplayTag& ResourceType, int32 TargetResourceAmount);
 
 protected:	
 	/** @defgroup ExternalHandles */

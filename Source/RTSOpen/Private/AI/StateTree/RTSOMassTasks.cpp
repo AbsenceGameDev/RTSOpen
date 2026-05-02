@@ -63,7 +63,7 @@ EStateTreeRunStatus FRTSOTask_ActionLog::EnterState(FStateTreeExecutionContext& 
 
 
 // @note Some more mapped data and I won't need to have to search like this at all
-FPDRTSTSetActorWrapper FRTSOTask_BringBackResource::FindAmountOfResourceActorsNearGridCell(const FMassEntityHandle& EntityHandle, FPDGridCell GridCell, const FGameplayTag& ResourceType, int32 TargetResourceAmount) const
+FPDRTSTSetActorWrapper FRTSOTask_BringBackResource::FindAmountOfResourceActorsNearGridCell(const FMassEntityHandle& EntityHandle, const FRTSOFindResourcesParameters& Params) //FPDGridCell GridCell, const FGameplayTag& ResourceType, int32 TargetResourceAmount)
 {
 	UPDRTSBaseSubsystem* RTSSubsystem = UPDRTSBaseSubsystem::Get();
 	RTSSubsystem->RemoveEntityResourceTarget(EntityHandle);
@@ -76,13 +76,13 @@ FPDRTSTSetActorWrapper FRTSOTask_BringBackResource::FindAmountOfResourceActorsNe
 	// OR POTENTIALLY MAPPING THINGS IN THE SUBSYSTEM ENOUGH THAT I DO NOT HAVE TO SEARCH
 	FPDRTSTSetActorWrapper ViableTargets;
 	{
-		int32 Remainder = TargetResourceAmount;
-		TSet<const AActor*> ActorSet = RTSSubsystem->GetResourceActorsAtGridCellWithResourceType(ResourceType, GridCell);
+		int32 Remainder = Params.TargetResourceAmount;
+		TSet<const AActor*> ActorSet = RTSSubsystem->GetResourceActorsNearGridCellWithResourceType(Params);
 		for (const AActor* Actor : ActorSet)
 		{
 			if (const ARTSOInteractableResourceBase* AsResource = Cast<ARTSOInteractableResourceBase>(Actor))
 			{
-				const int32 ActorsTotalItemCount = AsResource->GetInventoryFragment().Handler.GetItems().FindRef(ResourceType).TotalItemCount;
+				const int32 ActorsTotalItemCount = AsResource->GetInventoryFragment().Handler.GetItems().FindRef(Params.ResourceType).TotalItemCount;
 				if (ActorsTotalItemCount <= 0) {continue;}
 				
 				ViableTargets.Actors.Emplace(Actor);
@@ -162,7 +162,7 @@ EStateTreeRunStatus FRTSOTask_BringBackResource::EnterState(FStateTreeExecutionC
 				if (MissingItemCount > 0) 
 				{
 					FPDGridCell EntityAsResourceCell = UPDHashGridSubsystem::StaticCell(EntityLocation, UPDRTSBaseSubsystem::ResourceGridSize);
-					FindAmountOfResourceActorsNearGridCell(EntityHandle, EntityAsResourceCell, ResourceType, MissingItemCount);
+					FindAmountOfResourceActorsNearGridCell(EntityHandle, FRTSOFindResourcesParameters(EntityAsResourceCell, ResourceType, MissingItemCount, 2));
 					++TaskCounter;
 				}
 			}

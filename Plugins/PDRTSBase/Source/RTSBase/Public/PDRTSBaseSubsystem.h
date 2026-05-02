@@ -190,6 +190,13 @@ public:
 	/** @brief  */
 	void TryRemoveTrackedCellEntry(FPDGridCell GridCell, const AActor* TrackedActor);
 
+private:
+	/** @brief  */
+	void TryRemoveTrackedResourceEntry_Unsafe(const FGameplayTag& ResourceType, const AActor* TrackedActor);
+	/** @brief  */
+	void TryRemoveTrackedCellEntry_Unsafe(FPDGridCell GridCell, const AActor* TrackedActor);
+
+public:
 	/** @brief  */
 	void TrackResource(const FGameplayTag& ResourceType, const AActor* TrackedActor); 
 	/** @brief  */
@@ -217,7 +224,16 @@ public:
 	/** @brief  */
 	const FPDRTSTSetActorWrapper* GetResourceActorsAtGridCell(FPDGridCell GridCell);
 	/** @brief  @todo A bit inefficient, think of bulking these calls for a set ot GridCells and make a new function*/
-	TSet<const AActor*> GetResourceActorsAtGridCellWithResourceType(const FGameplayTag& ResourceType, FPDGridCell GridCell);
+	TSet<const AActor*> GetResourceActorsAtGridCellWithResourceType(const FRTSOFindResourcesParameters& SearchParams);
+
+	/** @brief  @todo A bit inefficient, think of bulking these calls for a set ot GridCells and make a new function*/
+	TSet<const AActor*> GetResourceActorsNearGridCellWithResourceType(const FRTSOFindResourcesParameters& SearchParams);	
+
+private:
+	const FPDRTSTSetActorWrapper* GetResourceActorsAtGridCell_Unsafe(FPDGridCell GridCell);
+
+
+public:
 	
 	/** @brief  */
 	void ProcessResourceActors(FSimpleDelegate ProcessDelegate);
@@ -322,6 +338,37 @@ private:
 	UPROPERTY()
 	TMap<FGameplayTag /*resource/item tag*/, FPDRTSTSetActorWrapper> TrackedResourceGroups;
 	TSortedMap<FPDGridCell /*Gridcell*/, FPDRTSTSetActorWrapper> TrackedResourceGroupsPerGridCell;
+	
+	/*
+	+ + +   + + +   + + +
+	+ X +   + Y +   + Z +
+	+ + +   + + +   + + +
+	*/
+	TMap<FPDGridCell /*Gridcell*/, TArray<FPDGridCell> /*Neighbours*/> TrackedResourceGroupsPerGridCellNeighbours;
+	TArray<FPDGridCell> FindValidNeighours(const FPDGridCell& GridCell)
+	{
+		TArray<FPDGridCell> FoundNeighbours;
+		constexpr int32 MaxNeighbourDim = 3;
+		FPDGridCell StartGridCell = GridCell - FPDGridCell::Construct(-1);
+
+		// Likely inefficient in a tight loop, rewrite into flat 1dim loop whenever it becomes a problem
+		for (int32 CellStepsX = 0; CellStepsX < MaxNeighbourDim; CellStepsX++)
+		{
+			int32 CurrentX = CellStepsX;
+			for (int32 CellStepsY = 0; CellStepsY < MaxNeighbourDim; CellStepsY++)
+			{
+				for (int32 CellStepsZ = 0; CellStepsZ < MaxNeighbourDim; CellStepsZ++)
+				{
+					FPDGridCell PotentialNeighbour = StartGridCell + FPDGridCell::Construct(CellStepsX, CellStepsY, CellStepsZ);
+					if(PotentialNeighbour == GridCell) {continue;}
+					if (nullptr != GetResourceActorsAtGridCell_Unsafe(PotentialNeighbour)) { FoundNeighbours.Emplace(PotentialNeighbour); }
+				}
+			}
+		}
+
+		return FoundNeighbours;
+	}
+
 	TMap<int32, FPDGridCell> GridCellOrder;
 	UPROPERTY()
 	TMap<const AActor*, FPDGridCell> TrackedResourceToGridCell;

@@ -3,6 +3,7 @@
 #pragma once
 
 #include "CoreMinimal.h"
+#include "GameplayTags.h"
 #include "PDRTSSharedHashGrid.generated.h"
 
 /** @brief Dynamic hash-grid developer settings, default to 200.0 cell size, modify in .ini config or in editor project settings */
@@ -35,7 +36,10 @@ struct PDRTSBASE_API FPDGridCell : public FIntVector
 		RetVector.Y = this->Y;
 		RetVector.Z = this->Z;
 		return RetVector * ScalingFactor;
-	}		
+	}
+
+	static FPDGridCell Construct(int32 StartValue) { return FPDGridCell{{StartValue, StartValue, StartValue}};}
+	static FPDGridCell Construct(int32 InX, int32 InY, int32 InZ) { return FPDGridCell{{InX, InY, InZ}}; }
 
 	/** @brief  Compares if cell is neighbour in X and Y */
 	bool IsNeighbour2D(const FPDGridCell& OtherCell) const
@@ -115,7 +119,45 @@ struct PDRTSBASE_API FPDGridCell : public FIntVector
 		ThisCopy.Z -= OtherCell.Z;
 		return ThisCopy;
 	}
+
+
+	FPDGridCell& operator+=(const int32& OtherVal) 
+	{
+		*this = *this + OtherVal;
+		return *this;
+	}
+	FPDGridCell& operator-=(const int32& OtherVal) 
+	{
+		*this = *this - OtherVal;
+		return *this;
+	}	
+	FPDGridCell operator+(const int32& OtherVal) const
+	{
+		FPDGridCell ThisCopy = *this;
+		ThisCopy.X += OtherVal;
+		ThisCopy.Y += OtherVal;
+		ThisCopy.Z += OtherVal;
+		return ThisCopy;
+	}	
+	FPDGridCell operator-(const int32& OtherVal) const
+	{
+		FPDGridCell ThisCopy = *this;
+		ThisCopy.X -= OtherVal;
+		ThisCopy.Y -= OtherVal;
+		ThisCopy.Z -= OtherVal;
+		return ThisCopy;
+	}
+
 };
+
+
+struct PDRTSBASE_API FRTSOFindResourcesParameters 
+{
+	FPDGridCell GridCell;
+	const FGameplayTag ResourceType{}; 
+	int32 TargetResourceAmount = 1;
+	int32 SearchDepth = INDEX_NONE;
+};	
 
 /** @brief Dynamic hash-grid sub-system, Manages grid functionality.
  * @note Loads settings from UPDHashGridDeveloperSettings, and keeps it synced.
