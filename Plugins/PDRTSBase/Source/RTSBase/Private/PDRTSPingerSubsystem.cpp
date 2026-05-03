@@ -198,7 +198,7 @@ void UPDEntityPinger::Ping_Implementation(UWorld* World, const FPDEntityPingDatu
 			TArray<FMassEntityHandle> Handles =
 				UPDRTSBaseSubsystem::FindIdleEntitiesOfType(SelectedUnitTypes, ConstPingDatum.WorldActor, ConstPingDatum.OwnerID);
 
-			UE_LOG(LogTemp, VeryVerbose, TEXT("ARTSOInteractableBuildingBase::Ping -- Found %i idle entities near ping actor"), Handles.Num())
+			UE_LOG(LogTemp, Log, TEXT("ARTSOInteractableBuildingBase::Ping -- Found %i idle entities near ping actor"), Handles.Num())
 
 
 			ParallelFor(Handles.Num(),
