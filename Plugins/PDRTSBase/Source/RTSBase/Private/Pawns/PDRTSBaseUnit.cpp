@@ -54,7 +54,8 @@ void UPDRTSBaseUnit::ResetState(FMassEntityHandle RequestedEntityHandle)
 void UPDRTSBaseUnit::RequestAction(int32 CallingOwnerID, const FPDTargetCompound& OptTarget, FGameplayTag RequestedJob, FMassEntityHandle RequestedEntityHandle)
 {
 	if (OptTarget.IsValidCompound() == false) { return; }
-	
+
+	// UE_LOG(PDLog_RTSBase, Log, TEXT("UPDRTSBaseUnit::RequestAction(%s)"), *RequestedJob.ToString())
 	AssignTask(RequestedEntityHandle, RequestedJob, OptTarget);
 
 	// @todo Call GM and update unit save data here?

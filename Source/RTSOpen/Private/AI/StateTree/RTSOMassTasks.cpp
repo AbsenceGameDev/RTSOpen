@@ -118,6 +118,7 @@ bool FRTSOTask_BringBackResource::Link(FStateTreeLinker& Linker)
 // @note @todo remember to check if entity is marked as non_idle or busy, can't remember if I ever put that in before the hiatus from the project
 EStateTreeRunStatus FRTSOTask_BringBackResource::EnterState(FStateTreeExecutionContext& Context, const FStateTreeTransitionResult& Transition) const
 {
+	UE_LOG(LogTemp, Warning, TEXT("FRTSOTask_BringBackResource::EnterState"));
 
 	UPDRTSBaseSubsystem* RTSSubsystem = UPDRTSBaseSubsystem::Get();
 	UMassEntitySubsystem& EntitySubsystem = Context.GetExternalData(EntitySubsystemHandle);
@@ -136,13 +137,15 @@ EStateTreeRunStatus FRTSOTask_BringBackResource::EnterState(FStateTreeExecutionC
 	ARTSOInteractableBuildingBase* AsBuildingBase = Cast<ARTSOInteractableBuildingBase>(ActionFragment.OptTargets.ActionTargetAsActor);
 	if (AsBuildingBase)
 	{
+		UE_LOG(LogTemp, Warning, TEXT("FRTSOTask_BringBackResource::EnterState -- Target Is Building"));
+
 		FRTSOLightInventoryFragment BuildingAvailableInventorySpace = AsBuildingBase->CalculateFreeInventorySpace();
 
 		bool bCantAfford = false;
 		TMap<FGameplayTag, int32> MissingItems;
 		for (auto&[ResourceType, ItemDatum] : BuildingAvailableInventorySpace.Handler.GetItems())
 		{
-			int32 DeltaItemStorage = ItemDatum.TotalItemCount - EntityInventoryFragment.Handler.GetItemCount(ResourceType);
+			int32 DeltaItemStorage = ItemDatum.TotalItemCount; // - EntityInventoryFragment.Handler.GetItemCount(ResourceType);
 			const bool bCantAffordItem = DeltaItemStorage > 0;
 			if (bCantAffordItem)
 			{
@@ -150,6 +153,14 @@ EStateTreeRunStatus FRTSOTask_BringBackResource::EnterState(FStateTreeExecutionC
 				bCantAfford = false;
 			}
 		}
+
+		UE_LOG(LogTemp, Warning, TEXT("FRTSOTask_BringBackResource::EnterState -- Building needs resources:"));
+		for (auto&[ResourceType, Count] : MissingItems)
+		{
+			UE_LOG(LogTemp, Warning, TEXT("                                                   -- %s : %i"), *ResourceType.ToString(), Count);
+		}
+		
+
 
 		// 
 		// TODO: Finish the changes needed to dispatch the list of items needed
@@ -172,6 +183,15 @@ EStateTreeRunStatus FRTSOTask_BringBackResource::EnterState(FStateTreeExecutionC
 				// @done: also check if overwriting the movetarget here is one and done or if I need to do something else in the moveto processor -- Looks like we are fine, just need to handle things in the tick here below
 				FPDRTSTGatherTargetsWrapper* ResourceTargets = RTSSubsystem->GetEntityResourceTargets(EntityHandle);
 				const FRTSEntityResourceGatherTarget& FirstPath = ResourceTargets->Targets[CurrentPathIndex++];
+
+				UE_LOG(LogTemp, Warning, TEXT("FRTSOTask_BringBackResource::EnterState -- Found resource targets(%i):"), ResourceTargets->Targets.Num());
+				for (const FRTSEntityResourceGatherTarget& ResourceTarget : ResourceTargets->Targets)
+				{
+					const AActor* Target = ResourceTarget.Target;
+					UE_LOG(LogTemp, Warning, TEXT("                                                   -- %s : %i"), Target ? *Target->GetName() : *FString("INVALID OBJECT") );
+				}
+						
+				
 				
 				FRTSOTask_BringBackResource::FInstanceDataType& InstanceData = Context.GetInstanceData(*this);
 				FPDTargetCompound CachedOptTargets = InstanceData.OptTargets;
@@ -202,6 +222,11 @@ EStateTreeRunStatus FRTSOTask_BringBackResource::Tick(FStateTreeExecutionContext
 	const FMassStateTreeExecutionContext& MassContext = static_cast<FMassStateTreeExecutionContext&>(Context);
 	const FTransformFragment& TransformFragment = Context.GetExternalData(TransformHandle);
 
+	if(1)
+	{
+		return EStateTreeRunStatus::Running;
+	}
+
 	//
 	// Should ensure that we are on our way to a resource or not, and if we are, as sson as we trigger the interaction we move on to the next resource
 	EStateTreeRunStatus TickMoveResult = FPDMTaskStatics::TickMove<FRTSOTask_BringBackResource>(this, Context, DeltaTime, MoveTarget, RTSData);
@@ -217,7 +242,7 @@ EStateTreeRunStatus FRTSOTask_BringBackResource::Tick(FStateTreeExecutionContext
 				// Log error
 				const FRTSOActionLogEvent NewActionEvent{
 					FString::Printf(TEXT("Entity(%i) -- BBR::Tick -- Fail interact with %s"),
-						ThisEntity.AsNumber(), *InstanceData.PotentialInteractableActor->GetName())}; 
+						ThisEntity.AsNumber(), InstanceData.PotentialInteractableActor ?  *InstanceData.PotentialInteractableActor->GetName() : *FString("INVALID ACTOR") )}; 
 			}
 			
 			UPDRTSBaseSubsystem* RTSSubsystem = UPDRTSBaseSubsystem::Get();

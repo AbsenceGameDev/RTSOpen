@@ -181,14 +181,14 @@ void UPDEntityPinger::Ping_Implementation(UWorld* World, const FPDEntityPingDatu
 	AsyncTask(ENamedThreads::GameThread,
 		[ConstPingDatum = PingDatum, InWorld = World]()
 		{
-			UE_LOG(LogTemp, VeryVerbose, TEXT("ARTSOInteractableBuildingBase::Ping"))
+			UE_LOG(LogTemp, Log, TEXT("ARTSOInteractableBuildingBase::Ping"))
 
 			const UPDBuilderSubsystem* BuilderSubsystem = UPDBuilderSubsystem::Get();
 			const FGameplayTag FallBackEntityTag = TAG_AI_Type_BuilderUnit_Novice ; // @todo, pass into here from somewhere else 
 			TArray<FGameplayTag> SelectedUnitTypes{FallBackEntityTag};
 			if (ConstPingDatum.WorldActor == nullptr || BuilderSubsystem->Buildable_WClass.Contains(ConstPingDatum.WorldActor->GetClass()) == false)
 			{
-				UE_LOG(PDLog_BuildSystem, VeryVerbose, TEXT("UPDEntityPinger::Ping() Was called with world actor : %s, Actor class is not a spawn type of any entry of a registered FPDBuildable data-table"), ConstPingDatum.WorldActor == nullptr ? *FString("INVALID ACTOR") : *ConstPingDatum.WorldActor->GetName() )
+				UE_LOG(PDLog_BuildSystem, Log, TEXT("UPDEntityPinger::Ping() Was called with world actor : %s, Actor class is not a spawn type of any entry of a registered FPDBuildable data-table"), ConstPingDatum.WorldActor == nullptr ? *FString("INVALID ACTOR") : *ConstPingDatum.WorldActor->GetName() )
 			}
 			else
 			{
@@ -201,8 +201,9 @@ void UPDEntityPinger::Ping_Implementation(UWorld* World, const FPDEntityPingDatu
 			UE_LOG(LogTemp, Log, TEXT("ARTSOInteractableBuildingBase::Ping -- Found %i idle entities near ping actor"), Handles.Num())
 
 
+			// Inworld refuses to survive past these two delegates, getting the world again from the world actor if it is valid
 			ParallelFor(Handles.Num(),
-				[InHandles = Handles, ConstPingDatum, InWorld](const int32 Idx)
+				[InHandles = Handles, ConstPingDatum, InWorld = ConstPingDatum.WorldActor ? ConstPingDatum.WorldActor->GetWorld() : nullptr](const int32 Idx)
 				{
 					const UPDRTSBaseSubsystem* RTSSubsystem = UPDRTSBaseSubsystem::Get();
 					
@@ -210,6 +211,7 @@ void UPDEntityPinger::Ping_Implementation(UWorld* World, const FPDEntityPingDatu
 					if (RTSSubsystem->EntityManager->IsEntityValid(EntityHandle) == false
 						|| RTSSubsystem->WorldToEntityHandler.Contains(InWorld) == false)
 					{
+						UE_LOG(LogTemp, Log, TEXT("ARTSOInteractableBuildingBase::Ping -- FAIL(%p)"), InWorld)
 						return;
 					}
 
