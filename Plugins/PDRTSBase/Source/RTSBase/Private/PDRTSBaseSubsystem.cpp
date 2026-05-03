@@ -439,26 +439,7 @@ TSet<const AActor*> UPDRTSBaseSubsystem::GetResourceActorsNearGridCellWithResour
 	//
 	// crude depth search
 	TArray<FPDGridCell> Neighbours = TrackedResourceGroupsPerGridCellNeighbours[SearchParams.GridCell];
-	for(int32 SearchStep = 1; SearchStep < SearchParams.SearchDepth; SearchStep++)
-	{
-		TArray<FPDGridCell> NextNeighbours;
-		for (const FPDGridCell& Neighbour : Neighbours)
-		{
-			FoundGridCellMappedEntry = TrackedResourceGroupsPerGridCell.Find(Neighbour);
-			if (FoundResourceMappedEntry && FoundGridCellMappedEntry)
-			{
-				Intersection.Append(FoundResourceMappedEntry->Actors.Intersect(FoundGridCellMappedEntry->Actors));
-			}
-
-			TArray<FPDGridCell>* PotentialNeighbours = TrackedResourceGroupsPerGridCellNeighbours.Find(Neighbour);
-			if (PotentialNeighbours)
-			{
-				NextNeighbours.Append(*PotentialNeighbours);
-			}
-		}
-		Neighbours = NextNeighbours;
-	}
-
+	TSet<const AActor*> SearchSet = FPDEntityStatics::CrudeDepthSearch<TSet<const AActor*>>(Neighbours, TrackedResourceGroupsPerGridCellNeighbours, TrackedResourceGroupsPerGridCell, SearchParams.SearchDepth, FoundResourceMappedEntry ? FoundResourceMappedEntry->Actors : TSet<const AActor*>{});
 
 	return Intersection;	
 }

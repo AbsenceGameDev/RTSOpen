@@ -232,9 +232,7 @@ public:
 private:
 	const FPDRTSTSetActorWrapper* GetResourceActorsAtGridCell_Unsafe(FPDGridCell GridCell);
 
-
 public:
-	
 	/** @brief  */
 	void ProcessResourceActors(FSimpleDelegate ProcessDelegate);
 

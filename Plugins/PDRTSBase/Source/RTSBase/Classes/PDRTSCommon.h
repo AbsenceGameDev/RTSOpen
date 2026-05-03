@@ -9,6 +9,8 @@
 #include "MassCommonTypes.h"
 #include "NativeGameplayTags.h"
 #include "Subsystems/EngineSubsystem.h"
+#include "PDRTSSharedHashGrid.h"
+#include "Containers/Deque.h"
 
 #include "PDRTSCommon.generated.h"
 
@@ -211,6 +213,110 @@ struct PDRTSBASE_API FPDWorkUnitDatum : public FTableRowBase
 	/** @brief If job can be shared between players */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "RTSBase|WorkerUnits")
 	uint8 bCanShareJob : 1;
+};
+
+
+template<typename TReturnType>
+struct TGetDataFromCell
+{
+	using FDelegate = TDelegate<TReturnType(const FPDGridCell&), FDefaultDelegateUserPolicy>;
+	FDelegate Getter{};
+
+	TGetDataFromCell(const FDelegate& InGetter) : Getter(InGetter) {}
+	TReturnType Execute(const FPDGridCell& Element){return Getter.Execute(Element); }
+};
+
+
+#define MakeCellDataDelegate(TCellDataType, Callback) \
+	TGetDataFromCell<TCellDataType> {TGetDataFromCell<TCellDataType>::FDelegate::CreateWeakLambda(this,[&](const FPDGridCell& Cell){return Callback(Cell);})};
+#define MCellType(TCellDataType) TGetDataFromCell<TCellDataType>
+
+template <class T, template <class...> class Template>
+struct TIsSpecialization : std::false_type {};
+
+template <template <class...> class Template, class... Args>
+struct TIsSpecialization<Template<Args...>, Template> : std::true_type {};
+
+
+USTRUCT()
+struct PDRTSBASE_API FPDEntityStatics
+{
+	GENERATED_BODY()
+
+
+	template<typename TReturnType>
+	FORCEINLINE static const TReturnType BuildEntityListFromSelectedCells(const TSet<FPDGridCell>& Neighbours, TGetDataFromCell<TReturnType> Delegate)
+	{
+		TReturnType CopiedEntityHandles;
+		if (false == Neighbours.IsEmpty())
+		{
+			for (const FPDGridCell& Neighbour : Neighbours)
+			{
+				for (const auto& EntityHandle : Delegate.Execute(Neighbour)) 
+				{
+
+					if constexpr (TIsSpecialization<TReturnType, TSet>{})
+					{
+						CopiedEntityHandles.Emplace(EntityHandle);
+					}
+					else if constexpr(TIsSpecialization<TReturnType, TDeque>{})
+					{
+						CopiedEntityHandles.EmplaceLast(EntityHandle);
+					}
+
+				}
+			}
+		}		
+		return CopiedEntityHandles;
+	}	
+
+	//TSet<const AActor*> Intersection;
+	TSet<const AActor*> FoundResourceMappedEntry;
+	//TMap<FPDGridCell /*Gridcell*/, TArray<FPDGridCell> /*Neighbours*/>
+	template<typename TReturnType, typename TGridCellSource>
+	static TReturnType CrudeDepthSearch(TArray<FPDGridCell> Neighbours, TMap<FPDGridCell, TArray<FPDGridCell>> NeighbourMapping, TGridCellSource GridCellSource, int32 SearchDepth, TSet<const AActor*> ResourceMappedEntry = {})
+	{
+		constexpr bool bIsSet = TIsSpecialization<TReturnType, TSet>{};
+		constexpr bool bIsDeque = TIsSpecialization<TReturnType, TDeque>{};
+
+		TReturnType Final;
+		for(int32 SearchStep = 1; SearchStep < SearchDepth; SearchStep++)
+		{
+			TArray<FPDGridCell> NextNeighbours;
+			for (const FPDGridCell& Neighbour : Neighbours)
+			{
+				if constexpr (bIsSet)
+				{
+					auto FoundGridCellMappedEntry = GridCellSource.Find(Neighbour);
+					if (FoundGridCellMappedEntry)
+					{
+						Final.Append(ResourceMappedEntry.Intersect(FoundGridCellMappedEntry->Actors));
+					}
+				}
+				if constexpr(bIsDeque)
+				{
+					const TReturnType* FoundGridCellMappedEntry = GridCellSource.Find(Neighbour);
+					if (FoundGridCellMappedEntry)
+					{
+						for (const FMassEntityHandle& Handle : *FoundGridCellMappedEntry)
+						{
+							Final.EmplaceLast(Handle);
+						}
+					}					
+				}
+
+				const TArray<FPDGridCell>* PotentialNeighbours = NeighbourMapping.Find(Neighbour);
+				if (PotentialNeighbours)
+				{
+					NextNeighbours.Append(*PotentialNeighbours);
+				}
+				
+			}
+			Neighbours = NextNeighbours;
+		}
+
+		return Final;
+	}
 };
 
 
