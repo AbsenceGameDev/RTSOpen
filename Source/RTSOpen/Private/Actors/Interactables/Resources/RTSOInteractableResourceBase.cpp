@@ -241,7 +241,7 @@ void ARTSOInteractableResourceBase::OnInteract_Implementation(
 	const AActor* InstigatorActor = InteractionParams.InstigatorActor;
 	
 	UPDInventoryComponent* InstigatorInvComponent = InstigatorActor != nullptr ? Cast<UPDInventoryComponent>(InstigatorActor->GetComponentByClass(InteractionParams.InstigatorComponentClass)) : nullptr;
-	FRTSOLightInventoryFragment* InstigatorInventoryFragment = nullptr;// static_cast<FRTSOLightInventoryFragment*>(InteractionParams.InstigatorEntity);
+	FRTSOLightInventoryFragment* InstigatorInventoryFragment = nullptr;
 	if (InstigatorInvComponent == nullptr)
 	{
 		InstigatorInventoryFragment = EntManager->GetFragmentDataPtr<FRTSOLightInventoryFragment>(InteractionParams.InstigatorEntity);

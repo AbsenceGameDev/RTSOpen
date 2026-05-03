@@ -298,14 +298,15 @@ struct PDRTSBASE_API FPDEntityStatics
 	template<typename TReturnType, typename TGridCellSource>
 	static TReturnType CrudeDepthSearch(TArray<FPDGridCell> Neighbours, TMap<FPDGridCell, TArray<FPDGridCell>> NeighbourMapping, TGridCellSource GridCellSource, int32 SearchDepth, TSet<const AActor*> ResourceMappedEntry = {})
 	{
+		UE_LOG(LogTemp, Warning, TEXT("UPDRTSBaseSubsystem::CrudeDepthSearch"));
 		constexpr bool bIsSet = TIsSpecialization<TReturnType, TSet>{};
 		constexpr bool bIsDeque = TIsSpecialization<TReturnType, TDeque>{};
 
 		if constexpr(bIsSet)
 		{
-			UE_LOG(LogTemp, Warning, TEXT("UPDRTSBaseSubsystem::CrudeDepthSearch -- NeighboursArray Size: %i"), Neighbours.Num());
-			UE_LOG(LogTemp, Warning, TEXT("UPDRTSBaseSubsystem::CrudeDepthSearch -- NeighbourMapping Size: %i"), NeighbourMapping.Num());
-			UE_LOG(LogTemp, Warning, TEXT("UPDRTSBaseSubsystem::CrudeDepthSearch -- ResourceMappedEntry Size: %i"), ResourceMappedEntry.Num());
+			UE_LOG(LogTemp, Warning, TEXT("======== NeighboursArray Size: %i"), Neighbours.Num());
+			UE_LOG(LogTemp, Warning, TEXT("======== NeighbourMapping Size: %i"), NeighbourMapping.Num());
+			UE_LOG(LogTemp, Warning, TEXT("======== ResourceMappedEntry Size: %i"), ResourceMappedEntry.Num());
 			
 			if (Neighbours.IsEmpty())
 			{
@@ -325,12 +326,12 @@ struct PDRTSBASE_API FPDEntityStatics
 					auto FoundGridCellMappedEntry = GridCellSource.Find(Neighbour);
 					if (FoundGridCellMappedEntry)
 					{
-						UE_LOG(LogTemp, Warning, TEXT("UPDRTSBaseSubsystem::CrudeDepthSearch -- Found actors(%i) for Cell(%s)"), FoundGridCellMappedEntry->Actors.Num(), *Neighbour.ToString());
+						UE_LOG(LogTemp, Warning, TEXT("================= Found actors(%i) for Cell(%s)"), FoundGridCellMappedEntry->Actors.Num(), *Neighbour.ToString());
 						Final.Append(ResourceMappedEntry.Intersect(FoundGridCellMappedEntry->Actors));
 					}
 					else
 					{
-						UE_LOG(LogTemp, Warning, TEXT("UPDRTSBaseSubsystem::CrudeDepthSearch -- Failed finding actors for Cell(%s)"), *Neighbour.ToString());
+						UE_LOG(LogTemp, Warning, TEXT("================= Failed finding actors for Cell(%s)"), *Neighbour.ToString());
 					}
 				}
 				if constexpr(bIsDeque)
@@ -352,7 +353,7 @@ struct PDRTSBASE_API FPDEntityStatics
 
 					if constexpr(bIsSet)
 					{
-						UE_LOG(LogTemp, Warning, TEXT("UPDRTSBaseSubsystem::CrudeDepthSearch -- PotentialNeighbours For Next Step Size: %i"), PotentialNeighbours->Num());
+						UE_LOG(LogTemp, Warning, TEXT("================= PotentialNeighbours For Next Step Size: %i"), PotentialNeighbours->Num());
 					}					
 				}
 				
@@ -360,6 +361,7 @@ struct PDRTSBASE_API FPDEntityStatics
 			Neighbours = NextNeighbours;
 		}
 
+		UE_LOG(LogTemp, Warning, TEXT("======== Found total valid targets (%i)"), Final.Num());
 		return Final;
 	}
 };

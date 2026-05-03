@@ -84,7 +84,7 @@ void FRTSOLightInventoryFragmentHandler::AddItem(const FGameplayTag& AddTag, con
 {
 	FPDLightItemDatum& Item = Inner.Contains(AddTag) == false ? Inner.Add(AddTag) : *Inner.Find(AddTag);
 	Item.ItemTag = AddTag;
-	Item.TotalItemCount = FMath::Min(0,Item.TotalItemCount + Count);
+	Item.TotalItemCount = FMath::Max(Count, Item.TotalItemCount + Count);
 }
 
 void FRTSOLightInventoryFragmentHandler::RemoveItem(const FGameplayTag& RemoveTag, const int32 Count)
@@ -97,7 +97,8 @@ void FRTSOLightInventoryFragmentHandler::RemoveItem(const FGameplayTag& RemoveTa
 
 int32 FRTSOLightInventoryFragmentHandler::GetItemCount(const FGameplayTag& Key) const
 {
-	return  Inner.FindOrAdd(Key).TotalItemCount;
+	FPDLightItemDatum* DatumPtr = Inner.Find(Key);
+	return DatumPtr ? DatumPtr->TotalItemCount : 0;
 }
 
 bool FRTSOLightInventoryFragmentHandler::IsEmpty() const

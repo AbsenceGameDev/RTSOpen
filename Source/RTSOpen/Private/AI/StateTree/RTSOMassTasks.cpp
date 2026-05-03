@@ -63,7 +63,7 @@ EStateTreeRunStatus FRTSOTask_ActionLog::EnterState(FStateTreeExecutionContext& 
 
 
 // @note Some more mapped data and I won't need to have to search like this at all
-FPDRTSTSetActorWrapper FRTSOTask_BringBackResource::FindAmountOfResourceActorsNearGridCell(const FMassEntityHandle& EntityHandle, const FRTSOFindResourcesParameters& Params) //FPDGridCell GridCell, const FGameplayTag& ResourceType, int32 TargetResourceAmount)
+FPDRTSTSetActorWrapper FRTSOTask_BringBackResource::FindAmountOfResourceActorsNearGridCell(const FMassEntityHandle& EntityHandle, const FRTSOFindResourcesParameters& Params)
 {
 	UE_LOG(LogTemp, Warning, TEXT("FRTSOTask_BringBackResource::FindResourceActors"));
 	UPDRTSBaseSubsystem* RTSSubsystem = UPDRTSBaseSubsystem::Get();
@@ -77,10 +77,16 @@ FPDRTSTSetActorWrapper FRTSOTask_BringBackResource::FindAmountOfResourceActorsNe
 		TSet<const AActor*> ActorSet = RTSSubsystem->GetResourceActorsNearGridCellWithResourceType(Params);
 		for (const AActor* Actor : ActorSet)
 		{
+			UE_LOG(LogTemp, Warning, TEXT("======== - Step - %s"), *Actor->GetName());
+
 			if (const ARTSOInteractableResourceBase* AsResource = Cast<ARTSOInteractableResourceBase>(Actor))
 			{
 				const int32 ActorsTotalItemCount = AsResource->GetInventoryFragment().Handler.GetItems().FindRef(Params.ResourceType).TotalItemCount;
-				if (ActorsTotalItemCount <= 0) {continue;}
+				if (ActorsTotalItemCount <= 0) 
+				{
+					UE_LOG(LogTemp, Warning, TEXT("================= Skip -- Actor has no items"));
+					continue;
+				}
 				
 				ViableTargets.Actors.Emplace(Actor);
 				
@@ -88,6 +94,7 @@ FPDRTSTSetActorWrapper FRTSOTask_BringBackResource::FindAmountOfResourceActorsNe
 				FRTSEntityResourceGatherTarget GatherTarget = FRTSEntityResourceGatherTarget{Actor, (Remainder >= 0 ? INDEX_NONE : ActorsTotalItemCount)};
 				
 				RTSSubsystem->AddEntityResourceTarget(EntityHandle, GatherTarget);
+				UE_LOG(LogTemp, Warning, TEXT("======== - Added as Resource target"));
 
 				if (Remainder <= 0) {break;}
 			}
@@ -123,26 +130,25 @@ EStateTreeRunStatus FRTSOTask_BringBackResource::EnterState(FStateTreeExecutionC
 	const FMassMovementParameters& MoveParameters = Context.GetExternalData(MoveParametersHandle);
 	FPDMFragment_RTSEntityBase& RTSData = Context.GetExternalData(RTSDataHandle);
 	const FTransformFragment& TransformFragment = Context.GetExternalData(TransformHandle);
-	const FRTSOLightInventoryFragment& EntityInventoryFragment = Context.GetExternalData(InventoryHandle);
 	FPDMFragment_Action& ActionFragment = Context.GetExternalData(ActionHandle);
+	const FRTSOLightInventoryFragment& EntityInventoryFragment = Context.GetExternalData(InventoryHandle);
 
 	const FMassStateTreeExecutionContext& MassContext = static_cast<FMassStateTreeExecutionContext&>(Context);
 	const FMassEntityHandle& EntityHandle = MassContext.GetEntity();	
-				
-
+			
 
 	ARTSOInteractableBuildingBase* AsBuildingBase = Cast<ARTSOInteractableBuildingBase>(ActionFragment.OptTargets.ActionTargetAsActor);
 	if (AsBuildingBase)
 	{
-		UE_LOG(LogTemp, Warning, TEXT("FRTSOTask_BringBackResource::EnterState -- Target Is Building"));
+		UE_LOG(LogTemp, Warning, TEXT("======= Target Is Building"));
 
-		FRTSOLightInventoryFragment BuildingAvailableInventorySpace = AsBuildingBase->CalculateFreeInventorySpace();
+		const FRTSOLightInventoryFragment& BuildingAvailableInventorySpace = AsBuildingBase->CalculateFreeInventorySpace();
 
 		bool bCantAfford = false;
 		TMap<FGameplayTag, int32> MissingItems;
-		for (auto&[ResourceType, ItemDatum] : BuildingAvailableInventorySpace.Handler.GetItems())
+		for (const auto&[ResourceType, ItemDatum] : BuildingAvailableInventorySpace.Handler.GetItems())
 		{
-			int32 DeltaItemStorage = ItemDatum.TotalItemCount; // - EntityInventoryFragment.Handler.GetItemCount(ResourceType);
+			const int32 DeltaItemStorage = ItemDatum.TotalItemCount; // - EntityInventoryFragment.Handler.GetItemCount(ResourceType);  // uncomment before pushing
 			const bool bCantAffordItem = DeltaItemStorage > 0;
 			if (bCantAffordItem)
 			{
@@ -151,7 +157,7 @@ EStateTreeRunStatus FRTSOTask_BringBackResource::EnterState(FStateTreeExecutionC
 			}
 		}
 
-		UE_LOG(LogTemp, Warning, TEXT("FRTSOTask_BringBackResource::EnterState -- Building needs resources:"));
+		UE_LOG(LogTemp, Warning, TEXT("======= Building needs resources:"));
 		for (auto&[ResourceType, Count] : MissingItems)
 		{
 			UE_LOG(LogTemp, Warning, TEXT("                                                   -- %s : %i"), *ResourceType.ToString(), Count);
@@ -163,7 +169,7 @@ EStateTreeRunStatus FRTSOTask_BringBackResource::EnterState(FStateTreeExecutionC
 		// TODO: Finish the changes needed to dispatch the list of items needed
 		if (bCantAfford)
 		{
-			UE_LOG(LogTemp, Warning, TEXT("FRTSOTask_BringBackResource::EnterState -- Can't Afford -> Build resource path"));
+			UE_LOG(LogTemp, Warning, TEXT("============== Can't Afford -> Build resource path"));
 
 			const FVector& EntityLocation = TransformFragment.GetTransform().GetLocation();
 			int32 TaskCounter = 0;
@@ -183,7 +189,7 @@ EStateTreeRunStatus FRTSOTask_BringBackResource::EnterState(FStateTreeExecutionC
 				// @done: also check if overwriting the movetarget here is one and done or if I need to do something else in the moveto processor -- Looks like we are fine, just need to handle things in the tick here below
 				const FRTSEntityResourceGatherTarget& FirstPath = ResourceTargets->Targets[CurrentPathIndex++];
 
-				UE_LOG(LogTemp, Warning, TEXT("FRTSOTask_BringBackResource::EnterState -- Found resource targets(%i):"), ResourceTargets->Targets.Num());
+				UE_LOG(LogTemp, Warning, TEXT("============== Found resource targets(%i):"), ResourceTargets->Targets.Num());
 				for (const FRTSEntityResourceGatherTarget& ResourceTarget : ResourceTargets->Targets)
 				{
 					const AActor* Target = ResourceTarget.Target;
@@ -191,20 +197,20 @@ EStateTreeRunStatus FRTSOTask_BringBackResource::EnterState(FStateTreeExecutionC
 				}
 						
 				
-				
+				UE_LOG(LogTemp, Warning, TEXT("======= Going to first target(%s):"), FirstPath.Target ? *FirstPath.Target->GetName() : *FString("INVALID"));
 				FRTSOTask_BringBackResource::FInstanceDataType& InstanceData = Context.GetInstanceData(*this);
 				FPDTargetCompound CachedOptTargets = InstanceData.OptTargets;
 				InstanceData.OptTargets = FPDTargetCompound{FMassEntityHandle{0, 0}, FMassInt16Vector{}, const_cast<AActor*>(FirstPath.Target)}; // We only read from this actor pointer after this point, so the const cast should not cause problems
 				
 				EStateTreeRunStatus TriggerMoveResult = FPDMTaskStatics::TriggerMove<FRTSOTask_BringBackResource>(this, Context, EntitySubsystem, MoveTarget, MoveParameters, RTSData, TransformFragment);
-				InstanceData.OptTargets = CachedOptTargets;
+				// InstanceData.OptTargets = CachedOptTargets;
 
 				return TriggerMoveResult;
 			}
 		}
 		else
 		{
-			UE_LOG(LogTemp, Warning, TEXT("FRTSOTask_BringBackResource::EnterState -- Can already Afford"));
+			UE_LOG(LogTemp, Warning, TEXT("======= Can already Afford"));
 		}
 	}
 	
@@ -225,10 +231,6 @@ EStateTreeRunStatus FRTSOTask_BringBackResource::Tick(FStateTreeExecutionContext
 	const FMassStateTreeExecutionContext& MassContext = static_cast<FMassStateTreeExecutionContext&>(Context);
 	const FTransformFragment& TransformFragment = Context.GetExternalData(TransformHandle);
 
-	if(1)
-	{
-		return EStateTreeRunStatus::Running;
-	}
 
 	//
 	// Should ensure that we are on our way to a resource or not, and if we are, as sson as we trigger the interaction we move on to the next resource

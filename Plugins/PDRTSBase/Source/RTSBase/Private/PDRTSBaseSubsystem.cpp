@@ -431,10 +431,10 @@ TSet<const AActor*> UPDRTSBaseSubsystem::GetResourceActorsNearGridCellWithResour
 		Intersection.Append(FoundResourceMappedEntry->Actors.Intersect(FoundGridCellMappedEntry->Actors));
 	}
 
-	UE_LOG(LogTemp, Warning, TEXT("UPDRTSBaseSubsystem::NearGridCellWithResource -- Intersection size(%i):"), Intersection.Num());
+	UE_LOG(LogTemp, Warning, TEXT("======== Intersection size(%i):"), Intersection.Num());
 	for (const AActor* ResourceTarget : Intersection)
 	{
-		UE_LOG(LogTemp, Warning, TEXT("                                                   -- %s : %i"), ResourceTarget ? *ResourceTarget->GetName() : *FString("INVALID OBJECT") );
+		UE_LOG(LogTemp, Warning, TEXT("================= %s : %i"), ResourceTarget ? *ResourceTarget->GetName() : *FString("INVALID OBJECT") );
 	}
 
 	if (false == TrackedResourceGroupsPerGridCellNeighbours.Contains(SearchParams.GridCell))
@@ -446,8 +446,9 @@ TSet<const AActor*> UPDRTSBaseSubsystem::GetResourceActorsNearGridCellWithResour
 	// crude depth search
 	TArray<FPDGridCell> Neighbours = TrackedResourceGroupsPerGridCellNeighbours[SearchParams.GridCell];
 	TSet<const AActor*> SearchSet = FPDEntityStatics::CrudeDepthSearch<TSet<const AActor*>>(Neighbours, TrackedResourceGroupsPerGridCellNeighbours, TrackedResourceGroupsPerGridCell, SearchParams.SearchDepth, FoundResourceMappedEntry ? FoundResourceMappedEntry->Actors : TSet<const AActor*>{});
+	SearchSet.Append(Intersection);
 
-	return Intersection;	
+	return SearchSet;
 }
 
 

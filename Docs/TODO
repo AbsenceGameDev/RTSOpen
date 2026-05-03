@@ -535,6 +535,19 @@ May 3rd 2026 - Commit#0:
 DONE:
     ✔ Cleaned up the code for the depth based searching for entities and resources, mostly moved things into template functions in 'FPDEntityStatics' so I could reuse similar logic @done(26-05-03 06:39)
     ✔ Cleaned up entity list building a bit also movinge the function to a templated funciton in 'FPDEntityStatics' instead for reusability @done(26-05-03 06:39)
+
+
+May 3rd 2026 - Commit#4:
+DONE:
+    ✔ Inventories or resource actors weren't being set properly: small instance of incorrect math in FRTSOLightInventoryFragmentHandler::AddItem @done(26-05-03 12:45)
+    ✔ Noticed an instance of me leaving a CurdeDepthSearch result unused @done(26-05-03 12:45)
+    ✔ Adding too many logs, will remove them when I have this all sorted out. @done(26-05-03 12:45)
+        - Note: some of the issues have liekly been resolved with the inventory functions math fixed, but I have yet to test it
+
+
+May 3rd 2026 - Commit#5:
+DONE:
+
 TODO: 
     ☐ Enable building costs again, and test harvesting general resources 
     ☐ Need to mock up some in-game, non-debug, widgets: 
@@ -543,6 +556,10 @@ TODO:
         - 3. For showing resources in the current player persistent inventory
         - 4. For showing how much a building costs to build (this may already exist in the building context buttons, may need to ensure this)
         - 5. Genral Entity Action preview widget, so a selected entities current action may be known
+
+
+
+FRTSOLightInventoryFragmentHandler::AddItem
 
 
 
