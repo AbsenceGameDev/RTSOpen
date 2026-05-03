@@ -411,13 +411,14 @@ TSet<const AActor*> UPDRTSBaseSubsystem::GetResourceActorsAtGridCellWithResource
 
 TSet<const AActor*> UPDRTSBaseSubsystem::GetResourceActorsNearGridCellWithResourceType(const FRTSOFindResourcesParameters& SearchParams)
 {
+	UE_LOG(LogTemp, Warning, TEXT("UPDRTSBaseSubsystem::NearGridCellWithResource"));
+
 	if (SearchParams.SearchDepth <= 0)
 	{
 		return GetResourceActorsAtGridCellWithResourceType(SearchParams);
 	}
 	
-	//
-	// Iterate both directions from starting cell
+
 	static constexpr int32 MaxIntersectionElement = 40000; 
 	TSet<const AActor*> Intersection;
 	Intersection.Reserve(MaxIntersectionElement);
@@ -428,6 +429,12 @@ TSet<const AActor*> UPDRTSBaseSubsystem::GetResourceActorsNearGridCellWithResour
 	if (FoundResourceMappedEntry && FoundGridCellMappedEntry)
 	{
 		Intersection.Append(FoundResourceMappedEntry->Actors.Intersect(FoundGridCellMappedEntry->Actors));
+	}
+
+	UE_LOG(LogTemp, Warning, TEXT("UPDRTSBaseSubsystem::NearGridCellWithResource -- Intersection size(%i):"), Intersection.Num());
+	for (const AActor* ResourceTarget : Intersection)
+	{
+		UE_LOG(LogTemp, Warning, TEXT("                                                   -- %s : %i"), ResourceTarget ? *ResourceTarget->GetName() : *FString("INVALID OBJECT") );
 	}
 
 	if (false == TrackedResourceGroupsPerGridCellNeighbours.Contains(SearchParams.GridCell))

@@ -65,12 +65,9 @@ EStateTreeRunStatus FRTSOTask_ActionLog::EnterState(FStateTreeExecutionContext& 
 // @note Some more mapped data and I won't need to have to search like this at all
 FPDRTSTSetActorWrapper FRTSOTask_BringBackResource::FindAmountOfResourceActorsNearGridCell(const FMassEntityHandle& EntityHandle, const FRTSOFindResourcesParameters& Params) //FPDGridCell GridCell, const FGameplayTag& ResourceType, int32 TargetResourceAmount)
 {
+	UE_LOG(LogTemp, Warning, TEXT("FRTSOTask_BringBackResource::FindResourceActors"));
 	UPDRTSBaseSubsystem* RTSSubsystem = UPDRTSBaseSubsystem::Get();
 	RTSSubsystem->RemoveEntityResourceTarget(EntityHandle);
-
-
-	bool bFoundViableResourceActor = false;
-
 
 	// @note THIS ONLY LOOKS AT THE CURRENT GRIDCELL; NEED TO WRITE A FUNCTION THAT ITERATES OUTWARD FROM THIS GRIDCELL AND LOOKS THERE
 	// OR POTENTIALLY MAPPING THINGS IN THE SUBSYSTEM ENOUGH THAT I DO NOT HAVE TO SEARCH
@@ -150,7 +147,7 @@ EStateTreeRunStatus FRTSOTask_BringBackResource::EnterState(FStateTreeExecutionC
 			if (bCantAffordItem)
 			{
 				MissingItems.Emplace(ResourceType, DeltaItemStorage);
-				bCantAfford = false;
+				bCantAfford = true;
 			}
 		}
 
@@ -166,6 +163,8 @@ EStateTreeRunStatus FRTSOTask_BringBackResource::EnterState(FStateTreeExecutionC
 		// TODO: Finish the changes needed to dispatch the list of items needed
 		if (bCantAfford)
 		{
+			UE_LOG(LogTemp, Warning, TEXT("FRTSOTask_BringBackResource::EnterState -- Can't Afford -> Build resource path"));
+
 			const FVector& EntityLocation = TransformFragment.GetTransform().GetLocation();
 			int32 TaskCounter = 0;
 			for (const auto&[ResourceType, MissingItemCount] : MissingItems) 
@@ -178,10 +177,10 @@ EStateTreeRunStatus FRTSOTask_BringBackResource::EnterState(FStateTreeExecutionC
 				}
 			}
 			PathLimit = TaskCounter;
-			if (TaskCounter != 0)
+			FPDRTSTGatherTargetsWrapper* ResourceTargets = RTSSubsystem->GetEntityResourceTargets(EntityHandle);
+			if (TaskCounter != 0 && ResourceTargets)
 			{
 				// @done: also check if overwriting the movetarget here is one and done or if I need to do something else in the moveto processor -- Looks like we are fine, just need to handle things in the tick here below
-				FPDRTSTGatherTargetsWrapper* ResourceTargets = RTSSubsystem->GetEntityResourceTargets(EntityHandle);
 				const FRTSEntityResourceGatherTarget& FirstPath = ResourceTargets->Targets[CurrentPathIndex++];
 
 				UE_LOG(LogTemp, Warning, TEXT("FRTSOTask_BringBackResource::EnterState -- Found resource targets(%i):"), ResourceTargets->Targets.Num());
@@ -202,6 +201,10 @@ EStateTreeRunStatus FRTSOTask_BringBackResource::EnterState(FStateTreeExecutionC
 
 				return TriggerMoveResult;
 			}
+		}
+		else
+		{
+			UE_LOG(LogTemp, Warning, TEXT("FRTSOTask_BringBackResource::EnterState -- Can already Afford"));
 		}
 	}
 	

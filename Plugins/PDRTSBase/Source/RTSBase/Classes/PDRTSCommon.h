@@ -268,16 +268,51 @@ struct PDRTSBASE_API FPDEntityStatics
 			}
 		}		
 		return CopiedEntityHandles;
+	}
+	
+
+	static TSet<FPDGridCell> FindAllPotentialNeighours(const FPDGridCell& GridCell)
+	{
+		TSet<FPDGridCell> FoundNeighbours;
+		constexpr int32 MaxNeighbourDim = 3;
+		FPDGridCell StartGridCell = GridCell + FPDGridCell::Construct(-1);
+
+		// Likely inefficient in a tight loop, rewrite into flat 1dim loop whenever it becomes a problem
+		for (int32 CellStepsX = 0; CellStepsX < MaxNeighbourDim; CellStepsX++)
+		{
+			int32 CurrentX = CellStepsX;
+			for (int32 CellStepsY = 0; CellStepsY < MaxNeighbourDim; CellStepsY++)
+			{
+				for (int32 CellStepsZ = 0; CellStepsZ < MaxNeighbourDim; CellStepsZ++)
+				{
+					FPDGridCell PotentialNeighbour = StartGridCell + FPDGridCell::Construct(CellStepsX, CellStepsY, CellStepsZ);
+					if(PotentialNeighbour == GridCell) {continue;}
+					FoundNeighbours.Emplace(PotentialNeighbour);
+				}
+			}
+		}
+		return FoundNeighbours;
 	}	
 
-	//TSet<const AActor*> Intersection;
-	TSet<const AActor*> FoundResourceMappedEntry;
-	//TMap<FPDGridCell /*Gridcell*/, TArray<FPDGridCell> /*Neighbours*/>
+
 	template<typename TReturnType, typename TGridCellSource>
 	static TReturnType CrudeDepthSearch(TArray<FPDGridCell> Neighbours, TMap<FPDGridCell, TArray<FPDGridCell>> NeighbourMapping, TGridCellSource GridCellSource, int32 SearchDepth, TSet<const AActor*> ResourceMappedEntry = {})
 	{
 		constexpr bool bIsSet = TIsSpecialization<TReturnType, TSet>{};
 		constexpr bool bIsDeque = TIsSpecialization<TReturnType, TDeque>{};
+
+		if constexpr(bIsSet)
+		{
+			UE_LOG(LogTemp, Warning, TEXT("UPDRTSBaseSubsystem::CrudeDepthSearch -- NeighboursArray Size: %i"), Neighbours.Num());
+			UE_LOG(LogTemp, Warning, TEXT("UPDRTSBaseSubsystem::CrudeDepthSearch -- NeighbourMapping Size: %i"), NeighbourMapping.Num());
+			UE_LOG(LogTemp, Warning, TEXT("UPDRTSBaseSubsystem::CrudeDepthSearch -- ResourceMappedEntry Size: %i"), ResourceMappedEntry.Num());
+			
+			if (Neighbours.IsEmpty())
+			{
+				FPDGridCell FallbackKey = GridCellSource.CreateIterator().Key();	
+				Neighbours = FPDEntityStatics::FindAllPotentialNeighours(FallbackKey).Array();
+			}
+		}
 
 		TReturnType Final;
 		for(int32 SearchStep = 1; SearchStep < SearchDepth; SearchStep++)
@@ -290,7 +325,12 @@ struct PDRTSBASE_API FPDEntityStatics
 					auto FoundGridCellMappedEntry = GridCellSource.Find(Neighbour);
 					if (FoundGridCellMappedEntry)
 					{
+						UE_LOG(LogTemp, Warning, TEXT("UPDRTSBaseSubsystem::CrudeDepthSearch -- Found actors(%i) for Cell(%s)"), FoundGridCellMappedEntry->Actors.Num(), *Neighbour.ToString());
 						Final.Append(ResourceMappedEntry.Intersect(FoundGridCellMappedEntry->Actors));
+					}
+					else
+					{
+						UE_LOG(LogTemp, Warning, TEXT("UPDRTSBaseSubsystem::CrudeDepthSearch -- Failed finding actors for Cell(%s)"), *Neighbour.ToString());
 					}
 				}
 				if constexpr(bIsDeque)
@@ -309,6 +349,11 @@ struct PDRTSBASE_API FPDEntityStatics
 				if (PotentialNeighbours)
 				{
 					NextNeighbours.Append(*PotentialNeighbours);
+
+					if constexpr(bIsSet)
+					{
+						UE_LOG(LogTemp, Warning, TEXT("UPDRTSBaseSubsystem::CrudeDepthSearch -- PotentialNeighbours For Next Step Size: %i"), PotentialNeighbours->Num());
+					}					
 				}
 				
 			}

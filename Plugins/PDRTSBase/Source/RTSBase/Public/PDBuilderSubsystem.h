@@ -116,7 +116,7 @@ private:
 	void ReadValidNeighboursForCell(const FPDGridCell& ActorCell, TSet<FPDGridCell> ValidNeighbours) const
 	{
 		TSet<FPDGridCell> AllPotentialNeighbours;
-		AllPotentialNeighbours.Append(FindAllPotentialNeighours(ActorCell));
+		AllPotentialNeighbours.Append(FPDEntityStatics::FindAllPotentialNeighours(ActorCell));
 		
 		for (const FPDGridCell& PotentialNeighbour : AllPotentialNeighbours)
 		{
@@ -134,7 +134,7 @@ private:
 		TSet<FPDGridCell> AllPotentialNeighbours;
 		AllPotentialNeighbours.Emplace(ActorCell);
 		
-		Neighbours = FindAllPotentialNeighours(ActorCell);
+		Neighbours = FPDEntityStatics::FindAllPotentialNeighours(ActorCell);
 		AllPotentialNeighbours.Append(Neighbours);
 		
 		for(int32 SearchStep = 1; SearchStep < SearchDepth; SearchStep++)
@@ -142,7 +142,7 @@ private:
 			TSet<FPDGridCell> NextNeighbours;
 			for (const FPDGridCell& Neighbour : Neighbours)
 			{
-				NextNeighbours.Append(FindAllPotentialNeighours(Neighbour));
+				NextNeighbours.Append(FPDEntityStatics::FindAllPotentialNeighours(Neighbour));
 			}
 			Neighbours = NextNeighbours;
 			AllPotentialNeighbours.Append(NextNeighbours);
@@ -320,29 +320,6 @@ protected:
 		}
 		return FoundNeighbours;
 	}
-
-	TSet<FPDGridCell> FindAllPotentialNeighours(const FPDGridCell& GridCell) const
-	{
-		TSet<FPDGridCell> FoundNeighbours;
-		constexpr int32 MaxNeighbourDim = 3;
-		FPDGridCell StartGridCell = GridCell - FPDGridCell::Construct(-1);
-
-		// Likely inefficient in a tight loop, rewrite into flat 1dim loop whenever it becomes a problem
-		for (int32 CellStepsX = 0; CellStepsX < MaxNeighbourDim; CellStepsX++)
-		{
-			int32 CurrentX = CellStepsX;
-			for (int32 CellStepsY = 0; CellStepsY < MaxNeighbourDim; CellStepsY++)
-			{
-				for (int32 CellStepsZ = 0; CellStepsZ < MaxNeighbourDim; CellStepsZ++)
-				{
-					FPDGridCell PotentialNeighbour = StartGridCell + FPDGridCell::Construct(CellStepsX, CellStepsY, CellStepsZ);
-					if(PotentialNeighbour == GridCell) {continue;}
-					FoundNeighbours.Emplace(PotentialNeighbour);
-				}
-			}
-		}
-		return FoundNeighbours;
-	}	
 
 	bool IsSelectionValid(const TArray<FPDGridCell>& GridCellArray)
 	{
