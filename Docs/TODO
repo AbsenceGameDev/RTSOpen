@@ -549,7 +549,14 @@ May 3rd 2026 - Commit#XX:
 TODO - PRIO:
     - The entity goes and interacts with some resources,  action log says this is successful, but when it goes back to the storage building the action log does not update
         - This could mean the interaction between teh entity and storage fails but I need to rule out that the action log initally isn't outputting incorrect info
-    - Fix this crash I got EOD today
+    - Fix the crash when accessing the inventory fragment in the mass task, or worst case skip the external data access and get from the entity manager 
+    - Fix this crash I got EOD today 
+        Assertion failed: (Index >= 0) & (Index < Count) [File:C:\Program Files\Epic Games\UE_5.3\Engine\Source\Runtime\Core\Public\Containers\Deque.h] [Line: 587] Parameter index 20 exceeds container size 20
+        UnrealEditor_StateTreeModule!FStateTreeExecutionContext::EnterState() [D:\build\++UE5\Sync\Engine\Plugins\Runtime\StateTree\Source\StateTreeModule\Private\StateTreeExecutionContext.cpp:834]
+        UnrealEditor_StateTreeModule!FStateTreeExecutionContext::Tick() [D:\build\++UE5\Sync\Engine\Plugins\Runtime\StateTree\Source\StateTreeModule\Private\StateTreeExecutionContext.cpp:456]
+        UnrealEditor_MassAIBehavior!``UMassStateTreeProcessor::SignalEntities'::`2'::<lambda_1>::operator()'::`2'::<lambda_1>::operator()() [D:\build\++UE5\Sync\Engine\Plugins\AI\MassAI\Source\MassAIBehavior\Private\MassStateTreeProcessors.cpp:459]
+        UnrealEditor_MassAIBehavior!UE::MassBehavior::ForEachEntityInChunk<``UMassStateTreeProcessor::SignalEntities'::`2'::<lambda_1>::operator()'::`2'::<lambda_1> >() [D:\build\++UE5\Sync\Engine\Plugins\AI\MassAI\Source\MassAIBehavior\Private\MassStateTreeProcessors.cpp:191]
+        UnrealEditor_MassAIBehavior!`UMassStateTreeProcessor::SignalEntities'::`2'::<lambda_1>::operator()() [D:\build\++UE5\Sync\Engine\Plugins\AI\MassAI\Source\MassAIBehavior\Private\MassStateTreeProcessors.cpp:470]
 
 TODO: 
     ☐ Enable building costs again, and test harvesting general resources 
