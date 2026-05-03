@@ -545,8 +545,11 @@ DONE:
         - Note: some of the issues have liekly been resolved with the inventory functions math fixed, but I have yet to test it
 
 
-May 3rd 2026 - Commit#5:
-DONE:
+May 3rd 2026 - Commit#XX:
+TODO - PRIO:
+    - The entity goes and interacts with some resources,  action log says this is successful, but when it goes back to the storage building the action log does not update
+        - This could mean the interaction between teh entity and storage fails but I need to rule out that the action log initally isn't outputting incorrect info
+    - Fix this crash I got EOD today
 
 TODO: 
     ☐ Enable building costs again, and test harvesting general resources 
