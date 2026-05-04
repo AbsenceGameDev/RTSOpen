@@ -22,6 +22,15 @@ struct FRTSOLightInventoryFragmentHandler
 	
 	/** @brief Clear the items this fragment holds */
 	virtual void ClearItems();
+
+	/** @brief Returns how many of the item we are able to transfer to the targer */
+	virtual int32 CalculateItemTransfer(const FGameplayTag& ResourceTag, int32 MaxRequestedCount);
+
+	/** @brief Transfer selection of items from the bound fragment to a target fragment */
+	virtual FString TransferItems(const FRTSOLightInventoryFragment& MaxItemsRequested, FRTSOLightInventoryFragment& TargetFragment, bool bLogAction = false);
+	/** @brief Transfer selection of items from the bound fragment to a inventory component */
+	virtual FString TransferItems(const FRTSOLightInventoryFragment& MaxItemsRequested, UPDInventoryComponent& TargetInventory, bool bLogAction = false);
+	
 	/** @brief Transfer items from the bound fragment to a target fragment */
 	virtual void TransferItems(FRTSOLightInventoryFragment& OtherFragment);
 	/** @brief Transfer items from the bound fragment to a target inventory component */
@@ -79,7 +88,7 @@ struct FRTSOLightInventoryFragment : public FMassFragment
 	/** @brief If we have nothing in our list at all we count  */
 	bool HasFiniteSpace() 
 	{
-		
+		return false;
 	}
 
 	/** @brief Assigns the other fragments inner to our inner. then overwrite the handler with a new handler bound to the new inner */

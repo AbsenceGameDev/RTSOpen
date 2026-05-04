@@ -82,6 +82,16 @@ public:
 	 * @param EntityInv (Optional calling entity)
 	 * @param ImmutableStage (Current stage of buildable) */
 	bool WithdrawRecurringCostFromBankOrEntity(UPDInventoryComponent* Bank, FRTSOLightInventoryFragment* EntityInv, const int32& ImmutableStage);
+
+	/** @brief If able, withdraws everything in the inventory from the bank or entity.
+	 * @param Bank (Optional player inv)
+	 * @param EntityInv (Optional calling entity) */
+	FString WithdrawAllPossibleFromBankOrEntity(UPDInventoryComponent* Bank, FRTSOLightInventoryFragment* EntityInv, bool bLogAction = false);
+	/** @brief If able, deposits everything in the inventory to the bank or entity.
+	 * @param Bank (Optional player inv)
+	 * @param EntityInv (Optional calling entity) */
+	FString DepositAllPossibleToBankOrEntity(UPDInventoryComponent* Bank, FRTSOLightInventoryFragment* EntityInv, bool bLogAction = false);
+
 	/** @brief Handles processing if we require workers to build, requires resource per stages */
 	void ProcessIfWorkersRequired();
 	/** @brief Handles processing if we don't require workers to build. Fast-forwards through stages */

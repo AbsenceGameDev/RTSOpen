@@ -129,21 +129,20 @@ void ARTSOInteractableBuildingBase::OnInteract_Implementation(
 	const FPDInteractionParamsWithCustomHandling& InteractionParams,
 	EPDInteractResult& InteractResult) const
 {
-	// If ghost, we can only supply resources if we have any 
+	const UMassEntitySubsystem& EntitySubsystem = *GetWorld()->GetSubsystem<UMassEntitySubsystem>();
+	const bool bEntityValid = EntitySubsystem.GetEntityManager().IsEntityValid(InteractionParams.InstigatorEntity);
+	FRTSOLightInventoryFragment* EntityInv = bEntityValid ? EntitySubsystem.GetEntityManager().GetFragmentDataPtr<FRTSOLightInventoryFragment>(InteractionParams.InstigatorEntity) : nullptr;
+	FPDMFragment_Action* EntityAction = bEntityValid ? EntitySubsystem.GetEntityManager().GetFragmentDataPtr<FPDMFragment_Action>(InteractionParams.InstigatorEntity) : nullptr;
+	UPDInventoryComponent* Bank = InteractionParams.InstigatorActor != nullptr ? InteractionParams.InstigatorActor->GetComponentByClass<UPDInventoryComponent>() : nullptr;
+	ARTSOInteractableBuildingBase* MutableSelf = const_cast<ARTSOInteractableBuildingBase*>(this); // this will bite me in the ass
+	
+
 	if (bIsGhost_noSerialize)
 	{
-		const int32& ImmutableStage = CurrentTransitionState.CurrentStageIdx;
-		const UMassEntitySubsystem& EntitySubsystem = *GetWorld()->GetSubsystem<UMassEntitySubsystem>();
-		const bool bEntityValid = EntitySubsystem.GetEntityManager().IsEntityValid(InteractionParams.InstigatorEntity);
-
-		FRTSOLightInventoryFragment* EntityInv = bEntityValid ? EntitySubsystem.GetEntityManager().GetFragmentDataPtr<FRTSOLightInventoryFragment>(InteractionParams.InstigatorEntity) : nullptr;
-		UPDInventoryComponent* Bank = InteractionParams.InstigatorActor != nullptr ? InteractionParams.InstigatorActor->GetComponentByClass<UPDInventoryComponent>() : nullptr;
-
-		ARTSOInteractableBuildingBase* MutableSelf = const_cast<ARTSOInteractableBuildingBase*>(this); // this will bite me in the ass
 		// if it enters then it means the stage is finished, 
+		const int32& ImmutableStage = CurrentTransitionState.CurrentStageIdx;
 		if (MutableSelf->WithdrawRecurringCostFromBankOrEntity(Bank, EntityInv, ImmutableStage))
 		{
-			// Here
 			AsyncTask(ENamedThreads::GameThread,
 				[&]()
 				{
@@ -157,6 +156,28 @@ void ARTSOInteractableBuildingBase::OnInteract_Implementation(
 		InteractResult = EPDInteractResult::INTERACT_SUCCESS;
 		return;
 	}
+		
+	//
+	// Regular (non-ghost) interaction logic for storage type, Need to know if an entity is picking up or taking
+	if (EntityAction && InstigatorBuildableTag.ToString().Contains("Craftable.Storage"))
+	{
+		constexpr bool bLogAction = true;
+		const bool bWithdrawFromEntity = EntityAction->ActionTag == TAG_AI_Job_BringBackResource;
+		const FString TransferString = bWithdrawFromEntity 
+			? MutableSelf->WithdrawAllPossibleFromBankOrEntity(Bank, EntityInv, bLogAction) 
+			: MutableSelf->DepositAllPossibleToBankOrEntity(Bank, EntityInv, bLogAction);
+
+		if (bLogAction)
+		{
+			const FString EntityInventoryActionStr = bWithdrawFromEntity ? TEXT("Deposited into") : TEXT("Withdrew from");
+			const FRTSOActionLogEvent NewActionEvent{ TAG_ActionLog_Styling_Entry_T1, TAG_ActionLog_Styling_Timestamp_T1,
+				FString::Printf(TEXT("Entity(%i) -- %s storage: %s "),
+				InteractionParams.InstigatorEntity.AsNumber(), *EntityInventoryActionStr, *TransferString)};
+			const int32 InstigatorID = IPDRTSBuilderInterface::Execute_GetBuilderID(GetOwner());
+			URTSActionLogSubsystem::DispatchEvent(InstigatorID, NewActionEvent);
+		}
+	}
+
 
 	Super::OnInteract_Implementation(InteractionParams, InteractResult);
 }
@@ -358,6 +379,38 @@ void ARTSOInteractableBuildingBase::ProcessSpawn()
 	{
 		OnBuildSuccessful(GetOwner());
 	}
+}
+
+FString ARTSOInteractableBuildingBase::WithdrawAllPossibleFromBankOrEntity(UPDInventoryComponent* Bank, FRTSOLightInventoryFragment* EntityInv, bool bLogAction)
+{
+	FString RetVal;
+	if (EntityInv)
+	{
+		EntityInv->Handler.TransferItems(CalculateFreeInventorySpace(), GetCurrentInventory(), bLogAction);
+	}
+	
+	if (Bank)
+	{
+		// TODO need a similar Transfer function for the inventory component
+	}
+
+	return RetVal;
+}
+
+FString ARTSOInteractableBuildingBase::DepositAllPossibleToBankOrEntity(UPDInventoryComponent* Bank, FRTSOLightInventoryFragment* EntityInv, bool bLogAction)
+{
+	FString RetVal;
+	// TODO: Currently entities have unlimited inventory, when the do no have this anymore, remember to update 'ARTSOInteractableBuildingBase::DepositAllPossibleToBankOrEntity' to reflect this and call CalculateFreeInventorySpace() from the entitys inventory
+	if (EntityInv)
+	{
+		GetCurrentInventory().Handler.TransferItems(CalculateFreeInventorySpace(), *EntityInv, bLogAction);
+	}
+	
+	if (Bank)
+	{
+		// TODO need a similar Transfer function for the inventory component
+	}
+	return RetVal;
 }
 
 

@@ -131,11 +131,18 @@ EStateTreeRunStatus FRTSOTask_BringBackResource::EnterState(FStateTreeExecutionC
 	FPDMFragment_RTSEntityBase& RTSData = Context.GetExternalData(RTSDataHandle);
 	const FTransformFragment& TransformFragment = Context.GetExternalData(TransformHandle);
 	FPDMFragment_Action& ActionFragment = Context.GetExternalData(ActionHandle);
-	const FRTSOLightInventoryFragment& EntityInventoryFragment = Context.GetExternalData(InventoryHandle);
 
+	
 	const FMassStateTreeExecutionContext& MassContext = static_cast<FMassStateTreeExecutionContext&>(Context);
 	const FMassEntityHandle& EntityHandle = MassContext.GetEntity();	
-			
+	
+	// Getting the fragment from teh context is causing a crash, wihtout time to debug it, this is the best way around it for now
+	const FRTSOLightInventoryFragment* EntityInventoryFragment = EntitySubsystem.GetEntityManager().GetFragmentDataPtr<FRTSOLightInventoryFragment>(EntityHandle);
+	//const FRTSOLightInventoryFragment& EntityInventoryFragment = Context.GetExternalData(InventoryHandle);
+	if(false == ensure(EntityInventoryFragment))
+	{
+		return EStateTreeRunStatus::Failed;
+	}
 
 	ARTSOInteractableBuildingBase* AsBuildingBase = Cast<ARTSOInteractableBuildingBase>(ActionFragment.OptTargets.ActionTargetAsActor);
 	if (AsBuildingBase)
@@ -148,7 +155,7 @@ EStateTreeRunStatus FRTSOTask_BringBackResource::EnterState(FStateTreeExecutionC
 		TMap<FGameplayTag, int32> MissingItems;
 		for (const auto&[ResourceType, ItemDatum] : BuildingAvailableInventorySpace.Handler.GetItems())
 		{
-			const int32 DeltaItemStorage = ItemDatum.TotalItemCount; // - EntityInventoryFragment.Handler.GetItemCount(ResourceType);  // uncomment before pushing
+			const int32 DeltaItemStorage = ItemDatum.TotalItemCount - EntityInventoryFragment->Handler.GetItemCount(ResourceType);  // uncomment before pushing
 			const bool bCantAffordItem = DeltaItemStorage > 0;
 			if (bCantAffordItem)
 			{

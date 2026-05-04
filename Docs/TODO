@@ -545,10 +545,14 @@ DONE:
         - Note: some of the issues have liekly been resolved with the inventory functions math fixed, but I have yet to test it
 
 
-May 3rd 2026 - Commit#XX:
+May 4th 2026 - Commit#0:
+    ✔ Programmed missing interaction logic for buildings outside of ghost stages @done(26-05-04 07:09)
+        - Still have some crashes to sort out, will leave all logs and actionlog entries still here for the time beaing
+
+May 4th 2026 - Commit#XX:
 TODO - PRIO:
     - The entity goes and interacts with some resources,  action log says this is successful, but when it goes back to the storage building the action log does not update
-        - This could mean the interaction between teh entity and storage fails but I need to rule out that the action log initally isn't outputting incorrect info
+        - This could mean the interaction between the§ entity and storage fails but I need to rule out that the action log initally isn't outputting incorrect info
     - Fix the crash when accessing the inventory fragment in the mass task, or worst case skip the external data access and get from the entity manager 
     - Fix this crash I got EOD today 
         Assertion failed: (Index >= 0) & (Index < Count) [File:C:\Program Files\Epic Games\UE_5.3\Engine\Source\Runtime\Core\Public\Containers\Deque.h] [Line: 587] Parameter index 20 exceeds container size 20
@@ -558,7 +562,9 @@ TODO - PRIO:
         UnrealEditor_MassAIBehavior!UE::MassBehavior::ForEachEntityInChunk<``UMassStateTreeProcessor::SignalEntities'::`2'::<lambda_1>::operator()'::`2'::<lambda_1> >() [D:\build\++UE5\Sync\Engine\Plugins\AI\MassAI\Source\MassAIBehavior\Private\MassStateTreeProcessors.cpp:191]
         UnrealEditor_MassAIBehavior!`UMassStateTreeProcessor::SignalEntities'::`2'::<lambda_1>::operator()() [D:\build\++UE5\Sync\Engine\Plugins\AI\MassAI\Source\MassAIBehavior\Private\MassStateTreeProcessors.cpp:470]
 
+        
 TODO: 
+    ☐ Currently entities have unlimited inventory, when the do no have this anymore, remember to update 'ARTSOInteractableBuildingBase::DepositAllPossibleToBankOrEntity' to reflect this
     ☐ Enable building costs again, and test harvesting general resources 
     ☐ Need to mock up some in-game, non-debug, widgets: 
         - 1. For showing resources that a selected entity is carrying
@@ -566,7 +572,8 @@ TODO:
         - 3. For showing resources in the current player persistent inventory
         - 4. For showing how much a building costs to build (this may already exist in the building context buttons, may need to ensure this)
         - 5. Genral Entity Action preview widget, so a selected entities current action may be known
-
+@todo Currently entities have unlimited inventory, when the do no have this anymore, remember to update 'ARTSOInteractableBuildingBase::DepositAllPossibleToBankOrEntity' to reflect this
+        
 
 
 FRTSOLightInventoryFragmentHandler::AddItem

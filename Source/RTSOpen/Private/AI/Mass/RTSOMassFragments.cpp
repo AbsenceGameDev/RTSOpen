@@ -8,6 +8,52 @@ void FRTSOLightInventoryFragmentHandler::ClearItems()
 	Inner.Empty();
 }
 
+int32 FRTSOLightInventoryFragmentHandler::CalculateItemTransfer(const FGameplayTag& ResourceTag, int32 MaxRequestedCount)
+{
+	if (false == Inner.Contains(ResourceTag)) {return INDEX_NONE;}
+
+	const int32 CountAfterTransaction = Inner[ResourceTag].TotalItemCount - MaxRequestedCount;
+	const bool bCanAfford = CountAfterTransaction >= 0;
+	return bCanAfford 
+		? MaxRequestedCount
+		: MaxRequestedCount + CountAfterTransaction;	
+}
+
+
+FString FRTSOLightInventoryFragmentHandler::TransferItems(const FRTSOLightInventoryFragment& MaxItemsRequested, FRTSOLightInventoryFragment& TargetFragment, bool bLogAction)
+{
+	FString RetVal;
+	for (const auto&[ResourceTag, MaxRequestedItem] : MaxItemsRequested.Inner)
+	{
+		const int32 FinalTransferCount = CalculateItemTransfer(ResourceTag, MaxRequestedItem.TotalItemCount);
+		TargetFragment.Handler.AddItem(ResourceTag, FinalTransferCount);
+		RemoveItem(ResourceTag, FinalTransferCount);
+
+		if (bLogAction) 
+		{
+			FString StrippedResourceName = ResourceTag.ToString();
+			StrippedResourceName = StrippedResourceName.RightChop(StrippedResourceName.Find(TEXT("."), ESearchCase::IgnoreCase, ESearchDir::FromEnd));
+			RetVal += FString::Printf(TEXT("(%i : %s),"), FinalTransferCount, *StrippedResourceName);
+		}
+	}
+
+	return RetVal;
+}
+
+FString FRTSOLightInventoryFragmentHandler::TransferItems(const FRTSOLightInventoryFragment& MaxItemsRequested, UPDInventoryComponent& TargetInventory, bool bLogAction)
+{
+	FString RetVal = bLogAction ? TEXT("Transfered Items:") : FString{};
+	for (auto&[ResourceTag, MaxRequestedItem] : MaxItemsRequested.Inner)
+	{
+		const int32 FinalTransferCount = CalculateItemTransfer(ResourceTag, MaxRequestedItem.TotalItemCount);
+		TargetInventory.RequestUpdateItem(EPDItemNetOperation::CHANGE, ResourceTag, FinalTransferCount);
+		RemoveItem(ResourceTag, FinalTransferCount);
+	}
+
+	return RetVal;
+}
+
+
 void FRTSOLightInventoryFragmentHandler::TransferItems(FRTSOLightInventoryFragment& OtherFragment)
 {
 	for (TTuple<FGameplayTag, FPDLightItemDatum>& Item : Inner)
@@ -16,7 +62,7 @@ void FRTSOLightInventoryFragmentHandler::TransferItems(FRTSOLightInventoryFragme
 		Item.Value.TotalItemCount = 0;
 	}
 	
-	OtherFragment.Inner = Inner;
+	// OtherFragment.Inner = Inner; // Some leftover from ages ago, no we should not overwrite OtherFragment without care
 }
 
 void FRTSOLightInventoryFragmentHandler::TransferItems(UPDInventoryComponent& OtherInventory)
