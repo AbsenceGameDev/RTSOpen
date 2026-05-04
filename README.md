@@ -49,13 +49,25 @@ Updated the readme to better reflect the current state of the system, although s
 
 > ## Interaction System
 > STATUS: MOSTLY DONE
->> -
+>> - Configurable tracer for interactions or other purposes
+>> - Base interact actor, Interact component, and Interact interface
+>> - Base UMG widgets for developers to bootstrap from or to use as example for progression related widgets
 >
 > ____________
 
 > ## Inventory System
 > STATUS: MOSTLY DONE
->> -
+>> #### Base
+>> - Configurable item definitions via datatable
+>> - Inventory Fragment (MassFragment) 
+>> - Inventory Component (UObject)
+>
+>> #### Crafting
+>> - Recipes
+>> - Cost management
+>
+>> #### Replication
+>> - Replicating items and item counts (fastarrays again) for the inventory component. Inventory Fragment is currently not being replicated iirc
 >
 > ____________
 
