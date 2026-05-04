@@ -11,79 +11,18 @@
 class UPDInventoryComponent;
 class UAnimToTextureDataAsset;
 
-/**
- * @brief The entities inventory fragment handler, in lieu of a full inventory component.
- * @note this handles all logic pertaining to a given FRTSOLightInventoryFragment
- */
-struct FRTSOLightInventoryFragmentHandler
-{
-	FRTSOLightInventoryFragmentHandler(TMap<FGameplayTag, FPDLightItemDatum>& InInner) : Inner(InInner)  {};
-	virtual ~FRTSOLightInventoryFragmentHandler() = default;
-	
-	/** @brief Clear the items this fragment holds */
-	virtual void ClearItems();
-
-	/** @brief Returns how many of the item we are able to transfer to the targer */
-	virtual int32 CalculateItemTransfer(const FGameplayTag& ResourceTag, int32 MaxRequestedCount);
-
-	/** @brief Transfer selection of items from the bound fragment to a target fragment */
-	virtual FString TransferItems(const FRTSOLightInventoryFragment& MaxItemsRequested, FRTSOLightInventoryFragment& TargetFragment, bool bLogAction = false);
-	/** @brief Transfer selection of items from the bound fragment to a inventory component */
-	virtual FString TransferItems(const FRTSOLightInventoryFragment& MaxItemsRequested, UPDInventoryComponent& TargetInventory, bool bLogAction = false);
-	
-	/** @brief Transfer items from the bound fragment to a target fragment */
-	virtual void TransferItems(FRTSOLightInventoryFragment& OtherFragment);
-	/** @brief Transfer items from the bound fragment to a target inventory component */
-	virtual void TransferItems(UPDInventoryComponent& OtherInventory);
-	
-	/** @brief Add the input list to the bound item list, using a TArray<TTuple<FGameplayTag, FPDLightItemDatum>> container */
-	virtual void AddItems(const TArray<TTuple<FGameplayTag, FPDLightItemDatum>>& AppendList);
-	/** @brief Removes the input list to the bound item list, using a TArray<TTuple<FGameplayTag, FPDLightItemDatum>> container  */
-	virtual void RemoveItems(const TArray<TTuple<FGameplayTag, FPDLightItemDatum>>& RemoveList);
-
-	/** @brief Add the input list to the bound item list, using a TMap<FGameplayTag, FPDLightItemDatum> container */
-	virtual void AddItems(const TMap<FGameplayTag, FPDLightItemDatum>& AppendList);
-	/** @brief Removes the input list to the bound item list, using a TMap<FGameplayTag, FPDLightItemDatum> container  */
-	virtual void RemoveItems(const TMap<FGameplayTag, FPDLightItemDatum>& RemoveList);
-
-	/** @brief Add singular item to the fragments item list, using FPDLightItemDatum */
-	virtual void AddItem(const FPDLightItemDatum& AppendItem);
-	/** @brief Remove singular item to the fragments item list, using FPDLightItemDatum  */
-	virtual void RemoveItem(const FPDLightItemDatum& RemoveItem);
-
-	/** @brief Add singular item to the fragments item list, using item tag and item count */
-	virtual void AddItem(const FGameplayTag& AddTag, const int32 Count);
-	/** @brief Remove singular item to the fragments item list, using item tag and item count */
-	virtual void RemoveItem(const FGameplayTag& RemoveTag, const int32 Count);
-
-	/** @brief Gets item count, via tag */
-	int32 GetItemCount(const FGameplayTag& Key) const;
-	const TMap<FGameplayTag, FPDLightItemDatum>& GetItems() const { return Inner;};
-
-	bool IsEmpty() const;
-
-	/** @brief Copies the inventory fragment handler. Assigns others inner to our inner */
-	FRTSOLightInventoryFragmentHandler& operator=(const FRTSOLightInventoryFragmentHandler& Other)
-	{
-		this->Inner = Other.Inner;
-		return *this;
-	}
-
-private:
-	/** @brief The bound data from the owning fragment. It's a list of items keyed by their itemtag. */	
-	TMap<FGameplayTag, FPDLightItemDatum>& Inner;
-};
 
 /**
  * @brief The entities inventory fragment, in lieu of a full inventory component.
  * @note FPDItemNetDatum has a function to export its values to this type of structure to allow for some interoperability between actors and entities inventories
+ * @note this handles all logic pertaining to a given FRTSOLightInventoryFragment
  */
 USTRUCT(BlueprintType)
 struct FRTSOLightInventoryFragment : public FMassFragment
 {
 	GENERATED_BODY();
 	
-	FRTSOLightInventoryFragment() : Handler(Inner) {};
+	FRTSOLightInventoryFragment() {};
 	
 	/** @brief If we have nothing in our list at all we count  */
 	bool HasFiniteSpace() 
@@ -95,16 +34,58 @@ struct FRTSOLightInventoryFragment : public FMassFragment
 	FRTSOLightInventoryFragment& operator=(const FRTSOLightInventoryFragment& Other)
 	{
 		Inner = TMap<FGameplayTag, FPDLightItemDatum>(Other.Inner);
-		Handler = FRTSOLightInventoryFragmentHandler(Inner);
+		// Handler = FRTSOLightInventoryFragmentHandler(Inner);
 		return *this;
 	}
 
-	/** @brief Inner/Item list, keyed by item tag, value by actual item datum */
-	UPROPERTY(EditAnywhere, BlueprintReadWrite)
-	TMap<FGameplayTag, FPDLightItemDatum> Inner{};
 
-	/** @brief Inventory fragment handler.*/
-	FRTSOLightInventoryFragmentHandler Handler;
+	/** @brief Clear the items this fragment holds */
+	void ClearItems();
+
+	/** @brief Returns how many of the item we are able to transfer to the targer */
+	int32 CalculateItemTransfer(const FGameplayTag& ResourceTag, int32 MaxRequestedCount);
+
+	/** @brief Transfer selection of items from the bound fragment to a target fragment */
+	FString TransferItems(const FRTSOLightInventoryFragment& MaxItemsRequested, FRTSOLightInventoryFragment& TargetFragment, bool bLogAction = false);
+	/** @brief Transfer selection of items from the bound fragment to a inventory component */
+	FString TransferItems(const FRTSOLightInventoryFragment& MaxItemsRequested, UPDInventoryComponent& TargetInventory, bool bLogAction = false);
+	
+	/** @brief Transfer items from the bound fragment to a target fragment */
+	void TransferItems(FRTSOLightInventoryFragment& OtherFragment);
+	/** @brief Transfer items from the bound fragment to a target inventory component */
+	void TransferItems(UPDInventoryComponent& OtherInventory);
+	
+	/** @brief Add the input list to the bound item list, using a TArray<TTuple<FGameplayTag, FPDLightItemDatum>> container */
+	void AddItems(const TArray<TTuple<FGameplayTag, FPDLightItemDatum>>& AppendList);
+	/** @brief Removes the input list to the bound item list, using a TArray<TTuple<FGameplayTag, FPDLightItemDatum>> container  */
+	void RemoveItems(const TArray<TTuple<FGameplayTag, FPDLightItemDatum>>& RemoveList);
+
+	/** @brief Add the input list to the bound item list, using a TMap<FGameplayTag, FPDLightItemDatum> container */
+	void AddItems(const TMap<FGameplayTag, FPDLightItemDatum>& AppendList);
+	/** @brief Removes the input list to the bound item list, using a TMap<FGameplayTag, FPDLightItemDatum> container  */
+	void RemoveItems(const TMap<FGameplayTag, FPDLightItemDatum>& RemoveList);
+
+	/** @brief Add singular item to the fragments item list, using FPDLightItemDatum */
+	void AddItem(const FPDLightItemDatum& AppendItem);
+	/** @brief Remove singular item to the fragments item list, using FPDLightItemDatum  */
+	void RemoveItem(const FPDLightItemDatum& RemoveItem);
+
+	/** @brief Add singular item to the fragments item list, using item tag and item count */
+	void AddItem(const FGameplayTag& AddTag, const int32 Count);
+	/** @brief Remove singular item to the fragments item list, using item tag and item count */
+	void RemoveItem(const FGameplayTag& RemoveTag, const int32 Count);
+
+	/** @brief Gets item count, via tag */
+	int32 GetItemCount(const FGameplayTag& Key) const;
+	const TMap<FGameplayTag, FPDLightItemDatum>& GetItems() const { return Inner;};
+
+	bool IsEmpty() const;
+
+
+protected:
+	/** @brief Inner/Item list, keyed by item tag, value by actual item datum */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Meta = (AllowPrivateAccess="true"))
+	TMap<FGameplayTag, FPDLightItemDatum> Inner{};
 };
 
 USTRUCT(BlueprintType)

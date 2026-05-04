@@ -3,12 +3,12 @@
 #include "AI/Mass/RTSOMassFragments.h"
 #include "Components/PDInventoryComponent.h"
 
-void FRTSOLightInventoryFragmentHandler::ClearItems()
+void FRTSOLightInventoryFragment::ClearItems()
 {
 	Inner.Empty();
 }
 
-int32 FRTSOLightInventoryFragmentHandler::CalculateItemTransfer(const FGameplayTag& ResourceTag, int32 MaxRequestedCount)
+int32 FRTSOLightInventoryFragment::CalculateItemTransfer(const FGameplayTag& ResourceTag, int32 MaxRequestedCount)
 {
 	if (false == Inner.Contains(ResourceTag)) {return INDEX_NONE;}
 
@@ -20,13 +20,13 @@ int32 FRTSOLightInventoryFragmentHandler::CalculateItemTransfer(const FGameplayT
 }
 
 
-FString FRTSOLightInventoryFragmentHandler::TransferItems(const FRTSOLightInventoryFragment& MaxItemsRequested, FRTSOLightInventoryFragment& TargetFragment, bool bLogAction)
+FString FRTSOLightInventoryFragment::TransferItems(const FRTSOLightInventoryFragment& MaxItemsRequested, FRTSOLightInventoryFragment& TargetFragment, bool bLogAction)
 {
 	FString RetVal;
 	for (const auto&[ResourceTag, MaxRequestedItem] : MaxItemsRequested.Inner)
 	{
 		const int32 FinalTransferCount = CalculateItemTransfer(ResourceTag, MaxRequestedItem.TotalItemCount);
-		TargetFragment.Handler.AddItem(ResourceTag, FinalTransferCount);
+		TargetFragment.AddItem(ResourceTag, FinalTransferCount);
 		RemoveItem(ResourceTag, FinalTransferCount);
 
 		if (bLogAction) 
@@ -40,7 +40,7 @@ FString FRTSOLightInventoryFragmentHandler::TransferItems(const FRTSOLightInvent
 	return RetVal;
 }
 
-FString FRTSOLightInventoryFragmentHandler::TransferItems(const FRTSOLightInventoryFragment& MaxItemsRequested, UPDInventoryComponent& TargetInventory, bool bLogAction)
+FString FRTSOLightInventoryFragment::TransferItems(const FRTSOLightInventoryFragment& MaxItemsRequested, UPDInventoryComponent& TargetInventory, bool bLogAction)
 {
 	FString RetVal = bLogAction ? TEXT("Transfered Items:") : FString{};
 	for (auto&[ResourceTag, MaxRequestedItem] : MaxItemsRequested.Inner)
@@ -54,7 +54,7 @@ FString FRTSOLightInventoryFragmentHandler::TransferItems(const FRTSOLightInvent
 }
 
 
-void FRTSOLightInventoryFragmentHandler::TransferItems(FRTSOLightInventoryFragment& OtherFragment)
+void FRTSOLightInventoryFragment::TransferItems(FRTSOLightInventoryFragment& OtherFragment)
 {
 	for (TTuple<FGameplayTag, FPDLightItemDatum>& Item : Inner)
 	{
@@ -65,7 +65,7 @@ void FRTSOLightInventoryFragmentHandler::TransferItems(FRTSOLightInventoryFragme
 	// OtherFragment.Inner = Inner; // Some leftover from ages ago, no we should not overwrite OtherFragment without care
 }
 
-void FRTSOLightInventoryFragmentHandler::TransferItems(UPDInventoryComponent& OtherInventory)
+void FRTSOLightInventoryFragment::TransferItems(UPDInventoryComponent& OtherInventory)
 {
 	for (TTuple<FGameplayTag, FPDLightItemDatum>& Item : Inner)
 	{
@@ -74,7 +74,7 @@ void FRTSOLightInventoryFragmentHandler::TransferItems(UPDInventoryComponent& Ot
 	}	
 }
 
-void FRTSOLightInventoryFragmentHandler::AddItems(const TArray<TTuple<FGameplayTag, FPDLightItemDatum>>& AppendList)
+void FRTSOLightInventoryFragment::AddItems(const TArray<TTuple<FGameplayTag, FPDLightItemDatum>>& AppendList)
 {
 	for (const TTuple<FGameplayTag, FPDLightItemDatum>& AppendItem : AppendList)
 	{
@@ -82,7 +82,7 @@ void FRTSOLightInventoryFragmentHandler::AddItems(const TArray<TTuple<FGameplayT
 	}	
 }
 
-void FRTSOLightInventoryFragmentHandler::RemoveItems(const TArray<TTuple<FGameplayTag, FPDLightItemDatum>>& RemoveList)
+void FRTSOLightInventoryFragment::RemoveItems(const TArray<TTuple<FGameplayTag, FPDLightItemDatum>>& RemoveList)
 {
 	for (const TTuple<FGameplayTag, FPDLightItemDatum>& RemoveItem : RemoveList)
 	{
@@ -93,7 +93,7 @@ void FRTSOLightInventoryFragmentHandler::RemoveItems(const TArray<TTuple<FGamepl
 	}		
 }
 
-void FRTSOLightInventoryFragmentHandler::AddItems(const TMap<FGameplayTag, FPDLightItemDatum>& AppendList)
+void FRTSOLightInventoryFragment::AddItems(const TMap<FGameplayTag, FPDLightItemDatum>& AppendList)
 {
 	for (const TTuple<FGameplayTag, FPDLightItemDatum>& AppendItem : AppendList)
 	{
@@ -101,7 +101,7 @@ void FRTSOLightInventoryFragmentHandler::AddItems(const TMap<FGameplayTag, FPDLi
 	}			
 }
 
-void FRTSOLightInventoryFragmentHandler::RemoveItems(const TMap<FGameplayTag, FPDLightItemDatum>& RemoveList)
+void FRTSOLightInventoryFragment::RemoveItems(const TMap<FGameplayTag, FPDLightItemDatum>& RemoveList)
 {
 	for (const TTuple<FGameplayTag, FPDLightItemDatum>& RemoveItem : RemoveList)
 	{
@@ -112,13 +112,13 @@ void FRTSOLightInventoryFragmentHandler::RemoveItems(const TMap<FGameplayTag, FP
 	}	
 }
 
-void FRTSOLightInventoryFragmentHandler::AddItem(const FPDLightItemDatum& AppendItem)
+void FRTSOLightInventoryFragment::AddItem(const FPDLightItemDatum& AppendItem)
 {
 	Inner.FindOrAdd(AppendItem.ItemTag).TotalItemCount += AppendItem.TotalItemCount;
 }
 
 // We never actually remove and item, we may set it to zero and count it as not being here
-void FRTSOLightInventoryFragmentHandler::RemoveItem(const FPDLightItemDatum& RemoveItem)
+void FRTSOLightInventoryFragment::RemoveItem(const FPDLightItemDatum& RemoveItem)
 {
 	if (Inner.Contains(RemoveItem.ItemTag) == false) { return;; }
 		
@@ -126,14 +126,14 @@ void FRTSOLightInventoryFragmentHandler::RemoveItem(const FPDLightItemDatum& Rem
 	TotalItemCount -= (RemoveItem.TotalItemCount >= TotalItemCount) ? TotalItemCount : RemoveItem.TotalItemCount; 
 }
 
-void FRTSOLightInventoryFragmentHandler::AddItem(const FGameplayTag& AddTag, const int32 Count)
+void FRTSOLightInventoryFragment::AddItem(const FGameplayTag& AddTag, const int32 Count)
 {
 	FPDLightItemDatum& Item = Inner.Contains(AddTag) == false ? Inner.Add(AddTag) : *Inner.Find(AddTag);
 	Item.ItemTag = AddTag;
 	Item.TotalItemCount = FMath::Max(Count, Item.TotalItemCount + Count);
 }
 
-void FRTSOLightInventoryFragmentHandler::RemoveItem(const FGameplayTag& RemoveTag, const int32 Count)
+void FRTSOLightInventoryFragment::RemoveItem(const FGameplayTag& RemoveTag, const int32 Count)
 {
 	if (Inner.Contains(RemoveTag) == false) { return;; }
 		
@@ -141,13 +141,13 @@ void FRTSOLightInventoryFragmentHandler::RemoveItem(const FGameplayTag& RemoveTa
 	TotalItemCount -= (Count >= TotalItemCount) ? TotalItemCount : Count;
 }
 
-int32 FRTSOLightInventoryFragmentHandler::GetItemCount(const FGameplayTag& Key) const
+int32 FRTSOLightInventoryFragment::GetItemCount(const FGameplayTag& Key) const
 {
-	FPDLightItemDatum* DatumPtr = Inner.Find(Key);
+	const FPDLightItemDatum* DatumPtr = Inner.Find(Key);
 	return DatumPtr ? DatumPtr->TotalItemCount : 0;
 }
 
-bool FRTSOLightInventoryFragmentHandler::IsEmpty() const
+bool FRTSOLightInventoryFragment::IsEmpty() const
 {
 	for (const TTuple<FGameplayTag, FPDLightItemDatum>& Item : Inner)
 	{

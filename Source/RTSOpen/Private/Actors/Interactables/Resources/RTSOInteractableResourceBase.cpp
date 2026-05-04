@@ -39,7 +39,7 @@ void ARTSOInteractableResourceBase::BeginPlay()
 	
 	for (const TPair<FGameplayTag, int32 /*count*/>& ResourceReward : TradeArchetype)
 	{
-		InventoryFragment.Handler.AddItem(ResourceReward.Key, ResourceReward.Value);
+		InventoryFragment.AddItem(ResourceReward.Key, ResourceReward.Value);
 
 		RTSSubsystem->TrackResource(ResourceReward.Key, this);
 	}
@@ -119,7 +119,7 @@ void ARTSOInteractableResourceBase::ProcessTradeIfInfiniteInventory(
 
 		if (InstigatorInventoryFragment != nullptr)
 		{
-			InstigatorInventoryFragment->Handler.AddItem(DefaultDatum->ItemTag, ResourceReward.Value);
+			InstigatorInventoryFragment->AddItem(DefaultDatum->ItemTag, ResourceReward.Value);
 		}
 		if (InstigatorInvComponent != nullptr)
 		{
@@ -150,7 +150,7 @@ void ARTSOInteractableResourceBase::ProcessTradeIfLimitedInventory(
 	FRTSOLightInventoryFragment* MutableInventoryFragment = const_cast<FRTSOLightInventoryFragment*>(&InventoryFragment);
 	for (const TPair<FGameplayTag, int32 /*count*/>& ResourceReward : TradeArchetype)
 	{
-		const int32 ItemsRemaining = MutableInventoryFragment->Handler.GetItemCount(ResourceReward.Key);
+		const int32 ItemsRemaining = MutableInventoryFragment->GetItemCount(ResourceReward.Key);
 
 		const FString CtxtString = FString::Printf(TEXT("Entry in LinkedItemResources in interactable(%s) is not pointing to a valid item/resource entry according to the inventory subsystem"), *GetName());
 		const FPDItemDefaultDatum* DefaultDatum = InvSubsystem->GetDefaultDatum(ResourceReward.Key);
@@ -176,7 +176,7 @@ void ARTSOInteractableResourceBase::ProcessTradeIfLimitedInventory(
 		}
 		
 		FPDLightItemDatum RemoveDatum = FPDLightItemDatum(ResourceReward.Key, ResourceReward.Value);
-		MutableInventoryFragment->Handler.RemoveItem(RemoveDatum);
+		MutableInventoryFragment->RemoveItem(RemoveDatum);
 
 		if (DefaultDatum->bRegenerateResourceIfInContainer)
 		{
@@ -186,7 +186,7 @@ void ARTSOInteractableResourceBase::ProcessTradeIfLimitedInventory(
 			FTimerDelegate RegenDlgt = FTimerDelegate::CreateLambda(
 				[&, ResourceRewardCopy = ResourceReward]()
 				{
-					MutableInventoryFragment->Handler.AddItem(ResourceRewardCopy.Key, ResourceRewardCopy.Value);
+					MutableInventoryFragment->AddItem(ResourceRewardCopy.Key, ResourceRewardCopy.Value);
 				});
 
 			if (DefaultDatum->SecondsToWaitIfRegenerationIsEnabled > KINDA_SMALL_NUMBER)
@@ -202,7 +202,7 @@ void ARTSOInteractableResourceBase::ProcessTradeIfLimitedInventory(
 
 		if (InstigatorInventoryFragment != nullptr)
 		{
-			InstigatorInventoryFragment->Handler.AddItem(DefaultDatum->ItemTag, ResourceReward.Value);
+			InstigatorInventoryFragment->AddItem(DefaultDatum->ItemTag, ResourceReward.Value);
 		}
 		if (InstigatorInvComponent != nullptr)
 		{
@@ -264,7 +264,7 @@ void ARTSOInteractableResourceBase::OnInteract_Implementation(
 		bool bMustWaitForRegen = false;
 		ProcessTradeIfLimitedInventory(InteractionParams, InteractResult, InstigatorInvComponent, InstigatorInventoryFragment, InvSubsystem, bMustWaitForRegen);
 
-		const TMap<FGameplayTag, FPDLightItemDatum>& Items = InventoryFragment.Handler.GetItems();
+		const TMap<FGameplayTag, FPDLightItemDatum>& Items = InventoryFragment.GetItems();
 		UPDRTSBaseSubsystem* RTSSubsystem = UPDRTSBaseSubsystem::Get();
 		for (auto&[ResourceType, ItemDatum] : Items)
 		{
@@ -274,7 +274,7 @@ void ARTSOInteractableResourceBase::OnInteract_Implementation(
 			}
 		}
 
-		if (InventoryFragment.Handler.IsEmpty() && bMustWaitForRegen == false)
+		if (InventoryFragment.IsEmpty() && bMustWaitForRegen == false)
 		{
 			ARTSOInteractableResourceBase* MutableThis = const_cast<ARTSOInteractableResourceBase*>(this);
 			MutableThis->Destroy();

@@ -81,7 +81,7 @@ FPDRTSTSetActorWrapper FRTSOTask_BringBackResource::FindAmountOfResourceActorsNe
 
 			if (const ARTSOInteractableResourceBase* AsResource = Cast<ARTSOInteractableResourceBase>(Actor))
 			{
-				const int32 ActorsTotalItemCount = AsResource->GetInventoryFragment().Handler.GetItems().FindRef(Params.ResourceType).TotalItemCount;
+				const int32 ActorsTotalItemCount = AsResource->GetInventoryFragment().GetItems().FindRef(Params.ResourceType).TotalItemCount;
 				if (ActorsTotalItemCount <= 0) 
 				{
 					UE_LOG(LogTemp, Warning, TEXT("================= Skip -- Actor has no items"));
@@ -131,19 +131,11 @@ EStateTreeRunStatus FRTSOTask_BringBackResource::EnterState(FStateTreeExecutionC
 	FPDMFragment_RTSEntityBase& RTSData = Context.GetExternalData(RTSDataHandle);
 	const FTransformFragment& TransformFragment = Context.GetExternalData(TransformHandle);
 	FPDMFragment_Action& ActionFragment = Context.GetExternalData(ActionHandle);
-
+	const FRTSOLightInventoryFragment& EntityInventoryFragment = Context.GetExternalData(InventoryHandle);
 	
 	const FMassStateTreeExecutionContext& MassContext = static_cast<FMassStateTreeExecutionContext&>(Context);
 	const FMassEntityHandle& EntityHandle = MassContext.GetEntity();	
 	
-	// Getting the fragment from teh context is causing a crash, wihtout time to debug it, this is the best way around it for now
-	const FRTSOLightInventoryFragment* EntityInventoryFragment = EntitySubsystem.GetEntityManager().GetFragmentDataPtr<FRTSOLightInventoryFragment>(EntityHandle);
-	//const FRTSOLightInventoryFragment& EntityInventoryFragment = Context.GetExternalData(InventoryHandle);
-	if(false == ensure(EntityInventoryFragment))
-	{
-		return EStateTreeRunStatus::Failed;
-	}
-
 	ARTSOInteractableBuildingBase* AsBuildingBase = Cast<ARTSOInteractableBuildingBase>(ActionFragment.OptTargets.ActionTargetAsActor);
 	if (AsBuildingBase)
 	{
@@ -153,9 +145,9 @@ EStateTreeRunStatus FRTSOTask_BringBackResource::EnterState(FStateTreeExecutionC
 
 		bool bCantAfford = false;
 		TMap<FGameplayTag, int32> MissingItems;
-		for (const auto&[ResourceType, ItemDatum] : BuildingAvailableInventorySpace.Handler.GetItems())
+		for (const auto&[ResourceType, ItemDatum] : BuildingAvailableInventorySpace.GetItems())
 		{
-			const int32 DeltaItemStorage = ItemDatum.TotalItemCount - EntityInventoryFragment->Handler.GetItemCount(ResourceType);  // uncomment before pushing
+			const int32 DeltaItemStorage = ItemDatum.TotalItemCount - EntityInventoryFragment.GetItemCount(ResourceType); 
 			const bool bCantAffordItem = DeltaItemStorage > 0;
 			if (bCantAffordItem)
 			{
@@ -210,7 +202,7 @@ EStateTreeRunStatus FRTSOTask_BringBackResource::EnterState(FStateTreeExecutionC
 				InstanceData.OptTargets = FPDTargetCompound{FMassEntityHandle{0, 0}, FMassInt16Vector{}, const_cast<AActor*>(FirstPath.Target)}; // We only read from this actor pointer after this point, so the const cast should not cause problems
 				
 				EStateTreeRunStatus TriggerMoveResult = FPDMTaskStatics::TriggerMove<FRTSOTask_BringBackResource>(this, Context, EntitySubsystem, MoveTarget, MoveParameters, RTSData, TransformFragment);
-				// InstanceData.OptTargets = CachedOptTargets;
+				InstanceData.OptTargets = CachedOptTargets;
 
 				return TriggerMoveResult;
 			}
@@ -234,7 +226,6 @@ EStateTreeRunStatus FRTSOTask_BringBackResource::Tick(FStateTreeExecutionContext
 	UMassEntitySubsystem& EntitySubsystem = Context.GetExternalData(EntitySubsystemHandle);
 	const FMassMovementParameters& MoveParameters = Context.GetExternalData(MoveParametersHandle);
 	const FMassEntityHandle& OtherEntityHandle = InstanceData.PotentialEntityHandle;
-	const IPDInteractInterface* OtherInteractable = Cast<IPDInteractInterface>(InstanceData.PotentialInteractableActor);
 	const FMassStateTreeExecutionContext& MassContext = static_cast<FMassStateTreeExecutionContext&>(Context);
 	const FTransformFragment& TransformFragment = Context.GetExternalData(TransformHandle);
 
@@ -242,12 +233,21 @@ EStateTreeRunStatus FRTSOTask_BringBackResource::Tick(FStateTreeExecutionContext
 	//
 	// Should ensure that we are on our way to a resource or not, and if we are, as sson as we trigger the interaction we move on to the next resource
 	EStateTreeRunStatus TickMoveResult = FPDMTaskStatics::TickMove<FRTSOTask_BringBackResource>(this, Context, DeltaTime, MoveTarget, RTSData);
+	
 	switch(TickMoveResult)
 	{
-	case EStateTreeRunStatus::Succeeded:
+		case EStateTreeRunStatus::Succeeded:
 		{
+			UPDRTSBaseSubsystem* RTSSubsystem = UPDRTSBaseSubsystem::Get();
+			FPDRTSTGatherTargetsWrapper* ResourceTargets = RTSSubsystem->GetEntityResourceTargets(MassContext.GetEntity());
+			const bool bIsAtStorageBuilding = ResourceTargets == nullptr ? true : CurrentPathIndex >= ResourceTargets->Targets.Num();
+			const FRTSEntityResourceGatherTarget& CurrentPath = bIsAtStorageBuilding ? FRTSEntityResourceGatherTarget{} : ResourceTargets->Targets[CurrentPathIndex++];
+
 			FMassEntityHandle ThisEntity = MassContext.GetEntity();
-			//Interacting first, does not matter if it is the resource or storage building
+			const IPDInteractInterface* OtherInteractable = bIsAtStorageBuilding 
+				? Cast<IPDInteractInterface>(InstanceData.PotentialInteractableActor) 
+				: Cast<IPDInteractInterface>(CurrentPath.Target);
+
 			EStateTreeRunStatus InteractResult = FRTSOTask_Interact::TaskInteract<FRTSOTask_BringBackResource, false>(this, Context, OtherEntityHandle, OtherInteractable, EntitySubsystem);
 			if (InteractResult != EStateTreeRunStatus::Succeeded)
 			{
@@ -256,16 +256,8 @@ EStateTreeRunStatus FRTSOTask_BringBackResource::Tick(FStateTreeExecutionContext
 					FString::Printf(TEXT("Entity(%i) -- BBR::Tick -- Fail interact with %s"),
 						ThisEntity.AsNumber(), InstanceData.PotentialInteractableActor ?  *InstanceData.PotentialInteractableActor->GetName() : *FString("INVALID ACTOR") )}; 
 			}
-			
-			UPDRTSBaseSubsystem* RTSSubsystem = UPDRTSBaseSubsystem::Get();
-			FPDRTSTGatherTargetsWrapper* ResourceTargets = RTSSubsystem->GetEntityResourceTargets(MassContext.GetEntity());
-			const bool bIsAtStorageBuilding = ResourceTargets == nullptr ? true : CurrentPathIndex >= ResourceTargets->Targets.Num();
-			if (bIsAtStorageBuilding)
-			{
-				return EStateTreeRunStatus::Succeeded;
-			}
-			const FRTSEntityResourceGatherTarget& CurrentPath = ResourceTargets->Targets[CurrentPathIndex++];
-			
+			if (bIsAtStorageBuilding) {return EStateTreeRunStatus::Succeeded;}
+
 			FPDTargetCompound CachedOptTargets = InstanceData.OptTargets;
 			InstanceData.OptTargets = FPDTargetCompound{FMassEntityHandle{0,0}, FMassInt16Vector{}, const_cast<AActor*>(CurrentPath.Target)}; 
 		

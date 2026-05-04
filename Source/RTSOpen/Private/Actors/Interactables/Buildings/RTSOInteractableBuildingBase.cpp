@@ -351,12 +351,12 @@ FRTSOLightInventoryFragment ARTSOInteractableBuildingBase::CalculateFreeInventor
 	}
 	
 	FRTSOLightInventoryFragment DeltaItems;
-	DeltaItems.Handler.AddItems(InventoryLimit.InventoryConfig.Handler.GetItems());
+	DeltaItems.AddItems(InventoryLimit.InventoryConfig.GetItems());
 	
 	const FRTSOLightInventoryFragment& BuildingInventory = GetCurrentInventory();
-	for (auto& [ItemTag, ItemDatum] : BuildingInventory.Handler.GetItems())
+	for (auto& [ItemTag, ItemDatum] : BuildingInventory.GetItems())
 	{
-		DeltaItems.Handler.RemoveItem(ItemTag, ItemDatum.TotalItemCount);
+		DeltaItems.RemoveItem(ItemTag, ItemDatum.TotalItemCount);
 	}
 	return DeltaItems;
 }
@@ -386,7 +386,7 @@ FString ARTSOInteractableBuildingBase::WithdrawAllPossibleFromBankOrEntity(UPDIn
 	FString RetVal;
 	if (EntityInv)
 	{
-		EntityInv->Handler.TransferItems(CalculateFreeInventorySpace(), GetCurrentInventory(), bLogAction);
+		EntityInv->TransferItems(CalculateFreeInventorySpace(), GetCurrentInventory(), bLogAction);
 	}
 	
 	if (Bank)
@@ -403,7 +403,7 @@ FString ARTSOInteractableBuildingBase::DepositAllPossibleToBankOrEntity(UPDInven
 	// TODO: Currently entities have unlimited inventory, when the do no have this anymore, remember to update 'ARTSOInteractableBuildingBase::DepositAllPossibleToBankOrEntity' to reflect this and call CalculateFreeInventorySpace() from the entitys inventory
 	if (EntityInv)
 	{
-		GetCurrentInventory().Handler.TransferItems(CalculateFreeInventorySpace(), *EntityInv, bLogAction);
+		GetCurrentInventory().TransferItems(CalculateFreeInventorySpace(), *EntityInv, bLogAction);
 	}
 	
 	if (Bank)
@@ -443,7 +443,7 @@ bool ARTSOInteractableBuildingBase::WithdrawRecurringCostFromBankOrEntity(UPDInv
 					{
 						BuildableInventories.LightInventoriesPerGhostStage.SetNum(ImmutableStage + 1);
 					}
-					BuildableInventories.LightInventoriesPerGhostStage[ImmutableStage].Handler.AddItem(BuildableResourceDatum->ItemTag, RecurringCostPerPhase[ImmutableStage]);
+					BuildableInventories.LightInventoriesPerGhostStage[ImmutableStage].AddItem(BuildableResourceDatum->ItemTag, RecurringCostPerPhase[ImmutableStage]);
 				}
 			}
 		}
@@ -457,19 +457,19 @@ bool ARTSOInteractableBuildingBase::WithdrawRecurringCostFromBankOrEntity(UPDInv
 				const TArray<int32>& RecurringCostPerPhase = ItemCostsTuple.Value.RecurringCostPerPhase;
 			
 				// Deduct from entity, @note 'AddItems' Clamps to zero so won't offset into negative
-				const int32 CurrentCount = EntityInv->Handler.GetItemCount(ItemCostsTuple.Key);
-				EntityInv->Handler.AddItem(ItemCostsTuple.Key, -RecurringCostPerPhase[ImmutableStage]);
+				const int32 CurrentCount = EntityInv->GetItemCount(ItemCostsTuple.Key);
+				EntityInv->AddItem(ItemCostsTuple.Key, -RecurringCostPerPhase[ImmutableStage]);
 				
 				// Insert into buildable inv
 				if (ImmutableStage > BuildableInventories.LightInventoriesPerGhostStage.Num())
 				{
 					BuildableInventories.LightInventoriesPerGhostStage.SetNum(ImmutableStage + 1);
 				}
-				FRTSOLightInventoryFragmentHandler& BuildableInvHandler = BuildableInventories.LightInventoriesPerGhostStage[ImmutableStage].Handler;
-				BuildableInvHandler.AddItem(BuildableResourceDatum->ItemTag, CurrentCount);
+				FRTSOLightInventoryFragment& BuildableInv = BuildableInventories.LightInventoriesPerGhostStage[ImmutableStage];
+				BuildableInv.AddItem(BuildableResourceDatum->ItemTag, CurrentCount);
 
 				// past stage requirements
-				if (BuildableInvHandler.GetItemCount(BuildableResourceDatum->ItemTag) >= RecurringCostPerPhase[ImmutableStage])
+				if (BuildableInv.GetItemCount(BuildableResourceDatum->ItemTag) >= RecurringCostPerPhase[ImmutableStage])
 				{
 					bCanAfford = true;
 				}
