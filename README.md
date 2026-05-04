@@ -8,34 +8,41 @@ The license has custom usage rights witch permits anyone from using this in an c
 Updated the readme to better reflect the current state of the system, although still incomplete so will update the readme some more the comings days (4th May 2026)
 
 
-# Plugin Bases
+# Custom Plugins (Base logic)
 
 > ## Shared UI
 > STATUS: DONE
->
-> ____________
-
-> ## Tutorial System
-> STATUS: PARTIALLY IMPLEMENTED, BACKLOGGED
+>> #### Base Classes
+>> - Button Base
+>> - Dialog Base
+>> - Floating-point and Integral Number Boxes
 >
 > ____________
 
 > ## User Message System
 > STATUS: PARTIALLY IMPLEMENTED, BACKLOGGED
+>> #### Replication
+>> - Network manager to keep load ligther when there are many recipients and senders
+>> - 'Fast arrays'
+>> - Subsystem to register network managers and to route messages being sent
 >
 > ____________
 
 > ## Progression System
 > STATUS: IN PROGRESS (Mostly done but never tested and fully iterated)
 >> #### Datadriven Progression Base Module
->> -
->> -
+>> - Configurable rulesets and a ruleset evaluator. Idea is so the designers cna implement custom progression rulesets or recreate existing well-known rulesets in their project
+>> - Configurable Skills & Skilltrees
+>> - Configurable level scaling and stat modifier rules
+>> - Replicated progression component and progression datums (fastarrays again)
+>> - Engine level Subsystem that maps our data from the datatable so we can access it at O(1) when searching for specific default data
+>> - Base UMG widgets for developers to bootstrap from or to use as example for progression related widgets
 >
 >> #### PDProgress to GAS layer (Backlogged)
->> -
+>> - TODO
 >
 >> #### PDProgress to MASS layer (Backlogged)
->> -
+>> - TODO
 >
 > ____________
 
@@ -79,6 +86,11 @@ Updated the readme to better reflect the current state of the system, although s
 
 > ## Conversation and Mission System
 > STATUS: PARTIALLY DONE, BACKLOGGED
+>
+> ____________
+
+> ## Tutorial System
+> STATUS: BARELY IMPLEMENTED, BACKLOGGED
 >
 > ____________
 
