@@ -5,118 +5,61 @@ The license has custom usage rights witch permits anyone from using this in an c
 
 
 ## Notes
-This README has not been updated ever. The below is vastly outdate. Buildsystem Pinger System and such for the entity is partially done. Will take a weekend in the near future to update this README properly and ensure it contains the current vs. planned functionalities of the project.
+Updated the readme to better reflect the current state of the system, although still incomplete so will update the readme some more the comings days (4th May 2026)
 
 
-## TODO 
+# Existing Systems (Some are still in progress/backlogged)
 
-- PRIO 0 . CREATE PROGRESSION SYSTEM PLUGIN (PSEUDO-CODE/Design ideas)
-- Stats (Progression meta-rules)
+## Shared UI Plugin Base
+### STATUS: DONE
 
--- FPDRulesetOperatorStruct
-- Properties:
-- OpType           : (Example: 'EAddition', 'ESubtraction', 'EMultiplication', 'EDivision', 'EPower')
-- OpTarget         : (Example: EThis, EOther, EStatic)
-- OpFallbackValue  : (Example: If EThis or EOther, it will be ignored, if EStatic it will be the value used)
-- PotentialInnerOp : FDataTableRowHandle RulesetHandle // Row Type: FPDRulesetOperatorStruct
+## Tutorial System and Plugin Base
+### STATUS: PARTIALLY IMPLEMENTED, BACKLOGGED
 
--- FPDRulesetEvaluator
-- Eval (const TArray<FPDRulesetOperatorStruct>& Ruleset,
-const TValueType& PotentialSelfValue,
-const TValueType& PotentialOtherValue,
-const TValueType& PotentialStaticValue)
+## User Message System and Plugin Base
+### STATUS: PARTIALLY IMPLEMENTED, BACKLOGGED
 
--- FPDRulesetTableRow
-- FGameplayTag RuleSetTagID;
-- TArray<FPDRulesetOperatorStruct> RuleSetOperation;
-// For example: A Rule-Set TagID may be something like 'Progression.RuleSet.DnD'
-// For example: A Rule-Set TagID may be something like 'Progression.RuleSet.ObsidianPoE'
-// For example: A Rule-Set TagID may be something like 'Progression.RuleSet.Custom0'
-// For example: A Rule-Set TagID may be something like 'Progression.RuleSet.Custom1'
+## Progression System and Plugin Base
+### STATUS: IN PROGRESS (Mostly done but never tested and fully iterated)
+#### - Datadriven Progression Base Module
+#### - PDProgress to GAS layer (Backlogged)
+#### - PDProgress to MASS layer (Backlogged)
 
 
--- FPDAllowedStackingContexts(Having )
-- TMap<FGameplayTag (*StackingContextTagID*/, FDataTableRowHandle /* type: FPDRuleSetTableRow> ContextList */ >;
+## Interaction System and Plugin Base
+### STATUS: MOSTLY DONE
 
-	// For example: A Stacking Context TagID may be something like 'Progression.StackingContext.Gear'
+## Inventory System and Plugin Base
+### STATUS: MOSTLY DONE
 
-- Stats Overview
-    - Enum  EPDProgressionBehaviourType { EClassic, EActionBased }
-    - Enum  EPDProgressionType { EActiveEffect, EPassiveEffect, EStat}
-    - If Actionbased,
-        - Action Event Delegate signature: bool (void* OpaqueActionDataPacket){}
-        - run an automated test-level before packaging to ensure an action event has been tied to the stat to increase it.
+## RTSBase (Mass entity based system) and Plugin Base  
+### STATUS: MOSTLY DONE
 
-    - FPDStatsValue
-        - TArray<int32> BaseValueRepresentations;
-        - int32 BaseDivisor = 1;
-
-    - FPDStatsRow
-        - FGameplayTag ProgressionTag;
-        - TMap<FGameplayTag /*StatTag*/, FGameplayTag /*RuleSetTag*/> RulesAffectedBy;
-        - EPDProgressionBehaviourType BehaviourType;
-        - EPDProgressionType ProgressionType;
-        - FPDStatsValue ProgressionValueRepresentation;
-        - int32 MaxLevel = 1;
-        - UCurveFloat ExperienceCurve;
-
-    - FPDStat : public FFastArraySerializerItem
-        - FGameplayTag ProgressionTag;
-        - int32 CurrentLevel = 0;
-        - int32 CurrentExperience;
-
-    - FPDStatList : public FFastArraySerializerItemList
-        - TArray<FPDStat> Items;
-
-    - FPDStatMapping
-        - int32 Index = 0;
-        - FGameplayTag Tag;
-        - bool operator ==(const int32 OtherIndex) { return this->Index == OtherIndex; }
-        - bool operator ==(const FGameplayTag& OtherTag) { return this->Tag == OtherTag; }
-
-    - Skilltrees
-        - Research tree is a skill tree which is applied to some other actor and controlled by the owning actor ID
-        -
-
-    - USTRUCT(Blueprintable) struct FPDProgressionClassRow : public FTableRowBase
-      {
-        UPROPERTY(EditAnywhere, BlueprintReadWrite)
-        FGameplayTag Tag
-
-      	UPROPERTY(EditAnywhere, BlueprintReadWrite) 
-      	TSet<FGameplayTag> DefaultStats;
-
-      	UPROPERTY(EditAnywhere, BlueprintReadWrite) 
-      	TSet<FGameplayTag> DefaultActiveEffects;
-
-      	UPROPERTY(EditAnywhere, BlueprintReadWrite) 
-      	TSet<FGameplayTag> DefaultPassiveEffects;
-
-      	UPROPERTY(EditAnywhere, BlueprintReadWrite) 
-      	TSet<FGameplayTag> GrantedTrees;
-      };
+#### Octrees
+#### Hashgrids
+#### Pinger subsystem
+#### Builder subsystem
+#### Builder subsystem
 
 
-	- UPDStatSubsystem
-		- TMap<FGamplayTag, FPDProgressionClassRow*> ClassTypes
-		- TMap<FGamplayTag, FPDStat> DefaultStatValues
-		
-	
-	- FPDStatHandler
-		- UFUNCTION(BlueprintNativeEvent) void DefaultFillStatList(const FGameplayTag& ClassTag);
-		void DefaultFillStatList_Implementation(cons FGameplayTag& ClassTag)
+## Conversation and Mission System and Plugin Base
+### STATUS: PARTIALLY DONE, BACKLOGGED
 
+# Game Module
+## RTSOpen
+### STATUS: PARTIALLY DONE, BACKLOGGED
+#### Input stack subsystem
+#### User settings subsystem
+#### Tag Loader subsystem
+#### Game UI
+- Build system HUD buttons (mostly slate)
+#### Main Menu
+- Settings Menu
+- Save/Load Menu
+- Minimap (PARTIALLY DONE)
+- Mission Menu (PARTIALLY DONE, BACKLOGGED)
 
-		- UPROPERTY(Replicated) FPDStatList{};
-		- TSet<FPDStatMapping> StatTagMappings;
+## RTSShaders
+### Global shader mapping
+#### Minimap splatter shader (used for splatting mass entities unto a RT texture, need to reuse for other data I want on the minimap RT texture)
 
-		- IncreaseStatLevel()
-		- IncreaseStatExperience()
-
-
-- PRIO 0 - FINISH ENTITY IMPLEMENTATION,
-  --- (TODO) PingSystem: UPDEntityPinger::Ping_Implementation: FallBackEntityTag = TAG_AI_Type_BuilderUnit_Novice ; // @todo, pass into here from somewhere else
-  --- (TODO) BuildSystem: ARTSOBaseGM::PostLogin, //@todo For newly created characters randomly spawn a base. Transforms must be ensured to not overlap, possibly make use of the world hashgrid
-
-
-- PRIO 0 : Currently the design is that on a server or single player, a save-game is used, on the server it is the source of truth of the world-state for the server and on single-player games it is the same,problem is that several UI's directly depend on the savegame now and in a server game it will not be available for the clients!!! Massive problem. Wil need to have some replication in place and an middleman of sorts 
