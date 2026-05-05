@@ -74,30 +74,38 @@ Updated the readme to better reflect the current state of the system, although s
 > ## RTSBase (Mass entity based system) 
 > STATUS: MOSTLY DONE
 > 
->> #### Octrees
->> -
->> -
+>> #### Octree Subsystem
+>> - Generates custom octree nodes and assigns them to entities
+>> - custom octree nodes that packs certain entity data
+>> - Subsystem to help usage
 >
->> #### Hashgrids
->> -
->> -
+>> #### Hashgrid Subsystem
+>> - Calculates dynamic hashgrid cells
+>> - Recalculates locations to dynamic hashgrid mapping
 >
 >> #### Pinger subsystem
->> -
->> -
+>> - Scans hashgrid for entities to ping
+>> - Pings JobTag to entities to target given actor (for now interactable buildings)
 >
 >> #### Builder subsystem
->> -
->> -
+>> - Uses hashgrid to force world steps for build system
+>> - Tracks built actors and their owners
+>> - Caches build system recipes and has helper functions to get default build item datum
 >
->> #### Builder subsystem
->> -
->> -
+>> #### Mass & Statetree
+>> - Custom Mass Tasks, Processors, Evaluators, Fragments, Traits
+>> - Custom State tree behaviour schemas
+>
+>> #### Interfaces
+>> - Ghost building interface, used by actors that wants to be managed by the builder system
+>> - Builder Interface, used by actors that wants to be able to build other actors
 >
 > ____________
 
 > ## Conversation and Mission System
 > STATUS: PARTIALLY DONE, BACKLOGGED
+>> - Uses Unreal Conversation
+>> - Mission editor classes are halfway implemented in another repo, will move here when this is not backlogged and continue work then
 >
 > ____________
 
@@ -109,20 +117,51 @@ Updated the readme to better reflect the current state of the system, although s
 # Game Module
 > ## RTSOpen
 > STATUS: PARTIALLY DONE, BACKLOGGED
->> ### Input stack subsystem
+>> ### Core
+>> #### Player
+>>> - GodHand player pawn (Basic godhand concept. Uses 'IPDRTSBuilderInterface, IRTSOInputInterface, IRTSOConversationInterface')
+>>> - Player Controller (Uses 'IRTSOInputInterface, IPDRTSBuilderInterface, IRTSOActionLogInterface')
 >
->> ### User settings subsystem
+>> #### Interaction - Game Module (Uses plugin base) 
+>>> - Buildings
+>>> - Resources
+>>> - Conversation Handlers
 >
->> ### Tag Loader subsystem
+>> #### Mass & StateTree - Game Module (Uses plugin base) 
+>>> - 
+>>> - 
+>>> - 
 >
->> ### Game UI
->> - Build system HUD buttons (mostly slate)
+>> #### Game Mode & Instance (IN PROGRESS, BACKLOGGED)
+>>> - Handles login player controller flow and loads in their buildings if they have any
+>>> - Handles level transitions
+>>> - Handles Autosaving logic
 >
->> ### Main Menu
->> - Settings Menu
->> - Save/Load Menu
->> - Minimap (PARTIALLY DONE)
->> - Mission Menu (PARTIALLY DONE, BACKLOGGED)
+>> #### HUD
+>>> - Draws selection marquee
+>>> - Minimap logic (Deprecated, moved to compute shaders) 
+>
+>> #### Main Menu
+>>> - Settings Menu
+>>> - Save/Load Menu
+>>> - Minimap (PARTIALLY DONE)
+>>> - Mission Menu (PARTIALLY DONE, BACKLOGGED)
+>
+>> #### User settings (IN PROGRESS, BACKLOGGED)
+>>> - Mix of slate and UMG to generate widget slots for each settings type
+>>> - Supports POD data settings types, String settings type, Enum/String selector settings types, vector settings types
+>>> - Settings bindable to actual in-game data, as to make thigns more plug and play an avoid having hardocded edge cases for each binding
+>
+>> ### Misc
+>> #### Tag Loader
+>>> - Injects user defined strings and generates tags at game startup. Meant ot be used to allowing mods that target different systems liek the inventory system, skill system etc
+>
+>> #### Game UI Misc
+>>> - Build system HUD View buttons (mostly slate)
+>>> - Conversation system HUD View Elements (mostly slate)
+>
+>> #### Input stack
+>>> - Stacks input for IA actions, mainly due to a bug causing input data to be reset 
 >
 > ____________
 
