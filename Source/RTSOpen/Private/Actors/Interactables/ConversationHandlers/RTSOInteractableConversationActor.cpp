@@ -191,8 +191,6 @@ void ARTSOInteractableConversationActor::BeginPlay()
 		const FString Context = FString::Printf(TEXT("ARTSOInteractableConversationActor(%s)::OnConstruction -- Attempting to access ConversationSettingsHandle.GetRow<FRTSOConversationMetaProgressionDatum>() "), *GetName());
 
 		FRTSOConversationMetaProgressionDatum* BaseMetaProgressDatum = ConversationSettingsHandle.GetRow<FRTSOConversationMetaProgressionDatum>(Context);
-		BaseMetaProgressDatum->MissionTag;
-
 		FRTSOConversationMetaState& MetaProgressState = InstanceDataPerMission.FindOrAdd(BaseMetaProgressDatum->MissionTag);
 		MetaProgressState.MissionTag = BaseMetaProgressDatum->MissionTag;
 		MetaProgressState.PhaseRequiredTags = BaseMetaProgressDatum->PhaseRequiredTags;

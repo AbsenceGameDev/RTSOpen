@@ -128,9 +128,12 @@ Updated the readme to better reflect the current state of the system, although s
 >>> - Conversation Handlers
 >
 >> #### Mass & StateTree - Game Module (Uses plugin base) 
->>> - 
->>> - 
->>> - 
+>>> - Custom tasks that hooks into other systems, such as interaction or inventory
+>>> - Custom fragments that uses data for other systems, such as interaction or inventory
+>
+>> #### Conversation and Mission system - Game Module (Uses plugin base) 
+>>> - Tag based mission system. Tags serve as missions and as flags for objectives/sideobjectives states. Need to move this over to PDOpen and to wrap up the mission editor code in PDOpen and port it over here when done.
+>>> - Custom conversation actor that uses one of the interaction systems intrfaces and has itneraction logic that handles checking and granting for mission tags
 >
 >> #### Game Mode & Instance (IN PROGRESS, BACKLOGGED)
 >>> - Handles login player controller flow and loads in their buildings if they have any
@@ -151,6 +154,12 @@ Updated the readme to better reflect the current state of the system, although s
 >>> - Mix of slate and UMG to generate widget slots for each settings type
 >>> - Supports POD data settings types, String settings type, Enum/String selector settings types, vector settings types
 >>> - Settings bindable to actual in-game data, as to make thigns more plug and play an avoid having hardocded edge cases for each binding
+>
+>> #### Save Editor (MOSTLY DONE, BACKLOGGED)
+>>> - Mix of slate and UMG
+>>> - Reads the current save data and allows for live modification within the game
+>>> @note: Could be used as a crude modding tool as it allows adding and removing data from the savefile
+>>> @todo: Update UI, looks horrendous. Alos while at it add import and export from custom binary format and also json format (With this many entities I might need to be creative with the Json structure so I can cram alot of data into few fields) 
 >
 >> ### Misc
 >> #### Tag Loader
