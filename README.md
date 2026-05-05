@@ -5,7 +5,7 @@ The license has custom usage rights witch permits anyone from using this in an c
 
 
 ## Notes
-Updated the readme to better reflect the current state of the system, although still incomplete so will update the readme some more the comings days (4th May 2026)
+Updated the readme to better reflect the current state of the system, although still incomplete so will update the readme some more the coming days (5th May 2026)
 
 
 # Custom Plugins (Base logic)
@@ -134,6 +134,13 @@ Updated the readme to better reflect the current state of the system, although s
 >> #### Conversation and Mission system - Game Module (Uses plugin base) 
 >>> - Tag based mission system. Tags serve as missions and as flags for objectives/sideobjectives states. Need to move this over to PDOpen and to wrap up the mission editor code in PDOpen and port it over here when done.
 >>> - Custom conversation actor that uses one of the interaction systems intrfaces and has itneraction logic that handles checking and granting for mission tags
+>
+>> #### Mission/Quest UI - Game Module (Uses plugin base)  
+>> STATUS: IN PROGRESS, BACKLOGGED 
+>>> - Custom mission view widget
+>>> - Slate core with UMG wrapper
+>>> - Mission List logic
+>>> @todo integrate with mission/quest plugin in PDOpen when getting back to that
 >
 >> #### Game Mode & Instance (IN PROGRESS, BACKLOGGED)
 >>> - Handles login player controller flow and loads in their buildings if they have any
