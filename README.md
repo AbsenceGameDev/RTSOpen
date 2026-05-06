@@ -6,11 +6,45 @@ The license has custom usage rights that permit *most people to use this in a co
 ## Notes
 Updated the readme to better reflect the current state of the system, although it is still incomplete, so I will update the readme some more in the coming days (5th May 2026).
 
+[status_done]: https://img.shields.io/badge/STATUS%20DONE-success?style=for-the-badge
+[status_todo]: https://img.shields.io/badge/STATUS%20TODO-inactive?style=for-the-badge
+[status_inprog]: https://img.shields.io/badge/STATUS%20IN%20PROGRESS-informational?style=for-the-badge
+
+<!--- [SharedUI]: <img src="https://img.shields.io/badge/Shared%20UI-AA4D2B?style=for-the-badge" width="200" height="50" /> --->
+
+<!--- ![STATUS DONE](https://img.shields.io/badge/STATUS%20DONE-success?style=for-the-badge) --->
+<!--- ![STATUS IN PROGRESS, BACKLOGGED](https://img.shields.io/badge/STATUS%20DONE-brightgreen?style=for-the-badge) --->
+<!--- ![STATUS TODO, BACKLOGGED](https://img.shields.io/badge/STATUS%20TODO%20BACKLOGGED-brightgreen?style=for-the-badge) --->
+
+<!---
+     Shared UI
+User Message System
+Progression  System
+Interaction System
+ Inventory System
+     RTSBase 
+  Mission System
+ Tutorial  System
+
+  Core - Player
+  Core - Interaction
+  Core - Mission
+  Core - 
+
+Misc - UI
+Misc - Input Stack
+Misc - Tag Loader
+
+RTSShaders
+
+
+--->
+
 # Custom Plugins (Base logic)
 > ____________
 >
-> ## ![Shared UI](https://img.shields.io/badge/Shared%20UI-AA4D2B?style=for-the-badge)
-> ### STATUS: DONE
+> ## <img src="https://img.shields.io/badge/Shared%20UI-AA4D2B?style=for-the-badge" width="20%" />
+> ### ![status_done]
 >> #### Base Classes
 >> - Button Base
 >> - Dialog Base
@@ -22,7 +56,7 @@ Updated the readme to better reflect the current state of the system, although i
 
 > ____________
 >
-> ## User Message System
+> ## <img src="https://img.shields.io/badge/User%20Message%20System-AA4D2B?style=for-the-badge" width="35%" />
 > ### STATUS: PARTIALLY IMPLEMENTED, BACKLOGGED
 >> #### Replication
 >> - Network manager to keep load ligther when there are many recipients and senders
@@ -35,7 +69,7 @@ Updated the readme to better reflect the current state of the system, although i
 
 > ____________
 >
-> ## Progression System
+> ## <img src="https://img.shields.io/badge/Progression%20System-AA4D2B?style=for-the-badge" width="35%" />
 > ### STATUS: IN PROGRESS (Mostly done but never tested and fully iterated)
 >> #### Datadriven Progression Base Module
 >> ##### STATUS: MOSTLY DONE
@@ -65,7 +99,7 @@ Updated the readme to better reflect the current state of the system, although i
 
 > ____________
 >
-> ## Interaction System
+> ## <img src="https://img.shields.io/badge/Interaction%20System-AA4D2B?style=for-the-badge" width="35%" />
 > ### STATUS: MOSTLY DONE
 >> - Configurable tracer for interactions or other purposes
 >> - Base interact actor, Interact component, and Interact interface
@@ -78,7 +112,7 @@ Updated the readme to better reflect the current state of the system, although i
 
 > ____________
 >
-> ## Inventory System
+> ## <img src="https://img.shields.io/badge/Inventory%20System-AA4D2B?style=for-the-badge" width="35%" />
 > ### STATUS: MOSTLY DONE
 >> #### Base
 >> ##### STATUS: DONE
@@ -103,7 +137,7 @@ Updated the readme to better reflect the current state of the system, although i
 
 > ____________
 >
-> ## RTSBase (Mass entity based system) 
+> ## <img src="https://img.shields.io/badge/RTS%20Base-AA4D2B?style=for-the-badge" width="20%" />
 > ### STATUS: MOSTLY DONE
 > 
 >> #### Camera Manager
@@ -155,7 +189,7 @@ Updated the readme to better reflect the current state of the system, although i
 
 > ____________
 >
-> ## Conversation and Mission System
+> ## <img src="https://img.shields.io/badge/Mission%20System-AA4D2B?style=for-the-badge" width="35%" />
 > ### STATUS: PARTIALLY DONE, BACKLOGGED
 >> - Uses Unreal Conversation
 >> - Mission editor classes are halfway implemented in another repo, will move here when this is not backlogged and continue work then
@@ -167,7 +201,7 @@ Updated the readme to better reflect the current state of the system, although i
 
 > ____________
 >
-> ## Tutorial System
+> ## <img src="https://img.shields.io/badge/Tutorial%20System-AA4D2B?style=for-the-badge" width="35%" />
 > ### STATUS: BARELY IMPLEMENTED, BACKLOGGED
 >
 > ____________
@@ -185,14 +219,14 @@ Updated the readme to better reflect the current state of the system, although i
 > ### Core
 > ##### STATUS: IN PROGRESS
 > <br></br>
->> #### Player
+>> ## <img src="https://img.shields.io/badge/Core-%20Player-AA4D2B?style=for-the-badge" width="35%" />
 >> ##### STATUS: MOSTLY DONE
 >>> - GodHand player pawn (Basic godhand concept. Uses 'IPDRTSBuilderInterface, IRTSOInputInterface, IRTSOConversationInterface')
 >>> - Player Controller (Uses 'IRTSOInputInterface, IPDRTSBuilderInterface, IRTSOActionLogInterface')
 >> ##### TODO: Need to assess if this needs more substantial additions 
 >> ____________
 > <br></br>
->> #### Interaction - Game Module (Uses plugin base) 
+>> ## <img src="https://img.shields.io/badge/Core-%20Interaction-AA4D2B?style=for-the-badge" width="35%" />
 >> ##### STATUS: MOSTLY DONE
 >>> - Buildings
 >>> - Resources
@@ -200,29 +234,25 @@ Updated the readme to better reflect the current state of the system, although i
 >> ##### TODO: Need to assess if this needs more substantial additions 
 >> ____________
 > <br></br>
->> #### Mass & StateTree - Game Module (Uses plugin base) 
+>> ## <img src="https://img.shields.io/badge/Core-%20Mass-AA4D2B?style=for-the-badge" width="35%" />
 >> ##### STATUS: PARTIALLY DONE
 >>> - Custom tasks that hooks into other systems, such as interaction or inventory
 >>> - Custom fragments that uses data for other systems, such as interaction or inventory
 >> ##### TODO: Need to assess if this needs more substantial additions. Very likely there is need for furhter tasks w.r.t specialized reource gathering or stacked build tasks 
 >> ____________
 > <br></br>
->> #### Conversation and Mission system - Game Module (Uses plugin base) 
+>> ## <img src="https://img.shields.io/badge/Core-%20Missions-AA4D2B?style=for-the-badge" width="35%" />
 >> ##### STATUS: PARTIALLY DONE
 >>> - Tag based mission system. Tags serve as missions and as flags for objectives/sideobjectives states. 
 >>> - Custom conversation actor that uses one of the interaction systems intrfaces and has itneraction logic that handles checking and granting for mission tags
->> ##### TODO: Need to move this over to PDOpen and to wrap up the mission editor code in PDOpen and port it over here when done.
->> ____________
-> <br></br>
->> #### Mission/Quest UI - Game Module (Uses plugin base)  
->> ##### STATUS: IN PROGRESS, BACKLOGGED 
 >>> - Custom mission view widget
 >>> - Slate core with UMG wrapper
 >>> - Mission List logic
 >> ##### TODO: integrate with mission/quest plugin in PDOpen when getting back to that
+>> ##### TODO: Need to move this over to PDOpen and to wrap up the mission editor code in PDOpen and port it over here when done.
 >> ____________
 > <br></br>
->> #### Game Mode & Instance
+>> ## <img src="https://img.shields.io/badge/Core-%20Game-AA4D2B?style=for-the-badge" width="35%" />
 >> ##### STATUS: PARTIALLY DONE, BACKLOGGED
 >>> - Handles login player controller flow and loads in their buildings if they have any
 >>> - Handles level transitions
@@ -231,14 +261,14 @@ Updated the readme to better reflect the current state of the system, although i
 >> ##### TODO: Very likely I will need to add more login related code and loading more player data than just buildings () 
 >> ____________
 > <br></br>
->> #### HUD
+>> ## <img src="https://img.shields.io/badge/Core-%20HUD-AA4D2B?style=for-the-badge" width="35%" />
 >> ##### STATUS: PARTIALLY DONE
 >>> - Draws selection marquee
 >>> - Minimap logic (Deprecated, moved to compute shaders) 
 >> ##### TODO: Need to assess if this needs more substantial additions. Very likely there is need for it later down the line
 >> ____________
 > <br></br>
->> #### Main Menu
+>> ## <img src="https://img.shields.io/badge/Core-%20Main%20Menu-AA4D2B?style=for-the-badge" width="35%" />
 >> ##### STATUS: MOSTLY DONE
 >>> - Settings Menu
 >>> - Save/Load Menu
@@ -247,7 +277,7 @@ Updated the readme to better reflect the current state of the system, although i
 >> ##### TODO: Need to assess if this needs more substantial additions. Somewhat likely there is need for it later down the line
 >> ____________
 > <br></br>
->> #### User settings 
+>> ## <img src="https://img.shields.io/badge/Core-%20User%20Settings-AA4D2B?style=for-the-badge" width="35%" />
 >> ##### STATUS: MOSTLY DONE, BACKLOGGED
 >>> - Mix of slate and UMG to generate widget slots for each settings type
 >>> - Supports POD data settings types, String settings type, Enum/String selector settings types, vector settings types
@@ -255,7 +285,7 @@ Updated the readme to better reflect the current state of the system, although i
 >> ##### TODO: Need to fix a darn bug I notced when overriding the slate widget for certain overriden boolean members (specifically those that via a checkbox and control access to other variables)
 >> ____________
 > <br></br>
->> #### Save Editor 
+>> ## <img src="https://img.shields.io/badge/Core-%20Save%20Editor-AA4D2B?style=for-the-badge" width="35%" />
 >> ##### STATUS: MOSTLY DONE, BACKLOGGED
 >>> - Mix of slate and UMG
 >>> - Reads the current save data and allows for live modification within the game
@@ -269,20 +299,20 @@ Updated the readme to better reflect the current state of the system, although i
 > ____________
 >
 > ### Misc
->> #### Tag Loader
+>> ## <img src="https://img.shields.io/badge/Misc-%20Tag%20Loader-AA4D2B?style=for-the-badge" width="35%" />
 >> ##### STATUS: DONE
 >>> - Injects user defined strings and generates tags at game startup. Meant ot be used to allowing mods that target different systems liek the inventory system, skill system etc
 >> ____________
 > <br></br>
->> #### Game UI Misc
+>> ## <img src="https://img.shields.io/badge/Misc-%20Game%20UI-AA4D2B?style=for-the-badge" width="35%" />
 >> ##### STATUS: PARTIALLY DONE
 >>> - Build system HUD View buttons (mostly slate)
 >>> - Conversation system HUD View Elements (mostly slate)
 >> ##### TODO: Need to assess if this needs more substantial additions. Somewhat likely there is need for it later down the line
 >> ____________
 > <br></br>
->> #### Input stack
->> ##### STATUS: DONE
+>> ## <img src="https://img.shields.io/badge/Misc-%20Input%20Stack-AA4D2B?style=for-the-badge" width="35%" />
+>> ## ![status_done]
 >>> - Stacks input for IA actions, mainly due to a bug in 'Enhanced Input' causing input data to be reset 
 >
 > ____________
@@ -291,7 +321,7 @@ Updated the readme to better reflect the current state of the system, although i
 
 > ____________
 >
-> ## RTSShaders
+> ## <img src="https://img.shields.io/badge/RTSShaders-%20Global-AA4D2B?style=for-the-badge" width="35%" />
 > ### STATUS: PARTIALLY DONE
 >> ### Global shader mapping
 >> - Global Minimap splatter shader (used for splatting mass entities unto a RT texture, need to reuse for other data I want on the minimap RT texture)
