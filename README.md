@@ -179,7 +179,6 @@ Updated the readme to better reflect the current state of the system, although i
 > ____________
 >
 > ### Core
-> ##### ![status_inprog]
 > <br></br>
 >> ## <img src="https://img.shields.io/badge/Core-%20Player-AA4D2B?style=for-the-badge" width="35%" />
 >> ##### ![status_mostly_done]
