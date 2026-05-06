@@ -85,6 +85,7 @@ Content/__ExternalObjects__/
 Plugins/PDLenia
 
 # Workspace misc
+Ideas/FHash/
 *.code-workspace
 *.DotSettings.user
 settings.json
