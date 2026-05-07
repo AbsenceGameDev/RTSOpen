@@ -20,7 +20,6 @@ Updated the readme to better reflect the current state of the system, although i
 | Description |       |       | <h6>Integral & Floating point number boxes</h6> |
 
 ______
-<br></br>
 
 ### <img src="https://img.shields.io/badge/Plugin-User%20Message%20System-AA4D2B?style=for-the-badge" style="width:auto; height:50px;" />
 ### ![status_mostly_done_backlogged]
@@ -31,7 +30,6 @@ ______
 | Description | <h6>Keep network load ligther when there are many recipients and senders</h6> | | <h6>Registers network managers to route RX/TX messages</h6> |
 
 ______
-<br></br>
 
 ### <img src="https://img.shields.io/badge/Plugin-Progression%20System-AA4D2B?style=for-the-badge" style="width:auto; height:50px;" />
 ### ![status_mostly_done]
@@ -52,7 +50,6 @@ ______
 > ##### TODO: Need to assess if this needs more substantial additions. Not very likely. I do vaguely remembe
 
 ______
-<br></br>
 
 ### <img src="https://img.shields.io/badge/Plugin-Interaction%20System-AA4D2B?style=for-the-badge" style="width:auto; height:50px;" />
 ### ![status_mostly_done]
@@ -65,8 +62,6 @@ ______
 > ##### TODO: Need to assess if this needs more substantial additions 
 
 ______
-<br></br>
-
 
 ### <img src="https://img.shields.io/badge/Plugin-Inventory%20System-AA4D2B?style=for-the-badge" style="width:auto; height:50px;" />
 ### ![status_mostly_done]
@@ -88,8 +83,6 @@ ______
 > ##### TODO: Need to assess if this needs more substantial additions
 
 ______
-<br></br>
-
 
 ### <img src="https://img.shields.io/badge/Plugin-RTS%20Base-AA4D2B?style=for-the-badge" style="width:auto; height:50px;" />
 ### ![status_mostly_done]
@@ -101,7 +94,6 @@ ______
 | Description |   <h6> - Generates custom octree nodes and assigns them to entities <br> - custom octree nodes that packs certain entity data <br> - Subsystem to help usage</h6>   |   <h6> - Calculates dynamic hashgrid cells <br> - Recalculates locations to dynamic hashgrid mapping</h6>   |   <h6> - Scans hashgrid for entities to ping <br> - Pings JobTag to entities to target given actor (for now interactable buildings)</h6>   |   <h6> - Uses hashgrid to force world steps for build system <br> - Tracks built actors and their owners <br> - Caches build system recipes and has helpers</h6>   |   <h6> - Custom Mass Tasks, Processors, Evaluators, Fragments, Traits <br> - Custom State tree behaviour schema</h6>   |  
 
 
-
 | <img src="https://shieldcn.dev/badge/Ext.png?variant=ghost&size=lg&color=3e4f6c&labelOpacity=1" style="width:auto; height:40px;" />  |  |  |  |
 | :---        | :---        |    :---   |          :--- |
 | Sections    | ![badge](https://shieldcn.dev/badge/Manager-Camera-violet.png) | ![badge](https://shieldcn.dev/badge/Subsystem-FoW-violet.png) | ![badge](https://shieldcn.dev/badge/Interfaces-violet.png)  |
@@ -109,8 +101,6 @@ ______
 | Description |   <h6> - Applies different camera presets/setups using 'FPDCameraManagerSettings' <br> - Allows for custom presets/setups (Has a default base RTS preset ) </h6>   |   <h6> - UPDATEME <br> - UPDATEME</h6>   |   <h6> - Ghost building interface, used by actors that wants to be managed by the builder system <br> - Builder Interface, used by actors that wants to be able to build other actors </h6> |   
 
 ______
-<br></br>
-
 
 ### <img src="https://img.shields.io/badge/Plugin-Mission%20System-AA4D2B?style=for-the-badge" style="width:auto; height:50px;" />
 ### ![status_inprog_backlogged]
@@ -122,7 +112,6 @@ ______
 > ##### TODO: Need to move this over to PDOpen and to wrap up the mission editor code in PDOpen and port it over here when done.
 
 ______
-<br></br>
 
 ### <img src="https://img.shields.io/badge/Plugin-Tutorial%20System-AA4D2B?style=for-the-badge" style="width:auto; height:50px;" />
 ### ![status_todo_backlogged]
@@ -135,10 +124,7 @@ ______
 ______
 <br></br>
 
-
 # <img src="https://img.shields.io/badge/Game%20Base%20Modules%20%20-blueviolet?style=for-the-badge" width="1000" height="160" />
-
-<br></br>
 
 ### <img src="https://img.shields.io/badge/Core-%20Player-AA4D2B?style=for-the-badge" style="width:auto; height:50px;" />
 ### ![status_mostly_done]
@@ -150,7 +136,6 @@ ______
 > ##### TODO: Need to assess if this needs more substantial additions 
 
 ______
-<br></br>
 
 ### <img src="https://img.shields.io/badge/Core-%20Interaction-AA4D2B?style=for-the-badge" style="width:auto; height:50px;" />
 ### ![status_mostly_done]
@@ -162,7 +147,6 @@ ______
 > ##### TODO: Need to assess if this needs more substantial additions 
 
 ______
-<br></br>
 
 ### <img src="https://img.shields.io/badge/Core-%20Mass-AA4D2B?style=for-the-badge" style="width:auto; height:50px;" />
 ### ![status_inprog]
@@ -174,7 +158,6 @@ ______
 > ##### TODO: Need to assess if this needs more substantial additions. Very likely there is need for furhter tasks w.r.t specialized reource gathering or stacked build tasks 
 
 ______
-<br></br>
 
 ### <img src="https://img.shields.io/badge/Core-%20Missions-AA4D2B?style=for-the-badge" style="width:auto; height:50px;" />
 ##### ![status_inprog]
@@ -187,7 +170,6 @@ ______
 > ##### TODO: Need to move this over to PDOpen and to wrap up the mission editor code in PDOpen and port it over here when done.
 
 ______
-<br></br>
 
 ### <img src="https://img.shields.io/badge/Core-%20Game-AA4D2B?style=for-the-badge" style="width:auto; height:50px;" />
 ##### ![status_inprog_backlogged]
@@ -200,7 +182,6 @@ ______
 > ##### TODO: Very likely I will need to add more login related code and loading more player data than just buildings () 
 
 ______
-<br></br>
 
 ### <img src="https://img.shields.io/badge/Core-%20HUD-AA4D2B?style=for-the-badge" style="width:auto; height:50px;" />
 ##### ![status_inprog]
@@ -212,7 +193,6 @@ ______
 > ##### TODO: Need to assess if this needs more substantial additions. Very likely there is need for it later down the line
 
 ______
-<br></br>
 
 ### <img src="https://img.shields.io/badge/Core-%20Game%20Menus-AA4D2B?style=for-the-badge" style="width:auto; height:50px;" />
 ##### ![status_mostly_done]
@@ -224,7 +204,6 @@ ______
 > ##### TODO: Need to assess if this needs more substantial additions. Somewhat likely there is need for it later down the line
 
 ______
-<br></br>
 
 ### <img src="https://img.shields.io/badge/Core-%20User%20Settings-AA4D2B?style=for-the-badge" style="width:auto; height:50px;" />
 ##### ![status_mostly_done_backlogged]
@@ -236,7 +215,6 @@ ______
 > ##### TODO: Need to fix a darn bug I notced when overriding the slate widget for certain overriden boolean members (specifically those that via a checkbox and control access to other variables)
 
 ______
-<br></br>
 
 ### <img src="https://img.shields.io/badge/Core-%20Save%20Editor-AA4D2B?style=for-the-badge" style="width:auto; height:50px;" />
 ##### ![status_mostly_done_backlogged]
@@ -248,7 +226,6 @@ ______
 > ##### TODO: Update UI, looks horrendous. Alos while at it add import and export from custom binary format and also json format (With this many entities I might need to be creative with the Json structure so I can cram alot of data into few fields) 
 
 ______
-<br></br>
 
 ### <img src="https://img.shields.io/badge/Misc-%20Tag%20Loader-AA4D2B?style=for-the-badge" style="width:auto; height:50px;" />
 ##### ![status_done]
@@ -259,7 +236,6 @@ ______
 | Description |   <h6>Injects user defined strings and generates tags at game startup. Meant ot be used to allowing mods that target different systems liek the inventory system, skill system etc</h6>   | 
 
 ______
-<br></br>
 
 ### <img src="https://img.shields.io/badge/Misc-%20Game%20UI-AA4D2B?style=for-the-badge" style="width:auto; height:50px;" />
 ##### ![status_inprog]
@@ -271,7 +247,6 @@ ______
 > ##### TODO: Need to assess if this needs more substantial additions. Somewhat likely there is need for it later down the line
 
 ______
-<br></br>
 
 ### <img src="https://img.shields.io/badge/Misc-%20Input%20Stack-AA4D2B?style=for-the-badge" style="width:auto; height:50px;" />
 ##### ![status_done]
@@ -282,7 +257,6 @@ ______
 | Description |   <h6>Stacks input for IA actions, mainly due to a bug in 'Enhanced Input' causing input data to be reset</h6>   | 
 
 ______
-<br></br>
 
 ### <img src="https://img.shields.io/badge/RTSShaders-%20Global-AA4D2B?style=for-the-badge" style="width:auto; height:50px;" />
 ##### ![status_inprog]
