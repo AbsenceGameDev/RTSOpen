@@ -13,149 +13,137 @@ Updated the readme to better reflect the current state of the system, although i
 
 ### <img src="https://img.shields.io/badge/Shared%20UI-AA4D2B?style=for-the-badge" style="width:auto; height:50px;" />
 ### ![status_inprog_backlogged]
-
-
-<!-- Thoughts/Pseudotable:
-|  |  |  |  |
+| <img src="https://shieldcn.dev/badge/Core.png?variant=ghost&size=lg&color=3e4f6c&labelOpacity=1" style="width:auto; height:40px;" /> |  |  |  |
 | :---        | :---        |    :---   |          :--- |
-| Sections    |             |           |               |
-| Description |             |           |               |
--->
-
-| ![badge](https://shieldcn.dev/badge/Scope%3A-Base%2520Classes.png?variant=ghost&size=lg&color=3e4f6c&labelOpacity=1) |  |  |  |
-| :---        | :---        |    :---   |          :--- |
-| Sections | ![badgeBtn](https://shieldcn.dev/badge/Button-Base-violet.png) | ![badgeDlg](https://shieldcn.dev/badge/Dialog-Base-violet.png)  | ![badgeNB](https://shieldcn.dev/badge/NumberBoxes-Base-violet.png) |
-| Description |       |       |  Integral & Floating point number boxes |
+| Sections | ![badge](https://shieldcn.dev/badge/Button-Base-violet.png) | ![badge](https://shieldcn.dev/badge/Dialog-Base-violet.png)  | ![badge](https://shieldcn.dev/badge/NumberBoxes-Base-violet.png) |
 | Status    |   ![status_done] |  ![status_done]  |  ![status_mostly_done_backlogged] |
+| Description |       |       | <h6>Integral & Floating point number boxes</h6> |
 
-___
+______
 <br></br>
 
-## <img src="https://img.shields.io/badge/User%20Message%20System-AA4D2B?style=for-the-badge" style="width:auto; height:50px;" />
+### <img src="https://img.shields.io/badge/User%20Message%20System-AA4D2B?style=for-the-badge" style="width:auto; height:50px;" />
 ### ![status_mostly_done_backlogged]
-> ![badge](https://shieldcn.dev/badge/Scope%3A-Replication.png?variant=ghost&size=lg&color=3e4f6c&labelOpacity=1) 
->> - Network manager to keep load ligther when there are many recipients and senders
->> - 'Fast arrays'
->> - Subsystem to register network managers and to route messages being sent
+| <img src="https://shieldcn.dev/badge/Core.png?variant=ghost&size=lg&color=3e4f6c&labelOpacity=1" style="width:auto; height:40px;" /> |  |  |  |
+| :---        | :---        |    :---   |          :--- |
+| Sections    | ![badge](https://shieldcn.dev/badge/Network-Managers-violet.png) | ![badge](https://shieldcn.dev/badge/Network-Fast%20Arrays-violet.png) | ![badge](https://shieldcn.dev/badge/Network-Subsystem-violet.png) |
+| Status    |   ![status_mostly_done_backlogged] |  ![status_mostly_done_backlogged]  |  ![status_mostly_done_backlogged] |
+| Description | <h6>Keep network load ligther when there are many recipients and senders</h6> | | <h6>Registers network managers to route RX/TX messages</h6> |
 
+______
 <br></br>
 
-> ## <img src="https://img.shields.io/badge/Progression%20System-AA4D2B?style=for-the-badge" style="width:auto; height:50px;" />
-> ### ![status_mostly_done]
->> #### Datadriven Progression Base Module
->> ##### ![status_mostly_done]
->> - Configurable rulesets and a ruleset evaluator. Idea is so the designers cna implement custom progression rulesets or recreate existing well-known rulesets in their project
->> - Configurable Skills & Skilltrees
->> - Configurable level scaling and stat modifier rules
->> - Replicated progression component and progression datums (fastarrays again)
->> - Engine level Subsystem that maps our data from the datatable so we can access it at O(1) when searching for specific default data
->> - Base UMG widgets for developers to bootstrap from or to use as example for progression related widgets
->> ____________
->> #### PDProgress to GAS layer
->> ##### ![status_todo_backlogged]
->> - 
->> - 
->> ____________
->> #### PDProgress to MASS layer
->> ##### ![status_todo_backlogged]
->> - 
->> - 
->> ____________
+### <img src="https://img.shields.io/badge/Progression%20System-AA4D2B?style=for-the-badge" style="width:auto; height:50px;" />
+### ![status_mostly_done]
+
+| <img src="https://shieldcn.dev/badge/Core.png?variant=ghost&size=lg&color=3e4f6c&labelOpacity=1" style="width:auto; height:40px;" />  |  |  |  |  |  |  |
+| :---        | :---        |    :---   |          :--- |    :---   |          :--- |           :--- |
+| Sections    | ![badge](https://shieldcn.dev/badge/Rulesets-violet.png) | ![badge](https://shieldcn.dev/badge/Skills-violet.png) | ![badge](https://shieldcn.dev/badge/Levels-violet.png)  | ![badge](https://shieldcn.dev/badge/Replication-violet.png) | ![badge](https://shieldcn.dev/badge/Subsystem-violet.png) | ![badge](https://shieldcn.dev/badge/Widgets-violet.png)  | 
+| Status      | ![status_mostly_done] | ![status_done] | ![status_done] | ![status_done] | ![status_done] | ![status_done] |
+| Description | <h6> Configurable rulesets and a ruleset evaluator. Designers can implement custom progression rulesets or recreate existing well-known rulesets </h6> | <h6> Configurable Skills & Skilltrees </h6> | <h6> Configurable level scaling and stat modifier rules </h6> | <h6> Replicated progression component and progression datums (fastarrays again) </h6> | <h6> Engine level Subsystem that maps our data from the datatable so we can access it at O(1) when searching for specific default data </h6> | <h6> Base UMG widgets for developers to bootstrap from or to use as example for progression related widgets </h6> |
+
+| <img src="https://shieldcn.dev/badge/GAS%20Layer.png?variant=ghost&size=lg&color=3e4f6c&labelOpacity=1" style="width:auto%; height:40px;" />  |   |  | <img src="https://shieldcn.dev/badge/MASS%20Layer.png?variant=ghost&size=lg&color=3e4f6c&labelOpacity=1" style="width:auto; height:40px;" />  |  |
+| :---        | :---        | :--- | :---        | :---        |
+| Sections    | ![badge](https://shieldcn.dev/badge/Routing%20Layer-violet.png) |  | Sections    | ![badge](https://shieldcn.dev/badge/Routing%20Layer-violet.png) |
+| Status      |  ![status_todo_backlogged] |  | Status      |  ![status_todo_backlogged] | 
+| Description |             |  | Description |             | 
+
 > ##### TODO: Need to finish up the ruleset code, it was mostly done but was a long time ago since I wrote it so I will need to investigate first 
 > ##### TODO: Need to assess if this needs more substantial additions. Not very likely. I do vaguely remembe
 
+______
 <br></br>
 
-> ## <img src="https://img.shields.io/badge/Interaction%20System-AA4D2B?style=for-the-badge" style="width:auto; height:50px;" />
-> ### ![status_mostly_done]
->> - Configurable tracer for interactions or other purposes
->> - Base interact actor, Interact component, and Interact interface
->> - Base UMG widgets for developers to bootstrap from or to use as example for progression related widgets
+### <img src="https://img.shields.io/badge/Interaction%20System-AA4D2B?style=for-the-badge" style="width:auto; height:50px;" />
+### ![status_mostly_done]
+| <img src="https://shieldcn.dev/badge/Core.png?variant=ghost&size=lg&color=3e4f6c&labelOpacity=1" style="width:auto; height:40px;" /> |  |  |  |
+| :---        | :---        |    :---   |          :--- |
+| Sections    | ![badge](https://shieldcn.dev/badge/Tracers-violet.png) | ![badge](https://shieldcn.dev/badge/Objects-violet.png) | ![badge](https://shieldcn.dev/badge/Widgets-violet.png)  |
+| Status      |  ![status_done] | ![status_done] | ![status_done] |
+| Description |   <h6>Configurable tracer for interactions or other purposes</h6>   |   <h6>Base interact actor, Interact component, and Interact interface</h6>   |   <h6>Base UMG widgets for developers to bootstrap from or to use as example for progression related widgets</h6>   |
+
 > ##### TODO: Need to assess if this needs more substantial additions 
 
+______
 <br></br>
 
-> ## <img src="https://img.shields.io/badge/Inventory%20System-AA4D2B?style=for-the-badge" style="width:auto; height:50px;" />
-> ### ![status_mostly_done]
->> #### Base
->> ##### ![status_done]
->> - Configurable item definitions via datatable
->> - Inventory Fragment (MassFragment) 
->> - Inventory Component (UObject)
->> ____________
->> #### Crafting
->> ##### ![status_done]
->> - Recipes
->> - Cost management
->> ____________
->> #### Replication
->> ##### ![status_done]
->> - Replicating items and item counts (fastarrays again) for the inventory component. Inventory Fragment is currently not being replicated iirc
->> ____________
+
+### <img src="https://img.shields.io/badge/Inventory%20System-AA4D2B?style=for-the-badge" style="width:auto; height:50px;" />
+### ![status_mostly_done]
+
+<!-- Inventory: Core -->
+| <img src="https://shieldcn.dev/badge/Core.png?variant=ghost&size=lg&color=3e4f6c&labelOpacity=1" style="width:auto; height:40px;" />  |  |  |  |
+| :---        | :---        |    :---   |          :--- |
+| Sections    | ![badge](https://shieldcn.dev/badge/Inventory-Items-violet.png) | ![badge](https://shieldcn.dev/badge/Inventory-Fragment-violet.png) | ![badge](https://shieldcn.dev/badge/Inventory-Component-violet.png)  |
+| Status      |  ![status_done] | ![status_done] | ![status_done] |
+| Description |   <h6>Configurable item definitions via datatable</h6>   |   <h6>MassFragment base, can interact with inventory components</h6>   |   <h6>UObject component base, can interact with inventory fragments</h6>   |
+
+<!-- Inventory: Crafting & Replication -->
+| <img src="https://shieldcn.dev/badge/Crafting.png?variant=ghost&size=lg&color=3e4f6c&labelOpacity=1" style="width:auto; height:40px;" />  |  |  |  | <img src="https://shieldcn.dev/badge/Replication.png?variant=ghost&size=lg&color=3e4f6c&labelOpacity=1" style="width:auto; height:40px;" />  |  |
+| :---        | :---        |    :---   | :--- | :---        | :---        |
+| Sections    | ![badge](https://shieldcn.dev/badge/Recipes-violet.png) | ![badge](https://shieldcn.dev/badge/Cost%20management-violet.png) |  | Sections    | ![badge](https://shieldcn.dev/badge/Item%20Replication-violet.png) |
+| Status      |  ![status_done] | ![status_done] |  | Status      |  ![status_done] | 
+| Description |   <h6>N/A</h6>   |   <h6>N/A</h6>   |   | Description |   <h6>Replicating items and item counts (fastarrays again) for the inventory component.<br>Inventory Fragment is currently not being replicated iirc</h6>   |   
+
 > ##### TODO: Need to assess if this needs more substantial additions
 
+______
 <br></br>
 
-> ## <img src="https://img.shields.io/badge/RTS%20Base-AA4D2B?style=for-the-badge" style="width:auto; height:50px;" />
-> ### ![status_mostly_done]
-> 
->> #### Camera Manager
->> ##### ![status_done]
->> - Applies different camera presets/setups using 'FPDCameraManagerSettings'
->> - Allows for custom presets/setups (Has a default base RTS preset )
->> ____________
->> #### Fog of War system 
->> ##### ![status_inprog]
->> - Applies different camera presets/setups using 'FPDCameraManagerSettings'
->> - Allows for custom presets/setups (Has a default base RTS preset )
->> ____________
->> #### Octree Subsystem
->> ##### ![status_done]
->> - Generates custom octree nodes and assigns them to entities
->> - custom octree nodes that packs certain entity data
->> - Subsystem to help usage
->> ____________
->> #### Hashgrid Subsystem
->> ##### ![status_done]
->> - Calculates dynamic hashgrid cells
->> - Recalculates locations to dynamic hashgrid mapping
->> ____________
->> #### Pinger subsystem
->> ##### ![status_done]
->> - Scans hashgrid for entities to ping
->> - Pings JobTag to entities to target given actor (for now interactable buildings)
->> ____________
->> #### Builder subsystem
->> ##### ![status_mostly_done] 
->> - Uses hashgrid to force world steps for build system
->> - Tracks built actors and their owners
->> - Caches build system recipes and has helper functions to get default build item datum
->> ##### TODO: Need to assess if this needs more substantial additions 
->> ____________
->> #### Mass & Statetree
->> ##### ![status_inprog] 
->> - Custom Mass Tasks, Processors, Evaluators, Fragments, Traits
->> - Custom State tree behaviour schemas
->> ##### TODO: Still need to revise some of the processors and test the vertex animations
->> ____________
->> #### Interfaces
->> - Ghost building interface, used by actors that wants to be managed by the builder system
->> - Builder Interface, used by actors that wants to be able to build other actors
 
+### <img src="https://img.shields.io/badge/RTS%20Base-AA4D2B?style=for-the-badge" style="width:auto; height:50px;" />
+### ![status_mostly_done]
+
+| <img src="https://shieldcn.dev/badge/Core.png?variant=ghost&size=lg&color=3e4f6c&labelOpacity=1" style="width:auto; height:40px;" />  |  |  |  |  |  |
+| :---        | :---        |    :---   |          :--- | :---        |    :---   |
+| Sections    | ![badge](https://shieldcn.dev/badge/Subsystem-Octree-violet.png)  | ![badge](https://shieldcn.dev/badge/Subsystem-Hashgrid-violet.png) | ![badge](https://shieldcn.dev/badge/Subsystem-Pinger-violet.png) | ![badge](https://shieldcn.dev/badge/Subsystem-Builder-violet.png)  | ![badge](https://shieldcn.dev/badge/Mass%20Statetree-violet.png) |
+| Status      |  ![status_done] | ![status_done] | ![status_done] | ![status_mostly_done] | ![status_inprog] |
+| Description |   <h6> - Generates custom octree nodes and assigns them to entities <br> - custom octree nodes that packs certain entity data <br> - Subsystem to help usage</h6>   |   <h6> - Calculates dynamic hashgrid cells <br> - Recalculates locations to dynamic hashgrid mapping</h6>   |   <h6> - Scans hashgrid for entities to ping <br> - Pings JobTag to entities to target given actor (for now interactable buildings)</h6>   |   <h6> - Uses hashgrid to force world steps for build system <br> - Tracks built actors and their owners <br> - Caches build system recipes and has helpers</h6>   |   <h6> - Custom Mass Tasks, Processors, Evaluators, Fragments, Traits <br> - Custom State tree behaviour schema</h6>   |  
+
+
+
+| <img src="https://shieldcn.dev/badge/Ext.png?variant=ghost&size=lg&color=3e4f6c&labelOpacity=1" style="width:auto; height:40px;" />  |  |  |  |
+| :---        | :---        |    :---   |          :--- |
+| Sections    | ![badge](https://shieldcn.dev/badge/Manager-Camera-violet.png) | ![badge](https://shieldcn.dev/badge/Subsystem-FoW-violet.png) | ![badge](https://shieldcn.dev/badge/Interfaces-violet.png)  |
+| Status      |  ![status_done] | ![status_inprog] | ![status_done] |
+| Description |   <h6> - Applies different camera presets/setups using 'FPDCameraManagerSettings' <br> - Allows for custom presets/setups (Has a default base RTS preset ) </h6>   |   <h6> - UPDATEME <br> - UPDATEME</h6>   |   <h6> - Ghost building interface, used by actors that wants to be managed by the builder system <br> - Builder Interface, used by actors that wants to be able to build other actors </h6> |   
+
+______
 <br></br>
 
-> ## <img src="https://img.shields.io/badge/Mission%20System-AA4D2B?style=for-the-badge" style="width:auto; height:50px;" />
-> ### ![status_inprog_backlogged]
->> - Uses Unreal Conversation
->> - Mission editor classes are halfway implemented in another repo, will move here when this is not backlogged and continue work then
->> ##### TODO: Need to move this over to PDOpen and to wrap up the mission editor code in PDOpen and port it over here when done.
 
+### <img src="https://img.shields.io/badge/Mission%20System-AA4D2B?style=for-the-badge" style="width:auto; height:50px;" />
+### ![status_inprog_backlogged]
+| <img src="https://shieldcn.dev/badge/Core.png?variant=ghost&size=lg&color=3e4f6c&labelOpacity=1" style="width:auto; height:40px;" />  |  |  |  |
+| :---        | :---        |    :---   |          :--- |
+| Sections    | ![badge](https://shieldcn.dev/badge/Unreal%20Conversation-violet.png) | ![badge](https://shieldcn.dev/badge/Mission%20Editor-violet.png) |
+| Status      |  ![status_done] | ![status_inprog_backlogged] |
+| Description |   <h6>Bootstrapped from Unreal Conversation </h6>   |   <h6>Mission editor classes are halfway implemented in another repo, will move here when this is not backlogged and continue work then</h6>   |
+> ##### TODO: Need to move this over to PDOpen and to wrap up the mission editor code in PDOpen and port it over here when done.
+
+______
 <br></br>
 
-> ## <img src="https://img.shields.io/badge/Tutorial%20System-AA4D2B?style=for-the-badge" style="width:auto; height:50px;" />
-> ### ![status_todo_backlogged]
+### <img src="https://img.shields.io/badge/Tutorial%20System-AA4D2B?style=for-the-badge" style="width:auto; height:50px;" />
+### ![status_todo_backlogged]
+| <img src="https://shieldcn.dev/badge/Core.png?variant=ghost&size=lg&color=3e4f6c&labelOpacity=1" style="width:auto; height:40px;" />  |  |  |
+| :---        | :---        |    :---   |
+| Sections    | ![badge](https://shieldcn.dev/badge/Manager-violet.png) | ![badge](https://shieldcn.dev/badge/Widgets-violet.png) | 
+| Status      |  ![status_todo_backlogged] | ![status_todo_backlogged] | 
+| Description |   <h6></h6>   |   <h6></h6>   |  
 
+______
 <br></br>
+
+
+<!-- Thoughts/Pseudotable:
+| <img src="https://shieldcn.dev/badge/Core.png?variant=ghost&size=lg&color=3e4f6c&labelOpacity=1" style="width:auto; height:40px;" />  |  |  |  |
+| :---        | :---        |    :---   |          :--- |
+| Sections    | ![badge](https://shieldcn.dev/badge/XXXXX-XXXXXX-violet.png) | ![badge](https://shieldcn.dev/badge/XXXXX-XXXXXX-violet.png) | ![badge](https://shieldcn.dev/badge/XXXXX-XXXXXX-violet.png)  |
+| Status      |  ![status_done] | ![status_done] | ![status_done] |
+| Description |   <h6></h6>   |   <h6></h6>   |   <h6></h6>   |
+-->
+
 
 # <img src="https://img.shields.io/badge/Game%20Base%20Modules%20%20-blueviolet?style=for-the-badge" width="1000" height="200px" />
 
