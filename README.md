@@ -11,18 +11,29 @@ Updated the readme to better reflect the current state of the system, although i
 
 # <img src="https://img.shields.io/badge/Custom%20Base%20Plugins-blueviolet?style=for-the-badge" width="1000" height="200" />
 
-> ## <img src="https://img.shields.io/badge/Shared%20UI-AA4D2B?style=for-the-badge" style="width:auto; height:50px;" />
-> ### ![status_inprog_backlogged]
->> #### Base Classes
->> ![badgeBtn](https://shieldcn.dev/badge/Button-Base-violet.png) <br>
->> ![badgeDlg](https://shieldcn.dev/badge/Dialog-Base-violet.png) <br>
->> ![badgeNB](https://shieldcn.dev/badge/NumberBoxes-Base-violet.png)
+### <img src="https://img.shields.io/badge/Shared%20UI-AA4D2B?style=for-the-badge" style="width:auto; height:50px;" />
+### ![status_inprog_backlogged]
 
+
+<!-- Thoughts/Pseudotable:
+|  |  |  |  |
+| :---        | :---        |    :---   |          :--- |
+| Sections    |             |           |               |
+| Description |             |           |               |
+-->
+
+| ![badge](https://shieldcn.dev/badge/Scope%3A-Base%2520Classes.png?variant=ghost&size=lg&color=3e4f6c&labelOpacity=1) |  |  |  |
+| :---        | :---        |    :---   |          :--- |
+| Sections | ![badgeBtn](https://shieldcn.dev/badge/Button-Base-violet.png) | ![badgeDlg](https://shieldcn.dev/badge/Dialog-Base-violet.png)  | ![badgeNB](https://shieldcn.dev/badge/NumberBoxes-Base-violet.png) |
+| Description |       |       |  Integral & Floating point number boxes |
+| Status    |   ![status_done] |  ![status_done]  |  ![status_mostly_done_backlogged] |
+
+___
 <br></br>
 
-> ## <img src="https://img.shields.io/badge/User%20Message%20System-AA4D2B?style=for-the-badge" style="width:auto; height:50px;" />
-> ### ![status_mostly_done_backlogged]
->> #### Replication
+## <img src="https://img.shields.io/badge/User%20Message%20System-AA4D2B?style=for-the-badge" style="width:auto; height:50px;" />
+### ![status_mostly_done_backlogged]
+> ![badge](https://shieldcn.dev/badge/Scope%3A-Replication.png?variant=ghost&size=lg&color=3e4f6c&labelOpacity=1) 
 >> - Network manager to keep load ligther when there are many recipients and senders
 >> - 'Fast arrays'
 >> - Subsystem to register network managers and to route messages being sent
