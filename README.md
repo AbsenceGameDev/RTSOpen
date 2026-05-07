@@ -3,6 +3,9 @@ RTSOpen is a source-available BSL(1.1) project for developing tools and systems 
 The license has custom usage rights that permit *most people to use this in a commercial game project if appropriate credits are given and if the source code is not redistributed outside of compiled form.
 > *Persons and studios with any access to finances above 100,000 USD per year need to read the additional grants section in the license for further details
 
+![beta](https://shieldcn.dev/badge/status-beta-blue.svg?variant=outline) ![version](https://shieldcn.dev/badge/version-0.1.0-blue.svg?variant=secondary)  ![license](https://shieldcn.dev/badge/license-BSL%201.1-green.svg?variant=outline)
+
+
 ## Notes
 Updated the readme to better reflect the current state of the system, although it is still incomplete, so I will update the readme some more in the coming days (6th May 2026).
 
@@ -11,9 +14,9 @@ Updated the readme to better reflect the current state of the system, although i
 > ## <img src="https://img.shields.io/badge/Shared%20UI-AA4D2B?style=for-the-badge" style="width:auto; height:50px;" />
 > ### ![status_inprog_backlogged]
 >> #### Base Classes
->> - Button Base
->> - Dialog Base
->> - Floating-point and Integral Number Boxes
+>> ![badgeBtn](https://shieldcn.dev/badge/Button-Base-violet.png) <br>
+>> ![badgeDlg](https://shieldcn.dev/badge/Dialog-Base-violet.png) <br>
+>> ![badgeNB](https://shieldcn.dev/badge/NumberBoxes-Base-violet.png)
 
 <br></br>
 
