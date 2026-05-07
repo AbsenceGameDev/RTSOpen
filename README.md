@@ -11,7 +11,7 @@ Updated the readme to better reflect the current state of the system, although i
 
 # <img src="https://img.shields.io/badge/Custom%20Base%20Plugins-blueviolet?style=for-the-badge" width="1000" height="160" />
 
-### <img src="https://img.shields.io/badge/Shared%20UI-AA4D2B?style=for-the-badge" style="width:auto; height:50px;" />
+### <img src="https://img.shields.io/badge/Plugin-Shared%20UI-AA4D2B?style=for-the-badge" style="width:auto; height:50px;" />
 ### ![status_inprog_backlogged]
 | <img src="https://shieldcn.dev/badge/Core.png?variant=ghost&size=lg&color=3e4f6c&labelOpacity=1" style="width:auto; height:40px;" /> |  |  |  |
 | :---        | :---        |    :---   |          :--- |
@@ -22,7 +22,7 @@ Updated the readme to better reflect the current state of the system, although i
 ______
 <br></br>
 
-### <img src="https://img.shields.io/badge/User%20Message%20System-AA4D2B?style=for-the-badge" style="width:auto; height:50px;" />
+### <img src="https://img.shields.io/badge/Plugin-User%20Message%20System-AA4D2B?style=for-the-badge" style="width:auto; height:50px;" />
 ### ![status_mostly_done_backlogged]
 | <img src="https://shieldcn.dev/badge/Core.png?variant=ghost&size=lg&color=3e4f6c&labelOpacity=1" style="width:auto; height:40px;" /> |  |  |  |
 | :---        | :---        |    :---   |          :--- |
@@ -33,7 +33,7 @@ ______
 ______
 <br></br>
 
-### <img src="https://img.shields.io/badge/Progression%20System-AA4D2B?style=for-the-badge" style="width:auto; height:50px;" />
+### <img src="https://img.shields.io/badge/Plugin-Progression%20System-AA4D2B?style=for-the-badge" style="width:auto; height:50px;" />
 ### ![status_mostly_done]
 
 | <img src="https://shieldcn.dev/badge/Core.png?variant=ghost&size=lg&color=3e4f6c&labelOpacity=1" style="width:auto; height:40px;" />  |  |  |  |  |  |  |
@@ -54,7 +54,7 @@ ______
 ______
 <br></br>
 
-### <img src="https://img.shields.io/badge/Interaction%20System-AA4D2B?style=for-the-badge" style="width:auto; height:50px;" />
+### <img src="https://img.shields.io/badge/Plugin-Interaction%20System-AA4D2B?style=for-the-badge" style="width:auto; height:50px;" />
 ### ![status_mostly_done]
 | <img src="https://shieldcn.dev/badge/Core.png?variant=ghost&size=lg&color=3e4f6c&labelOpacity=1" style="width:auto; height:40px;" /> |  |  |  |
 | :---        | :---        |    :---   |          :--- |
@@ -68,7 +68,7 @@ ______
 <br></br>
 
 
-### <img src="https://img.shields.io/badge/Inventory%20System-AA4D2B?style=for-the-badge" style="width:auto; height:50px;" />
+### <img src="https://img.shields.io/badge/Plugin-Inventory%20System-AA4D2B?style=for-the-badge" style="width:auto; height:50px;" />
 ### ![status_mostly_done]
 
 <!-- Inventory: Core -->
@@ -91,7 +91,7 @@ ______
 <br></br>
 
 
-### <img src="https://img.shields.io/badge/RTS%20Base-AA4D2B?style=for-the-badge" style="width:auto; height:50px;" />
+### <img src="https://img.shields.io/badge/Plugin-RTS%20Base-AA4D2B?style=for-the-badge" style="width:auto; height:50px;" />
 ### ![status_mostly_done]
 
 | <img src="https://shieldcn.dev/badge/Core.png?variant=ghost&size=lg&color=3e4f6c&labelOpacity=1" style="width:auto; height:40px;" />  |  |  |  |  |  |
@@ -112,7 +112,7 @@ ______
 <br></br>
 
 
-### <img src="https://img.shields.io/badge/Mission%20System-AA4D2B?style=for-the-badge" style="width:auto; height:50px;" />
+### <img src="https://img.shields.io/badge/Plugin-Mission%20System-AA4D2B?style=for-the-badge" style="width:auto; height:50px;" />
 ### ![status_inprog_backlogged]
 | <img src="https://shieldcn.dev/badge/Core.png?variant=ghost&size=lg&color=3e4f6c&labelOpacity=1" style="width:auto; height:40px;" />  |  |  |
 | :---        | :---        |    :---   |
@@ -124,7 +124,7 @@ ______
 ______
 <br></br>
 
-### <img src="https://img.shields.io/badge/Tutorial%20System-AA4D2B?style=for-the-badge" style="width:auto; height:50px;" />
+### <img src="https://img.shields.io/badge/Plugin-Tutorial%20System-AA4D2B?style=for-the-badge" style="width:auto; height:50px;" />
 ### ![status_todo_backlogged]
 | <img src="https://shieldcn.dev/badge/Core.png?variant=ghost&size=lg&color=3e4f6c&labelOpacity=1" style="width:auto; height:40px;" />  |  |  |
 | :---        | :---        |    :---   |
