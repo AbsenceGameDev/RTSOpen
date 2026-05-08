@@ -38,7 +38,7 @@ ______
 | :---        | :---        |    :---   |          :--- |    :---   |          :--- |           :--- |
 | Sections    | ![badge](https://shieldcn.dev/badge/Rulesets-violet.png) | ![badge](https://shieldcn.dev/badge/Skills-violet.png) | ![badge](https://shieldcn.dev/badge/Levels-violet.png)  | ![badge](https://shieldcn.dev/badge/Replication-violet.png) | ![badge](https://shieldcn.dev/badge/Subsystem-violet.png) | ![badge](https://shieldcn.dev/badge/Widgets-violet.png)  | 
 | Status      | ![mostly_done] | ![done] | ![done] | ![done] | ![done] | ![done] |
-| Description | <h6> Configurable rulesets and a ruleset evaluator. Designers can implement custom progression rulesets or recreate existing well-known rulesets </h6> | <h6> Configurable Skills & Skilltrees </h6> | <h6> Configurable level scaling and stat modifier rules </h6> | <h6> Replicated progression component and progression datums (fastarrays again) </h6> | <h6> Engine level Subsystem that maps our data from the datatable so we can access it at O(1) when searching for specific default data </h6> | <h6> Base UMG widgets for developers to bootstrap from or to use as example for progression related widgets </h6> |
+| Description | <h6> Configurable rulesets and a ruleset evaluator. <br><br> Designers can implement custom progression rulesets or recreate existing well-known rulesets </h6> | <h6> Configurable Skills & Skilltrees </h6> | <h6> Configurable level scaling and stat modifier rules </h6> | <h6> Replicated progression component and progression datums (fastarrays again) </h6> | <h6> Glorified data singleton <br><br> Maps our data from the datatable so we can access it at O(1) when searching for specific default data </h6> | <h6> Base UMG widgets for developers to bootstrap from or to use as example for progression related widgets </h6> |
 
 | <img src="https://shieldcn.dev/badge/GAS%20Layer.png?variant=ghost&size=lg&color=3e4f6c&labelOpacity=1" style="width:auto%; height:40px;" />  |   |  | <img src="https://shieldcn.dev/badge/MASS%20Layer.png?variant=ghost&size=lg&color=3e4f6c&labelOpacity=1" style="width:auto; height:40px;" />  |  |
 | :---        | :---        | :--- | :---        | :---        |
@@ -89,16 +89,16 @@ ______
 
 | <img src="https://shieldcn.dev/badge/Core.png?variant=ghost&size=lg&color=3e4f6c&labelOpacity=1" style="width:auto; height:40px;" />  |  |  |  |  |  |
 | :---        | :---        |    :---   |          :--- | :---        |    :---   |
-| Sections    | ![badge](https://shieldcn.dev/badge/Subsystem-Octree-violet.png)  | ![badge](https://shieldcn.dev/badge/Subsystem-Hashgrid-violet.png) | ![badge](https://shieldcn.dev/badge/Subsystem-Pinger-violet.png) | ![badge](https://shieldcn.dev/badge/Subsystem-Builder-violet.png)  | ![badge](https://shieldcn.dev/badge/Mass%20Statetree-violet.png) |
+| Sections    | ![badge](https://shieldcn.dev/badge/System-Octree-violet.png)  | ![badge](https://shieldcn.dev/badge/System-Hashgrid-violet.png) | ![badge](https://shieldcn.dev/badge/System-Pinger-violet.png) | ![badge](https://shieldcn.dev/badge/System-Builder-violet.png)  | ![badge](https://shieldcn.dev/badge/Mass%20Statetree-violet.png) |
 | Status      |  ![done] | ![done] | ![done] | ![mostly_done] | ![inprog] |
-| Description |   <h6> - Generates custom octree nodes and assigns them to entities <br> - custom octree nodes that packs certain entity data <br> - Subsystem to help usage</h6>   |   <h6> - Calculates dynamic hashgrid cells <br> - Recalculates locations to dynamic hashgrid mapping</h6>   |   <h6> - Scans hashgrid for entities to ping <br> - Pings JobTag to entities to target given actor (for now interactable buildings)</h6>   |   <h6> - Uses hashgrid to force world steps for build system <br> - Tracks built actors and their owners <br> - Caches build system recipes and has helpers</h6>   |   <h6> - Custom Mass Tasks, Processors, Evaluators, Fragments, Traits <br> - Custom State tree behaviour schema</h6>   |  
+| Description |   <h6> Generates custom octree nodes and assigns them to entities <br><br> Custom octree nodes that packs certain entity data <br><br> Subsystem to help usage</h6>   |   <h6> Calculates dynamic hashgrid cells <br><br> Recalculates locations to dynamic hashgrid mapping</h6>   |   <h6> Scans hashgrid for entities to ping <br><br> Pings JobTag to entities to target given actor (for now interactable buildings)</h6>   |   <h6> Uses hashgrid to force world steps for build system <br><br> Tracks built actors and their owners <br><br> Caches build system recipes and has helpers</h6>   |   <h6> Custom Mass Tasks, Processors, Evaluators, Fragments, Traits <br><br> Custom State tree behaviour schema</h6>   |  
 
 
 | <img src="https://shieldcn.dev/badge/Ext.png?variant=ghost&size=lg&color=3e4f6c&labelOpacity=1" style="width:auto; height:40px;" />  |  |  |  |
 | :---        | :---        |    :---   |          :--- |
 | Sections    | ![badge](https://shieldcn.dev/badge/Manager-Camera-violet.png) | ![badge](https://shieldcn.dev/badge/Subsystem-FoW-violet.png) | ![badge](https://shieldcn.dev/badge/Interfaces-violet.png)  |
 | Status      |  ![done] | ![inprog] | ![done] |
-| Description |   <h6> - Applies different camera presets/setups using 'FPDCameraManagerSettings' <br> - Allows for custom presets/setups (Has a default base RTS preset ) </h6>   |   <h6> - UPDATEME <br> - UPDATEME</h6>   |   <h6> - Ghost building interface, used by actors that wants to be managed by the builder system <br> - Builder Interface, used by actors that wants to be able to build other actors </h6> |   
+| Description |   <h6> Applies different camera presets/setups using 'FPDCameraManagerSettings' <br><br> Allows for custom presets/setups (Has a default base RTS preset ) </h6>   |   <h6> UPDATEME <br><br> UPDATEME</h6>   |   <h6> Ghost building interface, used by actors that wants to be managed by the builder system <br><br> Builder Interface, used by actors that wants to be able to build other actors </h6> |   
 
 ______
 
@@ -165,7 +165,7 @@ ______
 | :---        | :---        |    :---   |          :--- |
 | Sections    | ![badge](https://shieldcn.dev/badge/Mission%20Tags-violet.png) | ![badge](https://shieldcn.dev/badge/Conversation%20Actor-violet.png) | ![badge](https://shieldcn.dev/badge/Mission%20View/List-violet.png)  |
 | Status      |  ![mostly_done] | ![mostly_done] | ![inprog_backlogged] |
-| Description |   <h6>Tag based mission system. Tags serve as missions and as flags for objectives/sideobjectives states.</h6>   |   <h6>Custom conversation actor that uses one of the interaction systems intrfaces and has itneraction logic that handles checking and granting for mission tags</h6>   |   <h6>Slate core widgets with UMG wrappers. Used for a Mission Menu View and Mission/Objective Lists </h6>   |  
+| Description |   <h6>Tag based mission system. Tags serve as missions and as flags for objectives/sideobjectives states.</h6>   |   <h6>Custom conversation actor that uses one of the interaction systems intrfaces and has interaction logic that handles checking and granting for mission tags</h6>   |   <h6>Slate core widgets with UMG wrappers. Used for a Mission Menu View and Mission/Objective Lists </h6>   |  
 > ##### TODO: integrate with mission/quest plugin in PDOpen when getting back to that
 > ##### TODO: Need to move this over to PDOpen and to wrap up the mission editor code in PDOpen and port it over here when done.
 
