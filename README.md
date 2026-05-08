@@ -27,7 +27,7 @@ ______
 | :---        | :---        |    :---   |          :--- |
 | Sections    | ![badge](https://shieldcn.dev/badge/Network-Managers-violet.png) | ![badge](https://shieldcn.dev/badge/Network-Fast%20Arrays-violet.png) | ![badge](https://shieldcn.dev/badge/Network-Subsystem-violet.png) |
 | Status    |   ![mostly_done_backlogged] |  ![mostly_done_backlogged] |  ![mostly_done_backlogged] |
-| Description | <h6>Keep network load ligther when there are many recipients and senders</h6> | <h6>Message datums that contain <br> a message tag, to be routed to <br> a list of game messages to display to the target actor</h6> | <h6>Registers network managers to route RX/TX messages to managed actors</h6> |
+| Description | <h6>Keep network load lighter when there are many recipients and senders</h6> | <h6>Message datums contain a message tag, to be routed to a list of game messages to display to the target actor</h6> | <h6>Registers network managers to route RX/TX messages to managed actors</h6> |
 
 ______
 
