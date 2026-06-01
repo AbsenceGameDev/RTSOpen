@@ -107,8 +107,8 @@ ______
 | <img src="https://shieldcn.dev/badge/Core.png?variant=ghost&size=lg&color=3e4f6c&labelOpacity=1" style="width:auto; height:40px;" />  |  |  |
 | :---        | :---        |    :---   |
 | Sections    | ![badge](https://shieldcn.dev/badge/Unreal%20Conversation-violet.png) | ![badge](https://shieldcn.dev/badge/Mission%20Editor-violet.png) |
-| Status      |  ![done] | ![inprog_backlogged] |
-| Description |   <h6>Bootstrapped from Unreal Conversation </h6>   |   <h6>Mission editor classes are halfway implemented in another repo, will move here when this is not backlogged and continue work then</h6>   |
+| Status      |  ![done] | ![inprog] |
+| Description |   <h6>Bootstrapped from Unreal Conversation </h6>   |   <h6>Mission editor classes are halfway implemented in another repo, will move here when it is more complete and continue work then</h6>   |
 > ##### TODO: Need to move this over to PDOpen and to wrap up the mission editor code in PDOpen and port it over here when done.
 
 ______
