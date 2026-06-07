@@ -11,7 +11,7 @@ Updated the readme to better reflect the current state of the system, although i
 
 # <img src="https://img.shields.io/badge/Custom%20Base%20Plugins-blueviolet?style=for-the-badge" width="1000" height="160" />
 
-### <img src="https://img.shields.io/badge/Plugin-Shared%20UI-AA4D2B?style=for-the-badge" style="width:auto; height:50px;" />
+### <a href="https://github.com/AbsenceGameDev/RTSOpen/tree/main/Plugins/PDSharedUI"> <img src="https://img.shields.io/badge/Plugin-Shared%20UI-AA4D2B?style=for-the-badge" style="width:auto; height:50px;" /> </a>
 ### ![status_inprog_backlogged]
 | <img src="https://shieldcn.dev/badge/Core.png?variant=ghost&size=lg&color=3e4f6c&labelOpacity=1" style="width:auto; height:40px;" /> |  |  |  |
 | :---        | :---        |    :---   |          :--- |
@@ -21,7 +21,7 @@ Updated the readme to better reflect the current state of the system, although i
 
 ______
 
-### <img src="https://img.shields.io/badge/Plugin-User%20Message%20System-AA4D2B?style=for-the-badge" style="width:auto; height:50px;" />
+### <a href="https://github.com/AbsenceGameDev/RTSOpen/tree/main/Plugins/PDUserMessageBase"> <img src="https://img.shields.io/badge/Plugin-User%20Message%20System-AA4D2B?style=for-the-badge" style="width:auto; height:50px;" /> </a>
 ### ![status_mostly_done_backlogged]
 | <img src="https://shieldcn.dev/badge/Core.png?variant=ghost&size=lg&color=3e4f6c&labelOpacity=1" style="width:auto; height:40px;" /> |  |  |    |
 | :---        | :---        |    :---   |          :--- |
@@ -31,7 +31,7 @@ ______
 
 ______
 
-### <img src="https://img.shields.io/badge/Plugin-Progression%20System-AA4D2B?style=for-the-badge" style="width:auto; height:50px;" />
+### <a href="https://github.com/AbsenceGameDev/RTSOpen/tree/main/Plugins/PDProgression"> <img src="https://img.shields.io/badge/Plugin-Progression%20System-AA4D2B?style=for-the-badge" style="width:auto; height:50px;" /> </a>
 ### ![status_mostly_done]
 
 | <img src="https://shieldcn.dev/badge/Core.png?variant=ghost&size=lg&color=3e4f6c&labelOpacity=1" style="width:auto; height:40px;" />  |  |  |  |  |  |  |
@@ -51,7 +51,7 @@ ______
 
 ______
 
-### <img src="https://img.shields.io/badge/Plugin-Interaction%20System-AA4D2B?style=for-the-badge" style="width:auto; height:50px;" />
+### <a href="https://github.com/AbsenceGameDev/RTSOpen/tree/main/Plugins/PDInteraction"> <img src="https://img.shields.io/badge/Plugin-Interaction%20System-AA4D2B?style=for-the-badge" style="width:auto; height:50px;" /> </a>
 ### ![status_mostly_done]
 | <img src="https://shieldcn.dev/badge/Core.png?variant=ghost&size=lg&color=3e4f6c&labelOpacity=1" style="width:auto; height:40px;" /> |  |  |  |
 | :---        | :---        |    :---   |          :--- |
@@ -63,7 +63,7 @@ ______
 
 ______
 
-### <img src="https://img.shields.io/badge/Plugin-Inventory%20System-AA4D2B?style=for-the-badge" style="width:auto; height:50px;" />
+### <a href="https://github.com/AbsenceGameDev/RTSOpen/tree/main/Plugins/PDInventory"> <img src="https://img.shields.io/badge/Plugin-Inventory%20System-AA4D2B?style=for-the-badge" style="width:auto; height:50px;" /> </a>
 ### ![status_mostly_done]
 
 <!-- Inventory: Core -->
@@ -84,7 +84,7 @@ ______
 
 ______
 
-### <img src="https://img.shields.io/badge/Plugin-RTS%20Base-AA4D2B?style=for-the-badge" style="width:auto; height:50px;" />
+### <a href="https://github.com/AbsenceGameDev/RTSOpen/tree/main/Plugins/PDRTSBase"> <img src="https://img.shields.io/badge/Plugin-RTS%20Base-AA4D2B?style=for-the-badge" style="width:auto; height:50px;" /> </a>
 ### ![status_mostly_done]
 
 | <img src="https://shieldcn.dev/badge/Core.png?variant=ghost&size=lg&color=3e4f6c&labelOpacity=1" style="width:auto; height:40px;" />  |  |  |  |  |  |
@@ -102,7 +102,7 @@ ______
 
 ______
 
-### <img src="https://img.shields.io/badge/Plugin-Mission%20System-AA4D2B?style=for-the-badge" style="width:auto; height:50px;" />
+### <a href="https://github.com/AbsenceGameDev/RTSOpen/tree/main/Plugins/PDConversationHelper"> <img src="https://img.shields.io/badge/Plugin-Mission%20System-AA4D2B?style=for-the-badge" style="width:auto; height:50px;" /> </a>
 ### ![status_inprog_backlogged]
 | <img src="https://shieldcn.dev/badge/Core.png?variant=ghost&size=lg&color=3e4f6c&labelOpacity=1" style="width:auto; height:40px;" />  |  |  |
 | :---        | :---        |    :---   |
@@ -113,7 +113,7 @@ ______
 
 ______
 
-### <img src="https://img.shields.io/badge/Plugin-Tutorial%20System-AA4D2B?style=for-the-badge" style="width:auto; height:50px;" />
+### <a href="https://github.com/AbsenceGameDev/RTSOpen/tree/main/Plugins/PDTutorialSystem"> <img src="https://img.shields.io/badge/Plugin-Tutorial%20System-AA4D2B?style=for-the-badge" style="width:auto; height:50px;" /> </a>
 ### ![status_todo_backlogged]
 | <img src="https://shieldcn.dev/badge/Core.png?variant=ghost&size=lg&color=3e4f6c&labelOpacity=1" style="width:auto; height:40px;" />  |  |  |
 | :---        | :---        |    :---   |
@@ -124,9 +124,9 @@ ______
 ______
 <br></br>
 
-# <img src="https://img.shields.io/badge/Game%20Base%20Modules%20%20-blueviolet?style=for-the-badge" width="1000" height="160" />
+# <a href="https://github.com/AbsenceGameDev/RTSOpen/tree/main/Source/RTSOpen"> <img src="https://img.shields.io/badge/Game%20Base%20Modules%20%20-blueviolet?style=for-the-badge" width="1000" height="160" /> </a>
 
-### <img src="https://img.shields.io/badge/Core-%20Player-AA4D2B?style=for-the-badge" style="width:auto; height:50px;" />
+### <a href="https://github.com/AbsenceGameDev/RTSOpen/tree/main/Source/RTSOpen/Public/Actors"> <img src="https://img.shields.io/badge/Core-%20Player-AA4D2B?style=for-the-badge" style="width:auto; height:50px;" /> </a>
 ### ![status_mostly_done]
 |  |  |  |
 | :---        | :---        |    :---   |
@@ -137,7 +137,7 @@ ______
 
 ______
 
-### <img src="https://img.shields.io/badge/Core-%20Interaction-AA4D2B?style=for-the-badge" style="width:auto; height:50px;" />
+### <a href="https://github.com/AbsenceGameDev/RTSOpen/tree/main/Source/RTSOpen/Public/Actors/Interactables"> <img src="https://img.shields.io/badge/Core-%20Interaction-AA4D2B?style=for-the-badge" style="width:auto; height:50px;" /> </a>
 ### ![status_mostly_done]
 |   |  |  |  |
 | :---        | :---        |    :---   |          :--- |
@@ -148,7 +148,7 @@ ______
 
 ______
 
-### <img src="https://img.shields.io/badge/Core-%20Mass-AA4D2B?style=for-the-badge" style="width:auto; height:50px;" />
+### <a href="https://github.com/AbsenceGameDev/RTSOpen/tree/main/Source/RTSOpen/Public/AI"> <img src="https://img.shields.io/badge/Core-%20Mass-AA4D2B?style=for-the-badge" style="width:auto; height:50px;" /> </a>
 ### ![status_inprog]
 |   |  |  |  |
 | :---        | :---        |    :---   |          :--- |
@@ -159,7 +159,7 @@ ______
 
 ______
 
-### <img src="https://img.shields.io/badge/Core-%20Missions-AA4D2B?style=for-the-badge" style="width:auto; height:50px;" />
+### <a href="https://github.com/AbsenceGameDev/RTSOpen/tree/main/Source/RTSOpen/Public/Actors/Interactables/ConversationHandlers"> <img src="https://img.shields.io/badge/Core-%20Missions-AA4D2B?style=for-the-badge" style="width:auto; height:50px;" /> </a>
 ##### ![status_inprog]
 |   |  |  |  |
 | :---        | :---        |    :---   |          :--- |
@@ -171,7 +171,7 @@ ______
 
 ______
 
-### <img src="https://img.shields.io/badge/Core-%20Game-AA4D2B?style=for-the-badge" style="width:auto; height:50px;" />
+### <a href="https://github.com/AbsenceGameDev/RTSOpen/tree/main/Source/RTSOpen/Public/Core"> <img src="https://img.shields.io/badge/Core-%20Game-AA4D2B?style=for-the-badge" style="width:auto; height:50px;" /> </a>
 ##### ![status_inprog_backlogged]
 |   |  |  |  |
 | :---        | :---        |    :---   |          :--- |
@@ -183,7 +183,7 @@ ______
 
 ______
 
-### <img src="https://img.shields.io/badge/Core-%20HUD-AA4D2B?style=for-the-badge" style="width:auto; height:50px;" />
+### <a href="https://github.com/AbsenceGameDev/RTSOpen/tree/main/Source/RTSOpen/Public/Core"> <img src="https://img.shields.io/badge/Core-%20HUD-AA4D2B?style=for-the-badge" style="width:auto; height:50px;" /> </a>
 ##### ![status_inprog]
 |   |  |  |  |
 | :---        | :---        |    :---   |          :--- |
@@ -194,7 +194,7 @@ ______
 
 ______
 
-### <img src="https://img.shields.io/badge/Core-%20Game%20Menus-AA4D2B?style=for-the-badge" style="width:auto; height:50px;" />
+### <a href="https://github.com/AbsenceGameDev/RTSOpen/tree/main/Source/RTSOpen/Public/Core"> <img src="https://img.shields.io/badge/Core-%20Game%20Menus-AA4D2B?style=for-the-badge" style="width:auto; height:50px;" /> </a>
 ##### ![status_mostly_done]
 |   |  |  |  |  |
 | :---        | :---        |    :---   |          :--- |          :--- |
@@ -205,7 +205,7 @@ ______
 
 ______
 
-### <img src="https://img.shields.io/badge/Core-%20User%20Settings-AA4D2B?style=for-the-badge" style="width:auto; height:50px;" />
+### <a href="https://github.com/AbsenceGameDev/RTSOpen/tree/main/Source/RTSOpen/Public/Widgets"> <img src="https://img.shields.io/badge/Core-%20User%20Settings-AA4D2B?style=for-the-badge" style="width:auto; height:50px;" /> </a>
 ##### ![status_mostly_done_backlogged]
 |   |  |  |  |
 | :---        | :---        |    :---   |          :--- |
@@ -216,7 +216,7 @@ ______
 
 ______
 
-### <img src="https://img.shields.io/badge/Core-%20Save%20Editor-AA4D2B?style=for-the-badge" style="width:auto; height:50px;" />
+### <a href="https://github.com/AbsenceGameDev/RTSOpen/tree/main/Source/RTSOpen/Public/SaveEditor"> <img src="https://img.shields.io/badge/Core-%20Save%20Editor-AA4D2B?style=for-the-badge" style="width:auto; height:50px;" /> </a>
 ##### ![status_mostly_done_backlogged]
 |   |  |  |
 | :---        | :---        |    :---   |
@@ -227,7 +227,7 @@ ______
 
 ______
 
-### <img src="https://img.shields.io/badge/Misc-%20Tag%20Loader-AA4D2B?style=for-the-badge" style="width:auto; height:50px;" />
+### <a href="https://github.com/AbsenceGameDev/RTSOpen/tree/main/Source/RTSOpen/Public/Subsystems"> <img src="https://img.shields.io/badge/Misc-%20Tag%20Loader-AA4D2B?style=for-the-badge" style="width:auto; height:50px;" /> </a>
 ##### ![status_done]
 |   |   |
 | :---        | :---        | 
@@ -237,7 +237,7 @@ ______
 
 ______
 
-### <img src="https://img.shields.io/badge/Misc-%20Game%20UI-AA4D2B?style=for-the-badge" style="width:auto; height:50px;" />
+### <a href="https://github.com/AbsenceGameDev/RTSOpen/tree/main/Content/Core/Widgets/BuildMenu"> <img src="https://img.shields.io/badge/Misc-%20Game%20UI-AA4D2B?style=for-the-badge" style="width:auto; height:50px;" /> </a>
 ##### ![status_inprog]
 |   |  |  |
 | :---        | :---        |    :---   |
@@ -248,7 +248,7 @@ ______
 
 ______
 
-### <img src="https://img.shields.io/badge/Misc-%20Input%20Stack-AA4D2B?style=for-the-badge" style="width:auto; height:50px;" />
+### <a href="https://github.com/AbsenceGameDev/RTSOpen/tree/main/Source/RTSOpen/Public/Core"> <img src="https://img.shields.io/badge/Misc-%20Input%20Stack-AA4D2B?style=for-the-badge" style="width:auto; height:50px;" /> </a>
 ##### ![status_done]
 |   |  |
 | :---        | :---        |
@@ -258,7 +258,7 @@ ______
 
 ______
 
-### <img src="https://img.shields.io/badge/RTSShaders-%20Global-AA4D2B?style=for-the-badge" style="width:auto; height:50px;" />
+### <a href="https://github.com/AbsenceGameDev/RTSOpen/tree/main/Source/RTSShaders"> <img src="https://img.shields.io/badge/RTSShaders-%20Global-AA4D2B?style=for-the-badge" style="width:auto; height:50px;" /> </a>
 ##### ![status_inprog]
 |   |  |
 | :---        | :---        |    
